@@ -1,0 +1,40 @@
+[package]
+name = "jiq"
+version = "0.1.0"
+edition = "2024"
+license = "MIT OR Apache-2.0"
+description = "Interactive JSON query tool with real-time filtering using jq"
+keywords = ["json", "jq", "cli", "interactive", "tui"]
+categories = ["command-line-utilities", "development-tools"]
+
+[dependencies]
+# TUI framework
+ratatui = "0.29"
+
+# Cross-platform terminal manipulation
+crossterm = "0.29"
+
+# Better error handling for TUI apps
+color-eyre = "0.6"
+
+# CLI argument parsing
+clap = { version = "4.5", features = ["derive"] }
+
+# JSON validation
+serde_json = "1.0"
+
+# Find executables in PATH
+which = "6.0"
+
+[dev-dependencies]
+# Testing utilities
+tempfile = "3.8"
+assert_cmd = "2.0"
+predicates = "3.0"
+
+[profile.release]
+# Optimize for size and performance
+opt-level = 3
+lto = true
+codegen-units = 1
+strip = true

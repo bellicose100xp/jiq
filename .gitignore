@@ -1,0 +1,25 @@
+# Rust build artifacts
+/target/
+Cargo.lock
+
+# Rust backup files
+**/*.rs.bk
+
+# macOS
+.DS_Store
+
+# Vim swap files
+*.swp
+*.swo
+*~
+
+# Editor directories
+.vscode/
+.idea/
+
+# Test artifacts
+*.profraw
+*.profdata
+
+# Internal development documentation
+/development/

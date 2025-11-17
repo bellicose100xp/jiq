@@ -1,42 +1,63 @@
-# JSON Interactive Query (jiq) Tool
-`jiq` is a command-line tool that allows you to interactively query JSON data in real-time using a simple and intuitive interface.
+# jiq - JSON Interactive Query Tool
+
+Interactive command-line tool for querying JSON data in real-time using jq syntax.
 
 ## Requirements
-- `jq` - Command-line JSON processor
-- `jless` - JSON viewer with interactive capabilities
 
-## Usage
-### CLI Usage
+- **jq** - JSON processor (required)
+  - macOS: `brew install jq`
+- **jless** - JSON viewer (optional, future versions)
+  - macOS: `brew install jless`
+
+## Installation
+
 ```sh
-# Using jiq with a pipe - outputs filtered result to STDOUT
-cat data.json | jiq
-
-# Using jiq with a file - outputs filtered result to STDOUT
-jiq data.json
-
-# Output only the jq query used during interactive session
-jiq -q|--query-only data.json
-cat data.json | jiq -q
-
-# Display help information
-jiq -h|--help
+# From source
+git clone https://github.com/chahcha/jiq
+cd jiq
+cargo build --release
+sudo cp target/release/jiq /usr/local/bin/
 ```
 
-### Interactive Usage
-1. Type the `jq` filter expression in the input field at the bottom
-2. As you type, the filtered JSON data will be displayed in real-time in the main area
-3. The input field supports VIM keybindings for editing:
-   - Start in insert mode for immediate typing
-   - Press `ESC` to enter normal mode for VIM navigation
-   - Press `ESC` again in normal mode to exit `jiq`
-4. Press `Tab` to switch focus between the input field and the results area
-5. When focused on results, navigate using `jless` keybindings
-6. Press `Tab` to return to the input field from results view
+## Usage
+
+```sh
+# Read from file
+jiq data.json
+
+# Read from stdin
+cat data.json | jiq
+echo '{"key": "value"}' | jiq
+
+# Output only the jq query (for scripting)
+jiq -q data.json
+```
+
+## Interactive Mode
+
+1. Type jq filter expressions in the input field
+2. Results update in real-time as you type
+3. Press `Tab` to switch between input and results
+4. Use arrow keys to scroll results
+5. Press `ESC`, `q` or `Ctrl+C` to exit
+
+## Keybindings
+
+| Key | Action |
+|-----|--------|
+| `Tab` | Switch focus between input and results |
+| `ESC`, `Ctrl+C` | Exit |
+| `↑/↓`, `j/k` | Scroll results |
+| `PgUp/PgDn` | Page up/down |
+| `Home` | Jump to top |
 
 ## Features
-- **Real-time filtering**: See results instantly as you type your `jq` query
-- **VIM keybindings**: Full VIM support in the query input field
-- **Interactive navigation**: Browse results with `jless` keybindings
-- **Flexible output**: Get filtered results or extract the query for use in scripts
-- **Stateless**: No configuration files or history - works independently
 
+- Real-time JSON filtering with jq syntax
+- Two-pane interface (results + input)
+- Preserves jq's color output and formatting
+- Stateless (no config files or history)
+
+## License
+
+Licensed under MIT OR Apache-2.0
