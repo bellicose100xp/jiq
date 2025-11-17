@@ -1,24 +1,54 @@
+use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind};
 use ratatui::{
     layout::{Constraint, Layout},
     style::{Color, Style},
     widgets::{Block, Borders, Paragraph},
     Frame,
 };
+use std::io;
 
 /// Application state
 pub struct App {
+    json_input: String,
     should_quit: bool,
 }
 
 impl App {
-    /// Create a new App instance
-    pub fn new() -> Self {
-        Self { should_quit: false }
+    /// Create a new App instance with JSON input
+    pub fn new(json_input: String) -> Self {
+        Self {
+            json_input,
+            should_quit: false,
+        }
     }
 
     /// Check if the application should quit
     pub fn should_quit(&self) -> bool {
         self.should_quit
+    }
+
+    /// Handle events and update application state
+    pub fn handle_events(&mut self) -> io::Result<()> {
+        match event::read()? {
+            // Check that it's a key press event to avoid duplicates
+            Event::Key(key_event) if key_event.kind == KeyEventKind::Press => {
+                self.handle_key_event(key_event);
+            }
+            _ => {}
+        }
+        Ok(())
+    }
+
+    /// Handle key press events
+    fn handle_key_event(&mut self, key: KeyEvent) {
+        match key.code {
+            KeyCode::Esc | KeyCode::Char('q') => {
+                self.should_quit = true;
+            }
+            _ => {
+                // Other keys will be handled in future versions
+            }
+        }
     }
 
     /// Render the UI
@@ -47,7 +77,7 @@ impl App {
             .title(" Results ")
             .border_style(Style::default().fg(Color::Cyan));
 
-        let content = Paragraph::new("Hello World!\n\nThis is the results pane.\nFiltered JSON will appear here.")
+        let content = Paragraph::new(self.json_input.as_str())
             .block(block)
             .style(Style::default().fg(Color::White));
 
