@@ -10,12 +10,20 @@ use tui_textarea::TextArea;
 
 use crate::query::executor::JqExecutor;
 
+/// Which pane has focus
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Focus {
+    InputField,
+    ResultsPane,
+}
+
 /// Application state
 pub struct App {
     json_input: String,
     textarea: TextArea<'static>,
     executor: JqExecutor,
     query_result: Result<String, String>,
+    focus: Focus,
     should_quit: bool,
 }
 
@@ -47,6 +55,7 @@ impl App {
             textarea,
             executor,
             query_result,
+            focus: Focus::InputField, // Start with input field focused
             should_quit: false,
         }
     }
@@ -76,6 +85,15 @@ impl App {
             return;
         }
 
+        // Handle Tab key to switch focus
+        if key.code == KeyCode::Tab {
+            self.focus = match self.focus {
+                Focus::InputField => Focus::ResultsPane,
+                Focus::ResultsPane => Focus::InputField,
+            };
+            return;
+        }
+
         match key.code {
             KeyCode::Esc | KeyCode::Char('q') => {
                 self.should_quit = true;
@@ -84,20 +102,24 @@ impl App {
                 // Prevent newlines in single-line input (do nothing)
             }
             _ => {
-                // Pass key to textarea for editing
-                let content_changed = self.textarea.input(key);
+                // Only handle input when Query field is focused
+                if self.focus == Focus::InputField {
+                    // Pass key to textarea for editing
+                    let content_changed = self.textarea.input(key);
 
-                // Execute query on every keystroke that changes content
-                if content_changed {
-                    let query = self.textarea.lines()[0].as_ref();
-                    self.query_result = self.executor.execute(query);
+                    // Execute query on every keystroke that changes content
+                    if content_changed {
+                        let query = self.textarea.lines()[0].as_ref();
+                        self.query_result = self.executor.execute(query);
+                    }
                 }
+                // Results pane navigation will be handled in v0.6.0
             }
         }
     }
 
     /// Render the UI
-    pub fn render(&self, frame: &mut Frame) {
+    pub fn render(&mut self, frame: &mut Frame) {
         // Split the terminal into two panes: results (top) and input (bottom)
         let layout = Layout::vertical([
             Constraint::Min(3),      // Results pane takes most of the space
@@ -111,16 +133,44 @@ impl App {
         // Render results pane
         self.render_results_pane(frame, results_area);
 
-        // Render textarea input field
-        frame.render_widget(&self.textarea, input_area);
+        // Render input field
+        self.render_input_field(frame, input_area);
+    }
+
+    /// Render the input field (bottom)
+    fn render_input_field(&mut self, frame: &mut Frame, area: ratatui::layout::Rect) {
+        // Set border color based on focus
+        let border_color = if self.focus == Focus::InputField {
+            Color::Cyan // Focused
+        } else {
+            Color::DarkGray // Unfocused
+        };
+
+        // Update textarea block with focus-aware styling
+        self.textarea.set_block(
+            Block::default()
+                .borders(Borders::ALL)
+                .title(" Query ")
+                .border_style(Style::default().fg(border_color)),
+        );
+
+        // Render the textarea widget
+        frame.render_widget(&self.textarea, area);
     }
 
     /// Render the results pane (top)
     fn render_results_pane(&self, frame: &mut Frame, area: ratatui::layout::Rect) {
+        // Set border color based on focus
+        let border_color = if self.focus == Focus::ResultsPane {
+            Color::Cyan // Focused
+        } else {
+            Color::DarkGray // Unfocused
+        };
+
         let block = Block::default()
             .borders(Borders::ALL)
             .title(" Results ")
-            .border_style(Style::default().fg(Color::Cyan));
+            .border_style(Style::default().fg(border_color));
 
         // Display query results or error message
         let (text, style) = match &self.query_result {
