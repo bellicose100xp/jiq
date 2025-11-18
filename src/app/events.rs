@@ -156,6 +156,30 @@ impl App {
                 self.editor_mode = EditorMode::Insert;
             }
 
+            // Simple delete operations
+            KeyCode::Char('x') => {
+                // x - Delete character at cursor
+                self.textarea.delete_next_char();
+                self.execute_query();
+            }
+            KeyCode::Char('X') => {
+                // X - Delete character before cursor
+                self.textarea.delete_char();
+                self.execute_query();
+            }
+
+            // Operators - enter Operator mode
+            KeyCode::Char('d') => {
+                // d - Delete operator (wait for motion)
+                self.editor_mode = EditorMode::Operator('d');
+                self.textarea.start_selection();
+            }
+            KeyCode::Char('c') => {
+                // c - Change operator (delete then insert)
+                self.editor_mode = EditorMode::Operator('c');
+                self.textarea.start_selection();
+            }
+
             _ => {
                 // Other VIM commands not yet implemented
             }
@@ -163,10 +187,97 @@ impl App {
     }
 
     /// Handle keys in Operator mode (waiting for motion after d/c)
-    fn handle_operator_mode_key(&mut self, _key: KeyEvent) {
-        // TODO: Implement operator+motion system
-        // For now, just cancel and return to Normal
-        self.editor_mode = EditorMode::Normal;
+    fn handle_operator_mode_key(&mut self, key: KeyEvent) {
+        let operator = match self.editor_mode {
+            EditorMode::Operator(op) => op,
+            _ => return, // Should never happen
+        };
+
+        // Check for double operator (dd, cc)
+        if key.code == KeyCode::Char(operator) {
+            // dd or cc - delete entire line
+            self.textarea.delete_line_by_head();
+            self.textarea.delete_line_by_end();
+            self.editor_mode = if operator == 'c' {
+                EditorMode::Insert
+            } else {
+                EditorMode::Normal
+            };
+            self.execute_query();
+            return;
+        }
+
+        // Apply operator with motion
+        let motion_applied = match key.code {
+            // Word motions
+            KeyCode::Char('w') => {
+                self.textarea.move_cursor(CursorMove::WordForward);
+                true
+            }
+            KeyCode::Char('b') => {
+                self.textarea.move_cursor(CursorMove::WordBack);
+                true
+            }
+            KeyCode::Char('e') => {
+                self.textarea.move_cursor(CursorMove::WordEnd);
+                self.textarea.move_cursor(CursorMove::Forward); // Include char at cursor
+                true
+            }
+
+            // Line extent motions
+            KeyCode::Char('0') | KeyCode::Home => {
+                self.textarea.move_cursor(CursorMove::Head);
+                true
+            }
+            KeyCode::Char('$') | KeyCode::End => {
+                self.textarea.move_cursor(CursorMove::End);
+                true
+            }
+
+            // Character motions
+            KeyCode::Char('h') | KeyCode::Left => {
+                self.textarea.move_cursor(CursorMove::Back);
+                true
+            }
+            KeyCode::Char('l') | KeyCode::Right => {
+                self.textarea.move_cursor(CursorMove::Forward);
+                true
+            }
+
+            _ => false,
+        };
+
+        if motion_applied {
+            // Execute the operator
+            match operator {
+                'd' => {
+                    // Delete - cut and stay in Normal mode
+                    self.textarea.cut();
+                    self.editor_mode = EditorMode::Normal;
+                }
+                'c' => {
+                    // Change - cut and enter Insert mode
+                    self.textarea.cut();
+                    self.editor_mode = EditorMode::Insert;
+                }
+                _ => {
+                    self.textarea.cancel_selection();
+                    self.editor_mode = EditorMode::Normal;
+                }
+            }
+            self.execute_query();
+        } else {
+            // Invalid motion or ESC - cancel operator
+            self.textarea.cancel_selection();
+            self.editor_mode = EditorMode::Normal;
+        }
+    }
+
+    /// Execute current query and update results
+    fn execute_query(&mut self) {
+        let query = self.textarea.lines()[0].as_ref();
+        self.query_result = self.executor.execute(query);
+        self.results_scroll = 0;
     }
 
     /// Handle keys when Results pane is focused
