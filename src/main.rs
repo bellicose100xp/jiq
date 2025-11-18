@@ -8,9 +8,10 @@ mod error;
 mod input;
 mod query;
 
-use app::App;
+use app::{App, OutputMode};
 use error::JiqError;
 use input::reader::InputReader;
+use query::executor::JqExecutor;
 
 /// Interactive JSON query tool
 #[derive(Parser, Debug)]
@@ -43,12 +44,15 @@ fn main() -> Result<()> {
     let terminal = ratatui::init();
 
     // Run the application with JSON input
-    let result = run(terminal, json_input);
+    let app = run(terminal, json_input.clone())?;
 
     // Restore terminal (automatic cleanup)
     ratatui::restore();
 
-    result
+    // Output results AFTER terminal is restored
+    handle_output(&app, &json_input)?;
+
+    Ok(())
 }
 
 /// Validate that jq binary exists in PATH
@@ -57,7 +61,7 @@ fn validate_jq_exists() -> Result<(), JiqError> {
     Ok(())
 }
 
-fn run(mut terminal: DefaultTerminal, json_input: String) -> Result<()> {
+fn run(mut terminal: DefaultTerminal, json_input: String) -> Result<App> {
     let mut app = App::new(json_input);
 
     loop {
@@ -70,6 +74,29 @@ fn run(mut terminal: DefaultTerminal, json_input: String) -> Result<()> {
         // Check if we should exit
         if app.should_quit() {
             break;
+        }
+    }
+
+    Ok(app)
+}
+
+/// Handle output after terminal is restored
+fn handle_output(app: &App, json_input: &str) -> Result<()> {
+    match app.output_mode() {
+        Some(OutputMode::Results) => {
+            // Execute final query and output results
+            let executor = JqExecutor::new(json_input.to_string());
+            match executor.execute(app.query()) {
+                Ok(result) => println!("{}", result),
+                Err(e) => eprintln!("Error: {}", e),
+            }
+        }
+        Some(OutputMode::Query) => {
+            // Output just the query string
+            println!("{}", app.query());
+        }
+        None => {
+            // No output mode (exited with Ctrl+C or q)
         }
     }
 
