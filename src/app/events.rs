@@ -41,8 +41,19 @@ impl App {
             return true;
         }
 
-        // Tab: Switch focus between panes
+        // Tab: Accept autocomplete suggestion (if visible) or switch focus
         if key.code == KeyCode::Tab {
+            // Check if autocomplete is visible and we're in input field
+            if self.focus == Focus::InputField && self.autocomplete.is_visible {
+                // Accept the selected suggestion
+                if let Some(suggestion) = self.autocomplete.selected() {
+                    let text = suggestion.text.clone();
+                    self.insert_autocomplete_suggestion(&text);
+                }
+                return true;
+            }
+
+            // Otherwise, switch focus
             self.focus = match self.focus {
                 Focus::InputField => Focus::ResultsPane,
                 Focus::ResultsPane => Focus::InputField,
@@ -77,10 +88,29 @@ impl App {
 
     /// Handle keys when Input field is focused
     fn handle_input_field_key(&mut self, key: KeyEvent) {
-        // Handle ESC - always switches to Normal mode
+        // Handle ESC - close autocomplete or switch to Normal mode
         if key.code == KeyCode::Esc {
+            if self.autocomplete.is_visible {
+                self.autocomplete.hide();
+                return;
+            }
             self.editor_mode = EditorMode::Normal;
             return;
+        }
+
+        // Handle autocomplete navigation (in Insert mode only)
+        if self.editor_mode == EditorMode::Insert && self.autocomplete.is_visible {
+            match key.code {
+                KeyCode::Down => {
+                    self.autocomplete.select_next();
+                    return;
+                }
+                KeyCode::Up => {
+                    self.autocomplete.select_previous();
+                    return;
+                }
+                _ => {}
+            }
         }
 
         // Handle input based on current mode
@@ -109,6 +139,9 @@ impl App {
             // Reset scroll when query changes
             self.results_scroll = 0;
         }
+
+        // Update autocomplete suggestions after any input
+        self.update_autocomplete();
     }
 
     /// Handle keys in Normal mode (VIM navigation and commands)

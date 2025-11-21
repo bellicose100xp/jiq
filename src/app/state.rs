@@ -4,6 +4,8 @@ use ratatui::{
 };
 use tui_textarea::TextArea;
 
+use crate::autocomplete::{AutocompleteState, get_suggestions};
+use crate::autocomplete::json_analyzer::JsonAnalyzer;
 use crate::editor::EditorMode;
 use crate::query::executor::JqExecutor;
 
@@ -33,6 +35,8 @@ pub struct App {
     pub results_viewport_height: u16,
     pub output_mode: Option<OutputMode>,
     pub should_quit: bool,
+    pub autocomplete: AutocompleteState,
+    pub json_analyzer: JsonAnalyzer,
 }
 
 impl App {
@@ -61,6 +65,10 @@ impl App {
         // Cache the initial successful result
         let last_successful_result = query_result.as_ref().ok().cloned();
 
+        // Initialize JSON analyzer with the input JSON
+        let mut json_analyzer = JsonAnalyzer::new();
+        let _ = json_analyzer.analyze(&json_input);
+
         Self {
             textarea,
             executor,
@@ -72,6 +80,8 @@ impl App {
             results_viewport_height: 0, // Will be set during first render
             output_mode: None, // No output mode set until Enter/Shift+Enter
             should_quit: false,
+            autocomplete: AutocompleteState::new(),
+            json_analyzer,
         }
     }
 
@@ -103,6 +113,113 @@ impl App {
         let total_lines = self.results_line_count();
         total_lines.saturating_sub(self.results_viewport_height)
     }
+
+    /// Update autocomplete suggestions based on current query and cursor position
+    pub fn update_autocomplete(&mut self) {
+        let query = self.query();
+        let cursor_pos = self.textarea.cursor().1; // Column position
+
+        // Get suggestions based on context
+        let suggestions = get_suggestions(query, cursor_pos, &self.json_analyzer);
+
+        // Update autocomplete state
+        self.autocomplete.update_suggestions(suggestions);
+    }
+
+    /// Get the cursor position (for autocomplete)
+    pub fn cursor_position(&self) -> (usize, usize) {
+        let (row, col) = self.textarea.cursor();
+        (row, col)
+    }
+
+    /// Insert an autocomplete suggestion at the current cursor position
+    pub fn insert_autocomplete_suggestion(&mut self, suggestion: &str) {
+        let query = self.query().to_string();
+        let cursor_pos = self.textarea.cursor().1;
+
+        // Find the start of the current token being typed
+        let before_cursor = &query[..cursor_pos.min(query.len())];
+        let token_start = find_token_start(before_cursor);
+
+        // Build the new query with the suggestion
+        let new_query = format!(
+            "{}{}{}",
+            &query[..token_start],
+            suggestion,
+            &query[cursor_pos.min(query.len())..]
+        );
+
+        // Update the textarea
+        self.textarea.delete_line_by_head();
+        self.textarea.insert_str(&new_query);
+
+        // Position cursor after the inserted suggestion
+        let new_cursor_pos = token_start + suggestion.len();
+        let current_pos = self.textarea.cursor().1;
+
+        // Move cursor to the correct position
+        if new_cursor_pos < current_pos {
+            for _ in 0..(current_pos - new_cursor_pos) {
+                self.textarea.move_cursor(tui_textarea::CursorMove::Back);
+            }
+        } else if new_cursor_pos > current_pos {
+            for _ in 0..(new_cursor_pos - current_pos) {
+                self.textarea.move_cursor(tui_textarea::CursorMove::Forward);
+            }
+        }
+
+        // Hide autocomplete
+        self.autocomplete.hide();
+
+        // Execute the new query
+        let query = self.query();
+        self.query_result = self.executor.execute(query);
+        if let Ok(result) = &self.query_result {
+            self.last_successful_result = Some(result.clone());
+        }
+        self.results_scroll = 0;
+    }
+}
+
+/// Find the start position of the current token
+fn find_token_start(text: &str) -> usize {
+    let chars: Vec<char> = text.chars().collect();
+    let mut i = chars.len();
+
+    // Skip trailing whitespace
+    while i > 0 && chars[i - 1].is_whitespace() {
+        i -= 1;
+    }
+
+    // Find the start of the current token
+    while i > 0 {
+        let ch = chars[i - 1];
+        if is_token_delimiter(ch) {
+            break;
+        }
+        i -= 1;
+    }
+
+    i
+}
+
+/// Check if a character is a token delimiter
+fn is_token_delimiter(ch: char) -> bool {
+    matches!(
+        ch,
+        '|' | ';'
+            | '('
+            | ')'
+            | '['
+            | ']'
+            | '{'
+            | '}'
+            | ','
+            | ' '
+            | '\t'
+            | '\n'
+            | '\r'
+    )
 }
 
 #[cfg(test)]

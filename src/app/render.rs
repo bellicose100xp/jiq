@@ -1,12 +1,13 @@
 use ansi_to_tui::IntoText;
 use ratatui::{
-    layout::{Constraint, Layout},
+    layout::{Constraint, Layout, Rect},
     style::{Color, Modifier, Style},
     text::{Line, Span, Text},
-    widgets::{Block, Borders, Paragraph},
+    widgets::{Block, Borders, List, ListItem, Paragraph},
     Frame,
 };
 
+use crate::autocomplete::SuggestionType;
 use crate::editor::EditorMode;
 use super::state::{App, Focus};
 
@@ -33,6 +34,11 @@ impl App {
 
         // Render help line
         self.render_help_line(frame, help_area);
+
+        // Render autocomplete popup (if visible) - render last so it overlays other widgets
+        if self.autocomplete.is_visible {
+            self.render_autocomplete_popup(frame, input_area);
+        }
     }
 
     /// Render the input field (bottom)
@@ -199,5 +205,98 @@ impl App {
             .style(Style::default().fg(Color::DarkGray));
 
         frame.render_widget(help, area);
+    }
+
+    /// Render the autocomplete popup above the input field
+    fn render_autocomplete_popup(&self, frame: &mut Frame, input_area: Rect) {
+        let suggestions = &self.autocomplete.suggestions;
+        if suggestions.is_empty() {
+            return;
+        }
+
+        // Calculate popup dimensions
+        let max_suggestions = 10;
+        let visible_count = suggestions.len().min(max_suggestions);
+        let popup_height = (visible_count + 2) as u16; // +2 for borders
+
+        // Calculate max width needed for suggestions
+        let max_text_width = suggestions
+            .iter()
+            .map(|s| {
+                let type_label = format!("[{}]", s.suggestion_type);
+                s.text.len() + type_label.len() + 3 // +3 for spacing
+            })
+            .max()
+            .unwrap_or(20)
+            .min(60); // Cap at 60 chars
+        let popup_width = (max_text_width + 4) as u16; // +4 for padding/borders
+
+        // Position popup just above the input field
+        let popup_x = input_area.x + 2; // Slight offset from left
+        let popup_y = input_area.y.saturating_sub(popup_height);
+
+        let popup_area = Rect {
+            x: popup_x,
+            y: popup_y,
+            width: popup_width.min(input_area.width - 4),
+            height: popup_height.min(input_area.y), // Don't overflow above input
+        };
+
+        // Create list items with styling
+        let items: Vec<ListItem> = suggestions
+            .iter()
+            .take(max_suggestions)
+            .enumerate()
+            .map(|(i, suggestion)| {
+                let type_color = match suggestion.suggestion_type {
+                    SuggestionType::Function => Color::Yellow,
+                    SuggestionType::Field => Color::Cyan,
+                    SuggestionType::Operator => Color::Magenta,
+                    SuggestionType::Pattern => Color::Green,
+                };
+
+                let type_label = format!("[{}]", suggestion.suggestion_type);
+
+                let line = if i == self.autocomplete.selected_index {
+                    // Highlight selected item
+                    Line::from(vec![
+                        Span::styled(
+                            format!("► {} ", suggestion.text),
+                            Style::default()
+                                .fg(Color::White)
+                                .add_modifier(Modifier::BOLD)
+                                .add_modifier(Modifier::REVERSED),
+                        ),
+                        Span::styled(
+                            type_label,
+                            Style::default()
+                                .fg(type_color)
+                                .add_modifier(Modifier::REVERSED),
+                        ),
+                    ])
+                } else {
+                    Line::from(vec![
+                        Span::styled(
+                            format!("  {} ", suggestion.text),
+                            Style::default().fg(Color::White),
+                        ),
+                        Span::styled(type_label, Style::default().fg(type_color)),
+                    ])
+                };
+
+                ListItem::new(line)
+            })
+            .collect();
+
+        // Create the list widget
+        let list = List::new(items).block(
+            Block::default()
+                .borders(Borders::ALL)
+                .title(" Suggestions ")
+                .border_style(Style::default().fg(Color::Cyan))
+                .style(Style::default().bg(Color::Black)),
+        );
+
+        frame.render_widget(list, popup_area);
     }
 }
