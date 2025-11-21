@@ -44,7 +44,7 @@ impl App {
         // Tab: Accept autocomplete suggestion (if visible in input field)
         if key.code == KeyCode::Tab && !key.modifiers.contains(KeyModifiers::CONTROL) {
             // Check if autocomplete is visible and we're in input field
-            if self.focus == Focus::InputField && self.autocomplete.is_visible {
+            if self.focus == Focus::InputField && self.autocomplete.is_visible() {
                 // Accept the selected suggestion
                 if let Some(suggestion) = self.autocomplete.selected() {
                     let text = suggestion.text.clone();
@@ -94,7 +94,7 @@ impl App {
     fn handle_input_field_key(&mut self, key: KeyEvent) {
         // Handle ESC - close autocomplete or switch to Normal mode
         if key.code == KeyCode::Esc {
-            if self.autocomplete.is_visible {
+            if self.autocomplete.is_visible() {
                 self.autocomplete.hide();
                 return;
             }
@@ -103,7 +103,7 @@ impl App {
         }
 
         // Handle autocomplete navigation (in Insert mode only)
-        if self.editor_mode == EditorMode::Insert && self.autocomplete.is_visible {
+        if self.editor_mode == EditorMode::Insert && self.autocomplete.is_visible() {
             match key.code {
                 KeyCode::Down => {
                     self.autocomplete.select_next();

@@ -1,7 +1,9 @@
 use super::state::{Suggestion, SuggestionType};
+use std::sync::LazyLock;
 
-/// Get all jq built-in functions, operators, and patterns
-pub fn get_jq_builtins() -> Vec<Suggestion> {
+/// Static list of all jq built-in functions, operators, and patterns
+/// Built once at first access and reused for performance
+static JQ_BUILTINS: LazyLock<Vec<Suggestion>> = LazyLock::new(|| {
     let mut builtins = Vec::new();
 
     // Common patterns
@@ -238,17 +240,18 @@ pub fn get_jq_builtins() -> Vec<Suggestion> {
     ]);
 
     builtins
-}
+});
 
-/// Filter jq builtins by prefix
+/// Filter jq builtins by prefix (optimized for performance)
 pub fn filter_builtins(prefix: &str) -> Vec<Suggestion> {
     if prefix.is_empty() {
         return Vec::new();
     }
 
     let prefix_lower = prefix.to_lowercase();
-    get_jq_builtins()
-        .into_iter()
+    JQ_BUILTINS
+        .iter()
         .filter(|s| s.text.to_lowercase().starts_with(&prefix_lower))
+        .cloned()
         .collect()
 }

@@ -11,6 +11,14 @@ use crate::autocomplete::SuggestionType;
 use crate::editor::EditorMode;
 use super::state::{App, Focus};
 
+// Autocomplete popup display constants
+const MAX_VISIBLE_SUGGESTIONS: usize = 10;
+const MAX_POPUP_WIDTH: usize = 60;
+const POPUP_BORDER_HEIGHT: u16 = 2;
+const POPUP_PADDING: u16 = 4;
+const POPUP_OFFSET_X: u16 = 2;
+const TYPE_LABEL_SPACING: usize = 3;
+
 impl App {
     /// Render the UI
     pub fn render(&mut self, frame: &mut Frame) {
@@ -36,7 +44,7 @@ impl App {
         self.render_help_line(frame, help_area);
 
         // Render autocomplete popup (if visible) - render last so it overlays other widgets
-        if self.autocomplete.is_visible {
+        if self.autocomplete.is_visible() {
             self.render_autocomplete_popup(frame, input_area);
         }
     }
@@ -209,43 +217,42 @@ impl App {
 
     /// Render the autocomplete popup above the input field
     fn render_autocomplete_popup(&self, frame: &mut Frame, input_area: Rect) {
-        let suggestions = &self.autocomplete.suggestions;
+        let suggestions = self.autocomplete.suggestions();
         if suggestions.is_empty() {
             return;
         }
 
         // Calculate popup dimensions
-        let max_suggestions = 10;
-        let visible_count = suggestions.len().min(max_suggestions);
-        let popup_height = (visible_count + 2) as u16; // +2 for borders
+        let visible_count = suggestions.len().min(MAX_VISIBLE_SUGGESTIONS);
+        let popup_height = (visible_count as u16) + POPUP_BORDER_HEIGHT;
 
         // Calculate max width needed for suggestions
         let max_text_width = suggestions
             .iter()
             .map(|s| {
                 let type_label = format!("[{}]", s.suggestion_type);
-                s.text.len() + type_label.len() + 3 // +3 for spacing
+                s.text.len() + type_label.len() + TYPE_LABEL_SPACING
             })
             .max()
             .unwrap_or(20)
-            .min(60); // Cap at 60 chars
-        let popup_width = (max_text_width + 4) as u16; // +4 for padding/borders
+            .min(MAX_POPUP_WIDTH);
+        let popup_width = (max_text_width as u16) + POPUP_PADDING;
 
         // Position popup just above the input field
-        let popup_x = input_area.x + 2; // Slight offset from left
+        let popup_x = input_area.x + POPUP_OFFSET_X;
         let popup_y = input_area.y.saturating_sub(popup_height);
 
         let popup_area = Rect {
             x: popup_x,
             y: popup_y,
-            width: popup_width.min(input_area.width - 4),
+            width: popup_width.min(input_area.width.saturating_sub(POPUP_PADDING)),
             height: popup_height.min(input_area.y), // Don't overflow above input
         };
 
         // Create list items with styling
         let items: Vec<ListItem> = suggestions
             .iter()
-            .take(max_suggestions)
+            .take(MAX_VISIBLE_SUGGESTIONS)
             .enumerate()
             .map(|(i, suggestion)| {
                 let type_color = match suggestion.suggestion_type {
@@ -257,7 +264,7 @@ impl App {
 
                 let type_label = format!("[{}]", suggestion.suggestion_type);
 
-                let line = if i == self.autocomplete.selected_index {
+                let line = if i == self.autocomplete.selected_index() {
                     // Highlight selected item
                     Line::from(vec![
                         Span::styled(

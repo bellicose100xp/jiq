@@ -9,8 +9,6 @@ pub enum SuggestionContext {
     FunctionContext,
     /// After a dot - suggest field names
     FieldContext,
-    /// No suggestions needed
-    None,
 }
 
 /// Analyze query text and cursor position to determine what to suggest
@@ -38,7 +36,6 @@ pub fn get_suggestions(
                 filter_builtins(&partial)
             }
         }
-        SuggestionContext::None => Vec::new(),
     }
 }
 

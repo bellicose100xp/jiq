@@ -54,11 +54,11 @@ impl Suggestion {
 #[derive(Debug, Clone)]
 pub struct AutocompleteState {
     /// Current list of suggestions
-    pub suggestions: Vec<Suggestion>,
+    suggestions: Vec<Suggestion>,
     /// Index of currently selected suggestion
-    pub selected_index: usize,
+    selected_index: usize,
     /// Whether the autocomplete popup is visible
-    pub is_visible: bool,
+    is_visible: bool,
 }
 
 impl Default for AutocompleteState {
@@ -115,5 +115,20 @@ impl AutocompleteState {
         } else {
             None
         }
+    }
+
+    /// Check if autocomplete popup is visible
+    pub fn is_visible(&self) -> bool {
+        self.is_visible
+    }
+
+    /// Get reference to current suggestions
+    pub fn suggestions(&self) -> &[Suggestion] {
+        &self.suggestions
+    }
+
+    /// Get the currently selected index
+    pub fn selected_index(&self) -> usize {
+        self.selected_index
     }
 }

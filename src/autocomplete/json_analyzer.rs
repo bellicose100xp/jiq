@@ -70,16 +70,12 @@ impl JsonAnalyzer {
         matching
     }
 
-    /// Get all field names
+    /// Get all field names (used in tests)
+    #[cfg(test)]
     pub fn get_all_fields(&self) -> Vec<String> {
         let mut fields: Vec<_> = self.field_names.iter().cloned().collect();
         fields.sort();
         fields
-    }
-
-    /// Check if a field exists
-    pub fn has_field(&self, field: &str) -> bool {
-        self.field_names.contains(field)
     }
 }
 

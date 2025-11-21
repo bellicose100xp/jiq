@@ -9,6 +9,9 @@ use crate::autocomplete::json_analyzer::JsonAnalyzer;
 use crate::editor::EditorMode;
 use crate::query::executor::JqExecutor;
 
+// Autocomplete performance constants
+const MIN_CHARS_FOR_AUTOCOMPLETE: usize = 1;
+
 /// Which pane has focus
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Focus {
@@ -119,17 +122,17 @@ impl App {
         let query = self.query();
         let cursor_pos = self.textarea.cursor().1; // Column position
 
+        // Performance optimization: only show autocomplete for non-empty queries
+        if query.trim().len() < MIN_CHARS_FOR_AUTOCOMPLETE {
+            self.autocomplete.hide();
+            return;
+        }
+
         // Get suggestions based on context
         let suggestions = get_suggestions(query, cursor_pos, &self.json_analyzer);
 
         // Update autocomplete state
         self.autocomplete.update_suggestions(suggestions);
-    }
-
-    /// Get the cursor position (for autocomplete)
-    pub fn cursor_position(&self) -> (usize, usize) {
-        let (row, col) = self.textarea.cursor();
-        (row, col)
     }
 
     /// Insert an autocomplete suggestion at the current cursor position
@@ -149,29 +152,44 @@ impl App {
             &query[cursor_pos.min(query.len())..]
         );
 
-        // Update the textarea
+        // Replace the entire line and set cursor position
         self.textarea.delete_line_by_head();
         self.textarea.insert_str(&new_query);
 
-        // Position cursor after the inserted suggestion
-        let new_cursor_pos = token_start + suggestion.len();
-        let current_pos = self.textarea.cursor().1;
+        // Move cursor to end of inserted suggestion
+        let target_pos = token_start + suggestion.len();
+        self.move_cursor_to_column(target_pos);
 
-        // Move cursor to the correct position
-        if new_cursor_pos < current_pos {
-            for _ in 0..(current_pos - new_cursor_pos) {
-                self.textarea.move_cursor(tui_textarea::CursorMove::Back);
+        // Hide autocomplete and execute query
+        self.autocomplete.hide();
+        self.execute_query_and_update();
+    }
+
+    /// Move cursor to a specific column position (helper method)
+    fn move_cursor_to_column(&mut self, target_col: usize) {
+        let current_col = self.textarea.cursor().1;
+
+        match target_col.cmp(&current_col) {
+            std::cmp::Ordering::Less => {
+                // Move backward
+                for _ in 0..(current_col - target_col) {
+                    self.textarea.move_cursor(tui_textarea::CursorMove::Back);
+                }
             }
-        } else if new_cursor_pos > current_pos {
-            for _ in 0..(new_cursor_pos - current_pos) {
-                self.textarea.move_cursor(tui_textarea::CursorMove::Forward);
+            std::cmp::Ordering::Greater => {
+                // Move forward
+                for _ in 0..(target_col - current_col) {
+                    self.textarea.move_cursor(tui_textarea::CursorMove::Forward);
+                }
+            }
+            std::cmp::Ordering::Equal => {
+                // Already at target position
             }
         }
+    }
 
-        // Hide autocomplete
-        self.autocomplete.hide();
-
-        // Execute the new query
+    /// Execute query and update results (helper method)
+    fn execute_query_and_update(&mut self) {
         let query = self.query();
         self.query_result = self.executor.execute(query);
         if let Ok(result) = &self.query_result {
