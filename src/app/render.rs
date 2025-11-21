@@ -199,7 +199,7 @@ impl App {
 
     /// Render the help line (bottom)
     fn render_help_line(&self, frame: &mut Frame, area: ratatui::layout::Rect) {
-        let help_text = " Tab: Switch Focus | Enter: Exit with Results | Shift+Enter: Exit with Query | q: Quit";
+        let help_text = " Tab: Autocomplete | Shift+Tab: Switch Focus | Enter: Exit with Results | Shift+Enter: Exit with Query | q: Quit";
 
         let help = Paragraph::new(help_text)
             .style(Style::default().fg(Color::DarkGray));

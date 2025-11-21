@@ -41,8 +41,8 @@ impl App {
             return true;
         }
 
-        // Tab: Accept autocomplete suggestion (if visible) or switch focus
-        if key.code == KeyCode::Tab {
+        // Tab: Accept autocomplete suggestion (if visible in input field)
+        if key.code == KeyCode::Tab && !key.modifiers.contains(KeyModifiers::CONTROL) {
             // Check if autocomplete is visible and we're in input field
             if self.focus == Focus::InputField && self.autocomplete.is_visible {
                 // Accept the selected suggestion
@@ -52,8 +52,12 @@ impl App {
                 }
                 return true;
             }
+            // Tab without autocomplete does nothing (don't interfere with textarea)
+            return false;
+        }
 
-            // Otherwise, switch focus
+        // Shift+Tab: Switch focus between panes
+        if key.code == KeyCode::BackTab {
             self.focus = match self.focus {
                 Focus::InputField => Focus::ResultsPane,
                 Focus::ResultsPane => Focus::InputField,
