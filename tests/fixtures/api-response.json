@@ -1,0 +1,421 @@
+{
+  "status": "success",
+  "timestamp": "2025-01-21T15:45:30.123Z",
+  "requestId": "req-abc123-def456-ghi789",
+  "version": "2.0",
+  "metadata": {
+    "apiVersion": "v2.5.1",
+    "endpoint": "/api/users/search",
+    "method": "POST",
+    "executionTime": 245,
+    "rateLimit": {
+      "limit": 1000,
+      "remaining": 847,
+      "reset": "2025-01-21T16:00:00Z"
+    },
+    "pagination": {
+      "page": 1,
+      "pageSize": 50,
+      "totalPages": 25,
+      "totalResults": 1234,
+      "hasNext": true,
+      "hasPrevious": false
+    }
+  },
+  "data": {
+    "users": [
+      {
+        "userId": "usr-001",
+        "username": "johndoe",
+        "profile": {
+          "firstName": "John",
+          "lastName": "Doe",
+          "displayName": "John D.",
+          "email": "john.doe@example.com",
+          "phoneNumber": "+1-555-1234",
+          "avatar": {
+            "url": "https://cdn.example.com/avatars/usr-001.jpg",
+            "thumbnails": {
+              "small": "https://cdn.example.com/avatars/usr-001-small.jpg",
+              "medium": "https://cdn.example.com/avatars/usr-001-medium.jpg",
+              "large": "https://cdn.example.com/avatars/usr-001-large.jpg"
+            }
+          },
+          "bio": "Software engineer passionate about open source",
+          "location": {
+            "city": "San Francisco",
+            "state": "CA",
+            "country": "USA",
+            "timezone": "America/Los_Angeles",
+            "coordinates": {
+              "latitude": 37.7749,
+              "longitude": -122.4194
+            }
+          },
+          "socialMedia": {
+            "twitter": "@johndoe",
+            "github": "johndoe",
+            "linkedin": "johndoe",
+            "website": "https://johndoe.dev"
+          }
+        },
+        "account": {
+          "createdAt": "2020-03-15T10:30:00Z",
+          "lastLogin": "2025-01-21T14:30:00Z",
+          "status": "active",
+          "type": "premium",
+          "verified": true,
+          "emailVerified": true,
+          "phoneVerified": true,
+          "twoFactorEnabled": true,
+          "subscription": {
+            "plan": "professional",
+            "status": "active",
+            "startDate": "2024-01-01",
+            "renewalDate": "2026-01-01",
+            "price": {
+              "amount": 99.99,
+              "currency": "USD",
+              "interval": "monthly"
+            },
+            "features": [
+              "unlimited-storage",
+              "priority-support",
+              "advanced-analytics",
+              "api-access"
+            ],
+            "paymentMethod": {
+              "type": "credit_card",
+              "last4": "4242",
+              "brand": "visa",
+              "expiryMonth": 12,
+              "expiryYear": 2026
+            }
+          }
+        },
+        "preferences": {
+          "language": "en-US",
+          "theme": "dark",
+          "timezone": "America/Los_Angeles",
+          "notifications": {
+            "email": {
+              "enabled": true,
+              "frequency": "daily",
+              "types": ["updates", "security", "marketing"]
+            },
+            "push": {
+              "enabled": true,
+              "types": ["messages", "mentions", "updates"]
+            },
+            "sms": {
+              "enabled": false,
+              "types": []
+            }
+          },
+          "privacy": {
+            "profileVisibility": "public",
+            "showEmail": false,
+            "showPhone": false,
+            "allowMessagesFrom": "connections",
+            "dataSharing": {
+              "analytics": true,
+              "thirdParty": false
+            }
+          }
+        },
+        "statistics": {
+          "posts": {
+            "total": 342,
+            "public": 298,
+            "private": 44,
+            "byType": {
+              "text": 156,
+              "image": 98,
+              "video": 45,
+              "link": 43
+            }
+          },
+          "connections": {
+            "followers": 1234,
+            "following": 567,
+            "mutualConnections": 234
+          },
+          "engagement": {
+            "totalLikes": 45678,
+            "totalComments": 8901,
+            "totalShares": 2345,
+            "averageEngagementRate": 4.5
+          },
+          "activity": {
+            "lastActive": "2025-01-21T14:30:00Z",
+            "loginCount": 2456,
+            "averageSessionDuration": 1845,
+            "deviceInfo": {
+              "lastDevice": "iPhone 15 Pro",
+              "lastOS": "iOS 17.2",
+              "lastBrowser": "Safari 17.1"
+            }
+          }
+        },
+        "achievements": [
+          {
+            "id": "ach-001",
+            "name": "Early Adopter",
+            "description": "Joined in the first year",
+            "earnedAt": "2020-12-31T23:59:59Z",
+            "rarity": "rare",
+            "icon": "https://cdn.example.com/badges/early-adopter.png"
+          },
+          {
+            "id": "ach-002",
+            "name": "Content Creator",
+            "description": "Posted 100+ times",
+            "earnedAt": "2021-06-15T10:00:00Z",
+            "rarity": "common",
+            "icon": "https://cdn.example.com/badges/content-creator.png"
+          },
+          {
+            "id": "ach-003",
+            "name": "Community Leader",
+            "description": "Reached 1000 followers",
+            "earnedAt": "2023-09-20T14:30:00Z",
+            "rarity": "epic",
+            "icon": "https://cdn.example.com/badges/community-leader.png"
+          }
+        ],
+        "recentActivity": [
+          {
+            "type": "post",
+            "action": "created",
+            "postId": "post-789",
+            "content": "Just launched my new project!",
+            "timestamp": "2025-01-21T12:00:00Z",
+            "engagement": {
+              "likes": 45,
+              "comments": 12,
+              "shares": 8
+            }
+          },
+          {
+            "type": "connection",
+            "action": "followed",
+            "targetUserId": "usr-456",
+            "timestamp": "2025-01-20T18:30:00Z"
+          },
+          {
+            "type": "comment",
+            "action": "created",
+            "postId": "post-654",
+            "content": "Great work!",
+            "timestamp": "2025-01-20T15:45:00Z"
+          }
+        ]
+      },
+      {
+        "userId": "usr-002",
+        "username": "janesmit h",
+        "profile": {
+          "firstName": "Jane",
+          "lastName": "Smith",
+          "displayName": "Jane S.",
+          "email": "jane.smith@example.com",
+          "phoneNumber": "+1-555-5678",
+          "avatar": {
+            "url": "https://cdn.example.com/avatars/usr-002.jpg",
+            "thumbnails": {
+              "small": "https://cdn.example.com/avatars/usr-002-small.jpg",
+              "medium": "https://cdn.example.com/avatars/usr-002-medium.jpg",
+              "large": "https://cdn.example.com/avatars/usr-002-large.jpg"
+            }
+          },
+          "bio": "Designer and creative professional",
+          "location": {
+            "city": "New York",
+            "state": "NY",
+            "country": "USA",
+            "timezone": "America/New_York",
+            "coordinates": {
+              "latitude": 40.7128,
+              "longitude": -74.0060
+            }
+          },
+          "socialMedia": {
+            "twitter": "@janesmith",
+            "instagram": "janesmith",
+            "dribbble": "janesmith",
+            "website": "https://janesmith.design"
+          }
+        },
+        "account": {
+          "createdAt": "2019-08-20T14:20:00Z",
+          "lastLogin": "2025-01-21T08:15:00Z",
+          "status": "active",
+          "type": "enterprise",
+          "verified": true,
+          "emailVerified": true,
+          "phoneVerified": true,
+          "twoFactorEnabled": true,
+          "subscription": {
+            "plan": "enterprise",
+            "status": "active",
+            "startDate": "2023-06-01",
+            "renewalDate": "2025-06-01",
+            "price": {
+              "amount": 299.99,
+              "currency": "USD",
+              "interval": "monthly"
+            },
+            "features": [
+              "unlimited-storage",
+              "priority-support",
+              "advanced-analytics",
+              "api-access",
+              "custom-branding",
+              "dedicated-account-manager",
+              "sla-guarantee"
+            ],
+            "teamMembers": {
+              "current": 15,
+              "limit": 50
+            }
+          }
+        },
+        "preferences": {
+          "language": "en-US",
+          "theme": "light",
+          "timezone": "America/New_York",
+          "notifications": {
+            "email": {
+              "enabled": true,
+              "frequency": "realtime",
+              "types": ["updates", "security", "team"]
+            },
+            "push": {
+              "enabled": true,
+              "types": ["messages", "mentions", "updates", "team"]
+            },
+            "sms": {
+              "enabled": true,
+              "types": ["security"]
+            }
+          },
+          "privacy": {
+            "profileVisibility": "connections",
+            "showEmail": false,
+            "showPhone": false,
+            "allowMessagesFrom": "connections",
+            "dataSharing": {
+              "analytics": true,
+              "thirdParty": false
+            }
+          }
+        },
+        "statistics": {
+          "posts": {
+            "total": 567,
+            "public": 445,
+            "private": 122,
+            "byType": {
+              "text": 89,
+              "image": 345,
+              "video": 78,
+              "link": 55
+            }
+          },
+          "connections": {
+            "followers": 3456,
+            "following": 789,
+            "mutualConnections": 456
+          },
+          "engagement": {
+            "totalLikes": 123456,
+            "totalComments": 23456,
+            "totalShares": 7890,
+            "averageEngagementRate": 6.8
+          },
+          "activity": {
+            "lastActive": "2025-01-21T08:15:00Z",
+            "loginCount": 4567,
+            "averageSessionDuration": 2345,
+            "deviceInfo": {
+              "lastDevice": "MacBook Pro",
+              "lastOS": "macOS 14.2",
+              "lastBrowser": "Chrome 120.0"
+            }
+          }
+        },
+        "achievements": [
+          {
+            "id": "ach-001",
+            "name": "Early Adopter",
+            "description": "Joined in the first year",
+            "earnedAt": "2019-12-31T23:59:59Z",
+            "rarity": "rare",
+            "icon": "https://cdn.example.com/badges/early-adopter.png"
+          },
+          {
+            "id": "ach-004",
+            "name": "Influencer",
+            "description": "Reached 5000 followers",
+            "earnedAt": "2024-03-10T16:20:00Z",
+            "rarity": "legendary",
+            "icon": "https://cdn.example.com/badges/influencer.png"
+          }
+        ],
+        "recentActivity": []
+      }
+    ],
+    "aggregations": {
+      "totalUsers": 1234,
+      "activeUsers": 987,
+      "newUsersThisMonth": 156,
+      "verifiedUsers": 856,
+      "byAccountType": {
+        "free": 567,
+        "premium": 456,
+        "enterprise": 211
+      },
+      "byCountry": {
+        "USA": 456,
+        "UK": 234,
+        "Canada": 123,
+        "Germany": 98,
+        "France": 87,
+        "other": 236
+      },
+      "engagementMetrics": {
+        "totalPosts": 45678,
+        "totalLikes": 234567,
+        "totalComments": 89012,
+        "totalShares": 23456,
+        "averageEngagement": 5.2
+      }
+    }
+  },
+  "links": {
+    "self": "https://api.example.com/v2/users/search?page=1",
+    "first": "https://api.example.com/v2/users/search?page=1",
+    "prev": null,
+    "next": "https://api.example.com/v2/users/search?page=2",
+    "last": "https://api.example.com/v2/users/search?page=25"
+  },
+  "warnings": [],
+  "debug": {
+    "queryExecution": {
+      "database": "users_db",
+      "query": "SELECT * FROM users WHERE active = true",
+      "executionTime": 142,
+      "rowsScanned": 5678,
+      "rowsReturned": 50,
+      "cacheHit": false
+    },
+    "performance": {
+      "parsing": 12,
+      "validation": 8,
+      "authorization": 15,
+      "dataFetch": 142,
+      "serialization": 68,
+      "total": 245
+    }
+  }
+}

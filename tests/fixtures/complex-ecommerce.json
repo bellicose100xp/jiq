@@ -1,0 +1,397 @@
+{
+  "store": {
+    "name": "Global Marketplace",
+    "id": "store-12345",
+    "metadata": {
+      "version": "2.1.0",
+      "lastUpdated": "2025-01-15T10:30:00Z",
+      "currency": "USD"
+    },
+    "categories": [
+      {
+        "id": "cat-001",
+        "name": "Electronics",
+        "subcategories": [
+          {
+            "id": "subcat-001-001",
+            "name": "Computers",
+            "products": [
+              {
+                "id": "prod-001",
+                "name": "High-Performance Laptop",
+                "sku": "LAP-HP-001",
+                "price": 1299.99,
+                "stock": {
+                  "available": 45,
+                  "reserved": 12,
+                  "warehouses": [
+                    {
+                      "id": "wh-001",
+                      "location": "California",
+                      "quantity": 25
+                    },
+                    {
+                      "id": "wh-002",
+                      "location": "Texas",
+                      "quantity": 20
+                    }
+                  ]
+                },
+                "specifications": {
+                  "processor": {
+                    "brand": "Intel",
+                    "model": "Core i7-13700H",
+                    "cores": 14,
+                    "threads": 20,
+                    "baseFrequency": "2.4 GHz",
+                    "turboFrequency": "5.0 GHz"
+                  },
+                  "memory": {
+                    "size": "32GB",
+                    "type": "DDR5",
+                    "speed": "4800MHz",
+                    "slots": 2,
+                    "maxCapacity": "64GB"
+                  },
+                  "storage": [
+                    {
+                      "type": "SSD",
+                      "capacity": "1TB",
+                      "interface": "NVMe PCIe 4.0",
+                      "readSpeed": "7000 MB/s",
+                      "writeSpeed": "5000 MB/s"
+                    }
+                  ],
+                  "display": {
+                    "size": 15.6,
+                    "resolution": "2560x1440",
+                    "refreshRate": 144,
+                    "panelType": "IPS",
+                    "colorGamut": "100% sRGB",
+                    "features": ["Anti-glare", "Touch screen", "HDR"]
+                  },
+                  "graphics": {
+                    "dedicated": {
+                      "brand": "NVIDIA",
+                      "model": "RTX 4060",
+                      "memory": "8GB GDDR6"
+                    },
+                    "integrated": {
+                      "brand": "Intel",
+                      "model": "Iris Xe"
+                    }
+                  },
+                  "connectivity": {
+                    "wifi": "WiFi 6E",
+                    "bluetooth": "5.3",
+                    "ports": [
+                      {"type": "USB-C", "count": 2, "features": ["Thunderbolt 4", "Power Delivery"]},
+                      {"type": "USB-A", "count": 2, "features": ["USB 3.2 Gen 2"]},
+                      {"type": "HDMI", "count": 1, "features": ["HDMI 2.1"]},
+                      {"type": "Ethernet", "count": 1, "features": ["RJ45"]}
+                    ]
+                  }
+                },
+                "ratings": {
+                  "average": 4.7,
+                  "count": 342,
+                  "distribution": {
+                    "5": 245,
+                    "4": 67,
+                    "3": 18,
+                    "2": 8,
+                    "1": 4
+                  }
+                },
+                "reviews": [
+                  {
+                    "id": "rev-001",
+                    "author": "TechEnthusiast99",
+                    "rating": 5,
+                    "title": "Excellent laptop for development",
+                    "content": "Perfect for my software development needs. Fast, reliable, and great display.",
+                    "date": "2025-01-10",
+                    "verified": true,
+                    "helpful": 45,
+                    "replies": [
+                      {
+                        "author": "CustomerService",
+                        "content": "Thank you for your positive feedback!",
+                        "date": "2025-01-11"
+                      }
+                    ]
+                  },
+                  {
+                    "id": "rev-002",
+                    "author": "GamerPro",
+                    "rating": 4,
+                    "title": "Great performance, battery could be better",
+                    "content": "Gaming performance is excellent, but battery life is average.",
+                    "date": "2025-01-08",
+                    "verified": true,
+                    "helpful": 23,
+                    "replies": []
+                  }
+                ],
+                "tags": ["laptop", "gaming", "professional", "high-performance"],
+                "manufacturer": {
+                  "name": "TechBrand Inc.",
+                  "country": "USA",
+                  "warranty": {
+                    "duration": 2,
+                    "unit": "years",
+                    "type": "limited",
+                    "coverage": ["hardware defects", "manufacturing issues"]
+                  }
+                }
+              },
+              {
+                "id": "prod-002",
+                "name": "Wireless Mouse",
+                "sku": "MSE-WL-002",
+                "price": 49.99,
+                "stock": {
+                  "available": 234,
+                  "reserved": 23,
+                  "warehouses": [
+                    {
+                      "id": "wh-001",
+                      "location": "California",
+                      "quantity": 150
+                    },
+                    {
+                      "id": "wh-003",
+                      "location": "New York",
+                      "quantity": 84
+                    }
+                  ]
+                },
+                "specifications": {
+                  "connectivity": "Bluetooth 5.0",
+                  "dpi": [800, 1200, 1600, 2400, 3200],
+                  "buttons": 6,
+                  "battery": {
+                    "type": "rechargeable",
+                    "life": "70 days",
+                    "chargingTime": "2 hours"
+                  },
+                  "compatibility": ["Windows", "macOS", "Linux"]
+                },
+                "ratings": {
+                  "average": 4.5,
+                  "count": 189,
+                  "distribution": {
+                    "5": 120,
+                    "4": 45,
+                    "3": 15,
+                    "2": 6,
+                    "1": 3
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "id": "subcat-001-002",
+            "name": "Smartphones",
+            "products": [
+              {
+                "id": "prod-003",
+                "name": "Flagship Smartphone Pro",
+                "sku": "PHN-FLG-003",
+                "price": 999.99,
+                "stock": {
+                  "available": 87,
+                  "reserved": 34,
+                  "warehouses": [
+                    {
+                      "id": "wh-002",
+                      "location": "Texas",
+                      "quantity": 50
+                    },
+                    {
+                      "id": "wh-004",
+                      "location": "Florida",
+                      "quantity": 37
+                    }
+                  ]
+                },
+                "specifications": {
+                  "display": {
+                    "size": 6.7,
+                    "type": "AMOLED",
+                    "resolution": "3200x1440",
+                    "refreshRate": 120,
+                    "peakBrightness": 1800
+                  },
+                  "processor": {
+                    "brand": "Qualcomm",
+                    "model": "Snapdragon 8 Gen 3",
+                    "cores": 8
+                  },
+                  "memory": {
+                    "ram": "12GB",
+                    "storage": [
+                      {"capacity": "256GB", "price": 999.99},
+                      {"capacity": "512GB", "price": 1099.99},
+                      {"capacity": "1TB", "price": 1299.99}
+                    ]
+                  },
+                  "camera": {
+                    "rear": [
+                      {
+                        "type": "wide",
+                        "megapixels": 50,
+                        "aperture": "f/1.8",
+                        "features": ["OIS", "8K video"]
+                      },
+                      {
+                        "type": "ultrawide",
+                        "megapixels": 12,
+                        "aperture": "f/2.2",
+                        "fieldOfView": 120
+                      },
+                      {
+                        "type": "telephoto",
+                        "megapixels": 10,
+                        "aperture": "f/2.4",
+                        "zoom": "3x optical"
+                      }
+                    ],
+                    "front": {
+                      "megapixels": 12,
+                      "aperture": "f/2.2",
+                      "features": ["4K video", "portrait mode"]
+                    }
+                  },
+                  "battery": {
+                    "capacity": 5000,
+                    "unit": "mAh",
+                    "charging": {
+                      "wired": "65W",
+                      "wireless": "15W"
+                    }
+                  },
+                  "connectivity": {
+                    "5G": true,
+                    "wifi": "WiFi 7",
+                    "bluetooth": "5.3",
+                    "nfc": true
+                  }
+                },
+                "colors": [
+                  {"name": "Midnight Black", "hex": "#1a1a1a", "inStock": true},
+                  {"name": "Ocean Blue", "hex": "#0066cc", "inStock": true},
+                  {"name": "Rose Gold", "hex": "#b76e79", "inStock": false}
+                ],
+                "ratings": {
+                  "average": 4.8,
+                  "count": 567,
+                  "distribution": {
+                    "5": 445,
+                    "4": 89,
+                    "3": 21,
+                    "2": 8,
+                    "1": 4
+                  }
+                }
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "cat-002",
+        "name": "Home & Garden",
+        "subcategories": [
+          {
+            "id": "subcat-002-001",
+            "name": "Furniture",
+            "products": [
+              {
+                "id": "prod-004",
+                "name": "Ergonomic Office Chair",
+                "sku": "FUR-CHR-004",
+                "price": 349.99,
+                "stock": {
+                  "available": 56,
+                  "reserved": 8,
+                  "warehouses": [
+                    {
+                      "id": "wh-001",
+                      "location": "California",
+                      "quantity": 30
+                    },
+                    {
+                      "id": "wh-002",
+                      "location": "Texas",
+                      "quantity": 26
+                    }
+                  ]
+                },
+                "specifications": {
+                  "material": {
+                    "frame": "aluminum",
+                    "upholstery": "mesh",
+                    "base": "nylon"
+                  },
+                  "dimensions": {
+                    "height": {"min": 42, "max": 52, "unit": "inches"},
+                    "width": 27,
+                    "depth": 27,
+                    "unit": "inches"
+                  },
+                  "features": [
+                    "lumbar support",
+                    "adjustable armrests",
+                    "tilt mechanism",
+                    "headrest",
+                    "360-degree swivel"
+                  ],
+                  "weightCapacity": 300,
+                  "colors": ["black", "gray", "blue"]
+                },
+                "ratings": {
+                  "average": 4.6,
+                  "count": 234,
+                  "distribution": {
+                    "5": 167,
+                    "4": 45,
+                    "3": 15,
+                    "2": 5,
+                    "1": 2
+                  }
+                }
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "promotions": [
+      {
+        "id": "promo-001",
+        "name": "New Year Sale",
+        "type": "percentage",
+        "value": 15,
+        "startDate": "2025-01-01",
+        "endDate": "2025-01-31",
+        "applicableCategories": ["cat-001"],
+        "minimumPurchase": 100,
+        "maxDiscount": 200,
+        "active": true
+      },
+      {
+        "id": "promo-002",
+        "name": "Free Shipping",
+        "type": "shipping",
+        "value": 0,
+        "startDate": "2025-01-15",
+        "endDate": "2025-02-15",
+        "applicableCategories": ["cat-001", "cat-002"],
+        "minimumPurchase": 50,
+        "active": true
+      }
+    ]
+  }
+}

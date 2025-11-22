@@ -1,0 +1,399 @@
+{
+  "organization": {
+    "id": "org-global-tech-2025",
+    "name": "Global Tech Corporation",
+    "type": "public",
+    "founded": 1995,
+    "headquarters": {
+      "address": {
+        "street": "100 Innovation Drive",
+        "city": "San Francisco",
+        "state": "California",
+        "country": "USA",
+        "postalCode": "94105",
+        "coordinates": {
+          "latitude": 37.7749,
+          "longitude": -122.4194
+        }
+      },
+      "facilities": {
+        "totalArea": 250000,
+        "unit": "sqft",
+        "buildings": [
+          {
+            "name": "Main Tower",
+            "floors": 42,
+            "departments": ["Executive", "R&D", "Sales"]
+          },
+          {
+            "name": "Innovation Center",
+            "floors": 8,
+            "departments": ["Research", "Product Development"]
+          }
+        ]
+      }
+    },
+    "employees": {
+      "total": 15000,
+      "byRegion": {
+        "northAmerica": 6000,
+        "europe": 4500,
+        "asia": 3500,
+        "other": 1000
+      }
+    },
+    "structure": {
+      "ceo": {
+        "id": "emp-001",
+        "name": "Sarah Johnson",
+        "title": "Chief Executive Officer",
+        "email": "sarah.johnson@globaltech.com",
+        "phone": "+1-555-0101",
+        "yearsInPosition": 5,
+        "education": [
+          {
+            "degree": "MBA",
+            "institution": "Stanford University",
+            "year": 2005
+          },
+          {
+            "degree": "BS Computer Science",
+            "institution": "MIT",
+            "year": 2000
+          }
+        ],
+        "directReports": [
+          {
+            "id": "emp-002",
+            "name": "Michael Chen",
+            "title": "Chief Technology Officer",
+            "email": "michael.chen@globaltech.com",
+            "phone": "+1-555-0102",
+            "yearsInPosition": 3,
+            "department": "Technology",
+            "directReports": [
+              {
+                "id": "emp-010",
+                "name": "David Kim",
+                "title": "VP of Engineering",
+                "email": "david.kim@globaltech.com",
+                "phone": "+1-555-0110",
+                "yearsInPosition": 4,
+                "directReports": [
+                  {
+                    "id": "emp-050",
+                    "name": "Emily Rodriguez",
+                    "title": "Director of Software Development",
+                    "email": "emily.rodriguez@globaltech.com",
+                    "phone": "+1-555-0150",
+                    "yearsInPosition": 2,
+                    "directReports": [
+                      {
+                        "id": "emp-100",
+                        "name": "Alex Thompson",
+                        "title": "Engineering Manager - Backend",
+                        "email": "alex.thompson@globaltech.com",
+                        "phone": "+1-555-0200",
+                        "yearsInPosition": 3,
+                        "directReports": [
+                          {
+                            "id": "emp-200",
+                            "name": "James Wilson",
+                            "title": "Senior Software Engineer",
+                            "email": "james.wilson@globaltech.com",
+                            "phone": "+1-555-0300",
+                            "skills": ["Java", "Python", "Go", "Kubernetes"],
+                            "projects": [
+                              {
+                                "name": "API Gateway Redesign",
+                                "status": "in-progress",
+                                "startDate": "2024-10-01",
+                                "estimatedCompletion": "2025-03-31",
+                                "budget": 500000,
+                                "team": ["emp-200", "emp-201", "emp-202"]
+                              },
+                              {
+                                "name": "Database Migration",
+                                "status": "completed",
+                                "startDate": "2024-06-01",
+                                "completionDate": "2024-12-15",
+                                "budget": 300000,
+                                "team": ["emp-200", "emp-203"]
+                              }
+                            ]
+                          },
+                          {
+                            "id": "emp-201",
+                            "name": "Maria Garcia",
+                            "title": "Senior Software Engineer",
+                            "email": "maria.garcia@globaltech.com",
+                            "phone": "+1-555-0301",
+                            "skills": ["Node.js", "TypeScript", "React", "AWS"],
+                            "projects": [
+                              {
+                                "name": "API Gateway Redesign",
+                                "status": "in-progress",
+                                "role": "lead"
+                              }
+                            ]
+                          },
+                          {
+                            "id": "emp-202",
+                            "name": "Robert Lee",
+                            "title": "Software Engineer",
+                            "email": "robert.lee@globaltech.com",
+                            "phone": "+1-555-0302",
+                            "skills": ["Python", "Django", "PostgreSQL"],
+                            "projects": [
+                              {
+                                "name": "API Gateway Redesign",
+                                "status": "in-progress",
+                                "role": "contributor"
+                              }
+                            ]
+                          }
+                        ]
+                      },
+                      {
+                        "id": "emp-101",
+                        "name": "Jessica Martinez",
+                        "title": "Engineering Manager - Frontend",
+                        "email": "jessica.martinez@globaltech.com",
+                        "phone": "+1-555-0201",
+                        "yearsInPosition": 2,
+                        "directReports": [
+                          {
+                            "id": "emp-210",
+                            "name": "Daniel Brown",
+                            "title": "Senior Frontend Engineer",
+                            "email": "daniel.brown@globaltech.com",
+                            "phone": "+1-555-0310",
+                            "skills": ["React", "Vue.js", "TypeScript", "CSS"],
+                            "projects": [
+                              {
+                                "name": "UI Redesign 2025",
+                                "status": "planning",
+                                "startDate": "2025-02-01",
+                                "estimatedCompletion": "2025-08-31",
+                                "budget": 750000,
+                                "team": ["emp-210", "emp-211", "emp-212", "emp-213"]
+                              }
+                            ]
+                          },
+                          {
+                            "id": "emp-211",
+                            "name": "Olivia Anderson",
+                            "title": "Frontend Engineer",
+                            "email": "olivia.anderson@globaltech.com",
+                            "phone": "+1-555-0311",
+                            "skills": ["React", "JavaScript", "HTML", "Sass"]
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "id": "emp-051",
+                    "name": "Thomas White",
+                    "title": "Director of Infrastructure",
+                    "email": "thomas.white@globaltech.com",
+                    "phone": "+1-555-0151",
+                    "yearsInPosition": 5,
+                    "directReports": [
+                      {
+                        "id": "emp-110",
+                        "name": "Lisa Chen",
+                        "title": "Infrastructure Manager",
+                        "email": "lisa.chen@globaltech.com",
+                        "phone": "+1-555-0210",
+                        "yearsInPosition": 3,
+                        "directReports": [
+                          {
+                            "id": "emp-220",
+                            "name": "Kevin Park",
+                            "title": "DevOps Engineer",
+                            "email": "kevin.park@globaltech.com",
+                            "phone": "+1-555-0320",
+                            "skills": ["Kubernetes", "Docker", "Terraform", "AWS", "Jenkins"]
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "id": "emp-011",
+                "name": "Rachel Green",
+                "title": "VP of Product",
+                "email": "rachel.green@globaltech.com",
+                "phone": "+1-555-0111",
+                "yearsInPosition": 2,
+                "directReports": [
+                  {
+                    "id": "emp-060",
+                    "name": "Mark Davis",
+                    "title": "Product Director",
+                    "email": "mark.davis@globaltech.com",
+                    "phone": "+1-555-0160",
+                    "yearsInPosition": 4,
+                    "directReports": [
+                      {
+                        "id": "emp-120",
+                        "name": "Amanda Taylor",
+                        "title": "Senior Product Manager",
+                        "email": "amanda.taylor@globaltech.com",
+                        "phone": "+1-555-0220",
+                        "products": [
+                          {
+                            "name": "Enterprise Platform",
+                            "version": "3.5",
+                            "revenue": {
+                              "annual": 25000000,
+                              "growth": 15.5
+                            },
+                            "customers": 450,
+                            "features": [
+                              {
+                                "name": "Advanced Analytics",
+                                "status": "released",
+                                "adoptionRate": 78.5
+                              },
+                              {
+                                "name": "AI-Powered Insights",
+                                "status": "beta",
+                                "adoptionRate": 23.1
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "emp-003",
+            "name": "Jennifer Martinez",
+            "title": "Chief Financial Officer",
+            "email": "jennifer.martinez@globaltech.com",
+            "phone": "+1-555-0103",
+            "yearsInPosition": 4,
+            "department": "Finance",
+            "directReports": [
+              {
+                "id": "emp-012",
+                "name": "William Brown",
+                "title": "VP of Finance",
+                "email": "william.brown@globaltech.com",
+                "phone": "+1-555-0112",
+                "yearsInPosition": 6,
+                "directReports": [
+                  {
+                    "id": "emp-070",
+                    "name": "Patricia Wilson",
+                    "title": "Finance Director",
+                    "email": "patricia.wilson@globaltech.com",
+                    "phone": "+1-555-0170",
+                    "yearsInPosition": 5,
+                    "directReports": [
+                      {
+                        "id": "emp-130",
+                        "name": "Christopher Moore",
+                        "title": "Senior Financial Analyst",
+                        "email": "christopher.moore@globaltech.com",
+                        "phone": "+1-555-0230",
+                        "certifications": ["CFA", "CPA"],
+                        "reports": [
+                          {
+                            "type": "Quarterly Report",
+                            "quarter": "Q4 2024",
+                            "revenue": 125000000,
+                            "profit": 35000000,
+                            "margin": 28.0
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "emp-004",
+            "name": "Robert Anderson",
+            "title": "Chief Marketing Officer",
+            "email": "robert.anderson@globaltech.com",
+            "phone": "+1-555-0104",
+            "yearsInPosition": 3,
+            "department": "Marketing",
+            "directReports": [
+              {
+                "id": "emp-013",
+                "name": "Linda Thomas",
+                "title": "VP of Marketing",
+                "email": "linda.thomas@globaltech.com",
+                "phone": "+1-555-0113",
+                "yearsInPosition": 2,
+                "directReports": [
+                  {
+                    "id": "emp-080",
+                    "name": "Charles Jackson",
+                    "title": "Marketing Director",
+                    "email": "charles.jackson@globaltech.com",
+                    "phone": "+1-555-0180",
+                    "campaigns": [
+                      {
+                        "name": "Product Launch 2025",
+                        "status": "active",
+                        "budget": 2000000,
+                        "channels": ["social media", "email", "events"],
+                        "metrics": {
+                          "impressions": 15000000,
+                          "clicks": 450000,
+                          "conversions": 12500,
+                          "roi": 3.2
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "financials": {
+      "fiscalYear": 2024,
+      "revenue": {
+        "total": 5000000000,
+        "bySegment": {
+          "enterprise": 3000000000,
+          "cloud": 1500000000,
+          "services": 500000000
+        },
+        "byRegion": {
+          "northAmerica": 2500000000,
+          "europe": 1500000000,
+          "asia": 800000000,
+          "other": 200000000
+        }
+      },
+      "expenses": {
+        "total": 3500000000,
+        "breakdown": {
+          "salaries": 2000000000,
+          "operations": 800000000,
+          "research": 500000000,
+          "marketing": 200000000
+        }
+      },
+      "profit": 1500000000,
+      "profitMargin": 30.0
+    }
+  }
+}
