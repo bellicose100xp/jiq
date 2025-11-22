@@ -25,8 +25,11 @@ pub fn get_suggestions(
 
     match context {
         SuggestionContext::FieldContext => {
-            // Suggest JSON fields
-            json_analyzer.get_field_suggestions(&partial)
+            // Extract the path to the current field (for context-aware suggestions)
+            let path = extract_path_before_current_field(before_cursor);
+
+            // Use context-aware field suggestions
+            json_analyzer.get_contextual_field_suggestions(&path, &partial)
         }
         SuggestionContext::FunctionContext => {
             // Suggest jq functions/patterns/operators
@@ -37,6 +40,65 @@ pub fn get_suggestions(
             }
         }
     }
+}
+
+/// Extract the jq path before the current field being typed
+/// Examples:
+///   ".products.ty" -> ".products"
+///   ".services[].service" -> ".services[]"
+///   ".na" -> ""
+///   "." -> ""
+fn extract_path_before_current_field(before_cursor: &str) -> String {
+    // Find the last dot position
+    let last_dot_pos = match before_cursor.rfind('.') {
+        Some(pos) => pos,
+        None => return String::new(), // No path
+    };
+
+    // If the dot is at position 0, we're at root level
+    if last_dot_pos == 0 {
+        return String::new();
+    }
+
+    // Extract everything before the last dot
+    let path = &before_cursor[..last_dot_pos];
+
+    // Clean up the path:
+    // - Remove trailing pipes, parentheses, etc.
+    // - Keep only the valid jq path portion
+    extract_clean_path(path)
+}
+
+/// Extract a clean jq path from potentially complex query
+/// Handles cases like: "map(.items) | .products" -> ".products"
+fn extract_clean_path(text: &str) -> String {
+    // Find the last occurrence of pipe or other operators that reset context
+    let reset_positions = [
+        text.rfind('|'),
+        text.rfind('('),
+        text.rfind(';'),
+    ];
+
+    let last_reset = reset_positions
+        .iter()
+        .filter_map(|&p| p)
+        .max()
+        .map(|p| p + 1)
+        .unwrap_or(0);
+
+    // Extract from last reset point
+    let mut path = text[last_reset..].trim().to_string();
+
+    // Remove trailing whitespace and operators
+    path = path.trim().to_string();
+
+    // If path doesn't start with a dot and isn't empty, it might be invalid
+    // Return empty in that case (conservative approach)
+    if !path.is_empty() && !path.starts_with('.') {
+        return String::new();
+    }
+
+    path
 }
 
 /// Analyze the text before cursor to determine context and partial word
@@ -194,5 +256,23 @@ mod tests {
         let (ctx, partial) = analyze_context("map(.na");
         assert_eq!(ctx, SuggestionContext::FieldContext);
         assert_eq!(partial, "na");
+    }
+
+    #[test]
+    fn test_extract_path_root_level() {
+        assert_eq!(extract_path_before_current_field("."), "");
+        assert_eq!(extract_path_before_current_field(".na"), "");
+    }
+
+    #[test]
+    fn test_extract_path_nested() {
+        assert_eq!(extract_path_before_current_field(".products.ty"), ".products");
+        assert_eq!(extract_path_before_current_field(".services.items."), ".services.items");
+    }
+
+    #[test]
+    fn test_extract_path_with_array() {
+        assert_eq!(extract_path_before_current_field(".services[].service"), ".services[]");
+        assert_eq!(extract_path_before_current_field(".items[0].na"), ".items[0]");
     }
 }
