@@ -139,15 +139,24 @@ impl App {
     pub fn insert_autocomplete_suggestion(&mut self, suggestion: &str) {
         let query = self.query().to_string();
         let cursor_pos = self.textarea.cursor().1;
-
-        // Find the start of the current token being typed
         let before_cursor = &query[..cursor_pos.min(query.len())];
-        let token_start = find_token_start(before_cursor);
+
+        // Find the start position to replace from
+        // For field suggestions (starting with .), find the last dot
+        // For other suggestions, find the token start
+        let replace_start = if suggestion.starts_with('.') {
+            // Field suggestion - find the last dot in before_cursor
+            // This handles nested fields like .services.service correctly
+            before_cursor.rfind('.').unwrap_or(0)
+        } else {
+            // Function/operator/pattern suggestion - find token start
+            find_token_start(before_cursor)
+        };
 
         // Build the new query with the suggestion
         let new_query = format!(
             "{}{}{}",
-            &query[..token_start],
+            &query[..replace_start],
             suggestion,
             &query[cursor_pos.min(query.len())..]
         );
@@ -157,7 +166,7 @@ impl App {
         self.textarea.insert_str(&new_query);
 
         // Move cursor to end of inserted suggestion
-        let target_pos = token_start + suggestion.len();
+        let target_pos = replace_start + suggestion.len();
         self.move_cursor_to_column(target_pos);
 
         // Hide autocomplete and execute query
