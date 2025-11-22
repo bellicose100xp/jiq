@@ -211,6 +211,23 @@ impl App {
                 self.execute_query();
             }
 
+            // Delete/Change to end of line
+            KeyCode::Char('D') => {
+                // D - Delete to end of line (like d$)
+                self.textarea.start_selection();
+                self.textarea.move_cursor(CursorMove::End);
+                self.textarea.cut();
+                self.execute_query();
+            }
+            KeyCode::Char('C') => {
+                // C - Change to end of line (like c$)
+                self.textarea.start_selection();
+                self.textarea.move_cursor(CursorMove::End);
+                self.textarea.cut();
+                self.editor_mode = EditorMode::Insert;
+                self.execute_query();
+            }
+
             // Operators - enter Operator mode
             KeyCode::Char('d') => {
                 // d - Delete operator (wait for motion)
