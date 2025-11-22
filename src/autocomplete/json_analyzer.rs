@@ -48,32 +48,6 @@ impl JsonAnalyzer {
         }
     }
 
-    /// Get field suggestions matching the given prefix
-    pub fn get_field_suggestions(&self, prefix: &str) -> Vec<Suggestion> {
-        if prefix.is_empty() {
-            // Return all fields if no prefix
-            let mut fields: Vec<_> = self
-                .field_names
-                .iter()
-                .map(|f| Suggestion::new(format!(".{}", f), SuggestionType::Field))
-                .collect();
-            fields.sort_by(|a, b| a.text.cmp(&b.text));
-            return fields;
-        }
-
-        // Filter by prefix (case-insensitive)
-        let prefix_lower = prefix.to_lowercase();
-        let mut matching: Vec<_> = self
-            .field_names
-            .iter()
-            .filter(|f| f.to_lowercase().starts_with(&prefix_lower))
-            .map(|f| Suggestion::new(format!(".{}", f), SuggestionType::Field))
-            .collect();
-
-        matching.sort_by(|a, b| a.text.cmp(&b.text));
-        matching
-    }
-
     /// Get context-aware field suggestions based on a partial jq path
     /// Returns fields available at the specified path in the JSON
     pub fn get_contextual_field_suggestions(
@@ -229,20 +203,6 @@ mod tests {
 
         let fields = analyzer.get_all_fields();
         assert_eq!(fields, vec!["extra", "id", "name"]);
-    }
-
-    #[test]
-    fn test_field_suggestions() {
-        let mut analyzer = JsonAnalyzer::new();
-        let json = r#"{"name": "John", "nickname": "Johnny", "age": 30}"#;
-        analyzer.analyze(json).unwrap();
-
-        let suggestions = analyzer.get_field_suggestions("na");
-        assert_eq!(suggestions.len(), 1);
-        assert_eq!(suggestions[0].text, ".name");
-
-        let suggestions = analyzer.get_field_suggestions("n");
-        assert_eq!(suggestions.len(), 2);
     }
 
     #[test]

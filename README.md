@@ -3,6 +3,7 @@
 ## Features
 
 - **Real-time query execution** - See results as you type
+- **Context-aware autocomplete** - Intelligent suggestions for jq functions and JSON fields
 - **Full VIM keybindings** - Modal editing (INSERT/NORMAL/OPERATOR modes)
 - **Syntax highlighting** - Colorized JSON output
 - **Flexible output** - Export results or query string
@@ -60,9 +61,10 @@ curl https://api.example.com/data | jiq
 
 **Workflow:**
 1. Start typing your jq query (begins in INSERT mode)
-2. See results update in real-time
-3. Press `Tab` to navigate results
-4. Press `Enter` to output results, or `Shift+Enter` to output query
+2. Use autocomplete suggestions for functions and fields (`Tab` to accept)
+3. See results update in real-time
+4. Press `Shift+Tab` to navigate results
+5. Press `Enter` to output results, or `Shift+Enter` to output query
 
 **VIM users:** Press `ESC` to enter NORMAL mode for advanced editing.
 
@@ -73,7 +75,7 @@ curl https://api.example.com/data | jiq
 
 | Key | Action |
 |-----|--------|
-| `Tab` | Switch focus between Input and Results |
+| `Shift+Tab` | Switch focus between Input and Results |
 | `Enter` | Exit and output filtered JSON |
 | `Shift+Enter` | Exit and output query string only |
 | `q` / `Ctrl+C` | Quit without output |
@@ -86,10 +88,12 @@ curl https://api.example.com/data | jiq
 | Key | Action |
 |-----|--------|
 | Type characters | Edit jq query (real-time execution) |
+| `Tab` | Accept autocomplete suggestion |
+| `↑` / `↓` | Navigate autocomplete suggestions |
 | `←` / `→` | Move cursor |
 | `Home` / `End` | Jump to line start/end |
 | `Backspace` / `Delete` | Delete characters |
-| `ESC` | Switch to NORMAL mode |
+| `ESC` | Switch to NORMAL mode / Close autocomplete |
 
 </details>
 
@@ -174,6 +178,7 @@ echo $QUERY | xargs -I {} jq {} mydata.json
 ## Tips
 
 - Empty query shows original JSON (identity filter `.`)
+- Autocomplete suggests jq functions, JSON fields, operators, and patterns as you type
 - Invalid queries display jq errors in red
 - Color-coded modes: Cyan (INSERT), Yellow (NORMAL), Green (OPERATOR)
 - Results auto-scroll to top when query changes

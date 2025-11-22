@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.2.0] - 2025-11-21
+
+### Added
+- Context-aware autocomplete system for jq queries
+- JSON field suggestions based on input data structure
+- jq built-in function autocomplete (map, select, keys, etc.)
+- Operator and pattern suggestions (|, //, .[], etc.)
+- Nested field path support in autocomplete
+- Tab key to accept autocomplete suggestions
+- Up/Down arrow navigation through suggestions
+- Color-coded suggestion types in popup
+
+### Changed
+- Tab key now accepts autocomplete suggestions in INSERT mode
+- Shift+Tab switched focus between Input and Results panes
+- ESC key closes autocomplete popup or switches to NORMAL mode
+
+### Performance
+- Static data initialization with LazyLock for instant responses
+- Optimized suggestion filtering for large JSON files
+
 ## [2.0.0] - 2025-11-18
 
 ### Added
