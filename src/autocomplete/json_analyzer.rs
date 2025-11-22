@@ -394,4 +394,29 @@ mod tests {
         assert!(suggestions.iter().any(|s| s.text == ".title"));
         assert!(suggestions.iter().any(|s| s.text == ".tags"));
     }
+
+    #[test]
+    fn test_malformed_path_with_unmatched_paren() {
+        let mut analyzer = JsonAnalyzer::new();
+        let json = r#"{"items": [{"name": "test"}]}"#;
+        analyzer.analyze(json).unwrap();
+
+        // Path with unmatched ')' should fail gracefully (return empty)
+        // This can happen from context extraction with function calls like: map(.items | .name) | .f
+        let suggestions = analyzer.get_contextual_field_suggestions(".items | .name) |", "");
+        // Should return empty because .name) isn't a valid field
+        assert_eq!(suggestions.len(), 0);
+    }
+
+    #[test]
+    fn test_invalid_paths_fail_gracefully() {
+        let mut analyzer = JsonAnalyzer::new();
+        let json = r#"{"data": {"items": [{"id": 1}]}}"#;
+        analyzer.analyze(json).unwrap();
+
+        // These should all return empty (nonexistent paths), not crash
+        assert_eq!(analyzer.get_contextual_field_suggestions(".nonexistent | .foo", "").len(), 0);
+        assert_eq!(analyzer.get_contextual_field_suggestions(".data.wrong | .[]", "").len(), 0);
+        assert_eq!(analyzer.get_contextual_field_suggestions(".data.items.nothere", "").len(), 0);
+    }
 }

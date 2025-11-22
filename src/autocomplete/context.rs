@@ -277,4 +277,19 @@ mod tests {
         assert_eq!(extract_path_before_current_field(".data | .items | .[]"), ".data | .items |");
         assert_eq!(extract_path_before_current_field(".org.hq.facilities.buildings | ."), ".org.hq.facilities.buildings |");
     }
+
+    #[test]
+    fn test_extract_path_with_parentheses() {
+        // Parentheses should still reset context (function boundaries)
+        assert_eq!(extract_path_before_current_field("map(.items"), "");
+        assert_eq!(extract_path_before_current_field("select(.active) | .na"), ".active) |");
+    }
+
+    #[test]
+    fn test_extract_path_with_mixed_operators() {
+        // When both ( and | exist, take the rightmost one
+        // "map(.x | .y) | .z" -> after last ( is ".x | .y) | .z"
+        // Note: This has unmatched ')' but json_analyzer will handle gracefully
+        assert_eq!(extract_path_before_current_field("map(.items | .name) | .f"), ".items | .name) |");
+    }
 }
