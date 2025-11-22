@@ -103,11 +103,11 @@ impl JsonAnalyzer {
             let left_path = path[..pipe_pos].trim();
             let right_path = path[pipe_pos + 1..].trim();
 
-            // Navigate left side from root
+            // Navigate left side from root (recursively handle multiple pipes)
             let left_value = if left_path.is_empty() {
                 root
             } else {
-                self.navigate_path(root, left_path)?
+                self.get_value_at_path(left_path)?
             };
 
             // Navigate right side from left value
@@ -294,5 +294,104 @@ mod tests {
         let suggestions = analyzer.get_contextual_field_suggestions(".data.users | .[].profile", "");
         assert_eq!(suggestions.len(), 1);
         assert!(suggestions.iter().any(|s| s.text == ".email"));
+    }
+
+    #[test]
+    fn test_multiple_pipes() {
+        let mut analyzer = JsonAnalyzer::new();
+        let json = r#"{"outer": {"middle": {"inner": {"value": "test"}}}}"#;
+        analyzer.analyze(json).unwrap();
+
+        // Multiple pipes: .outer | .middle | .inner
+        let suggestions = analyzer.get_contextual_field_suggestions(".outer | .middle | .inner", "");
+        assert_eq!(suggestions.len(), 1);
+        assert!(suggestions.iter().any(|s| s.text == ".value"));
+    }
+
+    #[test]
+    fn test_multiple_pipes_with_arrays() {
+        let mut analyzer = JsonAnalyzer::new();
+        let json = r#"{"data": {"users": [{"posts": [{"title": "Hello", "body": "World"}]}]}}"#;
+        analyzer.analyze(json).unwrap();
+
+        // Complex: .data.users | .[].posts | .[].title
+        let suggestions = analyzer.get_contextual_field_suggestions(".data.users | .[].posts | .[]", "");
+        assert_eq!(suggestions.len(), 2);
+        assert!(suggestions.iter().any(|s| s.text == ".title"));
+        assert!(suggestions.iter().any(|s| s.text == ".body"));
+    }
+
+    #[test]
+    fn test_nested_arrays_without_pipes() {
+        let mut analyzer = JsonAnalyzer::new();
+        let json = r#"{"items": [{"subitems": [{"name": "test", "id": 1}]}]}"#;
+        analyzer.analyze(json).unwrap();
+
+        // Nested arrays: .items[].subitems[]
+        let suggestions = analyzer.get_contextual_field_suggestions(".items[].subitems[]", "");
+        assert_eq!(suggestions.len(), 2);
+        assert!(suggestions.iter().any(|s| s.text == ".name"));
+        assert!(suggestions.iter().any(|s| s.text == ".id"));
+    }
+
+    #[test]
+    fn test_pipe_at_root() {
+        let mut analyzer = JsonAnalyzer::new();
+        let json = r#"{"field1": "value1", "field2": "value2"}"#;
+        analyzer.analyze(json).unwrap();
+
+        // Pipe at root: . | (same as just .)
+        let suggestions = analyzer.get_contextual_field_suggestions(". | ", "");
+        assert_eq!(suggestions.len(), 2);
+        assert!(suggestions.iter().any(|s| s.text == ".field1"));
+        assert!(suggestions.iter().any(|s| s.text == ".field2"));
+    }
+
+    #[test]
+    fn test_complex_real_world_scenario() {
+        let mut analyzer = JsonAnalyzer::new();
+        let json = r#"{
+            "status": "success",
+            "data": {
+                "users": [
+                    {
+                        "userId": "usr-001",
+                        "username": "johndoe",
+                        "profile": {
+                            "firstName": "John",
+                            "lastName": "Doe",
+                            "email": "john@example.com"
+                        },
+                        "posts": [
+                            {
+                                "postId": "post-1",
+                                "title": "My First Post",
+                                "tags": ["tech", "coding"]
+                            }
+                        ]
+                    }
+                ]
+            }
+        }"#;
+        analyzer.analyze(json).unwrap();
+
+        // Test the exact scenario from the bug report: .data.users | .[].userId
+        let suggestions = analyzer.get_contextual_field_suggestions(".data.users | .[]", "u");
+        assert!(suggestions.iter().any(|s| s.text == ".userId"));
+        assert!(suggestions.iter().any(|s| s.text == ".username"));
+
+        // Test nested: .data.users | .[].profile
+        let suggestions = analyzer.get_contextual_field_suggestions(".data.users | .[].profile", "");
+        assert_eq!(suggestions.len(), 3);
+        assert!(suggestions.iter().any(|s| s.text == ".firstName"));
+        assert!(suggestions.iter().any(|s| s.text == ".lastName"));
+        assert!(suggestions.iter().any(|s| s.text == ".email"));
+
+        // Test double array expansion: .data.users | .[].posts | .[]
+        let suggestions = analyzer.get_contextual_field_suggestions(".data.users | .[].posts | .[]", "");
+        assert_eq!(suggestions.len(), 3);
+        assert!(suggestions.iter().any(|s| s.text == ".postId"));
+        assert!(suggestions.iter().any(|s| s.text == ".title"));
+        assert!(suggestions.iter().any(|s| s.text == ".tags"));
     }
 }
