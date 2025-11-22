@@ -98,11 +98,33 @@ impl JsonAnalyzer {
     fn get_value_at_path(&self, path: &str) -> Option<&Value> {
         let root = self.root_value.as_ref()?;
 
+        // Handle pipes by evaluating left side first, then right side
+        if let Some(pipe_pos) = path.rfind('|') {
+            let left_path = path[..pipe_pos].trim();
+            let right_path = path[pipe_pos + 1..].trim();
+
+            // Navigate left side from root
+            let left_value = if left_path.is_empty() {
+                root
+            } else {
+                self.navigate_path(root, left_path)?
+            };
+
+            // Navigate right side from left value
+            return self.navigate_path(left_value, right_path);
+        }
+
+        // No pipe, just navigate normally
+        self.navigate_path(root, path)
+    }
+
+    /// Navigate a path from a starting value
+    fn navigate_path<'a>(&self, start_value: &'a Value, path: &str) -> Option<&'a Value> {
         // Remove leading dot if present
         let path = path.strip_prefix('.').unwrap_or(path);
 
         // Split path by dots and navigate
-        let mut current = root;
+        let mut current = start_value;
         for segment in path.split('.').filter(|s| !s.is_empty()) {
             // Handle array access like "items[]" or "items[0]"
             let (field_name, is_array) = if let Some(idx) = segment.find('[') {
@@ -111,11 +133,13 @@ impl JsonAnalyzer {
                 (segment, false)
             };
 
-            // Navigate to the field
-            current = match current {
-                Value::Object(map) => map.get(field_name)?,
-                _ => return None,
-            };
+            // Navigate to the field (unless it's just array access on current value like "[]")
+            if !field_name.is_empty() {
+                current = match current {
+                    Value::Object(map) => map.get(field_name)?,
+                    _ => return None,
+                };
+            }
 
             // If it's array access, get first element for field discovery
             if is_array {
@@ -245,5 +269,30 @@ mod tests {
         assert_eq!(suggestions.len(), 2);
         assert!(suggestions.iter().any(|s| s.text == ".id"));
         assert!(suggestions.iter().any(|s| s.text == ".name"));
+    }
+
+    #[test]
+    fn test_pipe_with_array_expansion() {
+        let mut analyzer = JsonAnalyzer::new();
+        let json = r#"{"data": {"users": [{"userId": "123", "name": "John"}]}}"#;
+        analyzer.analyze(json).unwrap();
+
+        // After pipe with array expansion: .data.users | .[]
+        let suggestions = analyzer.get_contextual_field_suggestions(".data.users | .[]", "");
+        assert_eq!(suggestions.len(), 2);
+        assert!(suggestions.iter().any(|s| s.text == ".userId"));
+        assert!(suggestions.iter().any(|s| s.text == ".name"));
+    }
+
+    #[test]
+    fn test_pipe_with_array_expansion_and_field() {
+        let mut analyzer = JsonAnalyzer::new();
+        let json = r#"{"data": {"users": [{"userId": "123", "profile": {"email": "test@example.com"}}]}}"#;
+        analyzer.analyze(json).unwrap();
+
+        // After pipe with array expansion and field: .data.users | .[].profile
+        let suggestions = analyzer.get_contextual_field_suggestions(".data.users | .[].profile", "");
+        assert_eq!(suggestions.len(), 1);
+        assert!(suggestions.iter().any(|s| s.text == ".email"));
     }
 }
