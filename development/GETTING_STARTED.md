@@ -1,6 +1,6 @@
 # Getting Started
 
-Welcome! This guide will help you set up your development environment and make your first contribution to jiq.
+Welcome! This guide will help you set up your development environment for working with jiq.
 
 ## Prerequisites
 
@@ -171,18 +171,9 @@ cargo clippy --fix
 cargo clippy -- -D warnings
 ```
 
-## Making Your First Contribution
+## Working with the Code
 
-### Step 1: Find an Issue
-
-Good first issues are tagged with:
-- `good first issue` - Simple, well-defined tasks
-- `documentation` - Documentation improvements
-- `help wanted` - Community contributions welcome
-
-Browse: https://github.com/bellicose100xp/jiq/issues
-
-### Step 2: Create a Branch
+### Step 1: Create a Branch
 
 ```bash
 # Update your fork
@@ -202,7 +193,7 @@ git checkout -b feat/add-fuzzy-matching
 - `refactor/description` - Code refactoring
 - `test/description` - Test additions
 
-### Step 3: Make Your Changes
+### Step 2: Make Your Changes
 
 ```bash
 # Edit files in your IDE
@@ -216,7 +207,7 @@ cargo fmt
 cargo clippy
 ```
 
-### Step 4: Write Tests
+### Step 3: Write Tests
 
 All code changes should include tests. See [TESTING.md](TESTING.md) for details.
 
@@ -234,7 +225,7 @@ fn test_my_new_feature() {
 }
 ```
 
-### Step 5: Commit Your Changes
+### Step 4: Commit Your Changes
 
 ```bash
 # Add your changes
@@ -266,18 +257,11 @@ git commit -m "fix: correct autocomplete after pipe character
 - `perf:` - Performance improvement
 - `chore:` - Build/tooling changes
 
-### Step 6: Push and Create PR
+### Step 5: Push Changes
 
 ```bash
-# Push to your fork
+# Push to your branch
 git push origin fix/autocomplete-bug
-
-# Create Pull Request on GitHub
-# Include:
-# - Description of changes
-# - Link to related issue
-# - Screenshots (if UI changes)
-# - Test results
 ```
 
 ## Common Tasks for Beginners
@@ -393,11 +377,11 @@ Stuck? Here's how to get help:
 Now that you're set up:
 
 1. **Explore the code** - Read [ARCHITECTURE.md](ARCHITECTURE.md) to understand the system
-2. **Pick an issue** - Find a `good first issue` to work on
-3. **Read contribution guidelines** - Check [CONTRIBUTING.md](CONTRIBUTING.md)
+2. **Review the workflow** - Check [DEVELOPMENT_GUIDE.md](DEVELOPMENT_GUIDE.md) for best practices
+3. **Understand testing** - Read [TESTING.md](TESTING.md) for testing guidelines
 4. **Join the community** - Introduce yourself in Discussions
 
-**Happy coding!** We're excited to have you contribute to jiq.
+**Happy coding!** Enjoy exploring jiq.
 
 ---
 

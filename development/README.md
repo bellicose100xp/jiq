@@ -1,6 +1,6 @@
 # Developer Documentation
 
-Welcome to the **jiq** developer documentation! This guide will help you get started with contributing to jiq, whether you're a first-time contributor or a seasoned Rust developer.
+Welcome to the **jiq** developer documentation! This guide will help you understand and work with the jiq codebase, whether you're a first-time Rust developer or a seasoned expert.
 
 ## What is jiq?
 
@@ -12,13 +12,12 @@ Welcome to the **jiq** developer documentation! This guide will help you get sta
 
 ## Quick Navigation
 
-### For New Contributors
+### For Developers
 
 Start here if you're new to the project:
 
 1. **[Getting Started](GETTING_STARTED.md)** - Set up your development environment
 2. **[Architecture](ARCHITECTURE.md)** - Understand how jiq works
-3. **[Contributing](CONTRIBUTING.md)** - Guidelines for contributing code
 
 ### For Active Developers
 
@@ -46,19 +45,18 @@ Focus on these documents in order:
 3. [Testing Guide](TESTING.md#running-tests) - How to run tests
 4. [Development Guide](DEVELOPMENT_GUIDE.md#common-tasks) - Simple tasks to start with
 
-**Recommended First Issues:**
-- Documentation improvements
-- Test coverage enhancements
-- Bug fixes with clear reproduction steps
+**Good Starting Points:**
+- Explore documentation
+- Run and understand tests
+- Trace code execution with debugger
 
 ### Intermediate Developers (Familiar with Rust)
 
 1. [Architecture](ARCHITECTURE.md) - Full system design
 2. [Development Guide](DEVELOPMENT_GUIDE.md) - Development workflows
 3. [Testing Guide](TESTING.md) - Test patterns used
-4. [Contributing](CONTRIBUTING.md) - Code style and review process
 
-**Recommended Issues:**
+**Focus Areas:**
 - Feature enhancements
 - Performance improvements
 - UI/UX improvements
@@ -120,7 +118,6 @@ jiq/
 │   ├── ARCHITECTURE.md
 │   ├── DEVELOPMENT_GUIDE.md
 │   ├── TESTING.md
-│   ├── CONTRIBUTING.md
 │   ├── DEPLOYMENT.md
 │   └── features/            # Detailed feature docs
 └── Cargo.toml
@@ -130,21 +127,6 @@ jiq/
 
 - **Questions?** Open a [GitHub Discussion](https://github.com/bellicose100xp/jiq/discussions)
 - **Bugs?** File an [Issue](https://github.com/bellicose100xp/jiq/issues)
-- **Code Review?** Tag maintainers in your Pull Request
-
-## Current Focus Areas
-
-Looking for where to contribute? These areas are actively being developed:
-
-- **Autocomplete Improvements** - Fuzzy matching, better context detection
-- **Performance** - Optimizing for large JSON files
-- **Test Coverage** - Expanding integration tests
-- **Documentation** - User guides and examples
-- **Platform Support** - Windows compatibility improvements
-
-## Code of Conduct
-
-We are committed to providing a welcoming and inspiring community for all. Please be respectful and constructive in all interactions.
 
 ## License
 
@@ -152,4 +134,4 @@ jiq is dual-licensed under MIT OR Apache-2.0. See [LICENSE-MIT](../LICENSE-MIT) 
 
 ---
 
-**Ready to contribute?** Start with [Getting Started](GETTING_STARTED.md) →
+**Ready to dive in?** Start with [Getting Started](GETTING_STARTED.md) →
