@@ -76,8 +76,11 @@ impl App {
             return true;
         }
 
-        // q (without Ctrl): Exit application without output
-        if key.code == KeyCode::Char('q') && !key.modifiers.contains(KeyModifiers::CONTROL) {
+        // q (without Ctrl): Exit application without output (not in insert mode)
+        if key.code == KeyCode::Char('q')
+            && !key.modifiers.contains(KeyModifiers::CONTROL)
+            && self.editor_mode != EditorMode::Insert
+        {
             self.should_quit = true;
             return true;
         }
