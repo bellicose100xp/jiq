@@ -1,4 +1,4 @@
-use super::state::{Suggestion, SuggestionType};
+use super::state::{JsonFieldType, Suggestion, SuggestionType};
 use serde_json::Value;
 use std::collections::HashSet;
 
@@ -80,12 +80,19 @@ impl JsonAnalyzer {
         match root {
             Value::Object(map) => {
                 let mut fields: Vec<_> = map
-                    .keys()
-                    .filter(|k| {
+                    .iter()
+                    .filter(|(k, _)| {
                         prefix.is_empty()
                             || k.to_lowercase().starts_with(&prefix.to_lowercase())
                     })
-                    .map(|k| Suggestion::new(format!(".{}", k), SuggestionType::Field))
+                    .map(|(k, v)| {
+                        let field_type = detect_json_type(v);
+                        Suggestion::new_with_type(
+                            format!(".{}", k),
+                            SuggestionType::Field,
+                            Some(field_type),
+                        )
+                    })
                     .collect();
                 fields.sort_by(|a, b| a.text.cmp(&b.text));
                 fields
@@ -162,17 +169,36 @@ impl JsonAnalyzer {
     }
 }
 
+/// Detect the JSON type of a value
+fn detect_json_type(value: &Value) -> JsonFieldType {
+    match value {
+        Value::String(_) => JsonFieldType::String,
+        Value::Number(_) => JsonFieldType::Number,
+        Value::Bool(_) => JsonFieldType::Boolean,
+        Value::Null => JsonFieldType::Null,
+        Value::Object(_) => JsonFieldType::Object,
+        Value::Array(_) => JsonFieldType::Array,
+    }
+}
+
 /// Extract fields from a specific JSON value
 fn extract_fields_from_value(value: &Value, prefix: &str) -> Vec<Suggestion> {
     match value {
         Value::Object(map) => {
             let mut fields: Vec<_> = map
-                .keys()
-                .filter(|k| {
+                .iter()
+                .filter(|(k, _)| {
                     prefix.is_empty()
                         || k.to_lowercase().starts_with(&prefix.to_lowercase())
                 })
-                .map(|k| Suggestion::new(format!(".{}", k), SuggestionType::Field))
+                .map(|(k, v)| {
+                    let field_type = detect_json_type(v);
+                    Suggestion::new_with_type(
+                        format!(".{}", k),
+                        SuggestionType::Field,
+                        Some(field_type),
+                    )
+                })
                 .collect();
             fields.sort_by(|a, b| a.text.cmp(&b.text));
             fields
@@ -418,5 +444,324 @@ mod tests {
         assert_eq!(analyzer.get_contextual_field_suggestions(".nonexistent | .foo", "").len(), 0);
         assert_eq!(analyzer.get_contextual_field_suggestions(".data.wrong | .[]", "").len(), 0);
         assert_eq!(analyzer.get_contextual_field_suggestions(".data.items.nothere", "").len(), 0);
+    }
+
+    // ===== JSON Type Detection Tests =====
+
+    #[test]
+    fn test_field_suggestions_include_string_type() {
+        let json = r#"{"name": "Alice", "email": "alice@example.com"}"#;
+        let mut analyzer = JsonAnalyzer::new();
+        analyzer.analyze(json).unwrap();
+
+        let suggestions = analyzer.get_contextual_field_suggestions("", "");
+
+        let name_suggestion = suggestions.iter().find(|s| s.text == ".name").unwrap();
+        assert_eq!(name_suggestion.field_type, Some(JsonFieldType::String));
+
+        let email_suggestion = suggestions.iter().find(|s| s.text == ".email").unwrap();
+        assert_eq!(email_suggestion.field_type, Some(JsonFieldType::String));
+    }
+
+    #[test]
+    fn test_field_suggestions_include_number_type() {
+        let json = r#"{"age": 30, "height": 5.9, "count": 0}"#;
+        let mut analyzer = JsonAnalyzer::new();
+        analyzer.analyze(json).unwrap();
+
+        let suggestions = analyzer.get_contextual_field_suggestions("", "");
+
+        let age_suggestion = suggestions.iter().find(|s| s.text == ".age").unwrap();
+        assert_eq!(age_suggestion.field_type, Some(JsonFieldType::Number));
+
+        let height_suggestion = suggestions.iter().find(|s| s.text == ".height").unwrap();
+        assert_eq!(height_suggestion.field_type, Some(JsonFieldType::Number));
+
+        let count_suggestion = suggestions.iter().find(|s| s.text == ".count").unwrap();
+        assert_eq!(count_suggestion.field_type, Some(JsonFieldType::Number));
+    }
+
+    #[test]
+    fn test_field_suggestions_include_boolean_type() {
+        let json = r#"{"active": true, "verified": false}"#;
+        let mut analyzer = JsonAnalyzer::new();
+        analyzer.analyze(json).unwrap();
+
+        let suggestions = analyzer.get_contextual_field_suggestions("", "");
+
+        let active_suggestion = suggestions.iter().find(|s| s.text == ".active").unwrap();
+        assert_eq!(active_suggestion.field_type, Some(JsonFieldType::Boolean));
+
+        let verified_suggestion = suggestions.iter().find(|s| s.text == ".verified").unwrap();
+        assert_eq!(verified_suggestion.field_type, Some(JsonFieldType::Boolean));
+    }
+
+    #[test]
+    fn test_field_suggestions_include_null_type() {
+        let json = r#"{"nothing": null, "empty": null}"#;
+        let mut analyzer = JsonAnalyzer::new();
+        analyzer.analyze(json).unwrap();
+
+        let suggestions = analyzer.get_contextual_field_suggestions("", "");
+
+        let nothing_suggestion = suggestions.iter().find(|s| s.text == ".nothing").unwrap();
+        assert_eq!(nothing_suggestion.field_type, Some(JsonFieldType::Null));
+
+        let empty_suggestion = suggestions.iter().find(|s| s.text == ".empty").unwrap();
+        assert_eq!(empty_suggestion.field_type, Some(JsonFieldType::Null));
+    }
+
+    #[test]
+    fn test_field_suggestions_include_object_type() {
+        let json = r#"{"user": {"name": "Bob"}, "config": {"debug": true}}"#;
+        let mut analyzer = JsonAnalyzer::new();
+        analyzer.analyze(json).unwrap();
+
+        let suggestions = analyzer.get_contextual_field_suggestions("", "");
+
+        let user_suggestion = suggestions.iter().find(|s| s.text == ".user").unwrap();
+        assert_eq!(user_suggestion.field_type, Some(JsonFieldType::Object));
+
+        let config_suggestion = suggestions.iter().find(|s| s.text == ".config").unwrap();
+        assert_eq!(config_suggestion.field_type, Some(JsonFieldType::Object));
+    }
+
+    #[test]
+    fn test_field_suggestions_include_array_type() {
+        let json = r#"{"items": [1, 2, 3], "tags": ["a", "b"], "empty": []}"#;
+        let mut analyzer = JsonAnalyzer::new();
+        analyzer.analyze(json).unwrap();
+
+        let suggestions = analyzer.get_contextual_field_suggestions("", "");
+
+        let items_suggestion = suggestions.iter().find(|s| s.text == ".items").unwrap();
+        assert_eq!(items_suggestion.field_type, Some(JsonFieldType::Array));
+
+        let tags_suggestion = suggestions.iter().find(|s| s.text == ".tags").unwrap();
+        assert_eq!(tags_suggestion.field_type, Some(JsonFieldType::Array));
+
+        let empty_suggestion = suggestions.iter().find(|s| s.text == ".empty").unwrap();
+        assert_eq!(empty_suggestion.field_type, Some(JsonFieldType::Array));
+    }
+
+    #[test]
+    fn test_all_json_types_together() {
+        let json = r#"{
+            "name": "Alice",
+            "age": 30,
+            "active": true,
+            "nothing": null,
+            "address": {"city": "NYC"},
+            "hobbies": ["reading", "coding"]
+        }"#;
+        let mut analyzer = JsonAnalyzer::new();
+        analyzer.analyze(json).unwrap();
+
+        let suggestions = analyzer.get_contextual_field_suggestions("", "");
+        assert_eq!(suggestions.len(), 6);
+
+        assert_eq!(
+            suggestions.iter().find(|s| s.text == ".name").unwrap().field_type,
+            Some(JsonFieldType::String)
+        );
+        assert_eq!(
+            suggestions.iter().find(|s| s.text == ".age").unwrap().field_type,
+            Some(JsonFieldType::Number)
+        );
+        assert_eq!(
+            suggestions.iter().find(|s| s.text == ".active").unwrap().field_type,
+            Some(JsonFieldType::Boolean)
+        );
+        assert_eq!(
+            suggestions.iter().find(|s| s.text == ".nothing").unwrap().field_type,
+            Some(JsonFieldType::Null)
+        );
+        assert_eq!(
+            suggestions.iter().find(|s| s.text == ".address").unwrap().field_type,
+            Some(JsonFieldType::Object)
+        );
+        assert_eq!(
+            suggestions.iter().find(|s| s.text == ".hobbies").unwrap().field_type,
+            Some(JsonFieldType::Array)
+        );
+    }
+
+    #[test]
+    fn test_nested_field_types() {
+        let json = r#"{"user": {"name": "Bob", "age": 25, "verified": true}}"#;
+        let mut analyzer = JsonAnalyzer::new();
+        analyzer.analyze(json).unwrap();
+
+        let suggestions = analyzer.get_contextual_field_suggestions(".user", "");
+        assert_eq!(suggestions.len(), 3);
+
+        assert_eq!(
+            suggestions.iter().find(|s| s.text == ".name").unwrap().field_type,
+            Some(JsonFieldType::String)
+        );
+        assert_eq!(
+            suggestions.iter().find(|s| s.text == ".age").unwrap().field_type,
+            Some(JsonFieldType::Number)
+        );
+        assert_eq!(
+            suggestions.iter().find(|s| s.text == ".verified").unwrap().field_type,
+            Some(JsonFieldType::Boolean)
+        );
+    }
+
+    #[test]
+    fn test_array_element_field_types() {
+        let json = r#"{"items": [{"id": 1, "name": "Item1", "active": true}]}"#;
+        let mut analyzer = JsonAnalyzer::new();
+        analyzer.analyze(json).unwrap();
+
+        let suggestions = analyzer.get_contextual_field_suggestions(".items[]", "");
+        assert_eq!(suggestions.len(), 3);
+
+        assert_eq!(
+            suggestions.iter().find(|s| s.text == ".id").unwrap().field_type,
+            Some(JsonFieldType::Number)
+        );
+        assert_eq!(
+            suggestions.iter().find(|s| s.text == ".name").unwrap().field_type,
+            Some(JsonFieldType::String)
+        );
+        assert_eq!(
+            suggestions.iter().find(|s| s.text == ".active").unwrap().field_type,
+            Some(JsonFieldType::Boolean)
+        );
+    }
+
+    #[test]
+    fn test_field_types_with_pipe() {
+        let json = r#"{"data": {"users": [{"userId": "123", "score": 100, "admin": false}]}}"#;
+        let mut analyzer = JsonAnalyzer::new();
+        analyzer.analyze(json).unwrap();
+
+        let suggestions = analyzer.get_contextual_field_suggestions(".data.users | .[]", "");
+        assert_eq!(suggestions.len(), 3);
+
+        assert_eq!(
+            suggestions.iter().find(|s| s.text == ".userId").unwrap().field_type,
+            Some(JsonFieldType::String)
+        );
+        assert_eq!(
+            suggestions.iter().find(|s| s.text == ".score").unwrap().field_type,
+            Some(JsonFieldType::Number)
+        );
+        assert_eq!(
+            suggestions.iter().find(|s| s.text == ".admin").unwrap().field_type,
+            Some(JsonFieldType::Boolean)
+        );
+    }
+
+    #[test]
+    fn test_mixed_types_in_nested_structure() {
+        let json = r#"{
+            "status": "success",
+            "data": {
+                "users": [
+                    {
+                        "userId": "usr-001",
+                        "profile": {
+                            "firstName": "John",
+                            "age": 30,
+                            "verified": true,
+                            "metadata": null,
+                            "settings": {"theme": "dark"},
+                            "tags": ["admin", "user"]
+                        }
+                    }
+                ]
+            }
+        }"#;
+        let mut analyzer = JsonAnalyzer::new();
+        analyzer.analyze(json).unwrap();
+
+        let suggestions = analyzer.get_contextual_field_suggestions(".data.users | .[].profile", "");
+        assert_eq!(suggestions.len(), 6);
+
+        assert_eq!(
+            suggestions.iter().find(|s| s.text == ".firstName").unwrap().field_type,
+            Some(JsonFieldType::String)
+        );
+        assert_eq!(
+            suggestions.iter().find(|s| s.text == ".age").unwrap().field_type,
+            Some(JsonFieldType::Number)
+        );
+        assert_eq!(
+            suggestions.iter().find(|s| s.text == ".verified").unwrap().field_type,
+            Some(JsonFieldType::Boolean)
+        );
+        assert_eq!(
+            suggestions.iter().find(|s| s.text == ".metadata").unwrap().field_type,
+            Some(JsonFieldType::Null)
+        );
+        assert_eq!(
+            suggestions.iter().find(|s| s.text == ".settings").unwrap().field_type,
+            Some(JsonFieldType::Object)
+        );
+        assert_eq!(
+            suggestions.iter().find(|s| s.text == ".tags").unwrap().field_type,
+            Some(JsonFieldType::Array)
+        );
+    }
+
+    #[test]
+    fn test_empty_object_field_type() {
+        let json = r#"{"emptyObj": {}}"#;
+        let mut analyzer = JsonAnalyzer::new();
+        analyzer.analyze(json).unwrap();
+
+        let suggestions = analyzer.get_contextual_field_suggestions("", "");
+
+        let obj_suggestion = suggestions.iter().find(|s| s.text == ".emptyObj").unwrap();
+        assert_eq!(obj_suggestion.field_type, Some(JsonFieldType::Object));
+    }
+
+    #[test]
+    fn test_negative_and_float_numbers() {
+        let json = r#"{"negative": -42, "float": 3.14159, "scientific": 1.5e10}"#;
+        let mut analyzer = JsonAnalyzer::new();
+        analyzer.analyze(json).unwrap();
+
+        let suggestions = analyzer.get_contextual_field_suggestions("", "");
+
+        // All should be detected as Number type
+        assert_eq!(
+            suggestions.iter().find(|s| s.text == ".negative").unwrap().field_type,
+            Some(JsonFieldType::Number)
+        );
+        assert_eq!(
+            suggestions.iter().find(|s| s.text == ".float").unwrap().field_type,
+            Some(JsonFieldType::Number)
+        );
+        assert_eq!(
+            suggestions.iter().find(|s| s.text == ".scientific").unwrap().field_type,
+            Some(JsonFieldType::Number)
+        );
+    }
+
+    #[test]
+    fn test_unicode_strings_type() {
+        let json = r#"{"emoji": "🎉", "chinese": "你好", "arabic": "مرحبا"}"#;
+        let mut analyzer = JsonAnalyzer::new();
+        analyzer.analyze(json).unwrap();
+
+        let suggestions = analyzer.get_contextual_field_suggestions("", "");
+
+        // All should be detected as String type
+        assert_eq!(
+            suggestions.iter().find(|s| s.text == ".emoji").unwrap().field_type,
+            Some(JsonFieldType::String)
+        );
+        assert_eq!(
+            suggestions.iter().find(|s| s.text == ".chinese").unwrap().field_type,
+            Some(JsonFieldType::String)
+        );
+        assert_eq!(
+            suggestions.iter().find(|s| s.text == ".arabic").unwrap().field_type,
+            Some(JsonFieldType::String)
+        );
     }
 }

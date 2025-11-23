@@ -296,7 +296,16 @@ impl App {
                     SuggestionType::Pattern => Color::Green,
                 };
 
-                let type_label = format!("[{}]", suggestion.suggestion_type);
+                let type_label = match &suggestion.suggestion_type {
+                    SuggestionType::Field => {
+                        if let Some(field_type) = &suggestion.field_type {
+                            format!("[field: {}]", field_type)
+                        } else {
+                            format!("[{}]", suggestion.suggestion_type)
+                        }
+                    }
+                    _ => format!("[{}]", suggestion.suggestion_type),
+                };
 
                 let line = if i == self.autocomplete.selected_index() {
                     // Highlight selected item
