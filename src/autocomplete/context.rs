@@ -269,12 +269,12 @@ fn analyze_context(before_cursor: &str) -> (SuggestionContext, String) {
     let partial: String = chars[start..i].iter().collect();
 
     // Check if the partial starts with a dot (field access)
-    if partial.starts_with('.') {
+    if let Some(stripped) = partial.strip_prefix('.') {
         // Field context - return the part after the LAST dot (for nested fields like .user.na)
         let field_partial = if let Some(last_dot_pos) = partial.rfind('.') {
             partial[last_dot_pos + 1..].to_string()
         } else {
-            partial[1..].to_string()
+            stripped.to_string()
         };
         return (SuggestionContext::FieldContext, field_partial);
     }
