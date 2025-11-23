@@ -85,14 +85,24 @@ impl JqHighlighter {
             if chars[i].is_alphabetic() || chars[i] == '_' || chars[i] == '.' || chars[i] == '$' {
                 let start = i;
 
-                // Handle field accessors (starting with .)
-                let is_field = chars[i] == '.';
+                // Check if this is a field accessor (starts with .)
+                let starts_with_dot = chars[i] == '.';
 
                 while i < chars.len() && (chars[i].is_alphanumeric() || chars[i] == '_' || chars[i] == '.' || chars[i] == '$') {
                     i += 1;
                 }
 
                 let word = chars[start..i].iter().collect::<String>();
+
+                // Check if this identifier is followed by ':' (field name in object constructor)
+                let is_object_field = !starts_with_dot && i < chars.len() && {
+                    // Skip whitespace to check for ':'
+                    let mut j = i;
+                    while j < chars.len() && chars[j].is_whitespace() {
+                        j += 1;
+                    }
+                    j < chars.len() && chars[j] == ':'
+                };
 
                 // Check if it's a keyword
                 if is_keyword(&word) {
@@ -105,14 +115,14 @@ impl JqHighlighter {
                         word,
                         Style::default().fg(Color::Blue),
                     ));
-                } else if is_field {
-                    // Field accessor
+                } else if is_object_field {
+                    // Field name in object constructor {name: value}
                     spans.push(Span::styled(
                         word,
                         Style::default().fg(Color::Cyan),
                     ));
                 } else {
-                    // Regular identifier
+                    // Field accessors (.name) and regular identifiers - default color
                     spans.push(Span::raw(word));
                 }
                 continue;
@@ -207,8 +217,8 @@ mod tests {
     fn test_highlight_simple_field() {
         let spans = JqHighlighter::highlight(".name");
         assert_eq!(spans.len(), 1);
-        // Field should be cyan
-        assert_eq!(spans[0].style.fg, Some(Color::Cyan));
+        // Field accessors are now default color (white)
+        assert_eq!(spans[0].style.fg, None);
     }
 
     #[test]
@@ -331,7 +341,8 @@ mod tests {
     fn test_nested_field_path() {
         let spans = JqHighlighter::highlight(".foo.bar.baz");
         assert_eq!(spans.len(), 1);
-        assert_eq!(spans[0].style.fg, Some(Color::Cyan));
+        // Field accessors are now default color (white)
+        assert_eq!(spans[0].style.fg, None);
         assert_eq!(spans[0].content, ".foo.bar.baz");
     }
 
@@ -339,7 +350,8 @@ mod tests {
     fn test_just_dot() {
         let spans = JqHighlighter::highlight(".");
         assert_eq!(spans.len(), 1);
-        assert_eq!(spans[0].style.fg, Some(Color::Cyan));
+        // Identity filter is default color (white)
+        assert_eq!(spans[0].style.fg, None);
     }
 
     #[test]
@@ -417,5 +429,60 @@ mod tests {
         let select_span = spans.iter().find(|s| s.content == "select");
         assert!(select_span.is_some(), "select keyword should be present");
         assert_eq!(select_span.unwrap().style.fg, Some(Color::Blue), "select should be blue (function)");
+    }
+
+    #[test]
+    fn test_object_field_names_highlighted() {
+        // Test simple object constructor
+        let spans = JqHighlighter::highlight("{name: .name}");
+
+        // Find the field name (before :)
+        let field_span = spans.iter().find(|s| s.content == "name");
+        assert!(field_span.is_some(), "Field name 'name' should be present");
+        assert_eq!(field_span.unwrap().style.fg, Some(Color::Cyan), "Object field name should be cyan");
+
+        // The field accessor .name should be white (default)
+        let accessor_span = spans.iter().find(|s| s.content == ".name");
+        assert!(accessor_span.is_some(), "Field accessor '.name' should be present");
+        assert_eq!(accessor_span.unwrap().style.fg, None, "Field accessor should be default color");
+    }
+
+    #[test]
+    fn test_object_with_multiple_fields() {
+        let spans = JqHighlighter::highlight("{firstName: .first, lastName: .last, age: .age}");
+
+        // Check that object field names are cyan
+        for field_name in ["firstName", "lastName", "age"] {
+            let field_span = spans.iter().find(|s| s.content == field_name);
+            assert!(field_span.is_some(), "Field '{}' should be present", field_name);
+            assert_eq!(
+                field_span.unwrap().style.fg,
+                Some(Color::Cyan),
+                "Object field '{}' should be cyan",
+                field_name
+            );
+        }
+
+        // Check that field accessors are white
+        for accessor in [".first", ".last", ".age"] {
+            let accessor_span = spans.iter().find(|s| s.content == accessor);
+            assert!(accessor_span.is_some(), "Accessor '{}' should be present", accessor);
+            assert_eq!(
+                accessor_span.unwrap().style.fg,
+                None,
+                "Field accessor '{}' should be default color",
+                accessor
+            );
+        }
+    }
+
+    #[test]
+    fn test_object_field_with_whitespace_before_colon() {
+        // Test that field names are detected even with whitespace before ':'
+        let spans = JqHighlighter::highlight("{name : .value}");
+
+        let field_span = spans.iter().find(|s| s.content == "name");
+        assert!(field_span.is_some(), "Field name should be present");
+        assert_eq!(field_span.unwrap().style.fg, Some(Color::Cyan), "Field name should be cyan even with whitespace");
     }
 }

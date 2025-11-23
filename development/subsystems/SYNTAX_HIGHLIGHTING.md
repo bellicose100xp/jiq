@@ -10,7 +10,8 @@ The following elements are highlighted:
 |---------|-------|----------|
 | **Keywords** | Yellow | `if`, `then`, `else`, `end`, `and`, `or`, `not`, `as`, `def`, `reduce`, `foreach`, `try`, `catch`, `empty`, `null`, `true`, `false` |
 | **Built-in Functions** | Blue | `map`, `select`, `sort`, `group_by`, `keys`, `values`, `has`, `contains`, `split`, `join`, `test`, `match`, `type`, `length`, `add`, `flatten`, `unique`, `reverse`, etc. |
-| **Field Accessors** | Cyan | `.name`, `.users`, `.address.city`, `.$variable` |
+| **Object Field Names** | Cyan | `name` in `{name: .value}`, `firstName` in `{firstName: .first}` |
+| **Field Accessors** | Default (white) | `.name`, `.users`, `.address.city`, `.organization.headquarters` |
 | **String Literals** | Green | `"hello"`, `"Alice"`, `"test string"` |
 | **Numbers** | Cyan | `123`, `45.67`, `-10` |
 | **Operators** | Magenta | `\|`, `==`, `!=`, `<=`, `>=`, `+`, `-`, `*`, `/`, `(`, `)`, `[`, `]`, `{`, `}`, etc. |
@@ -34,18 +35,18 @@ This is **not** a full jq parser, so it may occasionally highlight incorrectly i
 ```jq
 .name
 ```
-- `.name` → Cyan (field accessor)
+- `.name` → Default white (field accessor)
 
 ### Pipeline with filter
 ```jq
 .users[] | select(.active == true)
 ```
-- `.users` → Cyan (field)
+- `.users` → Default white (field accessor)
 - `[]` → Magenta (operators)
 - `|` → Magenta (pipe operator)
 - `select` → Blue (built-in function)
 - `(` `)` → Magenta (operators)
-- `.active` → Cyan (field)
+- `.active` → Default white (field accessor)
 - `==` → Magenta (operator)
 - `true` → Yellow (keyword)
 
@@ -54,7 +55,7 @@ This is **not** a full jq parser, so it may occasionally highlight incorrectly i
 if .count > 10 then .high else .low end
 ```
 - `if`, `then`, `else`, `end` → Yellow (keywords)
-- `.count`, `.high`, `.low` → Cyan (fields)
+- `.count`, `.high`, `.low` → Default white (field accessors)
 - `>` → Magenta (operator)
 - `10` → Cyan (number)
 
@@ -62,10 +63,18 @@ if .count > 10 then .high else .low end
 ```jq
 .users[] | select(.name == "Alice") | .age
 ```
-- `.users`, `.name`, `.age` → Cyan (fields)
+- `.users`, `.name`, `.age` → Default white (field accessors)
 - `[]`, `|`, `(`, `)`, `==` → Magenta (operators)
 - `select` → Blue (built-in function)
 - `"Alice"` → Green (string literal)
+
+### Object constructor
+```jq
+{firstName: .first, lastName: .last, age: .age}
+```
+- `firstName`, `lastName`, `age` → Cyan (object field names)
+- `.first`, `.last`, `.age` → Default white (field accessors)
+- `{`, `}`, `,`, `:` → Magenta (operators)
 
 ## Future Improvements
 
