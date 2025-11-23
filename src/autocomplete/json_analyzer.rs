@@ -98,11 +98,33 @@ impl JsonAnalyzer {
     fn get_value_at_path(&self, path: &str) -> Option<&Value> {
         let root = self.root_value.as_ref()?;
 
+        // Handle pipes by evaluating left side first, then right side
+        if let Some(pipe_pos) = path.rfind('|') {
+            let left_path = path[..pipe_pos].trim();
+            let right_path = path[pipe_pos + 1..].trim();
+
+            // Navigate left side from root (recursively handle multiple pipes)
+            let left_value = if left_path.is_empty() {
+                root
+            } else {
+                self.get_value_at_path(left_path)?
+            };
+
+            // Navigate right side from left value
+            return self.navigate_path(left_value, right_path);
+        }
+
+        // No pipe, just navigate normally
+        self.navigate_path(root, path)
+    }
+
+    /// Navigate a path from a starting value
+    fn navigate_path<'a>(&self, start_value: &'a Value, path: &str) -> Option<&'a Value> {
         // Remove leading dot if present
         let path = path.strip_prefix('.').unwrap_or(path);
 
         // Split path by dots and navigate
-        let mut current = root;
+        let mut current = start_value;
         for segment in path.split('.').filter(|s| !s.is_empty()) {
             // Handle array access like "items[]" or "items[0]"
             let (field_name, is_array) = if let Some(idx) = segment.find('[') {
@@ -111,11 +133,13 @@ impl JsonAnalyzer {
                 (segment, false)
             };
 
-            // Navigate to the field
-            current = match current {
-                Value::Object(map) => map.get(field_name)?,
-                _ => return None,
-            };
+            // Navigate to the field (unless it's just array access on current value like "[]")
+            if !field_name.is_empty() {
+                current = match current {
+                    Value::Object(map) => map.get(field_name)?,
+                    _ => return None,
+                };
+            }
 
             // If it's array access, get first element for field discovery
             if is_array {
@@ -245,5 +269,154 @@ mod tests {
         assert_eq!(suggestions.len(), 2);
         assert!(suggestions.iter().any(|s| s.text == ".id"));
         assert!(suggestions.iter().any(|s| s.text == ".name"));
+    }
+
+    #[test]
+    fn test_pipe_with_array_expansion() {
+        let mut analyzer = JsonAnalyzer::new();
+        let json = r#"{"data": {"users": [{"userId": "123", "name": "John"}]}}"#;
+        analyzer.analyze(json).unwrap();
+
+        // After pipe with array expansion: .data.users | .[]
+        let suggestions = analyzer.get_contextual_field_suggestions(".data.users | .[]", "");
+        assert_eq!(suggestions.len(), 2);
+        assert!(suggestions.iter().any(|s| s.text == ".userId"));
+        assert!(suggestions.iter().any(|s| s.text == ".name"));
+    }
+
+    #[test]
+    fn test_pipe_with_array_expansion_and_field() {
+        let mut analyzer = JsonAnalyzer::new();
+        let json = r#"{"data": {"users": [{"userId": "123", "profile": {"email": "test@example.com"}}]}}"#;
+        analyzer.analyze(json).unwrap();
+
+        // After pipe with array expansion and field: .data.users | .[].profile
+        let suggestions = analyzer.get_contextual_field_suggestions(".data.users | .[].profile", "");
+        assert_eq!(suggestions.len(), 1);
+        assert!(suggestions.iter().any(|s| s.text == ".email"));
+    }
+
+    #[test]
+    fn test_multiple_pipes() {
+        let mut analyzer = JsonAnalyzer::new();
+        let json = r#"{"outer": {"middle": {"inner": {"value": "test"}}}}"#;
+        analyzer.analyze(json).unwrap();
+
+        // Multiple pipes: .outer | .middle | .inner
+        let suggestions = analyzer.get_contextual_field_suggestions(".outer | .middle | .inner", "");
+        assert_eq!(suggestions.len(), 1);
+        assert!(suggestions.iter().any(|s| s.text == ".value"));
+    }
+
+    #[test]
+    fn test_multiple_pipes_with_arrays() {
+        let mut analyzer = JsonAnalyzer::new();
+        let json = r#"{"data": {"users": [{"posts": [{"title": "Hello", "body": "World"}]}]}}"#;
+        analyzer.analyze(json).unwrap();
+
+        // Complex: .data.users | .[].posts | .[].title
+        let suggestions = analyzer.get_contextual_field_suggestions(".data.users | .[].posts | .[]", "");
+        assert_eq!(suggestions.len(), 2);
+        assert!(suggestions.iter().any(|s| s.text == ".title"));
+        assert!(suggestions.iter().any(|s| s.text == ".body"));
+    }
+
+    #[test]
+    fn test_nested_arrays_without_pipes() {
+        let mut analyzer = JsonAnalyzer::new();
+        let json = r#"{"items": [{"subitems": [{"name": "test", "id": 1}]}]}"#;
+        analyzer.analyze(json).unwrap();
+
+        // Nested arrays: .items[].subitems[]
+        let suggestions = analyzer.get_contextual_field_suggestions(".items[].subitems[]", "");
+        assert_eq!(suggestions.len(), 2);
+        assert!(suggestions.iter().any(|s| s.text == ".name"));
+        assert!(suggestions.iter().any(|s| s.text == ".id"));
+    }
+
+    #[test]
+    fn test_pipe_at_root() {
+        let mut analyzer = JsonAnalyzer::new();
+        let json = r#"{"field1": "value1", "field2": "value2"}"#;
+        analyzer.analyze(json).unwrap();
+
+        // Pipe at root: . | (same as just .)
+        let suggestions = analyzer.get_contextual_field_suggestions(". | ", "");
+        assert_eq!(suggestions.len(), 2);
+        assert!(suggestions.iter().any(|s| s.text == ".field1"));
+        assert!(suggestions.iter().any(|s| s.text == ".field2"));
+    }
+
+    #[test]
+    fn test_complex_real_world_scenario() {
+        let mut analyzer = JsonAnalyzer::new();
+        let json = r#"{
+            "status": "success",
+            "data": {
+                "users": [
+                    {
+                        "userId": "usr-001",
+                        "username": "johndoe",
+                        "profile": {
+                            "firstName": "John",
+                            "lastName": "Doe",
+                            "email": "john@example.com"
+                        },
+                        "posts": [
+                            {
+                                "postId": "post-1",
+                                "title": "My First Post",
+                                "tags": ["tech", "coding"]
+                            }
+                        ]
+                    }
+                ]
+            }
+        }"#;
+        analyzer.analyze(json).unwrap();
+
+        // Test the exact scenario from the bug report: .data.users | .[].userId
+        let suggestions = analyzer.get_contextual_field_suggestions(".data.users | .[]", "u");
+        assert!(suggestions.iter().any(|s| s.text == ".userId"));
+        assert!(suggestions.iter().any(|s| s.text == ".username"));
+
+        // Test nested: .data.users | .[].profile
+        let suggestions = analyzer.get_contextual_field_suggestions(".data.users | .[].profile", "");
+        assert_eq!(suggestions.len(), 3);
+        assert!(suggestions.iter().any(|s| s.text == ".firstName"));
+        assert!(suggestions.iter().any(|s| s.text == ".lastName"));
+        assert!(suggestions.iter().any(|s| s.text == ".email"));
+
+        // Test double array expansion: .data.users | .[].posts | .[]
+        let suggestions = analyzer.get_contextual_field_suggestions(".data.users | .[].posts | .[]", "");
+        assert_eq!(suggestions.len(), 3);
+        assert!(suggestions.iter().any(|s| s.text == ".postId"));
+        assert!(suggestions.iter().any(|s| s.text == ".title"));
+        assert!(suggestions.iter().any(|s| s.text == ".tags"));
+    }
+
+    #[test]
+    fn test_malformed_path_with_unmatched_paren() {
+        let mut analyzer = JsonAnalyzer::new();
+        let json = r#"{"items": [{"name": "test"}]}"#;
+        analyzer.analyze(json).unwrap();
+
+        // Path with unmatched ')' should fail gracefully (return empty)
+        // This can happen from context extraction with function calls like: map(.items | .name) | .f
+        let suggestions = analyzer.get_contextual_field_suggestions(".items | .name) |", "");
+        // Should return empty because .name) isn't a valid field
+        assert_eq!(suggestions.len(), 0);
+    }
+
+    #[test]
+    fn test_invalid_paths_fail_gracefully() {
+        let mut analyzer = JsonAnalyzer::new();
+        let json = r#"{"data": {"items": [{"id": 1}]}}"#;
+        analyzer.analyze(json).unwrap();
+
+        // These should all return empty (nonexistent paths), not crash
+        assert_eq!(analyzer.get_contextual_field_suggestions(".nonexistent | .foo", "").len(), 0);
+        assert_eq!(analyzer.get_contextual_field_suggestions(".data.wrong | .[]", "").len(), 0);
+        assert_eq!(analyzer.get_contextual_field_suggestions(".data.items.nothere", "").len(), 0);
     }
 }

@@ -70,11 +70,14 @@ fn extract_path_before_current_field(before_cursor: &str) -> String {
 }
 
 /// Extract a clean jq path from potentially complex query
-/// Handles cases like: "map(.items) | .products" -> ".products"
+/// Now keeps pipes (handled by json_analyzer), only strips parentheses and semicolons
+/// Examples:
+///   "map(.items) | .products" -> ".items) | .products" (keeps pipe, strips 'map(')
+///   ".data.users | .[]" -> ".data.users | .[]" (keeps everything)
 fn extract_clean_path(text: &str) -> String {
-    // Find the last occurrence of pipe or other operators that reset context
+    // Find the last occurrence of operators that reset context
+    // Note: We DON'T include '|' here anymore since json_analyzer handles pipes
     let reset_positions = [
-        text.rfind('|'),
         text.rfind('('),
         text.rfind(';'),
     ];
@@ -86,17 +89,8 @@ fn extract_clean_path(text: &str) -> String {
         .map(|p| p + 1)
         .unwrap_or(0);
 
-    // Extract from last reset point
-    let mut path = text[last_reset..].trim().to_string();
-
-    // Remove trailing whitespace and operators
-    path = path.trim().to_string();
-
-    // If path doesn't start with a dot and isn't empty, it might be invalid
-    // Return empty in that case (conservative approach)
-    if !path.is_empty() && !path.starts_with('.') {
-        return String::new();
-    }
+    // Extract from last reset point (keeps pipes intact)
+    let path = text[last_reset..].trim().to_string();
 
     path
 }
@@ -274,5 +268,28 @@ mod tests {
     fn test_extract_path_with_array() {
         assert_eq!(extract_path_before_current_field(".services[].service"), ".services[]");
         assert_eq!(extract_path_before_current_field(".items[0].na"), ".items[0]");
+    }
+
+    #[test]
+    fn test_extract_path_with_pipe() {
+        // Pipes should now be kept in the path (json_analyzer handles them)
+        assert_eq!(extract_path_before_current_field(".data.users | .[]"), ".data.users |");
+        assert_eq!(extract_path_before_current_field(".data | .items | .[]"), ".data | .items |");
+        assert_eq!(extract_path_before_current_field(".org.hq.facilities.buildings | ."), ".org.hq.facilities.buildings |");
+    }
+
+    #[test]
+    fn test_extract_path_with_parentheses() {
+        // Parentheses should still reset context (function boundaries)
+        assert_eq!(extract_path_before_current_field("map(.items"), "");
+        assert_eq!(extract_path_before_current_field("select(.active) | .na"), ".active) |");
+    }
+
+    #[test]
+    fn test_extract_path_with_mixed_operators() {
+        // When both ( and | exist, take the rightmost one
+        // "map(.x | .y) | .z" -> after last ( is ".x | .y) | .z"
+        // Note: This has unmatched ')' but json_analyzer will handle gracefully
+        assert_eq!(extract_path_before_current_field("map(.items | .name) | .f"), ".items | .name) |");
     }
 }
