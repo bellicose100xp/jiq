@@ -93,7 +93,7 @@ impl App {
         // Add error indicator if there's an error
         if self.query_result.is_err() {
             title_spans.push(Span::styled(
-                "⚠ Error (Ctrl+E to view)",
+                "⚠ Syntax Error (Ctrl+E to view)",
                 Style::default().fg(Color::Yellow),
             ));
         }
@@ -262,7 +262,7 @@ impl App {
             // Render error overlay with distinct styling
             let error_block = Block::default()
                 .borders(Borders::ALL)
-                .title(" Error (Ctrl+E to close) ")
+                .title(" Syntax Error (Ctrl+E to close) ")
                 .border_style(Style::default().fg(Color::Red))
                 .style(Style::default().bg(Color::Black));
 
