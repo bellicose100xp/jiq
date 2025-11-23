@@ -264,8 +264,22 @@ impl App {
         let max_text_width = suggestions
             .iter()
             .map(|s| {
-                let type_label = format!("[{}]", s.suggestion_type);
-                s.text.len() + type_label.len() + TYPE_LABEL_SPACING
+                // Calculate actual type label length including field type if present
+                let type_label_len = match &s.suggestion_type {
+                    SuggestionType::Field => {
+                        if let Some(field_type) = &s.field_type {
+                            // Format: "[field: TypeName]" = "[field: " (8) + TypeName + "]" (1)
+                            9 + field_type.to_string().len()
+                        } else {
+                            7 // "[field]"
+                        }
+                    }
+                    _ => {
+                        // Other types: "[fn]", "[op]", "[pat]"
+                        s.suggestion_type.to_string().len() + 2 // "[]" wrapping
+                    }
+                };
+                s.text.len() + type_label_len + TYPE_LABEL_SPACING
             })
             .max()
             .unwrap_or(20)

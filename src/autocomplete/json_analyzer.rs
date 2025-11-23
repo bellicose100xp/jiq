@@ -764,4 +764,57 @@ mod tests {
             Some(JsonFieldType::String)
         );
     }
+
+    #[test]
+    fn test_prefix_filtering_preserves_types() {
+        let json = r#"{"name": "Alice", "nickname": "Ally", "age": 30, "note": null}"#;
+        let mut analyzer = JsonAnalyzer::new();
+        analyzer.analyze(json).unwrap();
+
+        // Filter with prefix "n" - should get name, nickname, note
+        let suggestions = analyzer.get_contextual_field_suggestions("", "n");
+        assert_eq!(suggestions.len(), 3);
+
+        // Verify types are preserved after filtering
+        let name_sugg = suggestions.iter().find(|s| s.text == ".name").unwrap();
+        assert_eq!(name_sugg.field_type, Some(JsonFieldType::String));
+
+        let nickname_sugg = suggestions.iter().find(|s| s.text == ".nickname").unwrap();
+        assert_eq!(nickname_sugg.field_type, Some(JsonFieldType::String));
+
+        let note_sugg = suggestions.iter().find(|s| s.text == ".note").unwrap();
+        assert_eq!(note_sugg.field_type, Some(JsonFieldType::Null));
+
+        // age should be filtered out
+        assert!(suggestions.iter().all(|s| s.text != ".age"));
+    }
+
+    #[test]
+    fn test_case_insensitive_prefix_filtering_with_types() {
+        let json = r#"{"Name": "Bob", "AGE": 25, "Active": true}"#;
+        let mut analyzer = JsonAnalyzer::new();
+        analyzer.analyze(json).unwrap();
+
+        // Filter with lowercase prefix should match mixed case fields
+        let suggestions = analyzer.get_contextual_field_suggestions("", "a");
+        assert_eq!(suggestions.len(), 2); // "AGE" and "Active"
+
+        // Verify types are correct
+        let age_sugg = suggestions.iter().find(|s| s.text == ".AGE").unwrap();
+        assert_eq!(age_sugg.field_type, Some(JsonFieldType::Number));
+
+        let active_sugg = suggestions.iter().find(|s| s.text == ".Active").unwrap();
+        assert_eq!(active_sugg.field_type, Some(JsonFieldType::Boolean));
+    }
+
+    #[test]
+    fn test_root_level_array_returns_empty() {
+        let json = r#"[{"id": 1, "name": "Item1"}, {"id": 2, "name": "Item2"}]"#;
+        let mut analyzer = JsonAnalyzer::new();
+        analyzer.analyze(json).unwrap();
+
+        // Top-level is an array, not an object, so should return empty
+        let suggestions = analyzer.get_contextual_field_suggestions("", "");
+        assert_eq!(suggestions.len(), 0);
+    }
 }
