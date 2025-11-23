@@ -109,17 +109,86 @@ fn extract_path_before_current_field(before_cursor: &str) -> String {
 /// Now keeps pipes (handled by json_analyzer), only strips parentheses and semicolons
 /// Also handles colons (for object constructor values) and strips leading constructors
 /// Examples:
-///   "map(.items) | .products" -> ".items) | .products" (keeps pipe, strips 'map(')
+///   ".data | select(.field" -> ".data |" (preserves context before function)
 ///   ".data.users | .[]" -> ".data.users | .[]" (keeps everything)
 ///   "name: .user" -> ".user" (strips object key)
 ///   "[.path" -> ".path" (strips leading constructor)
 ///   ".items[0:5]" -> ".items[0:5]" (keeps array slice colon)
 fn extract_clean_path(text: &str) -> String {
-    // Find the last occurrence of operators that reset context
-    // Note: We DON'T include '|' here anymore since json_analyzer handles pipes
-    // For ':' we need to check if it's inside brackets (array slice) or not (object constructor)
+    // Check if we're inside an UNMATCHED parenthesis (function call)
+    // Only unmatched '(' should trigger context preservation
+    if let Some(unmatched_paren_pos) = find_unmatched_paren_start(text) {
+        let before_paren = &text[..unmatched_paren_pos];
+
+        // Look for a pipe before the function call
+        // For ".data | select(.field" we want to return ".data |"
+        // This preserves the piped context for suggestions inside the function
+        if let Some(pipe_pos) = before_paren.rfind('|') {
+            // Return everything up to and including the pipe
+            return text[..=pipe_pos].trim().to_string();
+        }
+
+        // No pipe before the parenthesis - function called at root level
+        return String::new();
+    }
+
+    // If we have matched parentheses and the text ends with |,
+    // we need to recursively clean what's before the last pipe
+    // This handles cases like ".buildings[] | select(...) | " -> ".buildings[] |"
+    if text.trim().ends_with('|') && text.contains('(')
+        && let Some(last_pipe_pos) = text.rfind('|')
+    {
+        let before_last_pipe = text[..last_pipe_pos].trim();
+        // Recursively clean what's before the pipe
+        // This will strip any complete function calls
+        let cleaned = extract_clean_path(before_last_pipe);
+        if !cleaned.is_empty() {
+            // Check if cleaned already ends with |, if so don't add another
+            if cleaned.trim().ends_with('|') {
+                return cleaned;
+            } else {
+                return format!("{} |", cleaned);
+            }
+        } else {
+            return String::new();
+        }
+    }
+
+    // If we have matched parentheses, check if this is a standalone function call
+    // Strip it entirely (e.g., "select(.active)" -> "", "map(.items | .name)" -> "")
+    // or if it ends with a function call after a pipe (e.g., ".users | map(.items)" -> ".users |")
+    if text.contains('(') && text.contains(')') && text.trim().ends_with(')') {
+        // Check if parens are balanced (all matched)
+        let open_count = text.matches('(').count();
+        let close_count = text.matches(')').count();
+        if open_count == close_count {
+            let trimmed = text.trim();
+
+            // Check if there's a pipe before the function (outside all matched parens)
+            if let Some(last_pipe_pos) = find_last_pipe_outside_parens(trimmed) {
+                // Check if everything after the pipe is a function call
+                let after_pipe = trimmed[last_pipe_pos + 1..].trim();
+                if let Some(paren_pos) = after_pipe.find('(') {
+                    let func_name = &after_pipe[..paren_pos];
+                    if func_name.chars().all(|c| c.is_alphanumeric() || c == '_' || c.is_whitespace()) {
+                        // Return everything up to and including the pipe
+                        return trimmed[..=last_pipe_pos].trim().to_string();
+                    }
+                }
+            } else {
+                // No pipe, check if the whole thing is a function call
+                if let Some(paren_pos) = trimmed.find('(') {
+                    let before_paren = &trimmed[..paren_pos];
+                    if before_paren.chars().all(|c| c.is_alphanumeric() || c == '_') {
+                        return String::new();
+                    }
+                }
+            }
+        }
+    }
+
+    // Original logic for non-function cases
     let reset_positions = [
-        text.rfind('('),
         text.rfind(';'),
         find_last_colon_outside_brackets(text), // Only colons outside brackets
     ];
@@ -168,6 +237,71 @@ fn find_last_colon_outside_brackets(text: &str) -> Option<usize> {
     }
 
     last_colon_pos
+}
+
+/// Find the last pipe '|' that's outside all matched parentheses
+/// Returns the BYTE position of the last pipe outside parens, or None if no such pipe exists
+///
+/// Examples:
+///   ".data | select(.x | .y)" -> Some(6) (pipe after .data, not the one inside select)
+///   "select(.x | .y) | .z" -> Some(16) (pipe after the select)
+///   ".x | .y" -> Some(3) (the pipe)
+///   "select(.x)" -> None (no pipe outside parens)
+fn find_last_pipe_outside_parens(text: &str) -> Option<usize> {
+    let mut paren_depth: i32 = 0;
+
+    // Scan backwards to find pipes outside parentheses
+    let chars: Vec<(usize, char)> = text.char_indices().collect();
+
+    for i in (0..chars.len()).rev() {
+        let (byte_pos, ch) = chars[i];
+        match ch {
+            ')' => paren_depth += 1,
+            '(' => paren_depth = paren_depth.saturating_sub(1),
+            '|' if paren_depth == 0 => {
+                // Found a pipe outside all parentheses
+                return Some(byte_pos);
+            }
+            _ => {}
+        }
+    }
+
+    None
+}
+
+/// Find the position of an unmatched opening parenthesis '('
+/// Returns the BYTE position of the innermost (rightmost) unmatched '(', or None if all are matched
+/// This is used to detect if we're inside a function call
+///
+/// Examples:
+///   "select(.name" -> Some(6) (unmatched '(' from select)
+///   "select(.name | contains(" -> Some(19) (unmatched '(' from contains, the innermost)
+///   "select(.name)" -> None (matched parentheses)
+///   ".data | map(.items) | [" -> None (map's parens are matched)
+fn find_unmatched_paren_start(text: &str) -> Option<usize> {
+    let mut depth = 0;
+
+    // Scan backwards to find the innermost unmatched opening parenthesis
+    let chars: Vec<(usize, char)> = text.char_indices().collect();
+
+    for i in (0..chars.len()).rev() {
+        let (byte_pos, ch) = chars[i];
+        match ch {
+            ')' => depth += 1,
+            '(' => {
+                if depth == 0 {
+                    // Found an unmatched opening parenthesis - return immediately
+                    // This gives us the innermost (rightmost) unmatched paren
+                    return Some(byte_pos);
+                } else {
+                    depth -= 1;
+                }
+            }
+            _ => {}
+        }
+    }
+
+    None
 }
 
 /// Find the position of an unmatched opening bracket '[' or brace '{'
@@ -412,17 +546,24 @@ mod tests {
 
     #[test]
     fn test_extract_path_with_parentheses() {
-        // Parentheses should still reset context (function boundaries)
+        // Inside function at root level
         assert_eq!(extract_path_before_current_field("map(.items"), "");
-        assert_eq!(extract_path_before_current_field("select(.active) | .na"), ".active) |");
+        assert_eq!(extract_path_before_current_field("select(.active"), "");
+
+        // After a function, back at root level
+        assert_eq!(extract_path_before_current_field("select(.active) | .na"), "");
     }
 
     #[test]
     fn test_extract_path_with_mixed_operators() {
-        // When both ( and | exist, take the rightmost one
-        // "map(.x | .y) | .z" -> after last ( is ".x | .y) | .z"
-        // Note: This has unmatched ')' but json_analyzer will handle gracefully
-        assert_eq!(extract_path_before_current_field("map(.items | .name) | .f"), ".items | .name) |");
+        // Inside a function that's after a pipe - preserves context
+        assert_eq!(extract_path_before_current_field(".data | map(.items"), ".data |");
+
+        // After a complete function with internal pipes - strips the function
+        assert_eq!(
+            extract_path_before_current_field("map(.items | .name) | .f"),
+            ""
+        );
     }
 
     // Tests for array constructor contexts
@@ -479,6 +620,45 @@ mod tests {
         assert_eq!(extract_path_before_current_field(".data[0].user.name"), ".data[0].user");
     }
 
+    // Tests for find_last_pipe_outside_parens helper
+    #[test]
+    fn test_find_last_pipe_outside_parens() {
+        // Pipe outside all parens
+        assert_eq!(find_last_pipe_outside_parens(".data | select(.x)"), Some(6));
+        assert_eq!(find_last_pipe_outside_parens(".x | .y"), Some(3));
+
+        // Pipe inside function should be ignored, find the one outside
+        assert_eq!(find_last_pipe_outside_parens(".data | select(.x | .y)"), Some(6));
+        assert_eq!(find_last_pipe_outside_parens("select(.x | .y) | .z"), Some(16));
+
+        // Complex nested case
+        assert_eq!(
+            find_last_pipe_outside_parens(".buildings[] | select(.name | contains(\"Main\"))"),
+            Some(13) // The pipe after .buildings[]
+        );
+
+        // No pipe outside parens
+        assert_eq!(find_last_pipe_outside_parens("select(.x)"), None);
+        assert_eq!(find_last_pipe_outside_parens("map(.x | .y)"), None);
+    }
+
+    // Tests for find_unmatched_paren_start helper
+    #[test]
+    fn test_find_unmatched_paren_start() {
+        // Unmatched parentheses
+        assert_eq!(find_unmatched_paren_start("select(.name"), Some(6));
+        assert_eq!(find_unmatched_paren_start(".data | select(.active"), Some(14));
+        assert_eq!(find_unmatched_paren_start("select(.name | contains("), Some(23));
+
+        // Matched parentheses
+        assert_eq!(find_unmatched_paren_start("select(.name)"), None);
+        assert_eq!(find_unmatched_paren_start(".data | map(.items)"), None);
+        assert_eq!(find_unmatched_paren_start(".data | map(.items) | [.id"), None);
+
+        // Nested matched parentheses
+        assert_eq!(find_unmatched_paren_start("map(select(.x))"), None);
+    }
+
     // Tests for find_unmatched_constructor_start helper
     #[test]
     fn test_find_unmatched_constructor_start() {
@@ -505,11 +685,83 @@ mod tests {
         // Array inside array
         assert_eq!(extract_path_before_current_field("[[.name"), "");
 
-        // Multiple levels
-        assert_eq!(extract_path_before_current_field(".users | map(.items) | [.id"), ".items) |");
+        // Array constructor after function - strips the function, preserves data path
+        assert_eq!(extract_path_before_current_field(".users | map(.items) | [.id"), ".users |");
 
         // Object with array value
         assert_eq!(extract_path_before_current_field("{tags: [.tag"), "");
+    }
+
+    // Tests for select() and function contexts - Bug fix for autosuggestion issue
+    #[test]
+    fn test_select_with_piped_context() {
+        // THE MAIN BUG: Inside select() - should preserve context before select
+        // This was showing root-level .organization instead of building fields
+        assert_eq!(
+            extract_path_before_current_field(".buildings[] | select(."),
+            ".buildings[] |"
+        );
+        assert_eq!(
+            extract_path_before_current_field(".organization.headquarters.facilities.buildings[] | select(."),
+            ".organization.headquarters.facilities.buildings[] |"
+        );
+
+        // Nested path inside select
+        assert_eq!(
+            extract_path_before_current_field(".buildings[] | select(.name"),
+            ".buildings[] |"
+        );
+
+        // After the select, when typing the last | .name from the bug report
+        // The select() function should be stripped since it doesn't change the type
+        assert_eq!(
+            extract_path_before_current_field(".organization.headquarters.facilities.buildings[] | select(.name | contains(\"Main\")) | .name"),
+            ".organization.headquarters.facilities.buildings[] |"
+        );
+    }
+
+    #[test]
+    fn test_map_with_piped_context() {
+        // Inside map() - should preserve context before map
+        assert_eq!(
+            extract_path_before_current_field(".items | map(."),
+            ".items |"
+        );
+        assert_eq!(
+            extract_path_before_current_field(".data.users | map(.profile"),
+            ".data.users |"
+        );
+    }
+
+    #[test]
+    fn test_nested_functions_with_pipes() {
+        // Inside inner function
+        assert_eq!(
+            extract_path_before_current_field(".data | select(.active) | map(."),
+            ".data | select(.active) |"
+        );
+    }
+
+    #[test]
+    fn test_array_iterator_after_select() {
+        // Inside select - preserves context before select
+        assert_eq!(
+            extract_path_before_current_field(".buildings[] | select(.name"),
+            ".buildings[] |"
+        );
+
+        // Inside nested function within select - should preserve context before the nested function
+        assert_eq!(
+            extract_path_before_current_field(".buildings[] | select(.name | contains(."),
+            ".buildings[] | select(.name |"
+        );
+
+        // After complete select with nested functions (all parens matched)
+        // The select should be stripped to get the actual data type
+        assert_eq!(
+            extract_path_before_current_field(".buildings[] | select(.name | contains(\"Main\")) | ."),
+            ".buildings[] |"
+        );
     }
 
     // Tests for Unicode/multi-byte character handling (Bug fix verification)
