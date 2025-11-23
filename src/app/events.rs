@@ -41,6 +41,14 @@ impl App {
             return true;
         }
 
+        // Ctrl+E: Toggle error overlay (only if error exists)
+        if key.code == KeyCode::Char('e') && key.modifiers.contains(KeyModifiers::CONTROL) {
+            if self.query_result.is_err() {
+                self.error_overlay_visible = !self.error_overlay_visible;
+            }
+            return true;
+        }
+
         // Tab: Accept autocomplete suggestion (if visible in input field)
         if key.code == KeyCode::Tab && !key.modifiers.contains(KeyModifiers::CONTROL) {
             // Check if autocomplete is visible and we're in input field
@@ -353,6 +361,7 @@ impl App {
         }
 
         self.results_scroll = 0;
+        self.error_overlay_visible = false; // Auto-hide error overlay on query change
     }
 
     /// Handle keys when Results pane is focused
