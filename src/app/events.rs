@@ -416,6 +416,9 @@ mod tests {
     use super::*;
     use crate::autocomplete::{Suggestion, SuggestionType};
 
+    // Test fixture data
+    const TEST_JSON: &str = r#"{"name": "test", "age": 30, "city": "NYC"}"#;
+
     // Helper to create a KeyEvent without modifiers
     fn key(code: KeyCode) -> KeyEvent {
         KeyEvent::new(code, KeyModifiers::empty())
@@ -428,10 +431,17 @@ mod tests {
 
     // Helper to set up an app with text in the query field
     fn app_with_query(query: &str) -> App {
-        let json = r#"{"name": "test", "age": 30, "city": "NYC"}"#;
-        let mut app = App::new(json.to_string());
+        let mut app = App::new(TEST_JSON.to_string());
         app.textarea.insert_str(query);
         app
+    }
+
+    // Helper to move cursor to specific position by text content
+    fn move_cursor_to_position(app: &mut App, target_pos: usize) {
+        app.textarea.move_cursor(CursorMove::Head);
+        for _ in 0..target_pos {
+            app.textarea.move_cursor(CursorMove::Forward);
+        }
     }
 
     // ========== VIM Operator Tests ==========
@@ -456,11 +466,8 @@ mod tests {
     #[test]
     fn test_operator_dw_deletes_word_from_middle() {
         let mut app = app_with_query(".name.first");
-        app.textarea.move_cursor(CursorMove::Head);
         // Move to position 5 (at the dot before "first")
-        for _ in 0..5 {
-            app.textarea.move_cursor(CursorMove::Forward);
-        }
+        move_cursor_to_position(&mut app, 5);
         app.editor_mode = EditorMode::Normal;
 
         app.handle_key_event(key(KeyCode::Char('d')));
@@ -499,11 +506,8 @@ mod tests {
     #[test]
     fn test_operator_d_dollar_deletes_to_end_of_line() {
         let mut app = app_with_query(".name.first");
-        app.textarea.move_cursor(CursorMove::Head);
-        // Move to position 5
-        for _ in 0..5 {
-            app.textarea.move_cursor(CursorMove::Forward);
-        }
+        // Move to position 5 (after ".name")
+        move_cursor_to_position(&mut app, 5);
         app.editor_mode = EditorMode::Normal;
 
         app.handle_key_event(key(KeyCode::Char('d')));
@@ -515,11 +519,8 @@ mod tests {
     #[test]
     fn test_operator_d0_deletes_to_start_of_line() {
         let mut app = app_with_query(".name.first");
-        app.textarea.move_cursor(CursorMove::End);
-        // Move back a few chars
-        for _ in 0..5 {
-            app.textarea.move_cursor(CursorMove::Back);
-        }
+        // Move to middle of text
+        move_cursor_to_position(&mut app, 6);
         app.editor_mode = EditorMode::Normal;
 
         app.handle_key_event(key(KeyCode::Char('d')));
@@ -570,7 +571,7 @@ mod tests {
     fn test_operator_invalid_motion_cancels() {
         let mut app = app_with_query(".name");
         app.editor_mode = EditorMode::Normal;
-        let original_len = app.query().len();
+        let original_query = app.query().to_string();
 
         app.handle_key_event(key(KeyCode::Char('d')));
         assert!(matches!(app.editor_mode, EditorMode::Operator('d')));
@@ -578,10 +579,27 @@ mod tests {
         // Press invalid motion key (z is not a valid motion)
         app.handle_key_event(key(KeyCode::Char('z')));
 
-        // Should cancel operator and return to Normal mode
+        // Should cancel operator and return to Normal mode without changing text
         assert_eq!(app.editor_mode, EditorMode::Normal);
-        // Text should be roughly the same length (selection gets cancelled)
-        assert!(app.query().len() >= original_len - 1);
+        assert_eq!(app.query(), original_query);
+    }
+
+    #[test]
+    fn test_escape_in_operator_mode_cancels_operator() {
+        let mut app = app_with_query(".name");
+        app.editor_mode = EditorMode::Normal;
+        let original_query = app.query().to_string();
+
+        // Enter operator mode
+        app.handle_key_event(key(KeyCode::Char('d')));
+        assert!(matches!(app.editor_mode, EditorMode::Operator('d')));
+
+        // Press Escape - should NOT go to Insert mode, should cancel operator
+        app.handle_key_event(key(KeyCode::Esc));
+
+        // Should return to Normal mode and preserve text
+        assert_eq!(app.editor_mode, EditorMode::Normal);
+        assert_eq!(app.query(), original_query);
     }
 
     #[test]
@@ -724,10 +742,7 @@ mod tests {
     #[test]
     fn test_capital_d_deletes_to_end_of_line() {
         let mut app = app_with_query(".name.first");
-        app.textarea.move_cursor(CursorMove::Head);
-        for _ in 0..5 {
-            app.textarea.move_cursor(CursorMove::Forward);
-        }
+        move_cursor_to_position(&mut app, 5);
         app.editor_mode = EditorMode::Normal;
 
         app.handle_key_event(key(KeyCode::Char('D')));
@@ -738,10 +753,7 @@ mod tests {
     #[test]
     fn test_capital_c_changes_to_end_of_line() {
         let mut app = app_with_query(".name.first");
-        app.textarea.move_cursor(CursorMove::Head);
-        for _ in 0..5 {
-            app.textarea.move_cursor(CursorMove::Forward);
-        }
+        move_cursor_to_position(&mut app, 5);
         app.editor_mode = EditorMode::Normal;
 
         app.handle_key_event(key(KeyCode::Char('C')));
@@ -952,38 +964,40 @@ mod tests {
     }
 
     #[test]
-    fn test_tab_without_autocomplete_does_nothing() {
-        let mut app = app_with_query(".name");
+    fn test_tab_without_autocomplete_stays_in_consistent_state() {
+        let mut app = app_with_query("x");  // Use a query that won't trigger autocomplete
         app.editor_mode = EditorMode::Insert;
         app.focus = Focus::InputField;
+
+        // Ensure autocomplete is not visible
+        app.autocomplete.hide();
         assert!(!app.autocomplete.is_visible());
 
-        let query_before = app.query().to_string();
         app.handle_key_event(key(KeyCode::Tab));
 
-        // Tab without autocomplete just gets passed through to textarea (might insert spaces)
-        // The important thing is that it doesn't crash and returns false from global handler
-        // We just verify the app is still in a consistent state
+        // Tab without autocomplete gets passed through to textarea
+        // Verify the app remains in a consistent state (doesn't crash, mode unchanged)
         assert_eq!(app.editor_mode, EditorMode::Insert);
         assert_eq!(app.focus, Focus::InputField);
     }
 
     #[test]
-    fn test_autocomplete_only_navigates_in_insert_mode() {
+    fn test_autocomplete_navigation_only_works_in_insert_mode() {
         let mut app = app_with_query(".na");
         app.editor_mode = EditorMode::Normal;
+        app.focus = Focus::InputField;
 
         let suggestions = vec![
             Suggestion::new(".name", SuggestionType::Field),
         ];
         app.autocomplete.update_suggestions(suggestions);
 
-        // Down arrow in Normal mode should not navigate autocomplete
+        // Down arrow in Normal mode should NOT navigate autocomplete (it's not handled)
         let selected_before = app.autocomplete.selected().unwrap().text.clone();
         app.handle_key_event(key(KeyCode::Down));
         let selected_after = app.autocomplete.selected().unwrap().text.clone();
 
-        // Selection should remain unchanged (down is handled differently in Normal mode)
+        // Autocomplete selection should remain unchanged in Normal mode
         assert_eq!(selected_before, selected_after);
     }
 
