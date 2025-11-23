@@ -70,6 +70,12 @@ Technical documentation and architecture notes for the jiq codebase.
 - Popup rendering
 - Performance optimization
 
+**[subsystems/SYNTAX_HIGHLIGHTING.md](subsystems/SYNTAX_HIGHLIGHTING.md)** - jq syntax highlighting
+- Color scheme and token types
+- Character-by-character parser
+- Overlay rendering approach
+- Edge cases and test coverage
+
 ### Feature Documentation
 
 **[features/AUTOCOMPLETE.md](features/AUTOCOMPLETE.md)** - Original autocomplete feature notes
