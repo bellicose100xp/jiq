@@ -48,6 +48,9 @@ pub fn get_suggestions(
 ///   ".services[].service" -> ".services[]"
 ///   ".na" -> ""
 ///   "." -> ""
+///   "[.name, .age" -> "" (inside array constructor, use root context)
+///   ".users | [.id, ." -> ".users |" (pipe before constructor)
+///   "{name: .user.na" -> ".user" (nested path inside object constructor)
 fn extract_path_before_current_field(before_cursor: &str) -> String {
     // Find the last dot position
     let last_dot_pos = match before_cursor.rfind('.') {
@@ -63,23 +66,61 @@ fn extract_path_before_current_field(before_cursor: &str) -> String {
     // Extract everything before the last dot
     let path = &before_cursor[..last_dot_pos];
 
-    // Clean up the path:
-    // - Remove trailing pipes, parentheses, etc.
-    // - Keep only the valid jq path portion
+    // Check if we're inside an array or object constructor
+    if let Some(constructor_pos) = find_unmatched_constructor_start(path) {
+        // We're inside a constructor like [...] or {...}
+
+        // Look at what's inside the constructor (after the opening bracket)
+        let inside_constructor = &path[constructor_pos + 1..];
+
+        // For constructors, elements are separated by commas
+        // Find the last comma to get the current element's path
+        let current_element = if let Some(comma_pos) = inside_constructor.rfind(',') {
+            &inside_constructor[comma_pos + 1..]
+        } else {
+            inside_constructor
+        };
+
+        // Clean the current element's path (handles nested paths and object key:value syntax)
+        let element_path = extract_clean_path(current_element);
+
+        if !element_path.is_empty() {
+            // We have a path within the current constructor element (e.g., [.user.name -> ".user")
+            return element_path;
+        }
+
+        // No path in current element - use context before the constructor
+        // (e.g., .users | [.name -> ".users |")
+        if constructor_pos == 0 {
+            // Constructor at the start, use root context
+            return String::new();
+        }
+
+        // Extract and clean the path before the constructor
+        let before_constructor = &path[..constructor_pos];
+        return extract_clean_path(before_constructor);
+    }
+
+    // Normal path extraction (not inside constructor)
     extract_clean_path(path)
 }
 
 /// Extract a clean jq path from potentially complex query
 /// Now keeps pipes (handled by json_analyzer), only strips parentheses and semicolons
+/// Also handles colons (for object constructor values) and strips leading constructors
 /// Examples:
 ///   "map(.items) | .products" -> ".items) | .products" (keeps pipe, strips 'map(')
 ///   ".data.users | .[]" -> ".data.users | .[]" (keeps everything)
+///   "name: .user" -> ".user" (strips object key)
+///   "[.path" -> ".path" (strips leading constructor)
 fn extract_clean_path(text: &str) -> String {
     // Find the last occurrence of operators that reset context
     // Note: We DON'T include '|' here anymore since json_analyzer handles pipes
+    // Added ':' for object constructor value extraction
     let reset_positions = [
         text.rfind('('),
         text.rfind(';'),
+        text.rfind(':'), // For object constructors like {name: .value}
     ];
 
     let last_reset = reset_positions
@@ -90,9 +131,55 @@ fn extract_clean_path(text: &str) -> String {
         .unwrap_or(0);
 
     // Extract from last reset point (keeps pipes intact)
-    let path = text[last_reset..].trim().to_string();
+    let mut path = text[last_reset..].trim().to_string();
+
+    // Strip any leading constructor brackets that might remain
+    // This handles cases like "[[.name" -> "[" -> ""
+    while path.starts_with('[') || path.starts_with('{') {
+        path = path[1..].trim().to_string();
+    }
 
     path
+}
+
+/// Find the position of an unmatched opening bracket '[' or brace '{'
+/// Returns the position of the unmatched opener, or None if all are matched
+/// This is used to detect if we're inside an array or object constructor
+///
+/// Examples:
+///   "[.name, .age" -> Some(0) (unmatched '[')
+///   ".users | [.id, " -> Some(9) (unmatched '[')
+///   ".items[0].na" -> None (the '[' is matched by ']')
+///   "{name: .user" -> Some(0) (unmatched '{')
+fn find_unmatched_constructor_start(text: &str) -> Option<usize> {
+    let mut depth_square = 0; // Track [ ] pairs
+    let mut depth_curly = 0;  // Track { } pairs
+    let chars: Vec<char> = text.chars().collect();
+
+    // Scan backwards from the end
+    for i in (0..chars.len()).rev() {
+        match chars[i] {
+            ']' => depth_square += 1,
+            '[' => {
+                if depth_square == 0 {
+                    // Found an unmatched opening bracket
+                    return Some(i);
+                }
+                depth_square -= 1;
+            }
+            '}' => depth_curly += 1,
+            '{' => {
+                if depth_curly == 0 {
+                    // Found an unmatched opening brace
+                    return Some(i);
+                }
+                depth_curly -= 1;
+            }
+            _ => {}
+        }
+    }
+
+    None
 }
 
 /// Analyze the text before cursor to determine context and partial word
@@ -291,5 +378,92 @@ mod tests {
         // "map(.x | .y) | .z" -> after last ( is ".x | .y) | .z"
         // Note: This has unmatched ')' but json_analyzer will handle gracefully
         assert_eq!(extract_path_before_current_field("map(.items | .name) | .f"), ".items | .name) |");
+    }
+
+    // Tests for array constructor contexts
+    #[test]
+    fn test_array_constructor_simple() {
+        // Inside array constructor at root level
+        assert_eq!(extract_path_before_current_field("[.name"), "");
+        assert_eq!(extract_path_before_current_field("[.name, .age"), "");
+        assert_eq!(extract_path_before_current_field("[.name, .age, ."), "");
+    }
+
+    #[test]
+    fn test_array_constructor_after_pipe() {
+        // Array constructor after pipe - should use context before the constructor
+        assert_eq!(extract_path_before_current_field(".users | [.name"), ".users |");
+        assert_eq!(extract_path_before_current_field(".users | [.name, .age"), ".users |");
+        assert_eq!(extract_path_before_current_field(".data.items | [.id, ."), ".data.items |");
+    }
+
+    #[test]
+    fn test_array_constructor_nested_path() {
+        // Nested paths inside array constructor
+        assert_eq!(extract_path_before_current_field("[.user.name"), ".user");
+        assert_eq!(extract_path_before_current_field("[.data.items[0].id"), ".data.items[0]");
+    }
+
+    // Tests for object constructor contexts
+    #[test]
+    fn test_object_constructor_simple() {
+        // Inside object constructor at root level
+        assert_eq!(extract_path_before_current_field("{name: .name"), "");
+        assert_eq!(extract_path_before_current_field("{name: .name, age: .age"), "");
+    }
+
+    #[test]
+    fn test_object_constructor_nested_path() {
+        // Nested paths inside object constructor
+        assert_eq!(extract_path_before_current_field("{name: .user.name"), ".user");
+        assert_eq!(extract_path_before_current_field("{id: .data.id, name: .data.name"), ".data");
+    }
+
+    #[test]
+    fn test_object_constructor_after_pipe() {
+        // Object constructor after pipe
+        assert_eq!(extract_path_before_current_field(".users | {name: .name"), ".users |");
+        assert_eq!(extract_path_before_current_field(".items | {id: .id, title: ."), ".items |");
+    }
+
+    // Test to ensure matched brackets don't trigger constructor detection
+    #[test]
+    fn test_matched_brackets_not_constructor() {
+        // These should work as normal (brackets are matched, so no constructor)
+        assert_eq!(extract_path_before_current_field(".items[].name"), ".items[]");
+        assert_eq!(extract_path_before_current_field(".data[0].user.name"), ".data[0].user");
+    }
+
+    // Tests for find_unmatched_constructor_start helper
+    #[test]
+    fn test_find_unmatched_constructor_start() {
+        // Array constructors
+        assert_eq!(find_unmatched_constructor_start("[.name"), Some(0));
+        assert_eq!(find_unmatched_constructor_start(".users | [.id"), Some(9));
+
+        // Object constructors
+        assert_eq!(find_unmatched_constructor_start("{name: .x"), Some(0));
+        assert_eq!(find_unmatched_constructor_start(".data | {id: .id"), Some(8));
+
+        // Matched brackets (not constructors)
+        assert_eq!(find_unmatched_constructor_start(".items[]"), None);
+        assert_eq!(find_unmatched_constructor_start(".data[0]"), None);
+        assert_eq!(find_unmatched_constructor_start(".items[].name"), None);
+
+        // Nested matched brackets
+        assert_eq!(find_unmatched_constructor_start(".a[.b[0]]"), None);
+    }
+
+    // Complex mixed scenarios
+    #[test]
+    fn test_complex_constructor_scenarios() {
+        // Array inside array
+        assert_eq!(extract_path_before_current_field("[[.name"), "");
+
+        // Multiple levels
+        assert_eq!(extract_path_before_current_field(".users | map(.items) | [.id"), ".items) |");
+
+        // Object with array value
+        assert_eq!(extract_path_before_current_field("{tags: [.tag"), "");
     }
 }
