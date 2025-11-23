@@ -394,4 +394,28 @@ mod tests {
         // Should highlight .items as field, [0] as operator+number
         assert!(spans.len() >= 3);
     }
+
+    #[test]
+    fn test_keywords_inside_strings_not_highlighted() {
+        // Keywords inside strings should NOT be highlighted - entire string is green
+        let spans = JqHighlighter::highlight(r#""if then else""#);
+        assert_eq!(spans.len(), 1, "String should be a single span");
+        assert_eq!(spans[0].content, r#""if then else""#);
+        assert_eq!(spans[0].style.fg, Some(Color::Green), "Entire string should be green, keywords not highlighted");
+    }
+
+    #[test]
+    fn test_query_with_string_containing_keywords() {
+        let spans = JqHighlighter::highlight(r#"select(.status == "if")"#);
+
+        // Find the string span
+        let string_span = spans.iter().find(|s| s.content == r#""if""#);
+        assert!(string_span.is_some(), "String should be present");
+        assert_eq!(string_span.unwrap().style.fg, Some(Color::Green), "String 'if' should be green, not yellow");
+
+        // Find the select keyword
+        let select_span = spans.iter().find(|s| s.content == "select");
+        assert!(select_span.is_some(), "select keyword should be present");
+        assert_eq!(select_span.unwrap().style.fg, Some(Color::Blue), "select should be blue (function)");
+    }
 }

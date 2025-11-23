@@ -83,3 +83,4 @@ Possible enhancements for the future:
 - **Rendering**: Overlay approach using `Paragraph` widget on top of `tui-textarea`
 - **Performance**: Highlighting runs on every render, but is fast enough for single-line queries
 - **Dependencies**: None - uses only built-in Rust string processing and ratatui's styling
+- **String handling**: Strings are parsed as single units - keywords inside strings are NOT highlighted separately (e.g., `"if"` is entirely green, not yellow)
