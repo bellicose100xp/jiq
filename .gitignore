@@ -20,6 +20,3 @@ Cargo.lock
 # Test artifacts
 *.profraw
 *.profdata
-
-# Internal development documentation
-/development/
