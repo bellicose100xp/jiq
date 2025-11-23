@@ -40,6 +40,7 @@ pub struct App {
     pub should_quit: bool,
     pub autocomplete: AutocompleteState,
     pub json_analyzer: JsonAnalyzer,
+    pub error_overlay_visible: bool,
 }
 
 impl App {
@@ -85,6 +86,7 @@ impl App {
             should_quit: false,
             autocomplete: AutocompleteState::new(),
             json_analyzer,
+            error_overlay_visible: false, // Error overlay hidden by default
         }
     }
 
@@ -205,6 +207,7 @@ impl App {
             self.last_successful_result = Some(result.clone());
         }
         self.results_scroll = 0;
+        self.error_overlay_visible = false; // Auto-hide error overlay on query change
     }
 }
 

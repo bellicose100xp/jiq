@@ -48,6 +48,11 @@ impl App {
         if self.autocomplete.is_visible() {
             self.render_autocomplete_popup(frame, input_area);
         }
+
+        // Render error overlay (if visible and error exists) - render last to overlay results
+        if self.error_overlay_visible && self.query_result.is_err() {
+            self.render_error_overlay(frame, results_area);
+        }
     }
 
     /// Render the input field (bottom)
@@ -68,22 +73,32 @@ impl App {
 
         // Build title with colored mode indicator and hint
         let mode_text = self.editor_mode.display();
-        let title = match self.editor_mode {
+        let mut title_spans = match self.editor_mode {
             EditorMode::Normal => {
-                Line::from(vec![
+                vec![
                     Span::raw(" Query ["),
                     Span::styled(mode_text, Style::default().fg(mode_color)),
                     Span::raw("] (press 'i' to edit) "),
-                ])
+                ]
             }
             _ => {
-                Line::from(vec![
+                vec![
                     Span::raw(" Query ["),
                     Span::styled(mode_text, Style::default().fg(mode_color)),
                     Span::raw("] "),
-                ])
+                ]
             }
         };
+
+        // Add error indicator if there's an error
+        if self.query_result.is_err() {
+            title_spans.push(Span::styled(
+                "⚠ Syntax Error (Ctrl+E to view)",
+                Style::default().fg(Color::Yellow),
+            ));
+        }
+
+        let title = Line::from(title_spans);
 
         // Set cursor color based on mode
         let cursor_style = match self.editor_mode {
@@ -170,38 +185,13 @@ impl App {
 
                 frame.render_widget(content, area);
             }
-            Err(error) => {
-                // Split the area: error at top, last successful result below
+            Err(_error) => {
+                // When there's an error, show last successful result in full area (no splitting)
+                // The error overlay will be rendered separately if user requests it with Ctrl+E
+                self.results_viewport_height = area.height.saturating_sub(2);
+
                 if let Some(last_result) = &self.last_successful_result {
-                    // Calculate error height (number of lines + borders)
-                    let error_lines = error.lines().count() as u16;
-                    let error_height = (error_lines + 2).min(area.height / 3); // Max 1/3 of space
-
-                    let split_layout = Layout::vertical([
-                        Constraint::Length(error_height),
-                        Constraint::Min(0),
-                    ])
-                    .split(area);
-
-                    let error_area = split_layout[0];
-                    let results_area = split_layout[1];
-
-                    // Store viewport height for the results section (subtract borders)
-                    self.results_viewport_height = results_area.height.saturating_sub(2);
-
-                    // Render error section
-                    let error_block = Block::default()
-                        .borders(Borders::ALL)
-                        .title(" Error ")
-                        .border_style(Style::default().fg(Color::Red));
-
-                    let error_widget = Paragraph::new(error.as_str())
-                        .block(error_block)
-                        .style(Style::default().fg(Color::Red));
-
-                    frame.render_widget(error_widget, error_area);
-
-                    // Render last successful result section
+                    // Render last successful result
                     let results_block = Block::default()
                         .borders(Borders::ALL)
                         .title(" Results (last valid query) ")
@@ -218,24 +208,69 @@ impl App {
                         .block(results_block)
                         .scroll((self.results_scroll, 0));
 
-                    frame.render_widget(results_widget, results_area);
+                    frame.render_widget(results_widget, area);
                 } else {
-                    // No cached result, just show error (fallback to original behavior)
-                    self.results_viewport_height = area.height.saturating_sub(2);
-
+                    // No cached result, show empty results pane
                     let block = Block::default()
                         .borders(Borders::ALL)
-                        .title(" Error ")
-                        .border_style(Style::default().fg(Color::Red));
+                        .title(" Results ")
+                        .border_style(Style::default().fg(border_color));
 
-                    let content = Paragraph::new(error.as_str())
-                        .block(block)
-                        .style(Style::default().fg(Color::Red))
-                        .scroll((self.results_scroll, 0));
+                    let empty_text = Text::from("");
+                    let content = Paragraph::new(empty_text).block(block);
 
                     frame.render_widget(content, area);
                 }
             }
+        }
+    }
+
+    /// Render the error overlay (floating at the bottom of results pane)
+    fn render_error_overlay(&self, frame: &mut Frame, results_area: Rect) {
+        // Only render if there's an error
+        if let Err(error) = &self.query_result {
+            // Truncate error to max 5 lines of content
+            let error_lines: Vec<&str> = error.lines().collect();
+            let max_content_lines = 5;
+            let (display_error, truncated) = if error_lines.len() > max_content_lines {
+                let truncated_lines = &error_lines[..max_content_lines];
+                let mut display = truncated_lines.join("\n");
+                display.push_str("\n... (error truncated)");
+                (display, true)
+            } else {
+                (error.clone(), false)
+            };
+
+            // Calculate overlay height (content lines + borders)
+            let content_lines = if truncated { max_content_lines + 1 } else { error_lines.len() };
+            let overlay_height = (content_lines as u16 + 2).min(7).max(3); // Min 3, max 7
+
+            // Position overlay at bottom of results pane, with 1 line gap from bottom border
+            let overlay_y = results_area.bottom().saturating_sub(overlay_height + 1);
+
+            // Create overlay area with margins
+            let overlay_area = Rect {
+                x: results_area.x + 2,  // 2-char left margin
+                y: overlay_y,
+                width: results_area.width.saturating_sub(4),  // 2-char margins on both sides
+                height: overlay_height,
+            };
+
+            // Clear the background to make it truly floating
+            frame.render_widget(Clear, overlay_area);
+
+            // Render error overlay with distinct styling
+            let error_block = Block::default()
+                .borders(Borders::ALL)
+                .title(" Syntax Error (Ctrl+E to close) ")
+                .border_style(Style::default().fg(Color::Red))
+                .style(Style::default().bg(Color::Black));
+
+            let error_widget = Paragraph::new(display_error.as_str())
+                .block(error_block)
+                .style(Style::default().fg(Color::Red));
+
+            frame.render_widget(error_widget, overlay_area);
         }
     }
 
