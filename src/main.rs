@@ -9,6 +9,7 @@ mod editor;
 mod error;
 mod input;
 mod query;
+mod syntax;
 
 use app::{App, OutputMode};
 use error::JiqError;

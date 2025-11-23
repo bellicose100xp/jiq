@@ -9,6 +9,7 @@ use ratatui::{
 
 use crate::autocomplete::SuggestionType;
 use crate::editor::EditorMode;
+use crate::syntax::JqHighlighter;
 use super::state::{App, Focus};
 
 // Autocomplete popup display constants
@@ -102,6 +103,39 @@ impl App {
 
         // Render the textarea widget
         frame.render_widget(&self.textarea, area);
+
+        // Render syntax highlighting overlay
+        self.render_syntax_highlighting(frame, area);
+    }
+
+    /// Render syntax highlighting overlay on top of the textarea
+    fn render_syntax_highlighting(&self, frame: &mut Frame, area: Rect) {
+        // Get the query text
+        let query = self.query();
+
+        // Skip if empty
+        if query.is_empty() {
+            return;
+        }
+
+        // Highlight the query
+        let highlighted_spans = JqHighlighter::highlight(query);
+
+        // Create a line with highlighted spans
+        let highlighted_line = Line::from(highlighted_spans);
+
+        // Calculate the inner area (inside the border)
+        // The border takes 1 character on each side
+        let inner_area = Rect {
+            x: area.x + 1,
+            y: area.y + 1,
+            width: area.width.saturating_sub(2),
+            height: area.height.saturating_sub(2),
+        };
+
+        // Render the highlighted text without a block (transparent overlay)
+        let paragraph = Paragraph::new(highlighted_line);
+        frame.render_widget(paragraph, inner_area);
     }
 
     /// Render the results pane (top)
