@@ -589,4 +589,39 @@ mod tests {
         // Mixed brackets and braces - should find outermost '['
         assert_eq!(extract_path_before_current_field(".data | [{id: .id}, {name: ."), ".data |");
     }
+
+    // Tests for additional jq syntax edge cases (verify no panics)
+    #[test]
+    fn test_jq_edge_cases_no_panic() {
+        // Closed constructor before pipe (minor issue: creates invalid path, but doesn't crash)
+        let _result = extract_path_before_current_field("[.a, .b] | {x: .");
+
+        // Alternative operator // (not handled, but safe)
+        let _result = extract_path_before_current_field(".field // .default");
+
+        // Optional field access ?
+        let _result = extract_path_before_current_field(".field?.sub");
+        assert_eq!(analyze_context(".field?").1, "field?");
+
+        // Recursive descent ..
+        let _result = extract_path_before_current_field("..field");
+
+        // Complex slicing variations
+        let _result = extract_path_before_current_field(".arr[:.5].x");
+        let _result = extract_path_before_current_field(".arr[2:].x");
+        let _result = extract_path_before_current_field(".arr[:].x");
+
+        // Assignment-like operators
+        let _result = extract_path_before_current_field(".field |= .transform");
+
+        // Multiple pipes
+        let _result = extract_path_before_current_field(".a | .b | .c | .d");
+
+        // Deeply nested with pipes
+        let _result = extract_path_before_current_field(".a | [.b | {c: .d | .e}]");
+
+        // Empty array/object constructors
+        let _result = extract_path_before_current_field("[] | .");
+        let _result = extract_path_before_current_field("{} | .");
+    }
 }
