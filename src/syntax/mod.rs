@@ -65,7 +65,7 @@ impl JqHighlighter {
                 let mut op = String::from(chars[i]);
                 i += 1;
 
-                // Check for multi-character operators
+                // Check for multi-character operators (==, !=, <=, >=, //)
                 if i < chars.len() {
                     let two_char = format!("{}{}", op, chars[i]);
                     if is_two_char_operator(&two_char) {
@@ -140,7 +140,7 @@ fn is_operator(ch: char) -> bool {
 fn is_two_char_operator(op: &str) -> bool {
     matches!(
         op,
-        "==" | "!=" | "<=" | ">=" | "//" | "and" | "or"
+        "==" | "!=" | "<=" | ">=" | "//"
     )
 }
 
@@ -262,5 +262,136 @@ mod tests {
     fn test_highlight_with_whitespace() {
         let spans = JqHighlighter::highlight("  map  ");
         assert!(spans.len() >= 2); // Whitespace + function + whitespace
+    }
+
+    // --- NEW COMPREHENSIVE EDGE CASE TESTS ---
+
+    #[test]
+    fn test_unterminated_string() {
+        // Should not panic, just consume to end
+        let spans = JqHighlighter::highlight(r#""unterminated"#);
+        assert_eq!(spans.len(), 1);
+        assert_eq!(spans[0].style.fg, Some(Color::Green));
+        assert_eq!(spans[0].content, r#""unterminated"#);
+    }
+
+    #[test]
+    fn test_string_with_escapes() {
+        let spans = JqHighlighter::highlight(r#""hello \"world\"""#);
+        assert_eq!(spans.len(), 1);
+        assert_eq!(spans[0].style.fg, Some(Color::Green));
+    }
+
+    #[test]
+    fn test_negative_number() {
+        let spans = JqHighlighter::highlight("-123");
+        assert_eq!(spans.len(), 1);
+        assert_eq!(spans[0].style.fg, Some(Color::Cyan));
+        assert_eq!(spans[0].content, "-123");
+    }
+
+    #[test]
+    fn test_decimal_number() {
+        let spans = JqHighlighter::highlight("3.14");
+        assert_eq!(spans.len(), 1);
+        assert_eq!(spans[0].style.fg, Some(Color::Cyan));
+        assert_eq!(spans[0].content, "3.14");
+    }
+
+    #[test]
+    fn test_two_char_operators() {
+        // Test ==
+        let spans = JqHighlighter::highlight("==");
+        assert_eq!(spans.len(), 1);
+        assert_eq!(spans[0].content, "==");
+        assert_eq!(spans[0].style.fg, Some(Color::Magenta));
+
+        // Test !=
+        let spans = JqHighlighter::highlight("!=");
+        assert_eq!(spans.len(), 1);
+        assert_eq!(spans[0].content, "!=");
+
+        // Test <=
+        let spans = JqHighlighter::highlight("<=");
+        assert_eq!(spans.len(), 1);
+        assert_eq!(spans[0].content, "<=");
+
+        // Test >=
+        let spans = JqHighlighter::highlight(">=");
+        assert_eq!(spans.len(), 1);
+        assert_eq!(spans[0].content, ">=");
+
+        // Test //
+        let spans = JqHighlighter::highlight("//");
+        assert_eq!(spans.len(), 1);
+        assert_eq!(spans[0].content, "//");
+    }
+
+    #[test]
+    fn test_nested_field_path() {
+        let spans = JqHighlighter::highlight(".foo.bar.baz");
+        assert_eq!(spans.len(), 1);
+        assert_eq!(spans[0].style.fg, Some(Color::Cyan));
+        assert_eq!(spans[0].content, ".foo.bar.baz");
+    }
+
+    #[test]
+    fn test_just_dot() {
+        let spans = JqHighlighter::highlight(".");
+        assert_eq!(spans.len(), 1);
+        assert_eq!(spans[0].style.fg, Some(Color::Cyan));
+    }
+
+    #[test]
+    fn test_variable_reference() {
+        let spans = JqHighlighter::highlight("$foo");
+        assert_eq!(spans.len(), 1);
+        // Should be treated as regular identifier (no color)
+        assert_eq!(spans[0].style.fg, None);
+    }
+
+    #[test]
+    fn test_keywords_and_or() {
+        let spans = JqHighlighter::highlight("and");
+        assert_eq!(spans.len(), 1);
+        assert_eq!(spans[0].style.fg, Some(Color::Yellow));
+
+        let spans = JqHighlighter::highlight("or");
+        assert_eq!(spans.len(), 1);
+        assert_eq!(spans[0].style.fg, Some(Color::Yellow));
+    }
+
+    #[test]
+    fn test_comparison_in_context() {
+        let spans = JqHighlighter::highlight(".age >= 18");
+        // Should have: .age (cyan), space, >= (magenta), space, 18 (cyan)
+        assert!(spans.len() >= 5);
+        // Check the >= operator
+        let op_span = spans.iter().find(|s| s.content == ">=");
+        assert!(op_span.is_some());
+        assert_eq!(op_span.unwrap().style.fg, Some(Color::Magenta));
+    }
+
+    #[test]
+    fn test_empty_keyword() {
+        // "empty" is both a keyword and a function - should be keyword
+        let spans = JqHighlighter::highlight("empty");
+        assert_eq!(spans.len(), 1);
+        // Keywords are checked before functions, so should be yellow
+        assert_eq!(spans[0].style.fg, Some(Color::Yellow));
+    }
+
+    #[test]
+    fn test_unicode_in_string() {
+        let spans = JqHighlighter::highlight(r#""hello 世界""#);
+        assert_eq!(spans.len(), 1);
+        assert_eq!(spans[0].style.fg, Some(Color::Green));
+    }
+
+    #[test]
+    fn test_array_indexing() {
+        let spans = JqHighlighter::highlight(".items[0]");
+        // Should highlight .items as field, [0] as operator+number
+        assert!(spans.len() >= 3);
     }
 }
