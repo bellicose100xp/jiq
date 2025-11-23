@@ -3,7 +3,7 @@ use ratatui::{
     layout::{Constraint, Layout, Rect},
     style::{Color, Modifier, Style},
     text::{Line, Span, Text},
-    widgets::{Block, Borders, List, ListItem, Paragraph},
+    widgets::{Block, Borders, Clear, List, ListItem, Paragraph},
     Frame,
 };
 
@@ -334,20 +334,20 @@ impl App {
                 let padding = " ".repeat(padding_needed);
 
                 let line = if i == self.autocomplete.selected_index() {
-                    // Highlight selected item with solid background
+                    // Highlight selected item with high contrast colors
                     Line::from(vec![
                         Span::styled(
                             format!("► {} {}", suggestion.text, padding),
                             Style::default()
-                                .fg(Color::White)
-                                .bg(Color::Blue)
+                                .fg(Color::Black)
+                                .bg(Color::Cyan)
                                 .add_modifier(Modifier::BOLD),
                         ),
                         Span::styled(
                             format!(" {}", type_label),
                             Style::default()
-                                .fg(type_color)
-                                .bg(Color::Blue),
+                                .fg(Color::Black)
+                                .bg(Color::Cyan),
                         ),
                     ])
                 } else {
@@ -370,6 +370,9 @@ impl App {
                 ListItem::new(line)
             })
             .collect();
+
+        // Clear the background area to prevent transparency
+        frame.render_widget(Clear, popup_area);
 
         // Create the list widget
         let list = List::new(items).block(
