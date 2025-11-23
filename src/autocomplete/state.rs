@@ -37,8 +37,10 @@ pub enum JsonFieldType {
     Null,
     /// Object (nested fields)
     Object,
-    /// Array (list of values)
+    /// Array (list of values) - unknown element type
     Array,
+    /// Array with known element type (based on first element)
+    ArrayOf(Box<JsonFieldType>),
 }
 
 impl fmt::Display for JsonFieldType {
@@ -50,6 +52,7 @@ impl fmt::Display for JsonFieldType {
             JsonFieldType::Null => write!(f, "Null"),
             JsonFieldType::Object => write!(f, "Object"),
             JsonFieldType::Array => write!(f, "Array"),
+            JsonFieldType::ArrayOf(inner) => write!(f, "Array[{}]", inner),
         }
     }
 }

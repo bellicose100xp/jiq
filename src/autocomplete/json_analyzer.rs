@@ -177,7 +177,16 @@ fn detect_json_type(value: &Value) -> JsonFieldType {
         Value::Bool(_) => JsonFieldType::Boolean,
         Value::Null => JsonFieldType::Null,
         Value::Object(_) => JsonFieldType::Object,
-        Value::Array(_) => JsonFieldType::Array,
+        Value::Array(arr) => {
+            // Peek at first element to determine array element type
+            if let Some(first) = arr.first() {
+                let element_type = detect_json_type(first);
+                JsonFieldType::ArrayOf(Box::new(element_type))
+            } else {
+                // Empty array - can't determine element type
+                JsonFieldType::Array
+            }
+        }
     }
 }
 
@@ -534,12 +543,14 @@ mod tests {
 
         let suggestions = analyzer.get_contextual_field_suggestions("", "");
 
+        // Arrays with elements should show element type
         let items_suggestion = suggestions.iter().find(|s| s.text == ".items").unwrap();
-        assert_eq!(items_suggestion.field_type, Some(JsonFieldType::Array));
+        assert_eq!(items_suggestion.field_type, Some(JsonFieldType::ArrayOf(Box::new(JsonFieldType::Number))));
 
         let tags_suggestion = suggestions.iter().find(|s| s.text == ".tags").unwrap();
-        assert_eq!(tags_suggestion.field_type, Some(JsonFieldType::Array));
+        assert_eq!(tags_suggestion.field_type, Some(JsonFieldType::ArrayOf(Box::new(JsonFieldType::String))));
 
+        // Empty array should show just Array (can't determine element type)
         let empty_suggestion = suggestions.iter().find(|s| s.text == ".empty").unwrap();
         assert_eq!(empty_suggestion.field_type, Some(JsonFieldType::Array));
     }
@@ -582,7 +593,7 @@ mod tests {
         );
         assert_eq!(
             suggestions.iter().find(|s| s.text == ".hobbies").unwrap().field_type,
-            Some(JsonFieldType::Array)
+            Some(JsonFieldType::ArrayOf(Box::new(JsonFieldType::String)))
         );
     }
 
@@ -703,7 +714,7 @@ mod tests {
         );
         assert_eq!(
             suggestions.iter().find(|s| s.text == ".tags").unwrap().field_type,
-            Some(JsonFieldType::Array)
+            Some(JsonFieldType::ArrayOf(Box::new(JsonFieldType::String)))
         );
     }
 
@@ -816,5 +827,116 @@ mod tests {
         // Top-level is an array, not an object, so should return empty
         let suggestions = analyzer.get_contextual_field_suggestions("", "");
         assert_eq!(suggestions.len(), 0);
+    }
+
+    // ===== Array Element Type Tests =====
+
+    #[test]
+    fn test_array_element_type_object() {
+        let json = r#"{"users": [{"name": "Alice"}, {"name": "Bob"}]}"#;
+        let mut analyzer = JsonAnalyzer::new();
+        analyzer.analyze(json).unwrap();
+
+        let suggestions = analyzer.get_contextual_field_suggestions("", "");
+        let users = suggestions.iter().find(|s| s.text == ".users").unwrap();
+
+        assert_eq!(users.field_type, Some(JsonFieldType::ArrayOf(Box::new(JsonFieldType::Object))));
+    }
+
+    #[test]
+    fn test_array_element_type_number() {
+        let json = r#"{"scores": [100, 95, 87], "floats": [1.5, 2.3, 3.7]}"#;
+        let mut analyzer = JsonAnalyzer::new();
+        analyzer.analyze(json).unwrap();
+
+        let suggestions = analyzer.get_contextual_field_suggestions("", "");
+
+        let scores = suggestions.iter().find(|s| s.text == ".scores").unwrap();
+        assert_eq!(scores.field_type, Some(JsonFieldType::ArrayOf(Box::new(JsonFieldType::Number))));
+
+        let floats = suggestions.iter().find(|s| s.text == ".floats").unwrap();
+        assert_eq!(floats.field_type, Some(JsonFieldType::ArrayOf(Box::new(JsonFieldType::Number))));
+    }
+
+    #[test]
+    fn test_array_element_type_boolean() {
+        let json = r#"{"flags": [true, false, true]}"#;
+        let mut analyzer = JsonAnalyzer::new();
+        analyzer.analyze(json).unwrap();
+
+        let suggestions = analyzer.get_contextual_field_suggestions("", "");
+        let flags = suggestions.iter().find(|s| s.text == ".flags").unwrap();
+
+        assert_eq!(flags.field_type, Some(JsonFieldType::ArrayOf(Box::new(JsonFieldType::Boolean))));
+    }
+
+    #[test]
+    fn test_array_element_type_null() {
+        let json = r#"{"nulls": [null, null]}"#;
+        let mut analyzer = JsonAnalyzer::new();
+        analyzer.analyze(json).unwrap();
+
+        let suggestions = analyzer.get_contextual_field_suggestions("", "");
+        let nulls = suggestions.iter().find(|s| s.text == ".nulls").unwrap();
+
+        assert_eq!(nulls.field_type, Some(JsonFieldType::ArrayOf(Box::new(JsonFieldType::Null))));
+    }
+
+    #[test]
+    fn test_nested_arrays() {
+        let json = r#"{"matrix": [[1, 2], [3, 4]]}"#;
+        let mut analyzer = JsonAnalyzer::new();
+        analyzer.analyze(json).unwrap();
+
+        let suggestions = analyzer.get_contextual_field_suggestions("", "");
+        let matrix = suggestions.iter().find(|s| s.text == ".matrix").unwrap();
+
+        // Array of arrays (first element is [1, 2] which is Array[Number])
+        assert_eq!(
+            matrix.field_type,
+            Some(JsonFieldType::ArrayOf(
+                Box::new(JsonFieldType::ArrayOf(
+                    Box::new(JsonFieldType::Number)
+                ))
+            ))
+        );
+    }
+
+    #[test]
+    fn test_mixed_type_array_shows_first_element_type() {
+        let json = r#"{"mixed": [42, "string", true, null]}"#;
+        let mut analyzer = JsonAnalyzer::new();
+        analyzer.analyze(json).unwrap();
+
+        let suggestions = analyzer.get_contextual_field_suggestions("", "");
+        let mixed = suggestions.iter().find(|s| s.text == ".mixed").unwrap();
+
+        // Should show type of first element (Number)
+        assert_eq!(mixed.field_type, Some(JsonFieldType::ArrayOf(Box::new(JsonFieldType::Number))));
+    }
+
+    #[test]
+    fn test_empty_array_shows_generic_array() {
+        let json = r#"{"empty": []}"#;
+        let mut analyzer = JsonAnalyzer::new();
+        analyzer.analyze(json).unwrap();
+
+        let suggestions = analyzer.get_contextual_field_suggestions("", "");
+        let empty = suggestions.iter().find(|s| s.text == ".empty").unwrap();
+
+        // Can't determine element type, should show generic Array
+        assert_eq!(empty.field_type, Some(JsonFieldType::Array));
+    }
+
+    #[test]
+    fn test_array_element_types_display_format() {
+        // Test the Display implementation for ArrayOf
+        assert_eq!(format!("{}", JsonFieldType::ArrayOf(Box::new(JsonFieldType::String))), "Array[String]");
+        assert_eq!(format!("{}", JsonFieldType::ArrayOf(Box::new(JsonFieldType::Number))), "Array[Number]");
+        assert_eq!(format!("{}", JsonFieldType::ArrayOf(Box::new(JsonFieldType::Object))), "Array[Object]");
+        assert_eq!(
+            format!("{}", JsonFieldType::ArrayOf(Box::new(JsonFieldType::ArrayOf(Box::new(JsonFieldType::Number))))),
+            "Array[Array[Number]]"
+        );
     }
 }

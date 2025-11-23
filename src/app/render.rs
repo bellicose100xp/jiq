@@ -297,6 +297,14 @@ impl App {
             height: popup_height.min(input_area.y), // Don't overflow above input
         };
 
+        // Calculate max field text width for alignment
+        let max_field_width = suggestions
+            .iter()
+            .take(MAX_VISIBLE_SUGGESTIONS)
+            .map(|s| s.text.len())
+            .max()
+            .unwrap_or(0);
+
         // Create list items with styling
         let items: Vec<ListItem> = suggestions
             .iter()
@@ -321,30 +329,41 @@ impl App {
                     _ => format!("[{}]", suggestion.suggestion_type),
                 };
 
+                // Calculate padding to align type labels
+                let padding_needed = max_field_width.saturating_sub(suggestion.text.len());
+                let padding = " ".repeat(padding_needed);
+
                 let line = if i == self.autocomplete.selected_index() {
-                    // Highlight selected item
+                    // Highlight selected item with solid background
                     Line::from(vec![
                         Span::styled(
-                            format!("► {} ", suggestion.text),
+                            format!("► {} {}", suggestion.text, padding),
                             Style::default()
                                 .fg(Color::White)
-                                .add_modifier(Modifier::BOLD)
-                                .add_modifier(Modifier::REVERSED),
+                                .bg(Color::Blue)
+                                .add_modifier(Modifier::BOLD),
                         ),
                         Span::styled(
-                            type_label,
+                            format!(" {}", type_label),
                             Style::default()
                                 .fg(type_color)
-                                .add_modifier(Modifier::REVERSED),
+                                .bg(Color::Blue),
                         ),
                     ])
                 } else {
                     Line::from(vec![
                         Span::styled(
-                            format!("  {} ", suggestion.text),
-                            Style::default().fg(Color::White),
+                            format!("  {} {}", suggestion.text, padding),
+                            Style::default()
+                                .fg(Color::White)
+                                .bg(Color::Black),
                         ),
-                        Span::styled(type_label, Style::default().fg(type_color)),
+                        Span::styled(
+                            format!(" {}", type_label),
+                            Style::default()
+                                .fg(type_color)
+                                .bg(Color::Black),
+                        ),
                     ])
                 };
 
