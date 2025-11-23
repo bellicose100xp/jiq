@@ -1,18 +1,13 @@
 /// VIM editing modes for the input field
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum EditorMode {
     /// Insert mode - typing inserts characters
+    #[default]
     Insert,
     /// Normal mode - VIM navigation and commands
     Normal,
     /// Operator mode - waiting for motion after operator (d or c)
     Operator(char),
-}
-
-impl Default for EditorMode {
-    fn default() -> Self {
-        EditorMode::Insert
-    }
 }
 
 impl EditorMode {

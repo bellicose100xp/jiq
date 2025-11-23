@@ -67,7 +67,7 @@ impl JsonAnalyzer {
         };
 
         // Extract fields from the value at this path
-        self.extract_fields_from_value(value_at_path, prefix)
+        extract_fields_from_value(value_at_path, prefix)
     }
 
     /// Get top-level fields only
@@ -153,39 +153,39 @@ impl JsonAnalyzer {
         Some(current)
     }
 
-    /// Extract fields from a specific JSON value
-    fn extract_fields_from_value(&self, value: &Value, prefix: &str) -> Vec<Suggestion> {
-        match value {
-            Value::Object(map) => {
-                let mut fields: Vec<_> = map
-                    .keys()
-                    .filter(|k| {
-                        prefix.is_empty()
-                            || k.to_lowercase().starts_with(&prefix.to_lowercase())
-                    })
-                    .map(|k| Suggestion::new(format!(".{}", k), SuggestionType::Field))
-                    .collect();
-                fields.sort_by(|a, b| a.text.cmp(&b.text));
-                fields
-            }
-            Value::Array(arr) => {
-                // For arrays, analyze the first element to get available fields
-                if let Some(first) = arr.first() {
-                    self.extract_fields_from_value(first, prefix)
-                } else {
-                    Vec::new()
-                }
-            }
-            _ => Vec::new(), // Primitives have no fields
-        }
-    }
-
     /// Get all field names (used in tests)
     #[cfg(test)]
     pub fn get_all_fields(&self) -> Vec<String> {
         let mut fields: Vec<_> = self.field_names.iter().cloned().collect();
         fields.sort();
         fields
+    }
+}
+
+/// Extract fields from a specific JSON value
+fn extract_fields_from_value(value: &Value, prefix: &str) -> Vec<Suggestion> {
+    match value {
+        Value::Object(map) => {
+            let mut fields: Vec<_> = map
+                .keys()
+                .filter(|k| {
+                    prefix.is_empty()
+                        || k.to_lowercase().starts_with(&prefix.to_lowercase())
+                })
+                .map(|k| Suggestion::new(format!(".{}", k), SuggestionType::Field))
+                .collect();
+            fields.sort_by(|a, b| a.text.cmp(&b.text));
+            fields
+        }
+        Value::Array(arr) => {
+            // For arrays, analyze the first element to get available fields
+            if let Some(first) = arr.first() {
+                extract_fields_from_value(first, prefix)
+            } else {
+                Vec::new()
+            }
+        }
+        _ => Vec::new(), // Primitives have no fields
     }
 }
 
