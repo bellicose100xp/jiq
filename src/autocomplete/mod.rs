@@ -4,4 +4,4 @@ pub mod json_analyzer;
 mod state;
 
 pub use context::get_suggestions;
-pub use state::{AutocompleteState, SuggestionType};
+pub use state::{AutocompleteState, Suggestion, SuggestionType};

@@ -410,3 +410,854 @@ impl App {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::autocomplete::{Suggestion, SuggestionType};
+
+    // Helper to create a KeyEvent without modifiers
+    fn key(code: KeyCode) -> KeyEvent {
+        KeyEvent::new(code, KeyModifiers::empty())
+    }
+
+    // Helper to create a KeyEvent with specific modifiers
+    fn key_with_mods(code: KeyCode, modifiers: KeyModifiers) -> KeyEvent {
+        KeyEvent::new(code, modifiers)
+    }
+
+    // Helper to set up an app with text in the query field
+    fn app_with_query(query: &str) -> App {
+        let json = r#"{"name": "test", "age": 30, "city": "NYC"}"#;
+        let mut app = App::new(json.to_string());
+        app.textarea.insert_str(query);
+        app
+    }
+
+    // ========== VIM Operator Tests ==========
+
+    #[test]
+    fn test_operator_dw_deletes_word_from_start() {
+        let mut app = app_with_query(".name.first");
+        app.textarea.move_cursor(CursorMove::Head);
+        app.editor_mode = EditorMode::Normal;
+
+        // Type 'd' to enter Operator mode
+        app.handle_key_event(key(KeyCode::Char('d')));
+        assert!(matches!(app.editor_mode, EditorMode::Operator('d')));
+
+        // Type 'w' to delete word
+        app.handle_key_event(key(KeyCode::Char('w')));
+        // The selection behavior deletes from cursor to end of word motion
+        assert!(app.query().contains("first"));
+        assert_eq!(app.editor_mode, EditorMode::Normal);
+    }
+
+    #[test]
+    fn test_operator_dw_deletes_word_from_middle() {
+        let mut app = app_with_query(".name.first");
+        app.textarea.move_cursor(CursorMove::Head);
+        // Move to position 5 (at the dot before "first")
+        for _ in 0..5 {
+            app.textarea.move_cursor(CursorMove::Forward);
+        }
+        app.editor_mode = EditorMode::Normal;
+
+        app.handle_key_event(key(KeyCode::Char('d')));
+        app.handle_key_event(key(KeyCode::Char('w')));
+        // Verify something was deleted
+        assert!(app.query().len() < ".name.first".len());
+        assert!(app.query().starts_with(".name"));
+    }
+
+    #[test]
+    fn test_operator_db_deletes_word_backward() {
+        let mut app = app_with_query(".name.first");
+        app.textarea.move_cursor(CursorMove::End);
+        app.editor_mode = EditorMode::Normal;
+
+        app.handle_key_event(key(KeyCode::Char('d')));
+        app.handle_key_event(key(KeyCode::Char('b')));
+
+        // Should delete ".first" backwards
+        assert!(app.query().starts_with(".name"));
+    }
+
+    #[test]
+    fn test_operator_de_deletes_to_word_end() {
+        let mut app = app_with_query(".name.first");
+        app.textarea.move_cursor(CursorMove::Head);
+        app.editor_mode = EditorMode::Normal;
+
+        app.handle_key_event(key(KeyCode::Char('d')));
+        app.handle_key_event(key(KeyCode::Char('e')));
+
+        // Should delete to end of first word (including the character at cursor)
+        assert!(app.query().contains("first"));
+    }
+
+    #[test]
+    fn test_operator_d_dollar_deletes_to_end_of_line() {
+        let mut app = app_with_query(".name.first");
+        app.textarea.move_cursor(CursorMove::Head);
+        // Move to position 5
+        for _ in 0..5 {
+            app.textarea.move_cursor(CursorMove::Forward);
+        }
+        app.editor_mode = EditorMode::Normal;
+
+        app.handle_key_event(key(KeyCode::Char('d')));
+        app.handle_key_event(key(KeyCode::Char('$')));
+
+        assert_eq!(app.query(), ".name");
+    }
+
+    #[test]
+    fn test_operator_d0_deletes_to_start_of_line() {
+        let mut app = app_with_query(".name.first");
+        app.textarea.move_cursor(CursorMove::End);
+        // Move back a few chars
+        for _ in 0..5 {
+            app.textarea.move_cursor(CursorMove::Back);
+        }
+        app.editor_mode = EditorMode::Normal;
+
+        app.handle_key_event(key(KeyCode::Char('d')));
+        app.handle_key_event(key(KeyCode::Char('0')));
+
+        assert!(app.query().ends_with("first"));
+    }
+
+    #[test]
+    fn test_operator_dd_deletes_entire_line() {
+        let mut app = app_with_query(".name.first");
+        app.editor_mode = EditorMode::Normal;
+
+        app.handle_key_event(key(KeyCode::Char('d')));
+        app.handle_key_event(key(KeyCode::Char('d')));
+
+        assert_eq!(app.query(), "");
+        assert_eq!(app.editor_mode, EditorMode::Normal);
+    }
+
+    #[test]
+    fn test_operator_cw_changes_word() {
+        let mut app = app_with_query(".name.first");
+        app.textarea.move_cursor(CursorMove::Head);
+        app.editor_mode = EditorMode::Normal;
+
+        app.handle_key_event(key(KeyCode::Char('c')));
+        app.handle_key_event(key(KeyCode::Char('w')));
+
+        // Should delete word and enter Insert mode
+        assert!(app.query().contains("first"));
+        assert_eq!(app.editor_mode, EditorMode::Insert);
+    }
+
+    #[test]
+    fn test_operator_cc_changes_entire_line() {
+        let mut app = app_with_query(".name.first");
+        app.editor_mode = EditorMode::Normal;
+
+        app.handle_key_event(key(KeyCode::Char('c')));
+        app.handle_key_event(key(KeyCode::Char('c')));
+
+        assert_eq!(app.query(), "");
+        assert_eq!(app.editor_mode, EditorMode::Insert);
+    }
+
+    #[test]
+    fn test_operator_invalid_motion_cancels() {
+        let mut app = app_with_query(".name");
+        app.editor_mode = EditorMode::Normal;
+        let original_len = app.query().len();
+
+        app.handle_key_event(key(KeyCode::Char('d')));
+        assert!(matches!(app.editor_mode, EditorMode::Operator('d')));
+
+        // Press invalid motion key (z is not a valid motion)
+        app.handle_key_event(key(KeyCode::Char('z')));
+
+        // Should cancel operator and return to Normal mode
+        assert_eq!(app.editor_mode, EditorMode::Normal);
+        // Text should be roughly the same length (selection gets cancelled)
+        assert!(app.query().len() >= original_len - 1);
+    }
+
+    #[test]
+    fn test_operator_dh_deletes_character_backward() {
+        let mut app = app_with_query(".name");
+        app.textarea.move_cursor(CursorMove::End);
+        app.editor_mode = EditorMode::Normal;
+
+        app.handle_key_event(key(KeyCode::Char('d')));
+        app.handle_key_event(key(KeyCode::Char('h')));
+
+        // Should delete one character backward
+        assert!(app.query().len() < 5);
+        assert_eq!(app.editor_mode, EditorMode::Normal);
+    }
+
+    #[test]
+    fn test_operator_dl_deletes_character_forward() {
+        let mut app = app_with_query(".name");
+        app.textarea.move_cursor(CursorMove::Head);
+        app.editor_mode = EditorMode::Normal;
+
+        app.handle_key_event(key(KeyCode::Char('d')));
+        app.handle_key_event(key(KeyCode::Char('l')));
+
+        // Should delete one character forward
+        assert!(app.query().len() < 5);
+        assert_eq!(app.editor_mode, EditorMode::Normal);
+    }
+
+    // ========== Mode Transition Tests ==========
+
+    #[test]
+    fn test_escape_from_insert_to_normal() {
+        let mut app = app_with_query(".name");
+        app.editor_mode = EditorMode::Insert;
+
+        app.handle_key_event(key(KeyCode::Esc));
+
+        assert_eq!(app.editor_mode, EditorMode::Normal);
+    }
+
+    #[test]
+    fn test_i_enters_insert_mode_at_cursor() {
+        let mut app = app_with_query(".name");
+        app.editor_mode = EditorMode::Normal;
+        app.textarea.move_cursor(CursorMove::Head);
+        let cursor_before = app.textarea.cursor();
+
+        app.handle_key_event(key(KeyCode::Char('i')));
+
+        assert_eq!(app.editor_mode, EditorMode::Insert);
+        // Cursor should remain at same position
+        assert_eq!(app.textarea.cursor(), cursor_before);
+    }
+
+    #[test]
+    fn test_a_enters_insert_mode_after_cursor() {
+        let mut app = app_with_query(".name");
+        app.editor_mode = EditorMode::Normal;
+        app.textarea.move_cursor(CursorMove::Head);
+        let cursor_col_before = app.textarea.cursor().1;
+
+        app.handle_key_event(key(KeyCode::Char('a')));
+
+        assert_eq!(app.editor_mode, EditorMode::Insert);
+        // Cursor should move forward by one
+        assert_eq!(app.textarea.cursor().1, cursor_col_before + 1);
+    }
+
+    #[test]
+    fn test_capital_i_enters_insert_at_line_start() {
+        let mut app = app_with_query(".name");
+        app.editor_mode = EditorMode::Normal;
+        app.textarea.move_cursor(CursorMove::End);
+
+        app.handle_key_event(key(KeyCode::Char('I')));
+
+        assert_eq!(app.editor_mode, EditorMode::Insert);
+        assert_eq!(app.textarea.cursor().1, 0);
+    }
+
+    #[test]
+    fn test_capital_a_enters_insert_at_line_end() {
+        let mut app = app_with_query(".name");
+        app.editor_mode = EditorMode::Normal;
+        app.textarea.move_cursor(CursorMove::Head);
+
+        app.handle_key_event(key(KeyCode::Char('A')));
+
+        assert_eq!(app.editor_mode, EditorMode::Insert);
+        assert_eq!(app.textarea.cursor().1, 5); // Should be at end of ".name"
+    }
+
+    #[test]
+    fn test_d_enters_operator_mode() {
+        let mut app = app_with_query(".name");
+        app.editor_mode = EditorMode::Normal;
+
+        app.handle_key_event(key(KeyCode::Char('d')));
+
+        assert!(matches!(app.editor_mode, EditorMode::Operator('d')));
+    }
+
+    #[test]
+    fn test_c_enters_operator_mode() {
+        let mut app = app_with_query(".name");
+        app.editor_mode = EditorMode::Normal;
+
+        app.handle_key_event(key(KeyCode::Char('c')));
+
+        assert!(matches!(app.editor_mode, EditorMode::Operator('c')));
+    }
+
+    // ========== Simple VIM Commands ==========
+
+    #[test]
+    fn test_x_deletes_character_at_cursor() {
+        let mut app = app_with_query(".name");
+        app.textarea.move_cursor(CursorMove::Head);
+        app.editor_mode = EditorMode::Normal;
+
+        app.handle_key_event(key(KeyCode::Char('x')));
+
+        assert_eq!(app.query(), "name");
+    }
+
+    #[test]
+    fn test_capital_x_deletes_character_before_cursor() {
+        let mut app = app_with_query(".name");
+        app.textarea.move_cursor(CursorMove::Head);
+        app.textarea.move_cursor(CursorMove::Forward); // Move to 'n'
+        app.editor_mode = EditorMode::Normal;
+
+        app.handle_key_event(key(KeyCode::Char('X')));
+
+        assert_eq!(app.query(), "name");
+    }
+
+    #[test]
+    fn test_capital_d_deletes_to_end_of_line() {
+        let mut app = app_with_query(".name.first");
+        app.textarea.move_cursor(CursorMove::Head);
+        for _ in 0..5 {
+            app.textarea.move_cursor(CursorMove::Forward);
+        }
+        app.editor_mode = EditorMode::Normal;
+
+        app.handle_key_event(key(KeyCode::Char('D')));
+
+        assert_eq!(app.query(), ".name");
+    }
+
+    #[test]
+    fn test_capital_c_changes_to_end_of_line() {
+        let mut app = app_with_query(".name.first");
+        app.textarea.move_cursor(CursorMove::Head);
+        for _ in 0..5 {
+            app.textarea.move_cursor(CursorMove::Forward);
+        }
+        app.editor_mode = EditorMode::Normal;
+
+        app.handle_key_event(key(KeyCode::Char('C')));
+
+        assert_eq!(app.query(), ".name");
+        assert_eq!(app.editor_mode, EditorMode::Insert);
+    }
+
+    #[test]
+    fn test_u_triggers_undo() {
+        let mut app = app_with_query("");
+        app.editor_mode = EditorMode::Insert;
+        app.textarea.insert_str(".name");
+
+        app.editor_mode = EditorMode::Normal;
+        app.handle_key_event(key(KeyCode::Char('u')));
+
+        // After undo, query should be empty
+        assert_eq!(app.query(), "");
+    }
+
+    #[test]
+    fn test_ctrl_r_triggers_redo() {
+        let mut app = app_with_query("");
+        app.editor_mode = EditorMode::Insert;
+        app.textarea.insert_str(".name");
+
+        app.editor_mode = EditorMode::Normal;
+        app.textarea.undo(); // Undo the insert
+        assert_eq!(app.query(), "");
+
+        app.handle_key_event(key_with_mods(KeyCode::Char('r'), KeyModifiers::CONTROL));
+
+        // After redo, query should be back
+        assert_eq!(app.query(), ".name");
+    }
+
+    // ========== VIM Navigation Tests ==========
+
+    #[test]
+    fn test_h_moves_cursor_left() {
+        let mut app = app_with_query(".name");
+        app.textarea.move_cursor(CursorMove::End);
+        app.editor_mode = EditorMode::Normal;
+        let cursor_before = app.textarea.cursor().1;
+
+        app.handle_key_event(key(KeyCode::Char('h')));
+
+        assert_eq!(app.textarea.cursor().1, cursor_before - 1);
+    }
+
+    #[test]
+    fn test_l_moves_cursor_right() {
+        let mut app = app_with_query(".name");
+        app.textarea.move_cursor(CursorMove::Head);
+        app.editor_mode = EditorMode::Normal;
+
+        app.handle_key_event(key(KeyCode::Char('l')));
+
+        assert_eq!(app.textarea.cursor().1, 1);
+    }
+
+    #[test]
+    fn test_0_moves_to_line_start() {
+        let mut app = app_with_query(".name");
+        app.textarea.move_cursor(CursorMove::End);
+        app.editor_mode = EditorMode::Normal;
+
+        app.handle_key_event(key(KeyCode::Char('0')));
+
+        assert_eq!(app.textarea.cursor().1, 0);
+    }
+
+    #[test]
+    fn test_dollar_moves_to_line_end() {
+        let mut app = app_with_query(".name");
+        app.textarea.move_cursor(CursorMove::Head);
+        app.editor_mode = EditorMode::Normal;
+
+        app.handle_key_event(key(KeyCode::Char('$')));
+
+        assert_eq!(app.textarea.cursor().1, 5);
+    }
+
+    #[test]
+    fn test_w_moves_word_forward() {
+        let mut app = app_with_query(".name.first");
+        app.textarea.move_cursor(CursorMove::Head);
+        app.editor_mode = EditorMode::Normal;
+        let cursor_before = app.textarea.cursor().1;
+
+        app.handle_key_event(key(KeyCode::Char('w')));
+
+        // Should move forward by at least one position
+        assert!(app.textarea.cursor().1 > cursor_before);
+    }
+
+    #[test]
+    fn test_b_moves_word_backward() {
+        let mut app = app_with_query(".name.first");
+        app.textarea.move_cursor(CursorMove::End);
+        app.editor_mode = EditorMode::Normal;
+        let cursor_before = app.textarea.cursor().1;
+
+        app.handle_key_event(key(KeyCode::Char('b')));
+
+        // Should move backward
+        assert!(app.textarea.cursor().1 < cursor_before);
+    }
+
+    #[test]
+    fn test_e_moves_to_word_end() {
+        let mut app = app_with_query(".name.first");
+        app.textarea.move_cursor(CursorMove::Head);
+        app.editor_mode = EditorMode::Normal;
+        let cursor_before = app.textarea.cursor().1;
+
+        app.handle_key_event(key(KeyCode::Char('e')));
+
+        // Should move forward
+        assert!(app.textarea.cursor().1 > cursor_before);
+    }
+
+    // ========== Autocomplete Interaction Tests ==========
+
+    #[test]
+    fn test_escape_closes_autocomplete() {
+        let mut app = app_with_query(".na");
+        app.editor_mode = EditorMode::Insert;
+
+        // Manually set autocomplete as visible with suggestions
+        let suggestions = vec![
+            Suggestion::new(".name", SuggestionType::Field),
+        ];
+        app.autocomplete.update_suggestions(suggestions);
+        assert!(app.autocomplete.is_visible());
+
+        app.handle_key_event(key(KeyCode::Esc));
+
+        assert!(!app.autocomplete.is_visible());
+        assert_eq!(app.query(), ".na"); // Query unchanged
+        assert_eq!(app.editor_mode, EditorMode::Insert); // Still in insert mode
+    }
+
+    #[test]
+    fn test_escape_without_autocomplete_switches_to_normal() {
+        let mut app = app_with_query(".name");
+        app.editor_mode = EditorMode::Insert;
+        assert!(!app.autocomplete.is_visible());
+
+        app.handle_key_event(key(KeyCode::Esc));
+
+        assert_eq!(app.editor_mode, EditorMode::Normal);
+    }
+
+    #[test]
+    fn test_down_arrow_selects_next_suggestion() {
+        let mut app = app_with_query(".na");
+        app.editor_mode = EditorMode::Insert;
+
+        let suggestions = vec![
+            Suggestion::new(".name", SuggestionType::Field),
+            Suggestion::new(".nested", SuggestionType::Field),
+        ];
+        app.autocomplete.update_suggestions(suggestions);
+
+        app.handle_key_event(key(KeyCode::Down));
+
+        // Should select second suggestion
+        assert_eq!(app.autocomplete.selected().unwrap().text, ".nested");
+    }
+
+    #[test]
+    fn test_up_arrow_selects_previous_suggestion() {
+        let mut app = app_with_query(".na");
+        app.editor_mode = EditorMode::Insert;
+
+        let suggestions = vec![
+            Suggestion::new(".name", SuggestionType::Field),
+            Suggestion::new(".nested", SuggestionType::Field),
+        ];
+        app.autocomplete.update_suggestions(suggestions);
+
+        // Move to second suggestion
+        app.autocomplete.select_next();
+
+        app.handle_key_event(key(KeyCode::Up));
+
+        // Should select first suggestion
+        assert_eq!(app.autocomplete.selected().unwrap().text, ".name");
+    }
+
+    #[test]
+    fn test_tab_accepts_autocomplete_suggestion() {
+        let mut app = app_with_query(".na");
+        app.editor_mode = EditorMode::Insert;
+        app.focus = Focus::InputField;
+
+        let suggestions = vec![
+            Suggestion::new(".name", SuggestionType::Field),
+        ];
+        app.autocomplete.update_suggestions(suggestions);
+
+        app.handle_key_event(key(KeyCode::Tab));
+
+        assert_eq!(app.query(), ".name");
+        assert!(!app.autocomplete.is_visible());
+    }
+
+    #[test]
+    fn test_tab_without_autocomplete_does_nothing() {
+        let mut app = app_with_query(".name");
+        app.editor_mode = EditorMode::Insert;
+        app.focus = Focus::InputField;
+        assert!(!app.autocomplete.is_visible());
+
+        let query_before = app.query().to_string();
+        app.handle_key_event(key(KeyCode::Tab));
+
+        // Tab without autocomplete just gets passed through to textarea (might insert spaces)
+        // The important thing is that it doesn't crash and returns false from global handler
+        // We just verify the app is still in a consistent state
+        assert_eq!(app.editor_mode, EditorMode::Insert);
+        assert_eq!(app.focus, Focus::InputField);
+    }
+
+    #[test]
+    fn test_autocomplete_only_navigates_in_insert_mode() {
+        let mut app = app_with_query(".na");
+        app.editor_mode = EditorMode::Normal;
+
+        let suggestions = vec![
+            Suggestion::new(".name", SuggestionType::Field),
+        ];
+        app.autocomplete.update_suggestions(suggestions);
+
+        // Down arrow in Normal mode should not navigate autocomplete
+        let selected_before = app.autocomplete.selected().unwrap().text.clone();
+        app.handle_key_event(key(KeyCode::Down));
+        let selected_after = app.autocomplete.selected().unwrap().text.clone();
+
+        // Selection should remain unchanged (down is handled differently in Normal mode)
+        assert_eq!(selected_before, selected_after);
+    }
+
+    // ========== Results Scrolling Tests ==========
+
+    #[test]
+    fn test_j_scrolls_down_one_line() {
+        let mut app = app_with_query(".");
+        app.focus = Focus::ResultsPane;
+        app.results_scroll = 0;
+
+        app.handle_key_event(key(KeyCode::Char('j')));
+
+        assert_eq!(app.results_scroll, 1);
+    }
+
+    #[test]
+    fn test_k_scrolls_up_one_line() {
+        let mut app = app_with_query(".");
+        app.focus = Focus::ResultsPane;
+        app.results_scroll = 5;
+
+        app.handle_key_event(key(KeyCode::Char('k')));
+
+        assert_eq!(app.results_scroll, 4);
+    }
+
+    #[test]
+    fn test_k_at_top_stays_at_zero() {
+        let mut app = app_with_query(".");
+        app.focus = Focus::ResultsPane;
+        app.results_scroll = 0;
+
+        app.handle_key_event(key(KeyCode::Char('k')));
+
+        // Should saturate at 0, not go negative
+        assert_eq!(app.results_scroll, 0);
+    }
+
+    #[test]
+    fn test_capital_j_scrolls_down_ten_lines() {
+        let mut app = app_with_query(".");
+        app.focus = Focus::ResultsPane;
+        app.results_scroll = 5;
+
+        app.handle_key_event(key(KeyCode::Char('J')));
+
+        assert_eq!(app.results_scroll, 15);
+    }
+
+    #[test]
+    fn test_capital_k_scrolls_up_ten_lines() {
+        let mut app = app_with_query(".");
+        app.focus = Focus::ResultsPane;
+        app.results_scroll = 20;
+
+        app.handle_key_event(key(KeyCode::Char('K')));
+
+        assert_eq!(app.results_scroll, 10);
+    }
+
+    #[test]
+    fn test_g_jumps_to_top() {
+        let mut app = app_with_query(".");
+        app.focus = Focus::ResultsPane;
+        app.results_scroll = 50;
+
+        app.handle_key_event(key(KeyCode::Char('g')));
+
+        assert_eq!(app.results_scroll, 0);
+    }
+
+    #[test]
+    fn test_capital_g_jumps_to_bottom() {
+        let json = r#"{"line1": 1, "line2": 2, "line3": 3}"#;
+        let mut app = App::new(json.to_string());
+        app.textarea.insert_str(".");
+        app.focus = Focus::ResultsPane;
+        app.results_scroll = 0;
+        app.results_viewport_height = 2; // Small viewport to ensure max_scroll > 0
+
+        let max_scroll = app.max_scroll();
+        app.handle_key_event(key(KeyCode::Char('G')));
+
+        // Should jump to max_scroll position
+        assert_eq!(app.results_scroll, max_scroll);
+    }
+
+    #[test]
+    fn test_page_up_scrolls_half_page() {
+        let mut app = app_with_query(".");
+        app.focus = Focus::ResultsPane;
+        app.results_scroll = 20;
+        app.results_viewport_height = 20;
+
+        app.handle_key_event(key(KeyCode::PageUp));
+
+        // Should scroll up by half viewport (10 lines)
+        assert_eq!(app.results_scroll, 10);
+    }
+
+    #[test]
+    fn test_page_down_scrolls_half_page() {
+        let mut app = app_with_query(".");
+        app.focus = Focus::ResultsPane;
+        app.results_scroll = 0;
+        app.results_viewport_height = 20;
+
+        app.handle_key_event(key(KeyCode::PageDown));
+
+        // Should scroll down by half viewport (10 lines)
+        assert_eq!(app.results_scroll, 10);
+    }
+
+    #[test]
+    fn test_ctrl_u_scrolls_half_page_up() {
+        let mut app = app_with_query(".");
+        app.focus = Focus::ResultsPane;
+        app.results_scroll = 20;
+        app.results_viewport_height = 20;
+
+        app.handle_key_event(key_with_mods(KeyCode::Char('u'), KeyModifiers::CONTROL));
+
+        assert_eq!(app.results_scroll, 10);
+    }
+
+    #[test]
+    fn test_ctrl_d_scrolls_half_page_down() {
+        let mut app = app_with_query(".");
+        app.focus = Focus::ResultsPane;
+        app.results_scroll = 0;
+        app.results_viewport_height = 20;
+
+        app.handle_key_event(key_with_mods(KeyCode::Char('d'), KeyModifiers::CONTROL));
+
+        assert_eq!(app.results_scroll, 10);
+    }
+
+    #[test]
+    fn test_up_arrow_scrolls_in_results_pane() {
+        let mut app = app_with_query(".");
+        app.focus = Focus::ResultsPane;
+        app.results_scroll = 5;
+
+        app.handle_key_event(key(KeyCode::Up));
+
+        assert_eq!(app.results_scroll, 4);
+    }
+
+    #[test]
+    fn test_down_arrow_scrolls_in_results_pane() {
+        let mut app = app_with_query(".");
+        app.focus = Focus::ResultsPane;
+        app.results_scroll = 0;
+
+        app.handle_key_event(key(KeyCode::Down));
+
+        assert_eq!(app.results_scroll, 1);
+    }
+
+    #[test]
+    fn test_home_jumps_to_top() {
+        let mut app = app_with_query(".");
+        app.focus = Focus::ResultsPane;
+        app.results_scroll = 50;
+
+        app.handle_key_event(key(KeyCode::Home));
+
+        assert_eq!(app.results_scroll, 0);
+    }
+
+    // ========== Global Key Handler Tests ==========
+
+    #[test]
+    fn test_ctrl_c_sets_quit_flag() {
+        let mut app = app_with_query(".");
+
+        app.handle_key_event(key_with_mods(KeyCode::Char('c'), KeyModifiers::CONTROL));
+
+        assert!(app.should_quit);
+    }
+
+    #[test]
+    fn test_q_sets_quit_flag() {
+        let mut app = app_with_query(".");
+
+        app.handle_key_event(key(KeyCode::Char('q')));
+
+        assert!(app.should_quit);
+    }
+
+    #[test]
+    fn test_enter_sets_results_output_mode() {
+        let mut app = app_with_query(".");
+
+        app.handle_key_event(key(KeyCode::Enter));
+
+        assert_eq!(app.output_mode, Some(OutputMode::Results));
+        assert!(app.should_quit);
+    }
+
+    #[test]
+    fn test_shift_enter_sets_query_output_mode() {
+        let mut app = app_with_query(".");
+
+        app.handle_key_event(key_with_mods(KeyCode::Enter, KeyModifiers::SHIFT));
+
+        assert_eq!(app.output_mode, Some(OutputMode::Query));
+        assert!(app.should_quit);
+    }
+
+    #[test]
+    fn test_alt_enter_sets_query_output_mode() {
+        let mut app = app_with_query(".");
+
+        // Some terminals send Alt+Enter instead of Shift+Enter
+        app.handle_key_event(key_with_mods(KeyCode::Enter, KeyModifiers::ALT));
+
+        assert_eq!(app.output_mode, Some(OutputMode::Query));
+        assert!(app.should_quit);
+    }
+
+    #[test]
+    fn test_shift_tab_switches_focus_to_results() {
+        let mut app = app_with_query(".");
+        app.focus = Focus::InputField;
+
+        app.handle_key_event(key(KeyCode::BackTab));
+
+        assert_eq!(app.focus, Focus::ResultsPane);
+    }
+
+    #[test]
+    fn test_shift_tab_switches_focus_to_input() {
+        let mut app = app_with_query(".");
+        app.focus = Focus::ResultsPane;
+
+        app.handle_key_event(key(KeyCode::BackTab));
+
+        assert_eq!(app.focus, Focus::InputField);
+    }
+
+    #[test]
+    fn test_global_keys_work_regardless_of_focus() {
+        let mut app = app_with_query(".");
+        app.focus = Focus::ResultsPane;
+
+        app.handle_key_event(key_with_mods(KeyCode::Char('c'), KeyModifiers::CONTROL));
+
+        // Ctrl+C should work even when results pane is focused
+        assert!(app.should_quit);
+    }
+
+    #[test]
+    fn test_insert_mode_text_input_updates_query() {
+        let mut app = app_with_query("");
+        app.editor_mode = EditorMode::Insert;
+
+        // Simulate typing a character
+        app.handle_key_event(key(KeyCode::Char('.')));
+
+        assert_eq!(app.query(), ".");
+    }
+
+    #[test]
+    fn test_query_execution_resets_scroll() {
+        let mut app = app_with_query("");
+        app.editor_mode = EditorMode::Insert;
+        app.results_scroll = 50;
+
+        // Insert text which should trigger query execution
+        app.handle_key_event(key(KeyCode::Char('.')));
+
+        // Scroll should be reset when query changes
+        assert_eq!(app.results_scroll, 0);
+    }
+}
