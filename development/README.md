@@ -1,6 +1,6 @@
-# Developer Documentation
+# jiq - Technical Documentation
 
-Welcome to the **jiq** developer documentation! This guide will help you understand and work with the jiq codebase, whether you're a first-time Rust developer or a seasoned expert.
+Technical documentation and architecture notes for the jiq codebase.
 
 ## What is jiq?
 
@@ -10,128 +10,149 @@ Welcome to the **jiq** developer documentation! This guide will help you underst
 - Context-aware autocomplete for jq functions and JSON fields
 - Beautiful terminal UI built with Ratatui
 
-## Quick Navigation
+## Documentation Index
 
-### For Developers
+### Core Documentation
 
-Start here if you're new to the project:
+**[ARCHITECTURE.md](ARCHITECTURE.md)** - System design and component interactions
+- High-level system overview
+- Component diagrams and data flow
+- Module structure and responsibilities
+- Design decisions and rationale
 
-1. **[Getting Started](GETTING_STARTED.md)** - Set up your development environment
-2. **[Architecture](ARCHITECTURE.md)** - Understand how jiq works
+**[DEVELOPMENT_GUIDE.md](DEVELOPMENT_GUIDE.md)** - Development workflows and patterns
+- Common development tasks
+- Code organization principles
+- Best practices and idioms
+- Debugging techniques
 
-### For Active Developers
+**[TESTING.md](TESTING.md)** - Testing strategy and patterns
+- Test structure and organization
+- Running tests
+- Writing effective tests
+- Coverage goals
 
-Day-to-day development resources:
+**[DEPLOYMENT.md](DEPLOYMENT.md)** - Release process
+- cargo-dist automation
+- Version management
+- Distribution channels
+- Release checklist
 
-- **[Development Guide](DEVELOPMENT_GUIDE.md)** - Common workflows and best practices
-- **[Testing Guide](TESTING.md)** - How to write and run tests
-- **[Deployment](DEPLOYMENT.md)** - Release process and distribution
+### Subsystem Documentation
 
-### Deep Dives
+**[subsystems/EVENT_SYSTEM.md](subsystems/EVENT_SYSTEM.md)** - Event handling architecture
+- Event flow and dispatching
+- Keyboard event handling
+- Mode-specific event routing
+- Focus management
 
-Detailed feature documentation:
+**[subsystems/AUTOCOMPLETE.md](subsystems/AUTOCOMPLETE.md)** - Autocomplete system deep dive
+- Context detection algorithm
+- Suggestion generation
+- Performance optimizations
+- Future improvements
 
-- **[Autocomplete Feature](features/AUTOCOMPLETE.md)** - Implementation details of the autocomplete system
-- **[Distribution Strategy](features/DEPLOYMENT.md)** - How we package and distribute jiq
+**[subsystems/VIM_EDITOR.md](subsystems/VIM_EDITOR.md)** - VIM modal editing
+- Mode system (INSERT/NORMAL/OPERATOR)
+- Command parsing and execution
+- State transitions
+- tui-textarea integration
 
-## Documentation Map by Developer Experience
+**[subsystems/QUERY_EXECUTION.md](subsystems/QUERY_EXECUTION.md)** - Query execution pipeline
+- jq process management
+- Input/output handling
+- Error parsing
+- Performance considerations
 
-### Beginner Developers (New to Rust or TUIs)
-
-Focus on these documents in order:
-
-1. [Getting Started](GETTING_STARTED.md) - Setup and first contribution
-2. [Architecture](ARCHITECTURE.md#visual-overview) - Visual diagrams of system
-3. [Testing Guide](TESTING.md#running-tests) - How to run tests
-4. [Development Guide](DEVELOPMENT_GUIDE.md#common-tasks) - Simple tasks to start with
-
-**Good Starting Points:**
-- Explore documentation
-- Run and understand tests
-- Trace code execution with debugger
-
-### Intermediate Developers (Familiar with Rust)
-
-1. [Architecture](ARCHITECTURE.md) - Full system design
-2. [Development Guide](DEVELOPMENT_GUIDE.md) - Development workflows
-3. [Testing Guide](TESTING.md) - Test patterns used
-
-**Focus Areas:**
-- Feature enhancements
-- Performance improvements
-- UI/UX improvements
-
-### Senior Developers (Rust experts)
-
-1. [Architecture](ARCHITECTURE.md#design-decisions) - Design rationale
-2. [Autocomplete Feature](features/AUTOCOMPLETE.md) - Complex feature deep-dive
-3. [Development Guide](DEVELOPMENT_GUIDE.md#advanced-workflows) - Advanced patterns
-4. [Deployment](DEPLOYMENT.md) - Release engineering
-
-**Recommended Work:**
-- Architectural improvements
-- New major features
+**[subsystems/RENDERING.md](subsystems/RENDERING.md)** - UI rendering system
+- Ratatui layout management
+- Syntax highlighting
+- Popup rendering
 - Performance optimization
-- Release management
 
-## Key Technologies
+### Feature Documentation
 
-- **Language:** Rust 2024 Edition (MSRV: 1.80+)
-- **TUI Framework:** [Ratatui](https://ratatui.rs/) 0.29
-- **Terminal:** [Crossterm](https://github.com/crossterm-rs/crossterm) 0.28
-- **JSON Processing:** External `jq` binary
-- **Testing:** Built-in test framework + [assert_cmd](https://docs.rs/assert_cmd)
+**[features/AUTOCOMPLETE.md](features/AUTOCOMPLETE.md)** - Original autocomplete feature notes
 
 ## Project Structure
 
 ```
 jiq/
 ├── src/
-│   ├── main.rs              # Entry point
+│   ├── main.rs              # Entry point, CLI, main loop
 │   ├── error.rs             # Error types
-│   ├── app/                 # Application state and UI
+│   │
+│   ├── app/                 # Application coordination
 │   │   ├── mod.rs           # Public API
-│   │   ├── state.rs         # App state management
-│   │   ├── events.rs        # Event handling
-│   │   └── render.rs        # UI rendering
+│   │   ├── state.rs         # App state, focus management
+│   │   ├── events.rs        # Event dispatch and handling
+│   │   └── render.rs        # UI rendering logic
+│   │
 │   ├── autocomplete/        # Autocomplete system
 │   │   ├── mod.rs
-│   │   ├── state.rs         # Autocomplete state
+│   │   ├── state.rs         # Suggestion state
 │   │   ├── context.rs       # Context detection
-│   │   ├── jq_functions.rs  # jq built-ins database
+│   │   ├── jq_functions.rs  # Built-in function database
 │   │   └── json_analyzer.rs # JSON field extraction
-│   ├── editor/              # VIM-style editor
+│   │
+│   ├── editor/              # VIM modal editing
 │   │   ├── mod.rs
-│   │   └── mode.rs          # Editor modes (INSERT/NORMAL)
+│   │   └── mode.rs          # Mode definitions
+│   │
 │   ├── input/               # Input handling
 │   │   ├── mod.rs
 │   │   └── reader.rs        # JSON input reader
+│   │
 │   └── query/               # Query execution
 │       ├── mod.rs
-│       └── executor.rs      # jq process executor
+│       └── executor.rs      # jq subprocess executor
+│
 ├── tests/
-│   ├── integration_tests.rs # Integration tests
-│   └── fixtures/            # Test data
-├── development/             # This directory!
-│   ├── README.md            # You are here
-│   ├── GETTING_STARTED.md
-│   ├── ARCHITECTURE.md
-│   ├── DEVELOPMENT_GUIDE.md
-│   ├── TESTING.md
-│   ├── DEPLOYMENT.md
-│   └── features/            # Detailed feature docs
-└── Cargo.toml
+│   ├── integration_tests.rs
+│   └── fixtures/
+│
+└── development/             # This directory
+    ├── README.md            # You are here
+    ├── ARCHITECTURE.md
+    ├── DEVELOPMENT_GUIDE.md
+    ├── TESTING.md
+    ├── DEPLOYMENT.md
+    ├── subsystems/          # Detailed subsystem docs
+    └── features/            # Feature-specific notes
 ```
 
-## Getting Help
+## Key Technologies
 
-- **Questions?** Open a [GitHub Discussion](https://github.com/bellicose100xp/jiq/discussions)
-- **Bugs?** File an [Issue](https://github.com/bellicose100xp/jiq/issues)
+- **Rust 2024 Edition** (MSRV: 1.80+)
+- **Ratatui 0.29** - TUI framework
+- **Crossterm 0.28** - Terminal manipulation
+- **tui-textarea 0.7** - Text editor widget
+- **serde_json 1.0** - JSON parsing
+- **External jq binary** - Query execution
 
-## License
+## Quick Reference
 
-jiq is dual-licensed under MIT OR Apache-2.0. See [LICENSE-MIT](../LICENSE-MIT) and [LICENSE-APACHE](../LICENSE-APACHE) for details.
+### Build & Test
+```bash
+cargo build              # Debug build
+cargo build --release    # Release build
+cargo test               # Run all tests
+cargo clippy             # Linting
+cargo fmt                # Format code
+```
+
+### Development
+```bash
+cargo watch -x test      # Auto-run tests
+cargo watch -x 'run -- tests/fixtures/simple.json'
+```
+
+### Release
+```bash
+git tag v2.x.x
+git push origin v2.x.x   # Triggers CI release
+```
 
 ---
 
-**Ready to dive in?** Start with [Getting Started](GETTING_STARTED.md) →
+**Note:** This documentation is for maintainer reference. It focuses on understanding the codebase architecture and internal design decisions.
