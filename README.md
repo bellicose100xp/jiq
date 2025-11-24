@@ -66,7 +66,7 @@ curl https://api.example.com/data | jiq
 2. Use autocomplete suggestions for functions and fields (`Tab` to accept)
 3. See results update in real-time
 4. Press `Shift+Tab` to navigate results
-5. Press `Enter` to output results, or `Shift+Enter` to output query
+5. Press `Enter` to output results, or `Ctrl+Q` to output query
 
 **VIM users:** Press `ESC` to enter NORMAL mode for advanced editing.
 
@@ -80,7 +80,7 @@ curl https://api.example.com/data | jiq
 | `Shift+Tab` | Switch focus between Input and Results |
 | `Ctrl+E` | Toggle error overlay (when syntax error exists) |
 | `Enter` | Exit and output filtered JSON |
-| `Shift+Enter` | Exit and output query string only |
+| `Ctrl+Q` | Exit and output query string only (`Shift+Enter` may also work in some modern terminal emulators) |
 | `q` / `Ctrl+C` | Quit without output |
 
 </details>
@@ -170,13 +170,13 @@ cat users.json | jiq
 ```bash
 cat data.json | jiq
 # Experiment with: .items[] | select(.price > 100) | .name
-# Press Shift+Enter to get just the query string
+# Press Ctrl+Q to get just the query string
 ```
 
 **Pipeline integration:**
 ```bash
 # Build query interactively, then reuse
-QUERY=$(echo '{}' | jiq)  # Press Shift+Enter after building query
+QUERY=$(echo '{}' | jiq)  # Press Ctrl+Q after building query
 echo $QUERY | xargs -I {} jq {} mydata.json
 ```
 

@@ -73,15 +73,19 @@ impl App {
             return true;
         }
 
-        // q: Exit application
-        if key.code == KeyCode::Char('q') {
+        // q (without Ctrl): Exit application without output
+        if key.code == KeyCode::Char('q') && !key.modifiers.contains(KeyModifiers::CONTROL) {
             self.should_quit = true;
             return true;
         }
 
-        // Shift+Enter (may be sent as Alt+Enter by some terminals): Exit and output query only
-        if key.code == KeyCode::Enter
-            && (key.modifiers.contains(KeyModifiers::SHIFT) || key.modifiers.contains(KeyModifiers::ALT))
+        // Shift+Enter / Alt+Enter / Ctrl+Q: Exit and output query only
+        // Note: Some terminals (e.g., macOS Terminal.app) don't properly send
+        // Shift+Enter or Alt+Enter, so Ctrl+Q is provided as a universal fallback.
+        if (key.code == KeyCode::Enter
+            && (key.modifiers.contains(KeyModifiers::SHIFT)
+                || key.modifiers.contains(KeyModifiers::ALT)))
+            || (key.code == KeyCode::Char('q') && key.modifiers.contains(KeyModifiers::CONTROL))
         {
             self.output_mode = Some(OutputMode::Query);
             self.should_quit = true;
