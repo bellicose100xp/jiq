@@ -1,4 +1,5 @@
 mod events;
+mod help_content;
 mod help_state;
 mod input_state;
 mod query_state;

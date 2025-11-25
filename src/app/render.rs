@@ -11,6 +11,7 @@ use crate::autocomplete::SuggestionType;
 use crate::editor::EditorMode;
 use crate::history::MAX_VISIBLE_HISTORY;
 use crate::widgets::popup;
+use super::help_content;
 use super::state::{App, Focus};
 
 // Autocomplete popup display constants
@@ -518,58 +519,8 @@ impl App {
 
     /// Render the help popup (centered modal with keyboard shortcuts)
     fn render_help_popup(&mut self, frame: &mut Frame) {
-        // Define help content as (key, description) pairs, grouped by category
-        let help_content = vec![
-            ("", ""),
-            ("", "── GLOBAL ──"),
-            ("F1 or ?", "Toggle this help"),
-            ("Ctrl+C", "Quit without output"),
-            ("Enter", "Output filtered JSON and exit"),
-            ("Ctrl+Q", "Output query string only and exit"),
-            ("Shift+Tab", "Switch focus (Input / Results)"),
-            ("q", "Quit (in Normal mode or Results pane)"),
-            ("", ""),
-            ("", "── INPUT: INSERT MODE ──"),
-            ("Esc", "Switch to Normal mode"),
-            ("Ctrl+R", "Search history"),
-            ("Ctrl+P/N", "Previous/Next query in history"),
-            ("Up", "Open history (when input empty)"),
-            ("", ""),
-            ("", "── INPUT: NORMAL MODE ──"),
-            ("i/a/I/A", "Enter Insert mode"),
-            ("h/l", "Move cursor left/right"),
-            ("0/$", "Jump to start/end of line"),
-            ("w/b/e", "Word navigation"),
-            ("x/X", "Delete character"),
-            ("dd/D", "Delete line/to end"),
-            ("u", "Undo"),
-            ("Ctrl+R", "Redo"),
-            ("", ""),
-            ("", "── AUTOCOMPLETE (when visible) ──"),
-            ("Up/Down", "Navigate suggestions"),
-            ("Tab", "Accept suggestion"),
-            ("Esc", "Dismiss"),
-            ("", ""),
-            ("", "── RESULTS PANE ──"),
-            ("j/k", "Scroll line by line"),
-            ("J/K", "Scroll 10 lines"),
-            ("g/Home", "Jump to top"),
-            ("G/End", "Jump to bottom"),
-            ("Ctrl+D/U", "Half page down/up"),
-            ("PageDown/Up", "Half page down/up"),
-            ("", ""),
-            ("", "── HISTORY POPUP ──"),
-            ("Up/Down", "Navigate entries"),
-            ("Type", "Fuzzy search filter"),
-            ("Enter/Tab", "Select entry and close"),
-            ("Esc", "Close without selecting"),
-            ("", ""),
-            ("", "── ERROR OVERLAY ──"),
-            ("Ctrl+E", "Toggle error details"),
-        ];
-
         // Calculate popup dimensions
-        let content_height = help_content.len() as u16;
+        let content_height = help_content::HELP_ENTRIES.len() as u16;
         let ideal_popup_height = content_height + HELP_POPUP_PADDING;
         let ideal_popup_width = HELP_POPUP_WIDTH;
 
@@ -592,7 +543,7 @@ impl App {
         // Create help text with proper formatting
         let mut lines: Vec<Line> = Vec::new();
 
-        for (key, desc) in help_content {
+        for (key, desc) in help_content::HELP_ENTRIES {
             if key.is_empty() && desc.is_empty() {
                 // Empty line for spacing
                 lines.push(Line::from(""));
@@ -600,7 +551,7 @@ impl App {
                 // Category header (bold, cyan)
                 lines.push(Line::from(vec![
                     Span::raw("  "),
-                    Span::styled(desc, Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD)),
+                    Span::styled(*desc, Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD)),
                 ]));
             } else {
                 // Key-description pair
@@ -608,7 +559,7 @@ impl App {
                     format!("  {:<15}", key),
                     Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD),
                 );
-                let desc_span = Span::styled(desc, Style::default().fg(Color::White));
+                let desc_span = Span::styled(*desc, Style::default().fg(Color::White));
                 lines.push(Line::from(vec![key_span, desc_span]));
             }
         }
@@ -617,7 +568,7 @@ impl App {
         lines.push(Line::from(""));
         lines.push(Line::from(vec![
             Span::styled(
-                "           j/k: scroll | g/G: top/bottom | F1/q/?: close          ",
+                format!("           {}          ", help_content::HELP_FOOTER),
                 Style::default().fg(Color::DarkGray),
             ),
         ]));
