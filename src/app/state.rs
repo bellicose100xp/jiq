@@ -414,7 +414,7 @@ mod tests {
     #[test]
     fn test_array_suggestion_appends_to_path() {
         // When accepting [].field suggestion for .services, should produce .services[].field
-        let json = r#"{"services": [{"name": "test"}]}"#;
+        let json = r#"{"services": [{"name": "alice"}, {"name": "bob"}, {"name": "charlie"}]}"#;
         let mut app = App::new(json.to_string());
 
         // Simulate: user typed ".services" and cursor is at end (no partial)
@@ -425,12 +425,22 @@ mod tests {
 
         // Should produce .services[].name (append, not replace)
         assert_eq!(app.query(), ".services[].name");
+
+        // CRITICAL: Verify the query EXECUTES correctly and returns ALL array elements
+        let result = app.query.result.as_ref().unwrap();
+        assert!(result.contains("alice"), "Should contain first element");
+        assert!(result.contains("bob"), "Should contain second element");
+        assert!(result.contains("charlie"), "Should contain third element");
+
+        // Verify it does NOT just return nulls or single value
+        let line_count = result.lines().count();
+        assert!(line_count >= 3, "Should return at least 3 lines for 3 array elements");
     }
 
     #[test]
     fn test_array_suggestion_replaces_partial_field() {
         // When user types partial field after array name, accepting [] suggestion should replace partial
-        let json = r#"{"services": [{"serviceArn": "test"}]}"#;
+        let json = r#"{"services": [{"serviceArn": "arn1"}, {"serviceArn": "arn2"}, {"serviceArn": "arn3"}]}"#;
         let mut app = App::new(json.to_string());
 
         // Simulate: user typed ".services.s" (partial match for serviceArn)
@@ -441,6 +451,18 @@ mod tests {
 
         // Should produce .services[].serviceArn (replace ".s" with "[].serviceArn")
         assert_eq!(app.query(), ".services[].serviceArn");
+
+        // CRITICAL: Verify execution returns ALL serviceArns
+        let result = app.query.result.as_ref().unwrap();
+        eprintln!("Query result:\n{}", result);
+
+        assert!(result.contains("arn1"), "Should contain first serviceArn");
+        assert!(result.contains("arn2"), "Should contain second serviceArn");
+        assert!(result.contains("arn3"), "Should contain third serviceArn");
+
+        // Should NOT have nulls (would indicate query failed to iterate array)
+        let null_count = result.matches("null").count();
+        assert_eq!(null_count, 0, "Should not have any null values - query should iterate all array elements");
     }
 
     #[test]
@@ -457,5 +479,49 @@ mod tests {
 
         // Should produce .name (replace from the dot)
         assert_eq!(app.query(), ".name");
+    }
+
+    #[test]
+    fn test_autocomplete_with_real_ecs_like_data() {
+        // Test with data structure similar to AWS ECS services
+        let json = r#"{
+            "services": [
+                {"serviceArn": "arn:aws:ecs:region:account:service/cluster/svc1", "serviceName": "service1"},
+                {"serviceArn": "arn:aws:ecs:region:account:service/cluster/svc2", "serviceName": "service2"},
+                {"serviceArn": "arn:aws:ecs:region:account:service/cluster/svc3", "serviceName": "service3"},
+                {"serviceArn": "arn:aws:ecs:region:account:service/cluster/svc4", "serviceName": "service4"},
+                {"serviceArn": "arn:aws:ecs:region:account:service/cluster/svc5", "serviceName": "service5"}
+            ]
+        }"#;
+        let mut app = App::new(json.to_string());
+
+        // Scenario 1: Type ".services.s" and accept "[].serviceArn"
+        app.input.textarea.insert_str(".services.s");
+        app.insert_autocomplete_suggestion("[].serviceArn");
+
+        let query_text = app.query();
+        eprintln!("Query after autocomplete: {}", query_text);
+        assert_eq!(query_text, ".services[].serviceArn");
+
+        // Verify execution returns ALL 5 serviceArns
+        let result = app.query.result.as_ref().unwrap();
+        eprintln!("Query result:\n{}", result);
+
+        // Check for all service ARNs
+        assert!(result.contains("svc1"));
+        assert!(result.contains("svc2"));
+        assert!(result.contains("svc3"));
+        assert!(result.contains("svc4"));
+        assert!(result.contains("svc5"));
+
+        // Count non-null values
+        let lines: Vec<&str> = result.lines().collect();
+        let non_null_lines: Vec<&str> = lines.iter()
+            .filter(|line| !line.trim().contains("null"))
+            .copied()
+            .collect();
+
+        eprintln!("Total lines: {}, Non-null lines: {}", lines.len(), non_null_lines.len());
+        assert!(non_null_lines.len() >= 5, "Should have at least 5 non-null results, got {}", non_null_lines.len());
     }
 }
