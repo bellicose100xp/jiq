@@ -1,14 +1,12 @@
-use ratatui::{
-    style::{Color, Style},
-    widgets::{Block, Borders},
-};
-use tui_textarea::TextArea;
+use tui_textarea::CursorMove;
 
+use super::help_state::HelpPopupState;
+use super::input_state::InputState;
+use super::query_state::QueryState;
 use crate::autocomplete::{AutocompleteState, get_suggestions};
 use crate::autocomplete::json_analyzer::JsonAnalyzer;
-use crate::editor::EditorMode;
 use crate::history::HistoryState;
-use crate::query::executor::JqExecutor;
+use crate::scroll::ScrollState;
 
 // Autocomplete performance constants
 const MIN_CHARS_FOR_AUTOCOMPLETE: usize = 1;
@@ -29,73 +27,38 @@ pub enum OutputMode {
 
 /// Application state
 pub struct App {
-    pub textarea: TextArea<'static>,
-    pub executor: JqExecutor,
-    pub query_result: Result<String, String>,
-    pub last_successful_result: Option<String>,
+    pub input: InputState,
+    pub query: QueryState,
     pub focus: Focus,
-    pub editor_mode: EditorMode,
-    pub results_scroll: u16,
-    pub results_viewport_height: u16,
+    pub results_scroll: ScrollState,
     pub output_mode: Option<OutputMode>,
     pub should_quit: bool,
     pub autocomplete: AutocompleteState,
     pub json_analyzer: JsonAnalyzer,
     pub error_overlay_visible: bool,
     pub history: HistoryState,
-    pub help_visible: bool,
-    pub help_scroll: u16,
-    pub help_max_scroll: u16,
+    pub help: HelpPopupState,
 }
 
 impl App {
     /// Create a new App instance with JSON input
     pub fn new(json_input: String) -> Self {
-        // Create textarea for query input
-        let mut textarea = TextArea::default();
-
-        // Configure for single-line input
-        textarea.set_block(
-            Block::default()
-                .borders(Borders::ALL)
-                .title(" Query ")
-                .border_style(Style::default().fg(Color::DarkGray)),
-        );
-
-        // Remove default underline from cursor line
-        textarea.set_cursor_line_style(Style::default());
-
-        // Create JQ executor
-        let executor = JqExecutor::new(json_input.clone());
-
-        // Initial result text on startup
-        let query_result = executor.execute(".");
-
-        // Cache the initial successful result
-        let last_successful_result = query_result.as_ref().ok().cloned();
-
         // Initialize JSON analyzer with the input JSON
         let mut json_analyzer = JsonAnalyzer::new();
         let _ = json_analyzer.analyze(&json_input);
 
         Self {
-            textarea,
-            executor,
-            query_result,
-            last_successful_result,
-            focus: Focus::InputField, // Start with input field focused
-            editor_mode: EditorMode::default(), // Start in Insert mode
-            results_scroll: 0,
-            results_viewport_height: 0, // Will be set during first render
-            output_mode: None, // No output mode set until Enter/Shift+Enter
+            input: InputState::new(),
+            query: QueryState::new(json_input),
+            focus: Focus::InputField,
+            results_scroll: ScrollState::new(),
+            output_mode: None,
             should_quit: false,
             autocomplete: AutocompleteState::new(),
             json_analyzer,
-            error_overlay_visible: false, // Error overlay hidden by default
+            error_overlay_visible: false,
             history: HistoryState::new(),
-            help_visible: false, // Help popup hidden by default
-            help_scroll: 0,
-            help_max_scroll: 0,
+            help: HelpPopupState::new(),
         }
     }
 
@@ -111,38 +74,21 @@ impl App {
 
     /// Get the current query text
     pub fn query(&self) -> &str {
-        self.textarea.lines()[0].as_ref()
+        self.input.query()
     }
 
     /// Get the total number of lines in the current results
     /// Note: Returns u32 to handle large files (>65K lines) correctly
     /// When there's an error, uses last_successful_result since that's what gets rendered
-    fn results_line_count_u32(&self) -> u32 {
-        match &self.query_result {
-            Ok(result) => result.lines().count() as u32,
-            Err(_) => {
-                // When there's an error, we render last_successful_result, so count its lines
-                self.last_successful_result
-                    .as_ref()
-                    .map(|r| r.lines().count() as u32)
-                    .unwrap_or(0)
-            }
-        }
+    pub fn results_line_count_u32(&self) -> u32 {
+        self.query.line_count()
     }
 
-    /// Get the maximum scroll position based on content and viewport
-    /// Note: Uses u32 internally to handle large files correctly, then clamps to u16
-    /// (ratatui's scroll() takes u16, so this is the maximum we can scroll)
-    pub fn max_scroll(&self) -> u16 {
-        let total_lines = self.results_line_count_u32();
-        let viewport = self.results_viewport_height as u32;
-        total_lines.saturating_sub(viewport).min(u16::MAX as u32) as u16
-    }
 
     /// Update autocomplete suggestions based on current query and cursor position
     pub fn update_autocomplete(&mut self) {
         let query = self.query();
-        let cursor_pos = self.textarea.cursor().1; // Column position
+        let cursor_pos = self.input.textarea.cursor().1; // Column position
 
         // Performance optimization: only show autocomplete for non-empty queries
         if query.trim().len() < MIN_CHARS_FOR_AUTOCOMPLETE {
@@ -160,7 +106,7 @@ impl App {
     /// Insert an autocomplete suggestion at the current cursor position
     pub fn insert_autocomplete_suggestion(&mut self, suggestion: &str) {
         let query = self.query().to_string();
-        let cursor_pos = self.textarea.cursor().1;
+        let cursor_pos = self.input.textarea.cursor().1;
         let before_cursor = &query[..cursor_pos.min(query.len())];
 
         // Find the start position to replace from
@@ -187,8 +133,8 @@ impl App {
         );
 
         // Replace the entire line and set cursor position
-        self.textarea.delete_line_by_head();
-        self.textarea.insert_str(&new_query);
+        self.input.textarea.delete_line_by_head();
+        self.input.textarea.insert_str(&new_query);
 
         // Move cursor to end of inserted suggestion
         let target_pos = replace_start + suggestion.len();
@@ -201,19 +147,19 @@ impl App {
 
     /// Move cursor to a specific column position (helper method)
     fn move_cursor_to_column(&mut self, target_col: usize) {
-        let current_col = self.textarea.cursor().1;
+        let current_col = self.input.textarea.cursor().1;
 
         match target_col.cmp(&current_col) {
             std::cmp::Ordering::Less => {
                 // Move backward
                 for _ in 0..(current_col - target_col) {
-                    self.textarea.move_cursor(tui_textarea::CursorMove::Back);
+                    self.input.textarea.move_cursor(CursorMove::Back);
                 }
             }
             std::cmp::Ordering::Greater => {
                 // Move forward
                 for _ in 0..(target_col - current_col) {
-                    self.textarea.move_cursor(tui_textarea::CursorMove::Forward);
+                    self.input.textarea.move_cursor(CursorMove::Forward);
                 }
             }
             std::cmp::Ordering::Equal => {
@@ -224,12 +170,9 @@ impl App {
 
     /// Execute query and update results (helper method)
     fn execute_query_and_update(&mut self) {
-        let query = self.query();
-        self.query_result = self.executor.execute(query);
-        if let Ok(result) = &self.query_result {
-            self.last_successful_result = Some(result.clone());
-        }
-        self.results_scroll = 0;
+        let query_text = self.query().to_string();
+        self.query.execute(&query_text);
+        self.results_scroll.reset();
         self.error_overlay_visible = false; // Auto-hide error overlay on query change
     }
 }
@@ -286,7 +229,7 @@ mod tests {
 
         // Check default state
         assert_eq!(app.focus, Focus::InputField);
-        assert_eq!(app.results_scroll, 0);
+        assert_eq!(app.results_scroll.offset, 0);
         assert_eq!(app.output_mode, None);
         assert!(!app.should_quit);
         assert_eq!(app.query(), "");
@@ -298,8 +241,8 @@ mod tests {
         let app = App::new(json.to_string());
 
         // Initial query should execute identity filter "."
-        assert!(app.query_result.is_ok());
-        let result = app.query_result.as_ref().unwrap();
+        assert!(app.query.result.is_ok());
+        let result = app.query.result.as_ref().unwrap();
         assert!(result.contains("Bob"));
     }
 
@@ -355,7 +298,7 @@ mod tests {
         let json = "{}";
         let app = App::new(json.to_string());
 
-        assert!(app.query_result.is_ok());
+        assert!(app.query.result.is_ok());
     }
 
     #[test]
@@ -363,8 +306,8 @@ mod tests {
         let json = r#"[1, 2, 3]"#;
         let app = App::new(json.to_string());
 
-        assert!(app.query_result.is_ok());
-        let result = app.query_result.as_ref().unwrap();
+        assert!(app.query.result.is_ok());
+        let result = app.query.result.as_ref().unwrap();
         assert!(result.contains("1"));
         assert!(result.contains("2"));
         assert!(result.contains("3"));
@@ -378,16 +321,17 @@ mod tests {
 
         // Simulate large content result
         let large_result: String = (0..70000).map(|i| format!("line {}\n", i)).collect();
-        app.query_result = Ok(large_result);
-        app.results_viewport_height = 20;
+        app.query.result = Ok(large_result);
 
         // Should handle >65K lines without overflow
         let line_count = app.results_line_count_u32();
         assert!(line_count > 65535);
 
-        // max_scroll should be clamped to u16::MAX
-        let max_scroll = app.max_scroll();
-        assert_eq!(max_scroll, u16::MAX);
+        // Update scroll bounds
+        app.results_scroll.update_bounds(line_count, 20);
+
+        // max_offset should be clamped to u16::MAX
+        assert_eq!(app.results_scroll.max_offset, u16::MAX);
     }
 
     #[test]
@@ -397,14 +341,16 @@ mod tests {
 
         // Simulate result with exactly u16::MAX lines
         let result: String = (0..65535).map(|_| "x\n").collect();
-        app.query_result = Ok(result);
+        app.query.result = Ok(result);
 
         // Verify line count is correct (using internal method)
         assert_eq!(app.results_line_count_u32(), 65535);
 
-        // Verify max_scroll handles it correctly
-        app.results_viewport_height = 10;
-        assert_eq!(app.max_scroll(), 65525); // 65535 - 10
+        // Update scroll bounds
+        app.results_scroll.update_bounds(65535, 10);
+
+        // Verify max_offset handles it correctly
+        assert_eq!(app.results_scroll.max_offset, 65525); // 65535 - 10
     }
 
     #[test]
@@ -414,21 +360,21 @@ mod tests {
 
         // Execute a valid query first to cache result
         let valid_result: String = (0..50).map(|i| format!("line{}\n", i)).collect();
-        app.query_result = Ok(valid_result.clone());
-        app.last_successful_result = Some(valid_result);
+        app.query.result = Ok(valid_result.clone());
+        app.query.last_successful_result = Some(valid_result);
 
         // Verify line count with valid result
         assert_eq!(app.results_line_count_u32(), 50);
 
         // Now simulate an error (short error message)
-        app.query_result = Err("syntax error\nline 2\nline 3".to_string());
+        app.query.result = Err("syntax error\nline 2\nline 3".to_string());
 
         // Line count should use last_successful_result (50 lines), not error (3 lines)
         assert_eq!(app.results_line_count_u32(), 50);
 
-        // Verify max_scroll is calculated correctly with viewport
-        app.results_viewport_height = 10;
-        assert_eq!(app.max_scroll(), 40); // 50 - 10 = 40
+        // Update scroll bounds and verify max_offset is calculated correctly
+        app.results_scroll.update_bounds(50, 10);
+        assert_eq!(app.results_scroll.max_offset, 40); // 50 - 10 = 40
     }
 
     #[test]
@@ -437,11 +383,14 @@ mod tests {
         let mut app = App::new(json.to_string());
 
         // Set error without any cached result
-        app.last_successful_result = None;
-        app.query_result = Err("error message".to_string());
+        app.query.last_successful_result = None;
+        app.query.result = Err("error message".to_string());
 
         // Should return 0 when no cached result available
         assert_eq!(app.results_line_count_u32(), 0);
-        assert_eq!(app.max_scroll(), 0);
+
+        // Update scroll bounds
+        app.results_scroll.update_bounds(0, 10);
+        assert_eq!(app.results_scroll.max_offset, 0);
     }
 }

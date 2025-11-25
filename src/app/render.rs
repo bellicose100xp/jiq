@@ -63,12 +63,12 @@ impl App {
         }
 
         // Render error overlay (if visible and error exists) - render last to overlay results
-        if self.error_overlay_visible && self.query_result.is_err() {
+        if self.error_overlay_visible && self.query.result.is_err() {
             self.render_error_overlay(frame, results_area);
         }
 
         // Render help popup (if visible) - render last to overlay everything
-        if self.help_visible {
+        if self.help.visible {
             self.render_help_popup(frame);
         }
     }
@@ -76,7 +76,7 @@ impl App {
     /// Render the input field (bottom)
     fn render_input_field(&mut self, frame: &mut Frame, area: ratatui::layout::Rect) {
         // Choose color based on mode
-        let mode_color = match self.editor_mode {
+        let mode_color = match self.input.editor_mode {
             EditorMode::Insert => Color::Cyan,        // Cyan for Insert
             EditorMode::Normal => Color::Yellow,      // Yellow for Normal
             EditorMode::Operator(_) => Color::Green,  // Green for Operator
@@ -90,8 +90,8 @@ impl App {
         };
 
         // Build title with colored mode indicator and hint
-        let mode_text = self.editor_mode.display();
-        let mut title_spans = match self.editor_mode {
+        let mode_text = self.input.editor_mode.display();
+        let mut title_spans = match self.input.editor_mode {
             EditorMode::Normal => {
                 vec![
                     Span::raw(" Query ["),
@@ -109,7 +109,7 @@ impl App {
         };
 
         // Add error indicator if there's an error
-        if self.query_result.is_err() {
+        if self.query.result.is_err() {
             title_spans.push(Span::styled(
                 "⚠ Syntax Error (Ctrl+E to view)",
                 Style::default().fg(Color::Yellow),
@@ -119,15 +119,15 @@ impl App {
         let title = Line::from(title_spans);
 
         // Set cursor color based on mode
-        let cursor_style = match self.editor_mode {
+        let cursor_style = match self.input.editor_mode {
             EditorMode::Insert => Style::default().fg(Color::Cyan).add_modifier(Modifier::REVERSED),
             EditorMode::Normal => Style::default().fg(Color::Yellow).add_modifier(Modifier::REVERSED),
             EditorMode::Operator(_) => Style::default().fg(Color::Green).add_modifier(Modifier::REVERSED),
         };
-        self.textarea.set_cursor_style(cursor_style);
+        self.input.textarea.set_cursor_style(cursor_style);
 
         // Update textarea block with mode-aware styling
-        self.textarea.set_block(
+        self.input.textarea.set_block(
             Block::default()
                 .borders(Borders::ALL)
                 .title(title)
@@ -135,7 +135,7 @@ impl App {
         );
 
         // Render the textarea widget
-        frame.render_widget(&self.textarea, area);
+        frame.render_widget(&self.input.textarea, area);
 
         // Render syntax highlighting overlay
         self.render_syntax_highlighting(frame, area);
@@ -180,10 +180,12 @@ impl App {
             Color::DarkGray // Unfocused
         };
 
-        match &self.query_result {
+        match &self.query.result {
             Ok(result) => {
-                // Store viewport height for page scrolling calculations (subtract borders)
-                self.results_viewport_height = area.height.saturating_sub(2);
+                // Update scroll bounds based on content and viewport
+                let viewport_height = area.height.saturating_sub(2);
+                let line_count = self.results_line_count_u32();
+                self.results_scroll.update_bounds(line_count, viewport_height);
 
                 let block = Block::default()
                     .borders(Borders::ALL)
@@ -199,16 +201,18 @@ impl App {
 
                 let content = Paragraph::new(colored_text)
                     .block(block)
-                    .scroll((self.results_scroll, 0));
+                    .scroll((self.results_scroll.offset, 0));
 
                 frame.render_widget(content, area);
             }
             Err(_error) => {
                 // When there's an error, show last successful result in full area (no splitting)
                 // The error overlay will be rendered separately if user requests it with Ctrl+E
-                self.results_viewport_height = area.height.saturating_sub(2);
+                let viewport_height = area.height.saturating_sub(2);
+                let line_count = self.results_line_count_u32();
+                self.results_scroll.update_bounds(line_count, viewport_height);
 
-                if let Some(last_result) = &self.last_successful_result {
+                if let Some(last_result) = &self.query.last_successful_result {
                     // Render last successful result
                     let results_block = Block::default()
                         .borders(Borders::ALL)
@@ -224,7 +228,7 @@ impl App {
 
                     let results_widget = Paragraph::new(colored_text)
                         .block(results_block)
-                        .scroll((self.results_scroll, 0));
+                        .scroll((self.results_scroll.offset, 0));
 
                     frame.render_widget(results_widget, area);
                 } else {
@@ -246,7 +250,7 @@ impl App {
     /// Render the error overlay (floating at the bottom of results pane)
     fn render_error_overlay(&self, frame: &mut Frame, results_area: Rect) {
         // Only render if there's an error
-        if let Err(error) = &self.query_result {
+        if let Err(error) = &self.query.result {
             // Truncate error to max 5 lines of content
             let error_lines: Vec<&str> = error.lines().collect();
             let max_content_lines = 5;
@@ -261,7 +265,7 @@ impl App {
 
             // Calculate overlay height (content lines + borders)
             let content_lines = if truncated { max_content_lines + 1 } else { error_lines.len() };
-            let overlay_height = (content_lines as u16 + 2).min(7).max(3); // Min 3, max 7
+            let overlay_height = (content_lines as u16 + 2).clamp(3, 7); // Min 3, max 7
 
             // Position overlay at bottom of results pane, with 1 line gap from bottom border
             let overlay_y = results_area.bottom().saturating_sub(overlay_height + 1);
@@ -295,7 +299,7 @@ impl App {
     /// Render the help line (bottom)
     fn render_help_line(&self, frame: &mut Frame, area: ratatui::layout::Rect) {
         // Mode-aware help text: in Insert mode 'q' and '?' type characters
-        let help_text = if self.focus == Focus::InputField && self.editor_mode == EditorMode::Insert {
+        let help_text = if self.focus == Focus::InputField && self.input.editor_mode == EditorMode::Insert {
             " F1: Help | Shift+Tab: Switch Focus | Enter: Exit with Results | Ctrl+Q: Exit with Query"
         } else {
             " F1/?: Help | Shift+Tab: Switch Focus | Enter: Exit with Results | Ctrl+Q: Exit with Query | q: Quit"
@@ -665,16 +669,10 @@ impl App {
 
         let help_text = Text::from(lines.clone());
 
-        // Calculate max scroll (content height - visible height, accounting for borders)
-        let content_height = lines.len() as u16;
+        // Update scroll bounds based on content and viewport
+        let content_height = lines.len() as u32;
         let visible_height = popup_height.saturating_sub(2); // -2 for borders
-        let max_scroll = content_height.saturating_sub(visible_height);
-
-        // Store max_scroll for use in event handling
-        self.help_max_scroll = max_scroll;
-
-        // Clamp scroll to valid range
-        let scroll = self.help_scroll.min(max_scroll);
+        self.help.scroll.update_bounds(content_height, visible_height);
 
         // Create the popup widget with scroll
         let popup = Paragraph::new(help_text)
@@ -685,7 +683,7 @@ impl App {
                     .border_style(Style::default().fg(Color::Cyan))
                     .style(Style::default().bg(Color::Black)),
             )
-            .scroll((scroll, 0));
+            .scroll((self.help.scroll.offset, 0));
 
         frame.render_widget(popup, popup_area);
     }

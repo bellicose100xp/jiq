@@ -10,6 +10,7 @@ mod error;
 mod history;
 mod input;
 mod query;
+mod scroll;
 mod syntax;
 
 use app::{App, OutputMode};

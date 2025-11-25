@@ -36,72 +36,65 @@ impl App {
     /// Returns true if key was handled, false otherwise
     fn handle_global_keys(&mut self, key: KeyEvent) -> bool {
         // Handle help popup when visible (must be first to block other keys)
-        if self.help_visible {
+        if self.help.visible {
             match key.code {
                 // Close help
                 KeyCode::Esc | KeyCode::F(1) => {
-                    self.help_visible = false;
-                    self.help_scroll = 0;
+                    self.help.visible = false;
+                    self.help.scroll.reset();
                     return true;
                 }
                 KeyCode::Char('q') if !key.modifiers.contains(KeyModifiers::CONTROL) => {
-                    self.help_visible = false;
-                    self.help_scroll = 0;
+                    self.help.visible = false;
+                    self.help.scroll.reset();
                     return true;
                 }
                 KeyCode::Char('?') => {
-                    self.help_visible = false;
-                    self.help_scroll = 0;
+                    self.help.visible = false;
+                    self.help.scroll.reset();
                     return true;
                 }
                 // Scroll down (j, J, Down, Ctrl+D)
                 KeyCode::Char('j') | KeyCode::Down => {
-                    self.help_scroll = self.help_scroll.saturating_add(1);
+                    self.help.scroll.scroll_down(1);
                     return true;
                 }
                 KeyCode::Char('J') => {
-                    self.help_scroll = self.help_scroll.saturating_add(10);
+                    self.help.scroll.scroll_down(10);
                     return true;
                 }
                 KeyCode::Char('d') if key.modifiers.contains(KeyModifiers::CONTROL) => {
-                    self.help_scroll = self.help_scroll.saturating_add(10);
+                    self.help.scroll.scroll_down(10);
                     return true;
                 }
                 KeyCode::PageDown => {
-                    self.help_scroll = self.help_scroll.saturating_add(10);
+                    self.help.scroll.scroll_down(10);
                     return true;
                 }
                 // Scroll up (k, K, Up, Ctrl+U, PageUp)
-                // Note: clamp to actual max before subtracting to handle G overshoot
-                // Use help_max_scroll if available (set by render), otherwise use large value
                 KeyCode::Char('k') | KeyCode::Up => {
-                    let max = if self.help_max_scroll > 0 { self.help_max_scroll } else { u16::MAX };
-                    self.help_scroll = self.help_scroll.min(max).saturating_sub(1);
+                    self.help.scroll.scroll_up(1);
                     return true;
                 }
                 KeyCode::Char('K') => {
-                    let max = if self.help_max_scroll > 0 { self.help_max_scroll } else { u16::MAX };
-                    self.help_scroll = self.help_scroll.min(max).saturating_sub(10);
+                    self.help.scroll.scroll_up(10);
                     return true;
                 }
                 KeyCode::Char('u') if key.modifiers.contains(KeyModifiers::CONTROL) => {
-                    let max = if self.help_max_scroll > 0 { self.help_max_scroll } else { u16::MAX };
-                    self.help_scroll = self.help_scroll.min(max).saturating_sub(10);
+                    self.help.scroll.scroll_up(10);
                     return true;
                 }
                 KeyCode::PageUp => {
-                    let max = if self.help_max_scroll > 0 { self.help_max_scroll } else { u16::MAX };
-                    self.help_scroll = self.help_scroll.min(max).saturating_sub(10);
+                    self.help.scroll.scroll_up(10);
                     return true;
                 }
                 // Jump to top/bottom
                 KeyCode::Char('g') | KeyCode::Home => {
-                    self.help_scroll = 0;
+                    self.help.scroll.jump_to_top();
                     return true;
                 }
                 KeyCode::Char('G') | KeyCode::End => {
-                    // Use large value that will be clamped to actual max in render
-                    self.help_scroll = u16::MAX;
+                    self.help.scroll.jump_to_bottom();
                     return true;
                 }
                 _ => return true, // Block all other keys when help is visible
@@ -116,7 +109,7 @@ impl App {
 
         // Ctrl+E: Toggle error overlay (only if error exists)
         if key.code == KeyCode::Char('e') && key.modifiers.contains(KeyModifiers::CONTROL) {
-            if self.query_result.is_err() {
+            if self.query.result.is_err() {
                 self.error_overlay_visible = !self.error_overlay_visible;
             }
             return true;
@@ -124,7 +117,7 @@ impl App {
 
         // F1: Toggle help popup (works in all modes)
         if key.code == KeyCode::F(1) {
-            self.help_visible = !self.help_visible;
+            self.help.visible = !self.help.visible;
             return true;
         }
 
@@ -160,7 +153,7 @@ impl App {
         // - In Insert mode: only quit if focus is on ResultsPane (not editing text)
         if key.code == KeyCode::Char('q')
             && !key.modifiers.contains(KeyModifiers::CONTROL)
-            && (self.editor_mode != EditorMode::Insert || self.focus == Focus::ResultsPane)
+            && (self.input.editor_mode != EditorMode::Insert || self.focus == Focus::ResultsPane)
         {
             self.should_quit = true;
             return true;
@@ -182,7 +175,7 @@ impl App {
         // Enter: Exit and output filtered results (but not when history popup is open)
         if key.code == KeyCode::Enter && !self.history.is_visible() {
             // Save successful queries to history
-            if self.query_result.is_ok() && !self.query().is_empty() {
+            if self.query.result.is_ok() && !self.query().is_empty() {
                 let query = self.query().to_string();
                 self.history.add_entry(&query);
             }
@@ -208,12 +201,12 @@ impl App {
                 self.autocomplete.hide();
                 return;
             }
-            self.editor_mode = EditorMode::Normal;
+            self.input.editor_mode = EditorMode::Normal;
             return;
         }
 
         // Handle autocomplete navigation (in Insert mode only)
-        if self.editor_mode == EditorMode::Insert && self.autocomplete.is_visible() {
+        if self.input.editor_mode == EditorMode::Insert && self.autocomplete.is_visible() {
             match key.code {
                 KeyCode::Down => {
                     self.autocomplete.select_next();
@@ -228,8 +221,8 @@ impl App {
         }
 
         // Handle history trigger (in Insert mode only)
-        if self.editor_mode == EditorMode::Insert {
-            let cursor_col = self.textarea.cursor().1;
+        if self.input.editor_mode == EditorMode::Insert {
+            let cursor_col = self.input.textarea.cursor().1;
             let query_empty = self.query().is_empty();
 
             // Ctrl+P: Cycle to previous (older) history entry
@@ -246,8 +239,8 @@ impl App {
                     self.replace_query_with(&entry);
                 } else {
                     // At most recent, clear the input
-                    self.textarea.delete_line_by_head();
-                    self.textarea.delete_line_by_end();
+                    self.input.textarea.delete_line_by_head();
+                    self.input.textarea.delete_line_by_end();
                     self.execute_query();
                 }
                 return;
@@ -267,7 +260,7 @@ impl App {
         }
 
         // Handle input based on current mode
-        match self.editor_mode {
+        match self.input.editor_mode {
             EditorMode::Insert => self.handle_insert_mode_key(key),
             EditorMode::Normal => self.handle_normal_mode_key(key),
             EditorMode::Operator(_) => self.handle_operator_mode_key(key),
@@ -277,23 +270,23 @@ impl App {
     /// Handle keys in Insert mode
     fn handle_insert_mode_key(&mut self, key: KeyEvent) {
         // Use textarea's built-in input handling
-        let content_changed = self.textarea.input(key);
+        let content_changed = self.input.textarea.input(key);
 
         // Execute query on every keystroke that changes content
         if content_changed {
             // Reset history cycling when user types
             self.history.reset_cycling();
 
-            let query = self.textarea.lines()[0].as_ref();
-            self.query_result = self.executor.execute(query);
+            let query = self.input.textarea.lines()[0].as_ref();
+            self.query.result = self.query.executor.execute(query);
 
             // Cache successful results
-            if let Ok(result) = &self.query_result {
-                self.last_successful_result = Some(result.clone());
+            if let Ok(result) = &self.query.result {
+                self.query.last_successful_result = Some(result.clone());
             }
 
             // Reset scroll when query changes
-            self.results_scroll = 0;
+            self.results_scroll.reset();
             self.error_overlay_visible = false; // Auto-hide error overlay on query change
         }
 
@@ -306,104 +299,104 @@ impl App {
         match key.code {
             // Toggle help popup
             KeyCode::Char('?') => {
-                self.help_visible = !self.help_visible;
+                self.help.visible = !self.help.visible;
             }
 
             // Basic cursor movement (h/l)
             KeyCode::Char('h') | KeyCode::Left => {
-                self.textarea.move_cursor(CursorMove::Back);
+                self.input.textarea.move_cursor(CursorMove::Back);
             }
             KeyCode::Char('l') | KeyCode::Right => {
-                self.textarea.move_cursor(CursorMove::Forward);
+                self.input.textarea.move_cursor(CursorMove::Forward);
             }
 
             // Line extent movement (0/$)
             KeyCode::Char('0') | KeyCode::Home => {
-                self.textarea.move_cursor(CursorMove::Head);
+                self.input.textarea.move_cursor(CursorMove::Head);
             }
             KeyCode::Char('$') | KeyCode::End => {
-                self.textarea.move_cursor(CursorMove::End);
+                self.input.textarea.move_cursor(CursorMove::End);
             }
 
             // Word movement (w/b/e)
             KeyCode::Char('w') => {
-                self.textarea.move_cursor(CursorMove::WordForward);
+                self.input.textarea.move_cursor(CursorMove::WordForward);
             }
             KeyCode::Char('b') => {
-                self.textarea.move_cursor(CursorMove::WordBack);
+                self.input.textarea.move_cursor(CursorMove::WordBack);
             }
             KeyCode::Char('e') => {
-                self.textarea.move_cursor(CursorMove::WordEnd);
+                self.input.textarea.move_cursor(CursorMove::WordEnd);
             }
 
             // Enter Insert mode commands
             KeyCode::Char('i') => {
                 // i - Insert at cursor
-                self.editor_mode = EditorMode::Insert;
+                self.input.editor_mode = EditorMode::Insert;
             }
             KeyCode::Char('a') => {
                 // a - Append (insert after cursor)
-                self.textarea.move_cursor(CursorMove::Forward);
-                self.editor_mode = EditorMode::Insert;
+                self.input.textarea.move_cursor(CursorMove::Forward);
+                self.input.editor_mode = EditorMode::Insert;
             }
             KeyCode::Char('I') => {
                 // I - Insert at line start
-                self.textarea.move_cursor(CursorMove::Head);
-                self.editor_mode = EditorMode::Insert;
+                self.input.textarea.move_cursor(CursorMove::Head);
+                self.input.editor_mode = EditorMode::Insert;
             }
             KeyCode::Char('A') => {
                 // A - Append at line end
-                self.textarea.move_cursor(CursorMove::End);
-                self.editor_mode = EditorMode::Insert;
+                self.input.textarea.move_cursor(CursorMove::End);
+                self.input.editor_mode = EditorMode::Insert;
             }
 
             // Simple delete operations
             KeyCode::Char('x') => {
                 // x - Delete character at cursor
-                self.textarea.delete_next_char();
+                self.input.textarea.delete_next_char();
                 self.execute_query();
             }
             KeyCode::Char('X') => {
                 // X - Delete character before cursor
-                self.textarea.delete_char();
+                self.input.textarea.delete_char();
                 self.execute_query();
             }
 
             // Delete/Change to end of line
             KeyCode::Char('D') => {
                 // D - Delete to end of line (like d$)
-                self.textarea.delete_line_by_end();
+                self.input.textarea.delete_line_by_end();
                 self.execute_query();
             }
             KeyCode::Char('C') => {
                 // C - Change to end of line (like c$)
-                self.textarea.delete_line_by_end();
-                self.textarea.cancel_selection();
-                self.editor_mode = EditorMode::Insert;
+                self.input.textarea.delete_line_by_end();
+                self.input.textarea.cancel_selection();
+                self.input.editor_mode = EditorMode::Insert;
                 self.execute_query();
             }
 
             // Operators - enter Operator mode
             KeyCode::Char('d') => {
                 // d - Delete operator (wait for motion)
-                self.editor_mode = EditorMode::Operator('d');
-                self.textarea.start_selection();
+                self.input.editor_mode = EditorMode::Operator('d');
+                self.input.textarea.start_selection();
             }
             KeyCode::Char('c') => {
                 // c - Change operator (delete then insert)
-                self.editor_mode = EditorMode::Operator('c');
-                self.textarea.start_selection();
+                self.input.editor_mode = EditorMode::Operator('c');
+                self.input.textarea.start_selection();
             }
 
             // Undo/Redo
             KeyCode::Char('u') => {
                 // u - Undo
-                self.textarea.undo();
+                self.input.textarea.undo();
                 self.execute_query();
             }
             KeyCode::Char('r') if key.modifiers.contains(KeyModifiers::CONTROL) => {
                 // Ctrl+r - Redo
-                self.textarea.redo();
+                self.input.textarea.redo();
                 self.execute_query();
             }
 
@@ -415,7 +408,7 @@ impl App {
 
     /// Handle keys in Operator mode (waiting for motion after d/c)
     fn handle_operator_mode_key(&mut self, key: KeyEvent) {
-        let operator = match self.editor_mode {
+        let operator = match self.input.editor_mode {
             EditorMode::Operator(op) => op,
             _ => return, // Should never happen
         };
@@ -423,9 +416,9 @@ impl App {
         // Check for double operator (dd, cc)
         if key.code == KeyCode::Char(operator) {
             // dd or cc - delete entire line
-            self.textarea.delete_line_by_head();
-            self.textarea.delete_line_by_end();
-            self.editor_mode = if operator == 'c' {
+            self.input.textarea.delete_line_by_head();
+            self.input.textarea.delete_line_by_end();
+            self.input.editor_mode = if operator == 'c' {
                 EditorMode::Insert
             } else {
                 EditorMode::Normal
@@ -438,36 +431,36 @@ impl App {
         let motion_applied = match key.code {
             // Word motions
             KeyCode::Char('w') => {
-                self.textarea.move_cursor(CursorMove::WordForward);
+                self.input.textarea.move_cursor(CursorMove::WordForward);
                 true
             }
             KeyCode::Char('b') => {
-                self.textarea.move_cursor(CursorMove::WordBack);
+                self.input.textarea.move_cursor(CursorMove::WordBack);
                 true
             }
             KeyCode::Char('e') => {
-                self.textarea.move_cursor(CursorMove::WordEnd);
-                self.textarea.move_cursor(CursorMove::Forward); // Include char at cursor
+                self.input.textarea.move_cursor(CursorMove::WordEnd);
+                self.input.textarea.move_cursor(CursorMove::Forward); // Include char at cursor
                 true
             }
 
             // Line extent motions
             KeyCode::Char('0') | KeyCode::Home => {
-                self.textarea.move_cursor(CursorMove::Head);
+                self.input.textarea.move_cursor(CursorMove::Head);
                 true
             }
             KeyCode::Char('$') | KeyCode::End => {
-                self.textarea.move_cursor(CursorMove::End);
+                self.input.textarea.move_cursor(CursorMove::End);
                 true
             }
 
             // Character motions
             KeyCode::Char('h') | KeyCode::Left => {
-                self.textarea.move_cursor(CursorMove::Back);
+                self.input.textarea.move_cursor(CursorMove::Back);
                 true
             }
             KeyCode::Char('l') | KeyCode::Right => {
-                self.textarea.move_cursor(CursorMove::Forward);
+                self.input.textarea.move_cursor(CursorMove::Forward);
                 true
             }
 
@@ -479,46 +472,46 @@ impl App {
             match operator {
                 'd' => {
                     // Delete - cut and stay in Normal mode
-                    self.textarea.cut();
-                    self.editor_mode = EditorMode::Normal;
+                    self.input.textarea.cut();
+                    self.input.editor_mode = EditorMode::Normal;
                 }
                 'c' => {
                     // Change - cut and enter Insert mode
-                    self.textarea.cut();
-                    self.editor_mode = EditorMode::Insert;
+                    self.input.textarea.cut();
+                    self.input.editor_mode = EditorMode::Insert;
                 }
                 _ => {
-                    self.textarea.cancel_selection();
-                    self.editor_mode = EditorMode::Normal;
+                    self.input.textarea.cancel_selection();
+                    self.input.editor_mode = EditorMode::Normal;
                 }
             }
             self.execute_query();
         } else {
             // Invalid motion or ESC - cancel operator
-            self.textarea.cancel_selection();
-            self.editor_mode = EditorMode::Normal;
+            self.input.textarea.cancel_selection();
+            self.input.editor_mode = EditorMode::Normal;
         }
     }
 
     /// Execute current query and update results
     fn execute_query(&mut self) {
-        let query = self.textarea.lines()[0].as_ref();
-        self.query_result = self.executor.execute(query);
+        let query = self.input.textarea.lines()[0].as_ref();
+        self.query.result = self.query.executor.execute(query);
 
         // Cache successful results
-        if let Ok(result) = &self.query_result {
-            self.last_successful_result = Some(result.clone());
+        if let Ok(result) = &self.query.result {
+            self.query.last_successful_result = Some(result.clone());
         }
 
-        self.results_scroll = 0;
+        self.results_scroll.reset();
         self.error_overlay_visible = false; // Auto-hide error overlay on query change
     }
 
     /// Replace the current query with the given text
     fn replace_query_with(&mut self, text: &str) {
-        self.textarea.delete_line_by_head();
-        self.textarea.delete_line_by_end();
-        self.textarea.insert_str(text);
+        self.input.textarea.delete_line_by_head();
+        self.input.textarea.delete_line_by_end();
+        self.input.textarea.insert_str(text);
         self.execute_query();
     }
 
@@ -577,57 +570,44 @@ impl App {
 
     /// Handle keys when Results pane is focused
     fn handle_results_pane_key(&mut self, key: KeyEvent) {
-        let max_scroll = self.max_scroll();
         match key.code {
             // Toggle help popup
             KeyCode::Char('?') => {
-                self.help_visible = !self.help_visible;
+                self.help.visible = !self.help.visible;
             }
 
             // Basic line scrolling (1 line)
             KeyCode::Up | KeyCode::Char('k') => {
-                self.results_scroll = self.results_scroll.saturating_sub(1);
+                self.results_scroll.scroll_up(1);
             }
             KeyCode::Down | KeyCode::Char('j') => {
-                self.results_scroll = self.results_scroll.saturating_add(1).min(max_scroll);
+                self.results_scroll.scroll_down(1);
             }
 
             // 10 line scrolling
             KeyCode::Char('K') => {
-                self.results_scroll = self.results_scroll.saturating_sub(10);
+                self.results_scroll.scroll_up(10);
             }
             KeyCode::Char('J') => {
-                self.results_scroll = self.results_scroll.saturating_add(10).min(max_scroll);
+                self.results_scroll.scroll_down(10);
             }
 
             // Jump to top
             KeyCode::Home | KeyCode::Char('g') => {
-                self.results_scroll = 0;
+                self.results_scroll.jump_to_top();
             }
 
             // Jump to bottom
             KeyCode::Char('G') => {
-                self.results_scroll = max_scroll;
+                self.results_scroll.jump_to_bottom();
             }
 
-            // Half page scrolling up
-            KeyCode::PageUp => {
-                let half_page = self.results_viewport_height / 2;
-                self.results_scroll = self.results_scroll.saturating_sub(half_page);
+            // Half page scrolling
+            KeyCode::PageUp | KeyCode::Char('u') if key.code == KeyCode::PageUp || key.modifiers.contains(KeyModifiers::CONTROL) => {
+                self.results_scroll.page_up();
             }
-            KeyCode::Char('u') if key.modifiers.contains(KeyModifiers::CONTROL) => {
-                let half_page = self.results_viewport_height / 2;
-                self.results_scroll = self.results_scroll.saturating_sub(half_page);
-            }
-
-            // Half page scrolling down
-            KeyCode::PageDown => {
-                let half_page = self.results_viewport_height / 2;
-                self.results_scroll = self.results_scroll.saturating_add(half_page).min(max_scroll);
-            }
-            KeyCode::Char('d') if key.modifiers.contains(KeyModifiers::CONTROL) => {
-                let half_page = self.results_viewport_height / 2;
-                self.results_scroll = self.results_scroll.saturating_add(half_page).min(max_scroll);
+            KeyCode::PageDown | KeyCode::Char('d') if key.code == KeyCode::PageDown || key.modifiers.contains(KeyModifiers::CONTROL) => {
+                self.results_scroll.page_down();
             }
 
             _ => {
@@ -660,7 +640,7 @@ mod tests {
         use crate::history::HistoryState;
 
         let mut app = App::new(TEST_JSON.to_string());
-        app.textarea.insert_str(query);
+        app.input.textarea.insert_str(query);
         // Use empty in-memory history for all tests to prevent disk writes
         app.history = HistoryState::empty();
         app
@@ -668,9 +648,9 @@ mod tests {
 
     // Helper to move cursor to specific position by text content
     fn move_cursor_to_position(app: &mut App, target_pos: usize) {
-        app.textarea.move_cursor(CursorMove::Head);
+        app.input.textarea.move_cursor(CursorMove::Head);
         for _ in 0..target_pos {
-            app.textarea.move_cursor(CursorMove::Forward);
+            app.input.textarea.move_cursor(CursorMove::Forward);
         }
     }
 
@@ -685,13 +665,13 @@ mod tests {
     #[test]
     fn test_ctrl_e_toggles_error_overlay_when_error_exists() {
         let mut app = App::new(TEST_JSON.to_string());
-        app.editor_mode = EditorMode::Insert;
+        app.input.editor_mode = EditorMode::Insert;
 
         // Type an invalid query (| is invalid jq syntax)
         app.handle_key_event(key(KeyCode::Char('|')));
 
         // Should have an error now
-        assert!(app.query_result.is_err());
+        assert!(app.query.result.is_err());
         assert!(!app.error_overlay_visible); // Initially hidden
 
         // Press Ctrl+E to show overlay
@@ -707,7 +687,7 @@ mod tests {
     fn test_ctrl_e_does_nothing_when_no_error() {
         let mut app = App::new(TEST_JSON.to_string());
         // Initial query "." should succeed
-        assert!(app.query_result.is_ok());
+        assert!(app.query.result.is_ok());
         assert!(!app.error_overlay_visible);
 
         // Press Ctrl+E (should do nothing since no error)
@@ -718,11 +698,11 @@ mod tests {
     #[test]
     fn test_error_overlay_hides_on_query_change() {
         let mut app = App::new(TEST_JSON.to_string());
-        app.editor_mode = EditorMode::Insert;
+        app.input.editor_mode = EditorMode::Insert;
 
         // Type invalid query
         app.handle_key_event(key(KeyCode::Char('|')));
-        assert!(app.query_result.is_err());
+        assert!(app.query.result.is_err());
 
         // Show error overlay
         app.handle_key_event(key_with_mods(KeyCode::Char('e'), KeyModifiers::CONTROL));
@@ -738,11 +718,11 @@ mod tests {
     #[test]
     fn test_error_overlay_hides_on_query_change_in_normal_mode() {
         let mut app = App::new(TEST_JSON.to_string());
-        app.editor_mode = EditorMode::Insert;
+        app.input.editor_mode = EditorMode::Insert;
 
         // Type invalid query
         app.handle_key_event(key(KeyCode::Char('|')));
-        assert!(app.query_result.is_err());
+        assert!(app.query.result.is_err());
 
         // Show error overlay
         app.handle_key_event(key_with_mods(KeyCode::Char('e'), KeyModifiers::CONTROL));
@@ -750,7 +730,7 @@ mod tests {
 
         // Switch to Normal mode and delete the character
         app.handle_key_event(key(KeyCode::Esc));
-        app.textarea.move_cursor(CursorMove::Head);
+        app.input.textarea.move_cursor(CursorMove::Head);
         app.handle_key_event(key(KeyCode::Char('x')));
 
         // Overlay should auto-hide after query change
@@ -760,15 +740,15 @@ mod tests {
     #[test]
     fn test_ctrl_e_works_in_normal_mode() {
         let mut app = App::new(TEST_JSON.to_string());
-        app.editor_mode = EditorMode::Insert;
+        app.input.editor_mode = EditorMode::Insert;
 
         // Type invalid query
         app.handle_key_event(key(KeyCode::Char('|')));
-        assert!(app.query_result.is_err());
+        assert!(app.query.result.is_err());
 
         // Switch to Normal mode
         app.handle_key_event(key(KeyCode::Esc));
-        assert_eq!(app.editor_mode, EditorMode::Normal);
+        assert_eq!(app.input.editor_mode, EditorMode::Normal);
 
         // Press Ctrl+E in Normal mode
         app.handle_key_event(key_with_mods(KeyCode::Char('e'), KeyModifiers::CONTROL));
@@ -778,11 +758,11 @@ mod tests {
     #[test]
     fn test_ctrl_e_works_when_results_pane_focused() {
         let mut app = App::new(TEST_JSON.to_string());
-        app.editor_mode = EditorMode::Insert;
+        app.input.editor_mode = EditorMode::Insert;
 
         // Type invalid query
         app.handle_key_event(key(KeyCode::Char('|')));
-        assert!(app.query_result.is_err());
+        assert!(app.query.result.is_err());
 
         // Switch focus to results pane
         app.handle_key_event(key(KeyCode::BackTab));
@@ -798,18 +778,18 @@ mod tests {
     #[test]
     fn test_operator_dw_deletes_word_from_start() {
         let mut app = app_with_query(".name.first");
-        app.textarea.move_cursor(CursorMove::Head);
-        app.editor_mode = EditorMode::Normal;
+        app.input.textarea.move_cursor(CursorMove::Head);
+        app.input.editor_mode = EditorMode::Normal;
 
         // Type 'd' to enter Operator mode
         app.handle_key_event(key(KeyCode::Char('d')));
-        assert!(matches!(app.editor_mode, EditorMode::Operator('d')));
+        assert!(matches!(app.input.editor_mode, EditorMode::Operator('d')));
 
         // Type 'w' to delete word
         app.handle_key_event(key(KeyCode::Char('w')));
         // The selection behavior deletes from cursor to end of word motion
         assert!(app.query().contains("first"));
-        assert_eq!(app.editor_mode, EditorMode::Normal);
+        assert_eq!(app.input.editor_mode, EditorMode::Normal);
     }
 
     #[test]
@@ -817,7 +797,7 @@ mod tests {
         let mut app = app_with_query(".name.first");
         // Move to position 5 (at the dot before "first")
         move_cursor_to_position(&mut app, 5);
-        app.editor_mode = EditorMode::Normal;
+        app.input.editor_mode = EditorMode::Normal;
 
         app.handle_key_event(key(KeyCode::Char('d')));
         app.handle_key_event(key(KeyCode::Char('w')));
@@ -829,8 +809,8 @@ mod tests {
     #[test]
     fn test_operator_db_deletes_word_backward() {
         let mut app = app_with_query(".name.first");
-        app.textarea.move_cursor(CursorMove::End);
-        app.editor_mode = EditorMode::Normal;
+        app.input.textarea.move_cursor(CursorMove::End);
+        app.input.editor_mode = EditorMode::Normal;
 
         app.handle_key_event(key(KeyCode::Char('d')));
         app.handle_key_event(key(KeyCode::Char('b')));
@@ -842,8 +822,8 @@ mod tests {
     #[test]
     fn test_operator_de_deletes_to_word_end() {
         let mut app = app_with_query(".name.first");
-        app.textarea.move_cursor(CursorMove::Head);
-        app.editor_mode = EditorMode::Normal;
+        app.input.textarea.move_cursor(CursorMove::Head);
+        app.input.editor_mode = EditorMode::Normal;
 
         app.handle_key_event(key(KeyCode::Char('d')));
         app.handle_key_event(key(KeyCode::Char('e')));
@@ -857,7 +837,7 @@ mod tests {
         let mut app = app_with_query(".name.first");
         // Move to position 5 (after ".name")
         move_cursor_to_position(&mut app, 5);
-        app.editor_mode = EditorMode::Normal;
+        app.input.editor_mode = EditorMode::Normal;
 
         app.handle_key_event(key(KeyCode::Char('d')));
         app.handle_key_event(key(KeyCode::Char('$')));
@@ -870,7 +850,7 @@ mod tests {
         let mut app = app_with_query(".name.first");
         // Move to middle of text
         move_cursor_to_position(&mut app, 6);
-        app.editor_mode = EditorMode::Normal;
+        app.input.editor_mode = EditorMode::Normal;
 
         app.handle_key_event(key(KeyCode::Char('d')));
         app.handle_key_event(key(KeyCode::Char('0')));
@@ -881,102 +861,102 @@ mod tests {
     #[test]
     fn test_operator_dd_deletes_entire_line() {
         let mut app = app_with_query(".name.first");
-        app.editor_mode = EditorMode::Normal;
+        app.input.editor_mode = EditorMode::Normal;
 
         app.handle_key_event(key(KeyCode::Char('d')));
         app.handle_key_event(key(KeyCode::Char('d')));
 
         assert_eq!(app.query(), "");
-        assert_eq!(app.editor_mode, EditorMode::Normal);
+        assert_eq!(app.input.editor_mode, EditorMode::Normal);
     }
 
     #[test]
     fn test_operator_cw_changes_word() {
         let mut app = app_with_query(".name.first");
-        app.textarea.move_cursor(CursorMove::Head);
-        app.editor_mode = EditorMode::Normal;
+        app.input.textarea.move_cursor(CursorMove::Head);
+        app.input.editor_mode = EditorMode::Normal;
 
         app.handle_key_event(key(KeyCode::Char('c')));
         app.handle_key_event(key(KeyCode::Char('w')));
 
         // Should delete word and enter Insert mode
         assert!(app.query().contains("first"));
-        assert_eq!(app.editor_mode, EditorMode::Insert);
+        assert_eq!(app.input.editor_mode, EditorMode::Insert);
     }
 
     #[test]
     fn test_operator_cc_changes_entire_line() {
         let mut app = app_with_query(".name.first");
-        app.editor_mode = EditorMode::Normal;
+        app.input.editor_mode = EditorMode::Normal;
 
         app.handle_key_event(key(KeyCode::Char('c')));
         app.handle_key_event(key(KeyCode::Char('c')));
 
         assert_eq!(app.query(), "");
-        assert_eq!(app.editor_mode, EditorMode::Insert);
+        assert_eq!(app.input.editor_mode, EditorMode::Insert);
     }
 
     #[test]
     fn test_operator_invalid_motion_cancels() {
         let mut app = app_with_query(".name");
-        app.editor_mode = EditorMode::Normal;
+        app.input.editor_mode = EditorMode::Normal;
         let original_query = app.query().to_string();
 
         app.handle_key_event(key(KeyCode::Char('d')));
-        assert!(matches!(app.editor_mode, EditorMode::Operator('d')));
+        assert!(matches!(app.input.editor_mode, EditorMode::Operator('d')));
 
         // Press invalid motion key (z is not a valid motion)
         app.handle_key_event(key(KeyCode::Char('z')));
 
         // Should cancel operator and return to Normal mode without changing text
-        assert_eq!(app.editor_mode, EditorMode::Normal);
+        assert_eq!(app.input.editor_mode, EditorMode::Normal);
         assert_eq!(app.query(), original_query);
     }
 
     #[test]
     fn test_escape_in_operator_mode_cancels_operator() {
         let mut app = app_with_query(".name");
-        app.editor_mode = EditorMode::Normal;
+        app.input.editor_mode = EditorMode::Normal;
         let original_query = app.query().to_string();
 
         // Enter operator mode
         app.handle_key_event(key(KeyCode::Char('d')));
-        assert!(matches!(app.editor_mode, EditorMode::Operator('d')));
+        assert!(matches!(app.input.editor_mode, EditorMode::Operator('d')));
 
         // Press Escape - should NOT go to Insert mode, should cancel operator
         app.handle_key_event(key(KeyCode::Esc));
 
         // Should return to Normal mode and preserve text
-        assert_eq!(app.editor_mode, EditorMode::Normal);
+        assert_eq!(app.input.editor_mode, EditorMode::Normal);
         assert_eq!(app.query(), original_query);
     }
 
     #[test]
     fn test_operator_dh_deletes_character_backward() {
         let mut app = app_with_query(".name");
-        app.textarea.move_cursor(CursorMove::End);
-        app.editor_mode = EditorMode::Normal;
+        app.input.textarea.move_cursor(CursorMove::End);
+        app.input.editor_mode = EditorMode::Normal;
 
         app.handle_key_event(key(KeyCode::Char('d')));
         app.handle_key_event(key(KeyCode::Char('h')));
 
         // Should delete one character backward
         assert!(app.query().len() < 5);
-        assert_eq!(app.editor_mode, EditorMode::Normal);
+        assert_eq!(app.input.editor_mode, EditorMode::Normal);
     }
 
     #[test]
     fn test_operator_dl_deletes_character_forward() {
         let mut app = app_with_query(".name");
-        app.textarea.move_cursor(CursorMove::Head);
-        app.editor_mode = EditorMode::Normal;
+        app.input.textarea.move_cursor(CursorMove::Head);
+        app.input.editor_mode = EditorMode::Normal;
 
         app.handle_key_event(key(KeyCode::Char('d')));
         app.handle_key_event(key(KeyCode::Char('l')));
 
         // Should delete one character forward
         assert!(app.query().len() < 5);
-        assert_eq!(app.editor_mode, EditorMode::Normal);
+        assert_eq!(app.input.editor_mode, EditorMode::Normal);
     }
 
     // ========== Mode Transition Tests ==========
@@ -984,83 +964,83 @@ mod tests {
     #[test]
     fn test_escape_from_insert_to_normal() {
         let mut app = app_with_query(".name");
-        app.editor_mode = EditorMode::Insert;
+        app.input.editor_mode = EditorMode::Insert;
 
         app.handle_key_event(key(KeyCode::Esc));
 
-        assert_eq!(app.editor_mode, EditorMode::Normal);
+        assert_eq!(app.input.editor_mode, EditorMode::Normal);
     }
 
     #[test]
     fn test_i_enters_insert_mode_at_cursor() {
         let mut app = app_with_query(".name");
-        app.editor_mode = EditorMode::Normal;
-        app.textarea.move_cursor(CursorMove::Head);
-        let cursor_before = app.textarea.cursor();
+        app.input.editor_mode = EditorMode::Normal;
+        app.input.textarea.move_cursor(CursorMove::Head);
+        let cursor_before = app.input.textarea.cursor();
 
         app.handle_key_event(key(KeyCode::Char('i')));
 
-        assert_eq!(app.editor_mode, EditorMode::Insert);
+        assert_eq!(app.input.editor_mode, EditorMode::Insert);
         // Cursor should remain at same position
-        assert_eq!(app.textarea.cursor(), cursor_before);
+        assert_eq!(app.input.textarea.cursor(), cursor_before);
     }
 
     #[test]
     fn test_a_enters_insert_mode_after_cursor() {
         let mut app = app_with_query(".name");
-        app.editor_mode = EditorMode::Normal;
-        app.textarea.move_cursor(CursorMove::Head);
-        let cursor_col_before = app.textarea.cursor().1;
+        app.input.editor_mode = EditorMode::Normal;
+        app.input.textarea.move_cursor(CursorMove::Head);
+        let cursor_col_before = app.input.textarea.cursor().1;
 
         app.handle_key_event(key(KeyCode::Char('a')));
 
-        assert_eq!(app.editor_mode, EditorMode::Insert);
+        assert_eq!(app.input.editor_mode, EditorMode::Insert);
         // Cursor should move forward by one
-        assert_eq!(app.textarea.cursor().1, cursor_col_before + 1);
+        assert_eq!(app.input.textarea.cursor().1, cursor_col_before + 1);
     }
 
     #[test]
     fn test_capital_i_enters_insert_at_line_start() {
         let mut app = app_with_query(".name");
-        app.editor_mode = EditorMode::Normal;
-        app.textarea.move_cursor(CursorMove::End);
+        app.input.editor_mode = EditorMode::Normal;
+        app.input.textarea.move_cursor(CursorMove::End);
 
         app.handle_key_event(key(KeyCode::Char('I')));
 
-        assert_eq!(app.editor_mode, EditorMode::Insert);
-        assert_eq!(app.textarea.cursor().1, 0);
+        assert_eq!(app.input.editor_mode, EditorMode::Insert);
+        assert_eq!(app.input.textarea.cursor().1, 0);
     }
 
     #[test]
     fn test_capital_a_enters_insert_at_line_end() {
         let mut app = app_with_query(".name");
-        app.editor_mode = EditorMode::Normal;
-        app.textarea.move_cursor(CursorMove::Head);
+        app.input.editor_mode = EditorMode::Normal;
+        app.input.textarea.move_cursor(CursorMove::Head);
 
         app.handle_key_event(key(KeyCode::Char('A')));
 
-        assert_eq!(app.editor_mode, EditorMode::Insert);
-        assert_eq!(app.textarea.cursor().1, 5); // Should be at end of ".name"
+        assert_eq!(app.input.editor_mode, EditorMode::Insert);
+        assert_eq!(app.input.textarea.cursor().1, 5); // Should be at end of ".name"
     }
 
     #[test]
     fn test_d_enters_operator_mode() {
         let mut app = app_with_query(".name");
-        app.editor_mode = EditorMode::Normal;
+        app.input.editor_mode = EditorMode::Normal;
 
         app.handle_key_event(key(KeyCode::Char('d')));
 
-        assert!(matches!(app.editor_mode, EditorMode::Operator('d')));
+        assert!(matches!(app.input.editor_mode, EditorMode::Operator('d')));
     }
 
     #[test]
     fn test_c_enters_operator_mode() {
         let mut app = app_with_query(".name");
-        app.editor_mode = EditorMode::Normal;
+        app.input.editor_mode = EditorMode::Normal;
 
         app.handle_key_event(key(KeyCode::Char('c')));
 
-        assert!(matches!(app.editor_mode, EditorMode::Operator('c')));
+        assert!(matches!(app.input.editor_mode, EditorMode::Operator('c')));
     }
 
     // ========== Simple VIM Commands ==========
@@ -1068,8 +1048,8 @@ mod tests {
     #[test]
     fn test_x_deletes_character_at_cursor() {
         let mut app = app_with_query(".name");
-        app.textarea.move_cursor(CursorMove::Head);
-        app.editor_mode = EditorMode::Normal;
+        app.input.textarea.move_cursor(CursorMove::Head);
+        app.input.editor_mode = EditorMode::Normal;
 
         app.handle_key_event(key(KeyCode::Char('x')));
 
@@ -1079,9 +1059,9 @@ mod tests {
     #[test]
     fn test_capital_x_deletes_character_before_cursor() {
         let mut app = app_with_query(".name");
-        app.textarea.move_cursor(CursorMove::Head);
-        app.textarea.move_cursor(CursorMove::Forward); // Move to 'n'
-        app.editor_mode = EditorMode::Normal;
+        app.input.textarea.move_cursor(CursorMove::Head);
+        app.input.textarea.move_cursor(CursorMove::Forward); // Move to 'n'
+        app.input.editor_mode = EditorMode::Normal;
 
         app.handle_key_event(key(KeyCode::Char('X')));
 
@@ -1092,7 +1072,7 @@ mod tests {
     fn test_capital_d_deletes_to_end_of_line() {
         let mut app = app_with_query(".name.first");
         move_cursor_to_position(&mut app, 5);
-        app.editor_mode = EditorMode::Normal;
+        app.input.editor_mode = EditorMode::Normal;
 
         app.handle_key_event(key(KeyCode::Char('D')));
 
@@ -1103,21 +1083,21 @@ mod tests {
     fn test_capital_c_changes_to_end_of_line() {
         let mut app = app_with_query(".name.first");
         move_cursor_to_position(&mut app, 5);
-        app.editor_mode = EditorMode::Normal;
+        app.input.editor_mode = EditorMode::Normal;
 
         app.handle_key_event(key(KeyCode::Char('C')));
 
         assert_eq!(app.query(), ".name");
-        assert_eq!(app.editor_mode, EditorMode::Insert);
+        assert_eq!(app.input.editor_mode, EditorMode::Insert);
     }
 
     #[test]
     fn test_u_triggers_undo() {
         let mut app = app_with_query("");
-        app.editor_mode = EditorMode::Insert;
-        app.textarea.insert_str(".name");
+        app.input.editor_mode = EditorMode::Insert;
+        app.input.textarea.insert_str(".name");
 
-        app.editor_mode = EditorMode::Normal;
+        app.input.editor_mode = EditorMode::Normal;
         app.handle_key_event(key(KeyCode::Char('u')));
 
         // After undo, query should be empty
@@ -1127,11 +1107,11 @@ mod tests {
     #[test]
     fn test_ctrl_r_triggers_redo() {
         let mut app = app_with_query("");
-        app.editor_mode = EditorMode::Insert;
-        app.textarea.insert_str(".name");
+        app.input.editor_mode = EditorMode::Insert;
+        app.input.textarea.insert_str(".name");
 
-        app.editor_mode = EditorMode::Normal;
-        app.textarea.undo(); // Undo the insert
+        app.input.editor_mode = EditorMode::Normal;
+        app.input.textarea.undo(); // Undo the insert
         assert_eq!(app.query(), "");
 
         app.handle_key_event(key_with_mods(KeyCode::Char('r'), KeyModifiers::CONTROL));
@@ -1145,85 +1125,85 @@ mod tests {
     #[test]
     fn test_h_moves_cursor_left() {
         let mut app = app_with_query(".name");
-        app.textarea.move_cursor(CursorMove::End);
-        app.editor_mode = EditorMode::Normal;
-        let cursor_before = app.textarea.cursor().1;
+        app.input.textarea.move_cursor(CursorMove::End);
+        app.input.editor_mode = EditorMode::Normal;
+        let cursor_before = app.input.textarea.cursor().1;
 
         app.handle_key_event(key(KeyCode::Char('h')));
 
-        assert_eq!(app.textarea.cursor().1, cursor_before - 1);
+        assert_eq!(app.input.textarea.cursor().1, cursor_before - 1);
     }
 
     #[test]
     fn test_l_moves_cursor_right() {
         let mut app = app_with_query(".name");
-        app.textarea.move_cursor(CursorMove::Head);
-        app.editor_mode = EditorMode::Normal;
+        app.input.textarea.move_cursor(CursorMove::Head);
+        app.input.editor_mode = EditorMode::Normal;
 
         app.handle_key_event(key(KeyCode::Char('l')));
 
-        assert_eq!(app.textarea.cursor().1, 1);
+        assert_eq!(app.input.textarea.cursor().1, 1);
     }
 
     #[test]
     fn test_0_moves_to_line_start() {
         let mut app = app_with_query(".name");
-        app.textarea.move_cursor(CursorMove::End);
-        app.editor_mode = EditorMode::Normal;
+        app.input.textarea.move_cursor(CursorMove::End);
+        app.input.editor_mode = EditorMode::Normal;
 
         app.handle_key_event(key(KeyCode::Char('0')));
 
-        assert_eq!(app.textarea.cursor().1, 0);
+        assert_eq!(app.input.textarea.cursor().1, 0);
     }
 
     #[test]
     fn test_dollar_moves_to_line_end() {
         let mut app = app_with_query(".name");
-        app.textarea.move_cursor(CursorMove::Head);
-        app.editor_mode = EditorMode::Normal;
+        app.input.textarea.move_cursor(CursorMove::Head);
+        app.input.editor_mode = EditorMode::Normal;
 
         app.handle_key_event(key(KeyCode::Char('$')));
 
-        assert_eq!(app.textarea.cursor().1, 5);
+        assert_eq!(app.input.textarea.cursor().1, 5);
     }
 
     #[test]
     fn test_w_moves_word_forward() {
         let mut app = app_with_query(".name.first");
-        app.textarea.move_cursor(CursorMove::Head);
-        app.editor_mode = EditorMode::Normal;
-        let cursor_before = app.textarea.cursor().1;
+        app.input.textarea.move_cursor(CursorMove::Head);
+        app.input.editor_mode = EditorMode::Normal;
+        let cursor_before = app.input.textarea.cursor().1;
 
         app.handle_key_event(key(KeyCode::Char('w')));
 
         // Should move forward by at least one position
-        assert!(app.textarea.cursor().1 > cursor_before);
+        assert!(app.input.textarea.cursor().1 > cursor_before);
     }
 
     #[test]
     fn test_b_moves_word_backward() {
         let mut app = app_with_query(".name.first");
-        app.textarea.move_cursor(CursorMove::End);
-        app.editor_mode = EditorMode::Normal;
-        let cursor_before = app.textarea.cursor().1;
+        app.input.textarea.move_cursor(CursorMove::End);
+        app.input.editor_mode = EditorMode::Normal;
+        let cursor_before = app.input.textarea.cursor().1;
 
         app.handle_key_event(key(KeyCode::Char('b')));
 
         // Should move backward
-        assert!(app.textarea.cursor().1 < cursor_before);
+        assert!(app.input.textarea.cursor().1 < cursor_before);
     }
 
     #[test]
     fn test_e_moves_to_word_end() {
         let mut app = app_with_query(".name.first");
-        app.textarea.move_cursor(CursorMove::Head);
-        app.editor_mode = EditorMode::Normal;
-        let cursor_before = app.textarea.cursor().1;
+        app.input.textarea.move_cursor(CursorMove::Head);
+        app.input.editor_mode = EditorMode::Normal;
+        let cursor_before = app.input.textarea.cursor().1;
 
         app.handle_key_event(key(KeyCode::Char('e')));
 
         // Should move forward
-        assert!(app.textarea.cursor().1 > cursor_before);
+        assert!(app.input.textarea.cursor().1 > cursor_before);
     }
 
     // ========== Autocomplete Interaction Tests ==========
@@ -1231,7 +1211,7 @@ mod tests {
     #[test]
     fn test_escape_closes_autocomplete() {
         let mut app = app_with_query(".na");
-        app.editor_mode = EditorMode::Insert;
+        app.input.editor_mode = EditorMode::Insert;
 
         // Manually set autocomplete as visible with suggestions
         let suggestions = vec![
@@ -1244,24 +1224,24 @@ mod tests {
 
         assert!(!app.autocomplete.is_visible());
         assert_eq!(app.query(), ".na"); // Query unchanged
-        assert_eq!(app.editor_mode, EditorMode::Insert); // Still in insert mode
+        assert_eq!(app.input.editor_mode, EditorMode::Insert); // Still in insert mode
     }
 
     #[test]
     fn test_escape_without_autocomplete_switches_to_normal() {
         let mut app = app_with_query(".name");
-        app.editor_mode = EditorMode::Insert;
+        app.input.editor_mode = EditorMode::Insert;
         assert!(!app.autocomplete.is_visible());
 
         app.handle_key_event(key(KeyCode::Esc));
 
-        assert_eq!(app.editor_mode, EditorMode::Normal);
+        assert_eq!(app.input.editor_mode, EditorMode::Normal);
     }
 
     #[test]
     fn test_down_arrow_selects_next_suggestion() {
         let mut app = app_with_query(".na");
-        app.editor_mode = EditorMode::Insert;
+        app.input.editor_mode = EditorMode::Insert;
 
         let suggestions = vec![
             Suggestion::new(".name", SuggestionType::Field),
@@ -1278,7 +1258,7 @@ mod tests {
     #[test]
     fn test_up_arrow_selects_previous_suggestion() {
         let mut app = app_with_query(".na");
-        app.editor_mode = EditorMode::Insert;
+        app.input.editor_mode = EditorMode::Insert;
 
         let suggestions = vec![
             Suggestion::new(".name", SuggestionType::Field),
@@ -1298,7 +1278,7 @@ mod tests {
     #[test]
     fn test_tab_accepts_autocomplete_suggestion() {
         let mut app = app_with_query(".na");
-        app.editor_mode = EditorMode::Insert;
+        app.input.editor_mode = EditorMode::Insert;
         app.focus = Focus::InputField;
 
         let suggestions = vec![
@@ -1315,7 +1295,7 @@ mod tests {
     #[test]
     fn test_tab_without_autocomplete_stays_in_consistent_state() {
         let mut app = app_with_query("x");  // Use a query that won't trigger autocomplete
-        app.editor_mode = EditorMode::Insert;
+        app.input.editor_mode = EditorMode::Insert;
         app.focus = Focus::InputField;
 
         // Ensure autocomplete is not visible
@@ -1326,14 +1306,14 @@ mod tests {
 
         // Tab without autocomplete gets passed through to textarea
         // Verify the app remains in a consistent state (doesn't crash, mode unchanged)
-        assert_eq!(app.editor_mode, EditorMode::Insert);
+        assert_eq!(app.input.editor_mode, EditorMode::Insert);
         assert_eq!(app.focus, Focus::InputField);
     }
 
     #[test]
     fn test_autocomplete_navigation_only_works_in_insert_mode() {
         let mut app = app_with_query(".na");
-        app.editor_mode = EditorMode::Normal;
+        app.input.editor_mode = EditorMode::Normal;
         app.focus = Focus::InputField;
 
         let suggestions = vec![
@@ -1356,181 +1336,210 @@ mod tests {
     fn test_j_scrolls_down_one_line() {
         let mut app = app_with_query(".");
         app.focus = Focus::ResultsPane;
-        app.results_scroll = 0;
+
+        // Set up content with enough lines for scrolling
+        let content: String = (0..20).map(|i| format!("line{}\n", i)).collect();
+        app.query.result = Ok(content);
+
+        // Set up bounds so scrolling works
+        let line_count = app.results_line_count_u32();
+        app.results_scroll.update_bounds(line_count, 10);
+        app.results_scroll.offset =0;
 
         app.handle_key_event(key(KeyCode::Char('j')));
 
-        assert_eq!(app.results_scroll, 1);
+        assert_eq!(app.results_scroll.offset, 1);
     }
 
     #[test]
     fn test_k_scrolls_up_one_line() {
         let mut app = app_with_query(".");
         app.focus = Focus::ResultsPane;
-        app.results_scroll = 5;
+        app.results_scroll.offset =5;
 
         app.handle_key_event(key(KeyCode::Char('k')));
 
-        assert_eq!(app.results_scroll, 4);
+        assert_eq!(app.results_scroll.offset, 4);
     }
 
     #[test]
     fn test_k_at_top_stays_at_zero() {
         let mut app = app_with_query(".");
         app.focus = Focus::ResultsPane;
-        app.results_scroll = 0;
+        app.results_scroll.offset =0;
 
         app.handle_key_event(key(KeyCode::Char('k')));
 
         // Should saturate at 0, not go negative
-        assert_eq!(app.results_scroll, 0);
+        assert_eq!(app.results_scroll.offset, 0);
     }
 
     #[test]
     fn test_capital_j_scrolls_down_ten_lines() {
         let mut app = app_with_query(".");
         app.focus = Focus::ResultsPane;
-        app.results_scroll = 5;
-        app.results_viewport_height = 10;
 
-        // Set up content with 30 lines so max_scroll = 30 - 10 = 20
+        // Set up content with 30 lines so max_offset = 30 - 10 = 20
         let content: String = (0..30).map(|i| format!("line{}\n", i)).collect();
-        app.query_result = Ok(content);
+        app.query.result = Ok(content);
+
+        // Update bounds and set initial scroll
+        let line_count = app.results_line_count_u32();
+        app.results_scroll.update_bounds(line_count, 10);
+        app.results_scroll.offset =5;
 
         app.handle_key_event(key(KeyCode::Char('J')));
 
-        // Should scroll from 5 to 15 (10 lines down, within max_scroll of 20)
-        assert_eq!(app.results_scroll, 15);
+        // Should scroll from 5 to 15 (10 lines down, within max_offset of 20)
+        assert_eq!(app.results_scroll.offset, 15);
     }
 
     #[test]
     fn test_capital_k_scrolls_up_ten_lines() {
         let mut app = app_with_query(".");
         app.focus = Focus::ResultsPane;
-        app.results_scroll = 20;
+        app.results_scroll.offset =20;
 
         app.handle_key_event(key(KeyCode::Char('K')));
 
-        assert_eq!(app.results_scroll, 10);
+        assert_eq!(app.results_scroll.offset, 10);
     }
 
     #[test]
     fn test_g_jumps_to_top() {
         let mut app = app_with_query(".");
         app.focus = Focus::ResultsPane;
-        app.results_scroll = 50;
+        app.results_scroll.offset =50;
 
         app.handle_key_event(key(KeyCode::Char('g')));
 
-        assert_eq!(app.results_scroll, 0);
+        assert_eq!(app.results_scroll.offset, 0);
     }
 
     #[test]
     fn test_capital_g_jumps_to_bottom() {
         let json = r#"{"line1": 1, "line2": 2, "line3": 3}"#;
         let mut app = App::new(json.to_string());
-        app.textarea.insert_str(".");
+        app.input.textarea.insert_str(".");
         app.focus = Focus::ResultsPane;
-        app.results_scroll = 0;
-        app.results_viewport_height = 2; // Small viewport to ensure max_scroll > 0
+        app.results_scroll.offset =0;
+        app.results_scroll.viewport_height =2; // Small viewport to ensure max_offset > 0
 
-        let max_scroll = app.max_scroll();
+        // Update bounds to calculate max_offset
+        let line_count = app.results_line_count_u32();
+        app.results_scroll.update_bounds(line_count, 2);
+        let max_scroll = app.results_scroll.max_offset;
+
         app.handle_key_event(key(KeyCode::Char('G')));
 
-        // Should jump to max_scroll position
-        assert_eq!(app.results_scroll, max_scroll);
+        // Should jump to max_offset position
+        assert_eq!(app.results_scroll.offset, max_scroll);
     }
 
     #[test]
     fn test_page_up_scrolls_half_page() {
         let mut app = app_with_query(".");
         app.focus = Focus::ResultsPane;
-        app.results_scroll = 20;
-        app.results_viewport_height = 20;
+        app.results_scroll.offset =20;
+        app.results_scroll.viewport_height =20;
 
         app.handle_key_event(key(KeyCode::PageUp));
 
         // Should scroll up by half viewport (10 lines)
-        assert_eq!(app.results_scroll, 10);
+        assert_eq!(app.results_scroll.offset, 10);
     }
 
     #[test]
     fn test_page_down_scrolls_half_page() {
         let mut app = app_with_query(".");
         app.focus = Focus::ResultsPane;
-        app.results_scroll = 0;
-        app.results_viewport_height = 20;
 
-        // Set up content with 50 lines so max_scroll = 50 - 20 = 30
+        // Set up content with 50 lines so max_offset = 50 - 20 = 30
         let content: String = (0..50).map(|i| format!("line{}\n", i)).collect();
-        app.query_result = Ok(content);
+        app.query.result = Ok(content);
+
+        // Update bounds
+        let line_count = app.results_line_count_u32();
+        app.results_scroll.update_bounds(line_count, 20);
+        app.results_scroll.offset =0;
 
         app.handle_key_event(key(KeyCode::PageDown));
 
-        // Should scroll down by half viewport (10 lines), within max_scroll of 30
-        assert_eq!(app.results_scroll, 10);
+        // Should scroll down by half viewport (10 lines), within max_offset of 30
+        assert_eq!(app.results_scroll.offset, 10);
     }
 
     #[test]
     fn test_ctrl_u_scrolls_half_page_up() {
         let mut app = app_with_query(".");
         app.focus = Focus::ResultsPane;
-        app.results_scroll = 20;
-        app.results_viewport_height = 20;
+        app.results_scroll.offset =20;
+        app.results_scroll.viewport_height =20;
 
         app.handle_key_event(key_with_mods(KeyCode::Char('u'), KeyModifiers::CONTROL));
 
-        assert_eq!(app.results_scroll, 10);
+        assert_eq!(app.results_scroll.offset, 10);
     }
 
     #[test]
     fn test_ctrl_d_scrolls_half_page_down() {
         let mut app = app_with_query(".");
         app.focus = Focus::ResultsPane;
-        app.results_scroll = 0;
-        app.results_viewport_height = 20;
 
-        // Set up content with 50 lines so max_scroll = 50 - 20 = 30
+        // Set up content with 50 lines so max_offset = 50 - 20 = 30
         let content: String = (0..50).map(|i| format!("line{}\n", i)).collect();
-        app.query_result = Ok(content);
+        app.query.result = Ok(content);
+
+        // Update bounds
+        let line_count = app.results_line_count_u32();
+        app.results_scroll.update_bounds(line_count, 20);
+        app.results_scroll.offset =0;
 
         app.handle_key_event(key_with_mods(KeyCode::Char('d'), KeyModifiers::CONTROL));
 
-        // Should scroll down by half viewport (10 lines), within max_scroll of 30
-        assert_eq!(app.results_scroll, 10);
+        // Should scroll down by half viewport (10 lines), within max_offset of 30
+        assert_eq!(app.results_scroll.offset, 10);
     }
 
     #[test]
     fn test_up_arrow_scrolls_in_results_pane() {
         let mut app = app_with_query(".");
         app.focus = Focus::ResultsPane;
-        app.results_scroll = 5;
+        app.results_scroll.offset =5;
 
         app.handle_key_event(key(KeyCode::Up));
 
-        assert_eq!(app.results_scroll, 4);
+        assert_eq!(app.results_scroll.offset, 4);
     }
 
     #[test]
     fn test_down_arrow_scrolls_in_results_pane() {
         let mut app = app_with_query(".");
         app.focus = Focus::ResultsPane;
-        app.results_scroll = 0;
+
+        // Set up content with enough lines for scrolling
+        let content: String = (0..20).map(|i| format!("line{}\n", i)).collect();
+        app.query.result = Ok(content);
+
+        // Set up bounds so scrolling works
+        let line_count = app.results_line_count_u32();
+        app.results_scroll.update_bounds(line_count, 10);
+        app.results_scroll.offset =0;
 
         app.handle_key_event(key(KeyCode::Down));
 
-        assert_eq!(app.results_scroll, 1);
+        assert_eq!(app.results_scroll.offset, 1);
     }
 
     #[test]
     fn test_home_jumps_to_top() {
         let mut app = app_with_query(".");
         app.focus = Focus::ResultsPane;
-        app.results_scroll = 50;
+        app.results_scroll.offset =50;
 
         app.handle_key_event(key(KeyCode::Home));
 
-        assert_eq!(app.results_scroll, 0);
+        assert_eq!(app.results_scroll.offset, 0);
     }
 
     // ========== Global Key Handler Tests ==========
@@ -1547,7 +1556,7 @@ mod tests {
     #[test]
     fn test_q_sets_quit_flag_in_normal_mode() {
         let mut app = app_with_query(".");
-        app.editor_mode = EditorMode::Normal;
+        app.input.editor_mode = EditorMode::Normal;
 
         app.handle_key_event(key(KeyCode::Char('q')));
 
@@ -1557,7 +1566,7 @@ mod tests {
     #[test]
     fn test_q_does_not_quit_in_insert_mode() {
         let mut app = app_with_query(".");
-        app.editor_mode = EditorMode::Insert;
+        app.input.editor_mode = EditorMode::Insert;
 
         app.handle_key_event(key(KeyCode::Char('q')));
 
@@ -1631,7 +1640,7 @@ mod tests {
     #[test]
     fn test_insert_mode_text_input_updates_query() {
         let mut app = app_with_query("");
-        app.editor_mode = EditorMode::Insert;
+        app.input.editor_mode = EditorMode::Insert;
 
         // Simulate typing a character
         app.handle_key_event(key(KeyCode::Char('.')));
@@ -1642,14 +1651,14 @@ mod tests {
     #[test]
     fn test_query_execution_resets_scroll() {
         let mut app = app_with_query("");
-        app.editor_mode = EditorMode::Insert;
-        app.results_scroll = 50;
+        app.input.editor_mode = EditorMode::Insert;
+        app.results_scroll.offset =50;
 
         // Insert text which should trigger query execution
         app.handle_key_event(key(KeyCode::Char('.')));
 
         // Scroll should be reset when query changes
-        assert_eq!(app.results_scroll, 0);
+        assert_eq!(app.results_scroll.offset, 0);
     }
 
     // ========== History Popup Tests ==========
@@ -1657,7 +1666,7 @@ mod tests {
     #[test]
     fn test_history_popup_does_not_open_when_empty() {
         let mut app = app_with_query("");
-        app.editor_mode = EditorMode::Insert;
+        app.input.editor_mode = EditorMode::Insert;
 
         // app_with_query helper creates empty in-memory history
         assert_eq!(app.history.total_count(), 0);
@@ -1672,7 +1681,7 @@ mod tests {
     #[test]
     fn test_history_popup_navigation() {
         let mut app = app_with_query("");
-        app.editor_mode = EditorMode::Insert;
+        app.input.editor_mode = EditorMode::Insert;
 
         // Add entries to in-memory history only (doesn't write to disk)
         // Most recent first: .baz, .bar, .foo (displays bottom to top)
@@ -1697,7 +1706,7 @@ mod tests {
     #[test]
     fn test_history_popup_escape_closes() {
         let mut app = app_with_query("");
-        app.editor_mode = EditorMode::Insert;
+        app.input.editor_mode = EditorMode::Insert;
 
         app.history.add_entry_in_memory(".test");
 
@@ -1716,7 +1725,7 @@ mod tests {
     #[test]
     fn test_history_popup_enter_selects() {
         let mut app = app_with_query("");
-        app.editor_mode = EditorMode::Insert;
+        app.input.editor_mode = EditorMode::Insert;
 
         app.history.add_entry_in_memory(".selected_query");
 
@@ -1733,7 +1742,7 @@ mod tests {
     #[test]
     fn test_history_popup_tab_selects() {
         let mut app = app_with_query("");
-        app.editor_mode = EditorMode::Insert;
+        app.input.editor_mode = EditorMode::Insert;
 
         app.history.add_entry_in_memory(".tab_selected");
 
@@ -1750,7 +1759,7 @@ mod tests {
     #[test]
     fn test_history_popup_search_filters() {
         let mut app = app_with_query("");
-        app.editor_mode = EditorMode::Insert;
+        app.input.editor_mode = EditorMode::Insert;
 
         app.history.add_entry_in_memory(".apple");
         app.history.add_entry_in_memory(".banana");
@@ -1772,7 +1781,7 @@ mod tests {
     #[test]
     fn test_history_popup_backspace_removes_search_char() {
         let mut app = app_with_query("");
-        app.editor_mode = EditorMode::Insert;
+        app.input.editor_mode = EditorMode::Insert;
 
         app.history.add_entry_in_memory(".test");
 
@@ -1792,7 +1801,7 @@ mod tests {
     #[test]
     fn test_shift_tab_closes_history_popup() {
         let mut app = app_with_query("");
-        app.editor_mode = EditorMode::Insert;
+        app.input.editor_mode = EditorMode::Insert;
 
         app.history.add_entry_in_memory(".test");
 
@@ -1811,12 +1820,12 @@ mod tests {
     #[test]
     fn test_up_arrow_opens_history_when_cursor_at_start() {
         let mut app = app_with_query(".existing");
-        app.editor_mode = EditorMode::Insert;
+        app.input.editor_mode = EditorMode::Insert;
         app.history.add_entry_in_memory(".history_item");
 
         // Move cursor to start
-        app.textarea.move_cursor(tui_textarea::CursorMove::Head);
-        assert_eq!(app.textarea.cursor().1, 0);
+        app.input.textarea.move_cursor(tui_textarea::CursorMove::Head);
+        assert_eq!(app.input.textarea.cursor().1, 0);
 
         // Press Up arrow
         app.handle_key_event(key(KeyCode::Up));
@@ -1828,7 +1837,7 @@ mod tests {
     #[test]
     fn test_up_arrow_opens_history_when_input_empty() {
         let mut app = app_with_query("");
-        app.editor_mode = EditorMode::Insert;
+        app.input.editor_mode = EditorMode::Insert;
         app.history.add_entry_in_memory(".history_item");
 
         // Press Up arrow
@@ -1843,7 +1852,7 @@ mod tests {
     #[test]
     fn test_ctrl_p_cycles_to_previous_history() {
         let mut app = app_with_query("");
-        app.editor_mode = EditorMode::Insert;
+        app.input.editor_mode = EditorMode::Insert;
 
         app.history.add_entry_in_memory(".first");
         app.history.add_entry_in_memory(".second");
@@ -1865,7 +1874,7 @@ mod tests {
     #[test]
     fn test_ctrl_n_cycles_to_next_history() {
         let mut app = app_with_query("");
-        app.editor_mode = EditorMode::Insert;
+        app.input.editor_mode = EditorMode::Insert;
 
         app.history.add_entry_in_memory(".first");
         app.history.add_entry_in_memory(".second");
@@ -1889,7 +1898,7 @@ mod tests {
     #[test]
     fn test_ctrl_n_at_most_recent_clears_input() {
         let mut app = app_with_query("");
-        app.editor_mode = EditorMode::Insert;
+        app.input.editor_mode = EditorMode::Insert;
 
         app.history.add_entry_in_memory(".test");
 
@@ -1905,7 +1914,7 @@ mod tests {
     #[test]
     fn test_typing_resets_history_cycling() {
         let mut app = app_with_query("");
-        app.editor_mode = EditorMode::Insert;
+        app.input.editor_mode = EditorMode::Insert;
 
         app.history.add_entry_in_memory(".first");
         app.history.add_entry_in_memory(".second");
@@ -1926,7 +1935,7 @@ mod tests {
     #[test]
     fn test_ctrl_p_with_empty_history_does_nothing() {
         let mut app = app_with_query(".existing");
-        app.editor_mode = EditorMode::Insert;
+        app.input.editor_mode = EditorMode::Insert;
 
         // History is empty from app_with_query helper
         assert_eq!(app.history.total_count(), 0);
@@ -1942,7 +1951,7 @@ mod tests {
     #[test]
     fn test_history_with_emoji() {
         let mut app = app_with_query("");
-        app.editor_mode = EditorMode::Insert;
+        app.input.editor_mode = EditorMode::Insert;
 
         app.history.add_entry_in_memory(".emoji_field 🚀");
 
@@ -1953,7 +1962,7 @@ mod tests {
     #[test]
     fn test_history_with_multibyte_chars() {
         let mut app = app_with_query("");
-        app.editor_mode = EditorMode::Insert;
+        app.input.editor_mode = EditorMode::Insert;
 
         app.history.add_entry_in_memory(".café | .naïve");
 
@@ -1964,7 +1973,7 @@ mod tests {
     #[test]
     fn test_history_search_with_unicode() {
         let mut app = app_with_query("");
-        app.editor_mode = EditorMode::Insert;
+        app.input.editor_mode = EditorMode::Insert;
 
         app.history.add_entry_in_memory(".café");
         app.history.add_entry_in_memory(".coffee");
@@ -1985,7 +1994,7 @@ mod tests {
     #[test]
     fn test_cycling_stops_at_oldest() {
         let mut app = app_with_query("");
-        app.editor_mode = EditorMode::Insert;
+        app.input.editor_mode = EditorMode::Insert;
 
         app.history.add_entry_in_memory(".first");
 
@@ -2002,7 +2011,7 @@ mod tests {
     #[test]
     fn test_history_popup_with_single_entry() {
         let mut app = app_with_query("");
-        app.editor_mode = EditorMode::Insert;
+        app.input.editor_mode = EditorMode::Insert;
 
         app.history.add_entry_in_memory(".single");
 
@@ -2020,7 +2029,7 @@ mod tests {
     #[test]
     fn test_filter_with_no_matches() {
         let mut app = app_with_query("");
-        app.editor_mode = EditorMode::Insert;
+        app.input.editor_mode = EditorMode::Insert;
 
         app.history.add_entry_in_memory(".foo");
         app.history.add_entry_in_memory(".bar");
@@ -2039,7 +2048,7 @@ mod tests {
     #[test]
     fn test_backspace_on_empty_search() {
         let mut app = app_with_query("");
-        app.editor_mode = EditorMode::Insert;
+        app.input.editor_mode = EditorMode::Insert;
 
         app.history.add_entry_in_memory(".test");
 
@@ -2061,21 +2070,24 @@ mod tests {
         app.focus = Focus::ResultsPane;
 
         // Set up a short content with few lines
-        app.query_result = Ok("line1\nline2\nline3".to_string());
-        app.results_viewport_height = 10; // Viewport larger than content
+        app.query.result = Ok("line1\nline2\nline3".to_string());
 
-        // max_scroll should be 0 since content fits in viewport
-        assert_eq!(app.max_scroll(), 0);
+        // Update bounds - viewport larger than content
+        let line_count = app.results_line_count_u32();
+        app.results_scroll.update_bounds(line_count, 10);
+
+        // max_offset should be 0 since content fits in viewport
+        assert_eq!(app.results_scroll.max_offset, 0);
 
         // Try to scroll down - should stay at 0
         app.handle_key_event(key(KeyCode::Char('j')));
-        assert_eq!(app.results_scroll, 0);
+        assert_eq!(app.results_scroll.offset, 0);
 
         // Try to scroll down multiple times - should stay at 0
         for _ in 0..100 {
             app.handle_key_event(key(KeyCode::Char('j')));
         }
-        assert_eq!(app.results_scroll, 0);
+        assert_eq!(app.results_scroll.offset, 0);
     }
 
     #[test]
@@ -2085,19 +2097,22 @@ mod tests {
 
         // Set up content with 20 lines
         let content: String = (0..20).map(|i| format!("line{}\n", i)).collect();
-        app.query_result = Ok(content);
-        app.results_viewport_height = 10;
+        app.query.result = Ok(content);
 
-        // max_scroll should be 20 - 10 = 10
-        assert_eq!(app.max_scroll(), 10);
+        // Update bounds
+        let line_count = app.results_line_count_u32();
+        app.results_scroll.update_bounds(line_count, 10);
+
+        // max_offset should be 20 - 10 = 10
+        assert_eq!(app.results_scroll.max_offset, 10);
 
         // Scroll down many times
         for _ in 0..100 {
             app.handle_key_event(key(KeyCode::Char('j')));
         }
 
-        // Should be clamped to max_scroll
-        assert_eq!(app.results_scroll, 10);
+        // Should be clamped to max_offset
+        assert_eq!(app.results_scroll.offset, 10);
     }
 
     #[test]
@@ -2107,19 +2122,22 @@ mod tests {
 
         // 15 lines content, 10 line viewport
         let content: String = (0..15).map(|i| format!("line{}\n", i)).collect();
-        app.query_result = Ok(content);
-        app.results_viewport_height = 10;
+        app.query.result = Ok(content);
 
-        // max_scroll = 15 - 10 = 5
-        assert_eq!(app.max_scroll(), 5);
+        // Update bounds
+        let line_count = app.results_line_count_u32();
+        app.results_scroll.update_bounds(line_count, 10);
+
+        // max_offset = 15 - 10 = 5
+        assert_eq!(app.results_scroll.max_offset, 5);
 
         // Page down (half page = 5) should go to max
         app.handle_key_event(key(KeyCode::PageDown));
-        assert_eq!(app.results_scroll, 5);
+        assert_eq!(app.results_scroll.offset, 5);
 
         // Another page down should stay at max
         app.handle_key_event(key(KeyCode::PageDown));
-        assert_eq!(app.results_scroll, 5);
+        assert_eq!(app.results_scroll.offset, 5);
     }
 
     #[test]
@@ -2129,15 +2147,18 @@ mod tests {
 
         // 5 lines content, 3 line viewport
         let content: String = (0..5).map(|i| format!("line{}\n", i)).collect();
-        app.query_result = Ok(content);
-        app.results_viewport_height = 3;
+        app.query.result = Ok(content);
 
-        // max_scroll = 5 - 3 = 2
-        assert_eq!(app.max_scroll(), 2);
+        // Update bounds
+        let line_count = app.results_line_count_u32();
+        app.results_scroll.update_bounds(line_count, 3);
+
+        // max_offset = 5 - 3 = 2
+        assert_eq!(app.results_scroll.max_offset, 2);
 
         // Big scroll (J = 10 lines) should clamp to max
         app.handle_key_event(key(KeyCode::Char('J')));
-        assert_eq!(app.results_scroll, 2);
+        assert_eq!(app.results_scroll.offset, 2);
     }
 
     // ========== 'q' key behavior tests ==========
@@ -2146,7 +2167,7 @@ mod tests {
     fn test_q_quits_in_results_pane_insert_mode() {
         let mut app = app_with_query("");
         app.focus = Focus::ResultsPane;
-        app.editor_mode = EditorMode::Insert;
+        app.input.editor_mode = EditorMode::Insert;
 
         // 'q' should quit even when editor is in Insert mode
         // because we're in ResultsPane (not editing text)
@@ -2159,7 +2180,7 @@ mod tests {
     fn test_q_does_not_quit_in_input_field_insert_mode() {
         let mut app = app_with_query("");
         app.focus = Focus::InputField;
-        app.editor_mode = EditorMode::Insert;
+        app.input.editor_mode = EditorMode::Insert;
 
         // 'q' should NOT quit when in InputField with Insert mode
         // (user is typing)
@@ -2174,7 +2195,7 @@ mod tests {
     fn test_q_quits_in_input_field_normal_mode() {
         let mut app = app_with_query("");
         app.focus = Focus::InputField;
-        app.editor_mode = EditorMode::Normal;
+        app.input.editor_mode = EditorMode::Normal;
 
         // 'q' should quit when in Normal mode
         app.handle_key_event(key(KeyCode::Char('q')));
@@ -2186,7 +2207,7 @@ mod tests {
     fn test_q_quits_in_results_pane_normal_mode() {
         let mut app = app_with_query("");
         app.focus = Focus::ResultsPane;
-        app.editor_mode = EditorMode::Normal;
+        app.input.editor_mode = EditorMode::Normal;
 
         // 'q' should quit when in ResultsPane Normal mode
         app.handle_key_event(key(KeyCode::Char('q')));
@@ -2198,14 +2219,14 @@ mod tests {
     fn test_focus_switch_preserves_editor_mode() {
         let mut app = app_with_query("");
         app.focus = Focus::InputField;
-        app.editor_mode = EditorMode::Insert;
+        app.input.editor_mode = EditorMode::Insert;
 
         // Switch to ResultsPane
         app.handle_key_event(key(KeyCode::BackTab));
 
         // Editor mode should still be Insert
         assert_eq!(app.focus, Focus::ResultsPane);
-        assert_eq!(app.editor_mode, EditorMode::Insert);
+        assert_eq!(app.input.editor_mode, EditorMode::Insert);
 
         // 'q' should quit in ResultsPane even with Insert mode
         app.handle_key_event(key(KeyCode::Char('q')));
@@ -2217,32 +2238,32 @@ mod tests {
     #[test]
     fn test_help_popup_initializes_hidden() {
         let app = App::new(TEST_JSON.to_string());
-        assert!(!app.help_visible);
+        assert!(!app.help.visible);
     }
 
     #[test]
     fn test_f1_toggles_help_popup() {
         let mut app = app_with_query(".");
-        assert!(!app.help_visible);
+        assert!(!app.help.visible);
 
         app.handle_key_event(key(KeyCode::F(1)));
-        assert!(app.help_visible);
+        assert!(app.help.visible);
 
         app.handle_key_event(key(KeyCode::F(1)));
-        assert!(!app.help_visible);
+        assert!(!app.help.visible);
     }
 
     #[test]
     fn test_question_mark_toggles_help_in_normal_mode() {
         let mut app = app_with_query(".");
-        app.editor_mode = EditorMode::Normal;
+        app.input.editor_mode = EditorMode::Normal;
         app.focus = Focus::InputField;
 
         app.handle_key_event(key(KeyCode::Char('?')));
-        assert!(app.help_visible);
+        assert!(app.help.visible);
 
         app.handle_key_event(key(KeyCode::Char('?')));
-        assert!(!app.help_visible);
+        assert!(!app.help.visible);
     }
 
     #[test]
@@ -2251,219 +2272,240 @@ mod tests {
         app.focus = Focus::ResultsPane;
 
         app.handle_key_event(key(KeyCode::Char('?')));
-        assert!(app.help_visible);
+        assert!(app.help.visible);
     }
 
     #[test]
     fn test_question_mark_does_not_toggle_help_in_insert_mode() {
         let mut app = app_with_query("");
-        app.editor_mode = EditorMode::Insert;
+        app.input.editor_mode = EditorMode::Insert;
         app.focus = Focus::InputField;
 
         app.handle_key_event(key(KeyCode::Char('?')));
         // Should type '?' not toggle help
-        assert!(!app.help_visible);
+        assert!(!app.help.visible);
         assert!(app.query().contains('?'));
     }
 
     #[test]
     fn test_esc_closes_help_popup() {
         let mut app = app_with_query(".");
-        app.help_visible = true;
+        app.help.visible = true;
 
         app.handle_key_event(key(KeyCode::Esc));
-        assert!(!app.help_visible);
+        assert!(!app.help.visible);
     }
 
     #[test]
     fn test_q_closes_help_popup() {
         let mut app = app_with_query(".");
-        app.help_visible = true;
+        app.help.visible = true;
 
         app.handle_key_event(key(KeyCode::Char('q')));
-        assert!(!app.help_visible);
+        assert!(!app.help.visible);
     }
 
     #[test]
     fn test_help_popup_blocks_other_keys() {
         let mut app = app_with_query(".");
-        app.help_visible = true;
-        app.editor_mode = EditorMode::Insert;
+        app.help.visible = true;
+        app.input.editor_mode = EditorMode::Insert;
 
         // Try to type - should be blocked
         app.handle_key_event(key(KeyCode::Char('x')));
         assert!(!app.query().contains('x'));
-        assert!(app.help_visible);
+        assert!(app.help.visible);
     }
 
     #[test]
     fn test_f1_works_in_insert_mode() {
         let mut app = app_with_query(".");
-        app.editor_mode = EditorMode::Insert;
+        app.input.editor_mode = EditorMode::Insert;
         app.focus = Focus::InputField;
 
         app.handle_key_event(key(KeyCode::F(1)));
-        assert!(app.help_visible);
+        assert!(app.help.visible);
     }
 
     #[test]
     fn test_help_popup_scroll_j_scrolls_down() {
         let mut app = app_with_query(".");
-        app.help_visible = true;
-        app.help_scroll = 0;
+        app.help.visible = true;
+
+        // Set up bounds for help content (48 lines + padding, viewport 20)
+        app.help.scroll.update_bounds(60, 20);
+        app.help.scroll.offset =0;
 
         app.handle_key_event(key(KeyCode::Char('j')));
-        assert_eq!(app.help_scroll, 1);
+        assert_eq!(app.help.scroll.offset, 1);
     }
 
     #[test]
     fn test_help_popup_scroll_k_scrolls_up() {
         let mut app = app_with_query(".");
-        app.help_visible = true;
-        app.help_scroll = 5;
+        app.help.visible = true;
+        app.help.scroll.offset =5;
 
         app.handle_key_event(key(KeyCode::Char('k')));
-        assert_eq!(app.help_scroll, 4);
+        assert_eq!(app.help.scroll.offset, 4);
     }
 
     #[test]
     fn test_help_popup_scroll_down_arrow() {
         let mut app = app_with_query(".");
-        app.help_visible = true;
-        app.help_scroll = 0;
+        app.help.visible = true;
+
+        // Set up bounds for help content
+        app.help.scroll.update_bounds(60, 20);
+        app.help.scroll.offset =0;
 
         app.handle_key_event(key(KeyCode::Down));
-        assert_eq!(app.help_scroll, 1);
+        assert_eq!(app.help.scroll.offset, 1);
     }
 
     #[test]
     fn test_help_popup_scroll_up_arrow() {
         let mut app = app_with_query(".");
-        app.help_visible = true;
-        app.help_scroll = 5;
+        app.help.visible = true;
+        app.help.scroll.offset =5;
 
         app.handle_key_event(key(KeyCode::Up));
-        assert_eq!(app.help_scroll, 4);
+        assert_eq!(app.help.scroll.offset, 4);
     }
 
     #[test]
     fn test_help_popup_scroll_capital_j_scrolls_10() {
         let mut app = app_with_query(".");
-        app.help_visible = true;
-        app.help_scroll = 0;
+        app.help.visible = true;
+
+        // Set up bounds for help content
+        app.help.scroll.update_bounds(60, 20);
+        app.help.scroll.offset =0;
 
         app.handle_key_event(key(KeyCode::Char('J')));
-        assert_eq!(app.help_scroll, 10);
+        assert_eq!(app.help.scroll.offset, 10);
     }
 
     #[test]
     fn test_help_popup_scroll_capital_k_scrolls_10() {
         let mut app = app_with_query(".");
-        app.help_visible = true;
-        app.help_scroll = 15;
+        app.help.visible = true;
+        app.help.scroll.offset =15;
 
         app.handle_key_event(key(KeyCode::Char('K')));
-        assert_eq!(app.help_scroll, 5);
+        assert_eq!(app.help.scroll.offset, 5);
     }
 
     #[test]
     fn test_help_popup_scroll_ctrl_d() {
         let mut app = app_with_query(".");
-        app.help_visible = true;
-        app.help_scroll = 0;
+        app.help.visible = true;
+
+        // Set up bounds for help content
+        app.help.scroll.update_bounds(60, 20);
+        app.help.scroll.offset =0;
 
         app.handle_key_event(key_with_mods(KeyCode::Char('d'), KeyModifiers::CONTROL));
-        assert_eq!(app.help_scroll, 10);
+        assert_eq!(app.help.scroll.offset, 10);
     }
 
     #[test]
     fn test_help_popup_scroll_ctrl_u() {
         let mut app = app_with_query(".");
-        app.help_visible = true;
-        app.help_scroll = 15;
+        app.help.visible = true;
+        app.help.scroll.offset =15;
 
         app.handle_key_event(key_with_mods(KeyCode::Char('u'), KeyModifiers::CONTROL));
-        assert_eq!(app.help_scroll, 5);
+        assert_eq!(app.help.scroll.offset, 5);
     }
 
     #[test]
     fn test_help_popup_scroll_g_jumps_to_top() {
         let mut app = app_with_query(".");
-        app.help_visible = true;
-        app.help_scroll = 20;
+        app.help.visible = true;
+        app.help.scroll.offset =20;
 
         app.handle_key_event(key(KeyCode::Char('g')));
-        assert_eq!(app.help_scroll, 0);
+        assert_eq!(app.help.scroll.offset, 0);
     }
 
     #[test]
     fn test_help_popup_scroll_capital_g_jumps_to_bottom() {
         let mut app = app_with_query(".");
-        app.help_visible = true;
-        app.help_scroll = 0;
+        app.help.visible = true;
+
+        // Set up bounds for help content
+        app.help.scroll.update_bounds(60, 20);
+        app.help.scroll.offset =0;
 
         app.handle_key_event(key(KeyCode::Char('G')));
-        assert_eq!(app.help_scroll, u16::MAX);
+        assert_eq!(app.help.scroll.offset, app.help.scroll.max_offset);
     }
 
     #[test]
     fn test_help_popup_scroll_k_saturates_at_zero() {
         let mut app = app_with_query(".");
-        app.help_visible = true;
-        app.help_scroll = 0;
+        app.help.visible = true;
+        app.help.scroll.offset =0;
 
         app.handle_key_event(key(KeyCode::Char('k')));
-        assert_eq!(app.help_scroll, 0);
+        assert_eq!(app.help.scroll.offset, 0);
     }
 
     #[test]
     fn test_help_popup_close_resets_scroll() {
         let mut app = app_with_query(".");
-        app.help_visible = true;
-        app.help_scroll = 10;
+        app.help.visible = true;
+        app.help.scroll.offset =10;
 
         app.handle_key_event(key(KeyCode::Esc));
-        assert!(!app.help_visible);
-        assert_eq!(app.help_scroll, 0);
+        assert!(!app.help.visible);
+        assert_eq!(app.help.scroll.offset, 0);
     }
 
     #[test]
     fn test_help_popup_scroll_page_down() {
         let mut app = app_with_query(".");
-        app.help_visible = true;
-        app.help_scroll = 0;
+        app.help.visible = true;
+
+        // Set up bounds for help content
+        app.help.scroll.update_bounds(60, 20);
+        app.help.scroll.offset =0;
 
         app.handle_key_event(key(KeyCode::PageDown));
-        assert_eq!(app.help_scroll, 10);
+        assert_eq!(app.help.scroll.offset, 10);
     }
 
     #[test]
     fn test_help_popup_scroll_page_up() {
         let mut app = app_with_query(".");
-        app.help_visible = true;
-        app.help_scroll = 15;
+        app.help.visible = true;
+        app.help.scroll.offset =15;
 
         app.handle_key_event(key(KeyCode::PageUp));
-        assert_eq!(app.help_scroll, 5);
+        assert_eq!(app.help.scroll.offset, 5);
     }
 
     #[test]
     fn test_help_popup_scroll_home_jumps_to_top() {
         let mut app = app_with_query(".");
-        app.help_visible = true;
-        app.help_scroll = 20;
+        app.help.visible = true;
+        app.help.scroll.offset =20;
 
         app.handle_key_event(key(KeyCode::Home));
-        assert_eq!(app.help_scroll, 0);
+        assert_eq!(app.help.scroll.offset, 0);
     }
 
     #[test]
     fn test_help_popup_scroll_end_jumps_to_bottom() {
         let mut app = app_with_query(".");
-        app.help_visible = true;
-        app.help_scroll = 0;
+        app.help.visible = true;
+
+        // Set up bounds for help content
+        app.help.scroll.update_bounds(60, 20);
+        app.help.scroll.offset =0;
 
         app.handle_key_event(key(KeyCode::End));
-        assert_eq!(app.help_scroll, u16::MAX);
+        assert_eq!(app.help.scroll.offset, app.help.scroll.max_offset);
     }
 }

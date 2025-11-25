@@ -203,12 +203,10 @@ impl HistoryState {
         }
 
         // Only persist to disk if enabled (disabled for tests)
-        if self.persist_to_disk {
-            if let Err(e) = storage::add_entry(query) {
-                eprintln!("Warning: Failed to save query history to disk: {}", e);
-                eprintln!("History will work for this session only.");
-                // Continue with in-memory update despite save failure
-            }
+        if self.persist_to_disk && let Err(e) = storage::add_entry(query) {
+            eprintln!("Warning: Failed to save query history to disk: {}", e);
+            eprintln!("History will work for this session only.");
+            // Continue with in-memory update despite save failure
         }
 
         self.entries.retain(|e| e != query);
