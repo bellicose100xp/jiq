@@ -5,6 +5,32 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.10.0] - 2025-11-25
+
+### Added
+- Comprehensive keyboard shortcuts help popup
+  - `F1` or `?` to toggle help (works universally across terminals)
+  - Full vim-style scrolling: `j/k`, `J/K`, `g/G`, `Ctrl+D/U`, arrow keys, PageUp/PageDown, Home/End
+  - Organized by context: Global, Insert mode, Normal mode, Autocomplete, Results pane, History, Error overlay
+  - Mode-aware bottom help line shows relevant keys for current mode
+
+### Fixed
+- Help popup now works reliably across all terminal emulators
+  - Replaced `Ctrl+/` (sends ASCII 0x1F, poorly supported) with `F1` and `?`
+  - `F1` works in all modes and focus contexts
+  - `?` works in Normal mode and Results pane only
+- Terminal resize no longer crashes when help popup is open
+  - Popup dimensions now clamp to terminal size
+  - Gracefully skips rendering on very small terminals (<20x10)
+- Scroll position correctly resets after jumping to bottom with `G`
+  - Previously required multiple key presses to scroll up after `G`
+  - Now immediate response to `k` after `G`
+
+### Improved
+- Removed code duplication in help popup key handling
+- Added 16 comprehensive tests for help popup functionality
+- Emojis replaced with ASCII text headers for better terminal compatibility
+
 ## [2.9.1] - 2025-11-24
 
 ### Fixed

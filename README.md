@@ -78,6 +78,7 @@ curl https://api.example.com/data | jiq
 
 | Key | Action |
 |-----|--------|
+| `F1` or `?` | Toggle keyboard shortcuts help popup |
 | `Shift+Tab` | Switch focus between Input and Results |
 | `Ctrl+E` | Toggle error overlay (when syntax error exists) |
 | `Enter` | Exit and output filtered JSON |
