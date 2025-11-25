@@ -62,6 +62,11 @@ impl App {
         if self.error_overlay_visible && self.query_result.is_err() {
             self.render_error_overlay(frame, results_area);
         }
+
+        // Render help popup (if visible) - render last to overlay everything
+        if self.help_visible {
+            self.render_help_popup(frame);
+        }
     }
 
     /// Render the input field (bottom)
@@ -285,7 +290,7 @@ impl App {
 
     /// Render the help line (bottom)
     fn render_help_line(&self, frame: &mut Frame, area: ratatui::layout::Rect) {
-        let help_text = " Tab: Autocomplete | Shift+Tab: Switch Focus | Enter: Exit with Results | Ctrl+Q: Exit with Query | q: Quit";
+        let help_text = " Ctrl+/: Help | Shift+Tab: Switch Focus | Enter: Exit with Results | Ctrl+Q: Exit with Query | q: Quit";
 
         let help = Paragraph::new(help_text)
             .style(Style::default().fg(Color::DarkGray));
@@ -533,5 +538,122 @@ impl App {
         );
         search_textarea.set_style(Style::default().fg(Color::White).bg(Color::Black));
         frame.render_widget(&*search_textarea, search_area);
+    }
+
+    /// Render the help popup (centered modal with keyboard shortcuts)
+    fn render_help_popup(&self, frame: &mut Frame) {
+        // Define help content as (key, description) pairs, grouped by category
+        let help_content = vec![
+            ("", "⌨  GLOBAL"),
+            ("Ctrl+/", "Toggle this help"),
+            ("Ctrl+C", "Quit without output"),
+            ("Enter", "Output filtered JSON and exit"),
+            ("Shift+Enter", "Output query string only and exit"),
+            ("Ctrl+Q", "Output query string only and exit"),
+            ("Shift+Tab", "Switch focus (Input ↔ Results)"),
+            ("q", "Quit (in Normal mode or Results pane)"),
+            ("", ""),
+            ("", "📝 INPUT - INSERT MODE"),
+            ("Esc", "Switch to Normal mode"),
+            ("↑/↓", "Navigate autocomplete suggestions"),
+            ("Tab", "Accept autocomplete suggestion"),
+            ("Ctrl+R", "Search history"),
+            ("Ctrl+P/N", "Previous/Next query in history"),
+            ("↑", "Open history (when input empty)"),
+            ("", ""),
+            ("", "🎯 INPUT - NORMAL MODE (VIM)"),
+            ("i/a/I/A", "Enter Insert mode"),
+            ("h/l/←/→", "Move cursor left/right"),
+            ("0/$", "Jump to start/end of line"),
+            ("w/b/e", "Word navigation"),
+            ("x/X", "Delete character"),
+            ("dd/D", "Delete line/to end"),
+            ("u", "Undo"),
+            ("Ctrl+r", "Redo"),
+            ("", ""),
+            ("", "🔍 RESULTS PANE"),
+            ("j/k/↑/↓", "Scroll line by line"),
+            ("J/K", "Scroll 10 lines"),
+            ("g/Home", "Jump to top"),
+            ("G", "Jump to bottom"),
+            ("Ctrl+D/U", "Half page down/up"),
+            ("PageDown/Up", "Half page down/up"),
+            ("", ""),
+            ("", "📜 HISTORY SEARCH"),
+            ("↑/↓", "Navigate entries"),
+            ("Type", "Fuzzy search filter"),
+            ("Enter/Tab", "Select entry and close"),
+            ("Esc", "Close without selecting"),
+            ("", ""),
+            ("", "🔧 ERROR OVERLAY"),
+            ("Ctrl+E", "Toggle error details"),
+        ];
+
+        // Calculate popup dimensions
+        let content_height = help_content.len() as u16;
+        let popup_height = content_height + 4; // +4 for borders and footer
+        let popup_width = 70u16; // Fixed width for consistent look
+
+        // Center the popup
+        let frame_area = frame.area();
+        let popup_x = (frame_area.width.saturating_sub(popup_width)) / 2;
+        let popup_y = (frame_area.height.saturating_sub(popup_height)) / 2;
+
+        let popup_area = Rect {
+            x: popup_x,
+            y: popup_y,
+            width: popup_width,
+            height: popup_height,
+        };
+
+        // Clear the background for floating effect
+        frame.render_widget(Clear, popup_area);
+
+        // Create help text with proper formatting
+        let mut lines: Vec<Line> = Vec::new();
+
+        for (key, desc) in help_content {
+            if key.is_empty() && desc.is_empty() {
+                // Empty line for spacing
+                lines.push(Line::from(""));
+            } else if key.is_empty() {
+                // Category header (bold, cyan)
+                lines.push(Line::from(vec![
+                    Span::raw("  "),
+                    Span::styled(desc, Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD)),
+                ]));
+            } else {
+                // Key-description pair
+                let key_span = Span::styled(
+                    format!("  {:<15}", key),
+                    Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD),
+                );
+                let desc_span = Span::styled(desc, Style::default().fg(Color::White));
+                lines.push(Line::from(vec![key_span, desc_span]));
+            }
+        }
+
+        // Add footer
+        lines.push(Line::from(""));
+        lines.push(Line::from(vec![
+            Span::styled(
+                "                Press Ctrl+/, ESC, or q to close                ",
+                Style::default().fg(Color::DarkGray),
+            ),
+        ]));
+
+        let help_text = Text::from(lines);
+
+        // Create the popup widget
+        let popup = Paragraph::new(help_text)
+            .block(
+                Block::default()
+                    .borders(Borders::ALL)
+                    .title(" Keyboard Shortcuts ")
+                    .border_style(Style::default().fg(Color::Cyan))
+                    .style(Style::default().bg(Color::Black)),
+            );
+
+        frame.render_widget(popup, popup_area);
     }
 }

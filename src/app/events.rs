@@ -49,6 +49,12 @@ impl App {
             return true;
         }
 
+        // Ctrl+/: Toggle help popup
+        if key.code == KeyCode::Char('/') && key.modifiers.contains(KeyModifiers::CONTROL) {
+            self.help_visible = !self.help_visible;
+            return true;
+        }
+
         // Tab: Accept autocomplete suggestion (if visible in input field)
         if key.code == KeyCode::Tab && !key.modifiers.contains(KeyModifiers::CONTROL) {
             // Check if autocomplete is visible and we're in input field
@@ -117,6 +123,17 @@ impl App {
 
     /// Handle keys when Input field is focused
     fn handle_input_field_key(&mut self, key: KeyEvent) {
+        // Handle help popup when visible - close on ESC, q, or Ctrl+/
+        if self.help_visible {
+            if key.code == KeyCode::Esc
+                || (key.code == KeyCode::Char('q') && !key.modifiers.contains(KeyModifiers::CONTROL))
+                || (key.code == KeyCode::Char('/') && key.modifiers.contains(KeyModifiers::CONTROL))
+            {
+                self.help_visible = false;
+            }
+            return;
+        }
+
         // Handle history popup when visible
         if self.history.is_visible() {
             self.handle_history_popup_key(key);
@@ -493,6 +510,17 @@ impl App {
 
     /// Handle keys when Results pane is focused
     fn handle_results_pane_key(&mut self, key: KeyEvent) {
+        // Handle help popup when visible - close on ESC, q, or Ctrl+/
+        if self.help_visible {
+            if key.code == KeyCode::Esc
+                || (key.code == KeyCode::Char('q') && !key.modifiers.contains(KeyModifiers::CONTROL))
+                || (key.code == KeyCode::Char('/') && key.modifiers.contains(KeyModifiers::CONTROL))
+            {
+                self.help_visible = false;
+            }
+            return;
+        }
+
         let max_scroll = self.max_scroll();
         match key.code {
             // Basic line scrolling (1 line)

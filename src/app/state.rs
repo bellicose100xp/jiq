@@ -43,6 +43,7 @@ pub struct App {
     pub json_analyzer: JsonAnalyzer,
     pub error_overlay_visible: bool,
     pub history: HistoryState,
+    pub help_visible: bool,
 }
 
 impl App {
@@ -90,6 +91,7 @@ impl App {
             json_analyzer,
             error_overlay_visible: false, // Error overlay hidden by default
             history: HistoryState::new(),
+            help_visible: false, // Help popup hidden by default
         }
     }
 
