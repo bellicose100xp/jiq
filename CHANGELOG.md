@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.12.0] - 2025-11-25
+
+### Added
+- Syntax highlighting now works for queries of any length
+  - Previously disabled for queries longer than terminal width
+  - Highlighted text correctly follows horizontal scrolling
+  - Colors remain visible even in very long queries
+
+### Fixed
+- Cursor jump bug when deleting characters from long queries
+  - Cursor would jump several positions left when query crossed viewport width threshold
+  - Occurred at the transition between scrolled and non-scrolled states
+  - Now maintains correct cursor position at all query lengths
+
+### Internal
+- Implemented scroll-aware syntax highlighting overlay
+- Added scroll offset tracking to mirror tui-textarea's internal state
+- Extract visible portions of highlighted text based on scroll position
+- All 352 tests passing
+
 ## [2.11.0] - 2025-11-25
 
 ### Fixed
