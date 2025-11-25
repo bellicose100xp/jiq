@@ -134,18 +134,8 @@ pub fn handle_global_keys(app: &mut App, key: KeyEvent) -> bool {
         KeyCode::Tab => {
             if app.autocomplete.is_visible() {
                 if let Some(suggestion) = app.autocomplete.selected() {
-                    let new_query = suggestion.text.clone();
-
-                    // Replace the query
-                    app.input.textarea.delete_line_by_head();
-                    app.input.textarea.delete_line_by_end();
-                    app.input.textarea.insert_str(&new_query);
-
-                    // Execute the new query
-                    super::vim::execute_query(app);
-
-                    // Hide autocomplete
-                    app.autocomplete.hide();
+                    let text = suggestion.text.clone();
+                    app.insert_autocomplete_suggestion(&text);
                 }
                 true
             } else {
@@ -924,5 +914,83 @@ mod tests {
 
         app.handle_key_event(key(KeyCode::End));
         assert_eq!(app.help.scroll.offset, app.help.scroll.max_offset);
+    }
+
+    // ========== Tab Autocomplete Acceptance Tests ==========
+
+    #[test]
+    fn test_tab_accepts_field_suggestion_replaces_from_dot() {
+        // Field suggestions should replace from the last dot
+        let mut app = app_with_query(".na");
+        app.input.editor_mode = EditorMode::Insert;
+        app.focus = Focus::InputField;
+
+        let suggestions = vec![
+            crate::autocomplete::Suggestion::new(".name", crate::autocomplete::SuggestionType::Field),
+        ];
+        app.autocomplete.update_suggestions(suggestions);
+
+        app.handle_key_event(key(KeyCode::Tab));
+
+        // Should replace from the dot: .na → .name
+        assert_eq!(app.query(), ".name");
+        assert!(!app.autocomplete.is_visible());
+    }
+
+    #[test]
+    fn test_tab_accepts_array_suggestion_appends() {
+        // Array suggestions should APPEND when no partial exists
+        let mut app = app_with_query(".services");
+        app.input.editor_mode = EditorMode::Insert;
+        app.focus = Focus::InputField;
+
+        let suggestions = vec![
+            crate::autocomplete::Suggestion::new("[].name", crate::autocomplete::SuggestionType::Field),
+        ];
+        app.autocomplete.update_suggestions(suggestions);
+
+        app.handle_key_event(key(KeyCode::Tab));
+
+        // Should append: .services → .services[].name
+        assert_eq!(app.query(), ".services[].name");
+        assert!(!app.autocomplete.is_visible());
+    }
+
+    #[test]
+    fn test_tab_accepts_array_suggestion_replaces_short_partial() {
+        // Array suggestions should replace short partials (1-3 chars)
+        let mut app = app_with_query(".services.s");
+        app.input.editor_mode = EditorMode::Insert;
+        app.focus = Focus::InputField;
+
+        let suggestions = vec![
+            crate::autocomplete::Suggestion::new("[].serviceArn", crate::autocomplete::SuggestionType::Field),
+        ];
+        app.autocomplete.update_suggestions(suggestions);
+
+        app.handle_key_event(key(KeyCode::Tab));
+
+        // Should replace from dot: .services.s → .services[].serviceArn
+        assert_eq!(app.query(), ".services[].serviceArn");
+        assert!(!app.autocomplete.is_visible());
+    }
+
+    #[test]
+    fn test_tab_accepts_nested_array_suggestion() {
+        // Nested array access should work correctly
+        let mut app = app_with_query(".items[].tags");
+        app.input.editor_mode = EditorMode::Insert;
+        app.focus = Focus::InputField;
+
+        let suggestions = vec![
+            crate::autocomplete::Suggestion::new("[].name", crate::autocomplete::SuggestionType::Field),
+        ];
+        app.autocomplete.update_suggestions(suggestions);
+
+        app.handle_key_event(key(KeyCode::Tab));
+
+        // Should append: .items[].tags → .items[].tags[].name
+        assert_eq!(app.query(), ".items[].tags[].name");
+        assert!(!app.autocomplete.is_visible());
     }
 }
