@@ -7,6 +7,7 @@ mod app;
 mod autocomplete;
 mod editor;
 mod error;
+mod history;
 mod input;
 mod query;
 mod syntax;

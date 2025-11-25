@@ -66,6 +66,9 @@ impl App {
 
         // Shift+Tab: Switch focus between panes
         if key.code == KeyCode::BackTab {
+            // Close any open popups when switching focus
+            self.history.close();
+            self.autocomplete.hide();
             self.focus = match self.focus {
                 Focus::InputField => Focus::ResultsPane,
                 Focus::ResultsPane => Focus::InputField,
@@ -92,8 +95,13 @@ impl App {
             return true;
         }
 
-        // Enter: Exit and output filtered results
-        if key.code == KeyCode::Enter {
+        // Enter: Exit and output filtered results (but not when history popup is open)
+        if key.code == KeyCode::Enter && !self.history.is_visible() {
+            // Save successful queries to history
+            if self.query_result.is_ok() && !self.query().is_empty() {
+                let query = self.query().to_string();
+                self.history.add_entry(&query);
+            }
             self.output_mode = Some(OutputMode::Results);
             self.should_quit = true;
             return true;
@@ -104,6 +112,12 @@ impl App {
 
     /// Handle keys when Input field is focused
     fn handle_input_field_key(&mut self, key: KeyEvent) {
+        // Handle history popup when visible
+        if self.history.is_visible() {
+            self.handle_history_popup_key(key);
+            return;
+        }
+
         // Handle ESC - close autocomplete or switch to Normal mode
         if key.code == KeyCode::Esc {
             if self.autocomplete.is_visible() {
@@ -129,6 +143,45 @@ impl App {
             }
         }
 
+        // Handle history trigger (in Insert mode only)
+        if self.editor_mode == EditorMode::Insert {
+            let cursor_col = self.textarea.cursor().1;
+            let query_empty = self.query().is_empty();
+
+            // Ctrl+P: Cycle to previous (older) history entry
+            if key.code == KeyCode::Char('p') && key.modifiers.contains(KeyModifiers::CONTROL) {
+                if let Some(entry) = self.history.cycle_previous() {
+                    self.replace_query_with(&entry);
+                }
+                return;
+            }
+
+            // Ctrl+N: Cycle to next (newer) history entry
+            if key.code == KeyCode::Char('n') && key.modifiers.contains(KeyModifiers::CONTROL) {
+                if let Some(entry) = self.history.cycle_next() {
+                    self.replace_query_with(&entry);
+                } else {
+                    // At most recent, clear the input
+                    self.textarea.delete_line_by_head();
+                    self.textarea.delete_line_by_end();
+                    self.execute_query();
+                }
+                return;
+            }
+
+            // Ctrl+R: Open history
+            if key.code == KeyCode::Char('r') && key.modifiers.contains(KeyModifiers::CONTROL) {
+                self.open_history_popup();
+                return;
+            }
+
+            // Up arrow: Open history if input empty or cursor at start
+            if key.code == KeyCode::Up && (query_empty || cursor_col == 0) {
+                self.open_history_popup();
+                return;
+            }
+        }
+
         // Handle input based on current mode
         match self.editor_mode {
             EditorMode::Insert => self.handle_insert_mode_key(key),
@@ -144,6 +197,9 @@ impl App {
 
         // Execute query on every keystroke that changes content
         if content_changed {
+            // Reset history cycling when user types
+            self.history.reset_cycling();
+
             let query = self.textarea.lines()[0].as_ref();
             self.query_result = self.executor.execute(query);
 
@@ -369,6 +425,72 @@ impl App {
         self.error_overlay_visible = false; // Auto-hide error overlay on query change
     }
 
+    /// Replace the current query with the given text
+    fn replace_query_with(&mut self, text: &str) {
+        self.textarea.delete_line_by_head();
+        self.textarea.delete_line_by_end();
+        self.textarea.insert_str(text);
+        self.execute_query();
+    }
+
+    /// Open the history popup with current query as initial search
+    fn open_history_popup(&mut self) {
+        // Don't open if history is empty
+        if self.history.total_count() == 0 {
+            return;
+        }
+
+        let query = self.query().to_string();
+        let initial_query = if query.is_empty() {
+            None
+        } else {
+            Some(query.as_str())
+        };
+        self.history.open(initial_query);
+        self.autocomplete.hide();
+    }
+
+    /// Handle keys when history popup is visible
+    fn handle_history_popup_key(&mut self, key: KeyEvent) {
+        match key.code {
+            // Navigation (reversed because display is reversed - most recent at bottom)
+            KeyCode::Up => {
+                self.history.select_next(); // Move to older entries (visually up)
+            }
+            KeyCode::Down => {
+                self.history.select_previous(); // Move to newer entries (visually down)
+            }
+
+            // Select and close
+            KeyCode::Enter | KeyCode::Tab => {
+                if let Some(entry) = self.history.selected_entry() {
+                    let entry = entry.to_string();
+                    self.replace_query_with(&entry);
+                }
+                self.history.close();
+            }
+
+            // Cancel
+            KeyCode::Esc => {
+                self.history.close();
+            }
+
+            // Search input
+            KeyCode::Backspace => {
+                self.history.pop_search_char();
+            }
+            KeyCode::Char(c) => {
+                if !key.modifiers.contains(KeyModifiers::CONTROL)
+                    && !key.modifiers.contains(KeyModifiers::ALT)
+                {
+                    self.history.push_search_char(c);
+                }
+            }
+
+            _ => {}
+        }
+    }
+
     /// Handle keys when Results pane is focused
     fn handle_results_pane_key(&mut self, key: KeyEvent) {
         match key.code {
@@ -445,8 +567,12 @@ mod tests {
 
     // Helper to set up an app with text in the query field
     fn app_with_query(query: &str) -> App {
+        use crate::history::HistoryState;
+
         let mut app = App::new(TEST_JSON.to_string());
         app.textarea.insert_str(query);
+        // Use empty in-memory history for all tests to prevent disk writes
+        app.history = HistoryState::empty();
         app
     }
 
@@ -1406,5 +1532,406 @@ mod tests {
 
         // Scroll should be reset when query changes
         assert_eq!(app.results_scroll, 0);
+    }
+
+    // ========== History Popup Tests ==========
+
+    #[test]
+    fn test_history_popup_does_not_open_when_empty() {
+        let mut app = app_with_query("");
+        app.editor_mode = EditorMode::Insert;
+
+        // app_with_query helper creates empty in-memory history
+        assert_eq!(app.history.total_count(), 0);
+
+        // Try to open with Ctrl+R
+        app.handle_key_event(key_with_mods(KeyCode::Char('r'), KeyModifiers::CONTROL));
+
+        // Should NOT open because history is empty
+        assert!(!app.history.is_visible());
+    }
+
+    #[test]
+    fn test_history_popup_navigation() {
+        let mut app = app_with_query("");
+        app.editor_mode = EditorMode::Insert;
+
+        // Add entries to in-memory history only (doesn't write to disk)
+        // Most recent first: .baz, .bar, .foo (displays bottom to top)
+        app.history.add_entry_in_memory(".foo");
+        app.history.add_entry_in_memory(".bar");
+        app.history.add_entry_in_memory(".baz");
+
+        // Open history - .baz (most recent) should be selected at bottom
+        app.handle_key_event(key_with_mods(KeyCode::Char('r'), KeyModifiers::CONTROL));
+        assert!(app.history.is_visible());
+        assert_eq!(app.history.selected_index(), 0); // .baz at bottom
+
+        // Press Up - should go to older entry (visually up)
+        app.handle_key_event(key(KeyCode::Up));
+        assert_eq!(app.history.selected_index(), 1); // .bar in middle
+
+        // Press Down - should go to newer entry (visually down)
+        app.handle_key_event(key(KeyCode::Down));
+        assert_eq!(app.history.selected_index(), 0); // Back to .baz at bottom
+    }
+
+    #[test]
+    fn test_history_popup_escape_closes() {
+        let mut app = app_with_query("");
+        app.editor_mode = EditorMode::Insert;
+
+        app.history.add_entry_in_memory(".test");
+
+        // Open history
+        app.handle_key_event(key_with_mods(KeyCode::Char('r'), KeyModifiers::CONTROL));
+        assert!(app.history.is_visible());
+
+        // Press Escape
+        app.handle_key_event(key(KeyCode::Esc));
+        assert!(!app.history.is_visible());
+
+        // Query should be unchanged
+        assert_eq!(app.query(), "");
+    }
+
+    #[test]
+    fn test_history_popup_enter_selects() {
+        let mut app = app_with_query("");
+        app.editor_mode = EditorMode::Insert;
+
+        app.history.add_entry_in_memory(".selected_query");
+
+        // Open history
+        app.handle_key_event(key_with_mods(KeyCode::Char('r'), KeyModifiers::CONTROL));
+
+        // Press Enter to select
+        app.handle_key_event(key(KeyCode::Enter));
+
+        assert!(!app.history.is_visible());
+        assert_eq!(app.query(), ".selected_query");
+    }
+
+    #[test]
+    fn test_history_popup_tab_selects() {
+        let mut app = app_with_query("");
+        app.editor_mode = EditorMode::Insert;
+
+        app.history.add_entry_in_memory(".tab_selected");
+
+        // Open history
+        app.handle_key_event(key_with_mods(KeyCode::Char('r'), KeyModifiers::CONTROL));
+
+        // Press Tab to select
+        app.handle_key_event(key(KeyCode::Tab));
+
+        assert!(!app.history.is_visible());
+        assert_eq!(app.query(), ".tab_selected");
+    }
+
+    #[test]
+    fn test_history_popup_search_filters() {
+        let mut app = app_with_query("");
+        app.editor_mode = EditorMode::Insert;
+
+        app.history.add_entry_in_memory(".apple");
+        app.history.add_entry_in_memory(".banana");
+        app.history.add_entry_in_memory(".apricot");
+
+        // Open history
+        app.handle_key_event(key_with_mods(KeyCode::Char('r'), KeyModifiers::CONTROL));
+
+        // Type 'ap' to filter
+        app.handle_key_event(key(KeyCode::Char('a')));
+        app.handle_key_event(key(KeyCode::Char('p')));
+
+        // Should filter to entries containing 'ap'
+        assert_eq!(app.history.search_query(), "ap");
+        // Filtered count should be less than total (banana filtered out)
+        assert!(app.history.filtered_count() < app.history.total_count());
+    }
+
+    #[test]
+    fn test_history_popup_backspace_removes_search_char() {
+        let mut app = app_with_query("");
+        app.editor_mode = EditorMode::Insert;
+
+        app.history.add_entry_in_memory(".test");
+
+        // Open history
+        app.handle_key_event(key_with_mods(KeyCode::Char('r'), KeyModifiers::CONTROL));
+
+        // Type something
+        app.handle_key_event(key(KeyCode::Char('a')));
+        app.handle_key_event(key(KeyCode::Char('b')));
+        assert_eq!(app.history.search_query(), "ab");
+
+        // Backspace
+        app.handle_key_event(key(KeyCode::Backspace));
+        assert_eq!(app.history.search_query(), "a");
+    }
+
+    #[test]
+    fn test_shift_tab_closes_history_popup() {
+        let mut app = app_with_query("");
+        app.editor_mode = EditorMode::Insert;
+
+        app.history.add_entry_in_memory(".test");
+
+        // Open history
+        app.handle_key_event(key_with_mods(KeyCode::Char('r'), KeyModifiers::CONTROL));
+        assert!(app.history.is_visible());
+
+        // Press Shift+Tab to switch focus
+        app.handle_key_event(key(KeyCode::BackTab));
+
+        // History should be closed
+        assert!(!app.history.is_visible());
+        assert_eq!(app.focus, Focus::ResultsPane);
+    }
+
+    #[test]
+    fn test_up_arrow_opens_history_when_cursor_at_start() {
+        let mut app = app_with_query(".existing");
+        app.editor_mode = EditorMode::Insert;
+        app.history.add_entry_in_memory(".history_item");
+
+        // Move cursor to start
+        app.textarea.move_cursor(tui_textarea::CursorMove::Head);
+        assert_eq!(app.textarea.cursor().1, 0);
+
+        // Press Up arrow
+        app.handle_key_event(key(KeyCode::Up));
+
+        // History should open
+        assert!(app.history.is_visible());
+    }
+
+    #[test]
+    fn test_up_arrow_opens_history_when_input_empty() {
+        let mut app = app_with_query("");
+        app.editor_mode = EditorMode::Insert;
+        app.history.add_entry_in_memory(".history_item");
+
+        // Press Up arrow
+        app.handle_key_event(key(KeyCode::Up));
+
+        // History should open
+        assert!(app.history.is_visible());
+    }
+
+    // ========== History Cycling Tests (Ctrl+P/Ctrl+N) ==========
+
+    #[test]
+    fn test_ctrl_p_cycles_to_previous_history() {
+        let mut app = app_with_query("");
+        app.editor_mode = EditorMode::Insert;
+
+        app.history.add_entry_in_memory(".first");
+        app.history.add_entry_in_memory(".second");
+        app.history.add_entry_in_memory(".third");
+
+        // Press Ctrl+P - should load most recent (.third)
+        app.handle_key_event(key_with_mods(KeyCode::Char('p'), KeyModifiers::CONTROL));
+        assert_eq!(app.query(), ".third");
+
+        // Press Ctrl+P again - should load .second
+        app.handle_key_event(key_with_mods(KeyCode::Char('p'), KeyModifiers::CONTROL));
+        assert_eq!(app.query(), ".second");
+
+        // Press Ctrl+P again - should load .first
+        app.handle_key_event(key_with_mods(KeyCode::Char('p'), KeyModifiers::CONTROL));
+        assert_eq!(app.query(), ".first");
+    }
+
+    #[test]
+    fn test_ctrl_n_cycles_to_next_history() {
+        let mut app = app_with_query("");
+        app.editor_mode = EditorMode::Insert;
+
+        app.history.add_entry_in_memory(".first");
+        app.history.add_entry_in_memory(".second");
+        app.history.add_entry_in_memory(".third");
+
+        // Cycle back to .first
+        app.handle_key_event(key_with_mods(KeyCode::Char('p'), KeyModifiers::CONTROL));
+        app.handle_key_event(key_with_mods(KeyCode::Char('p'), KeyModifiers::CONTROL));
+        app.handle_key_event(key_with_mods(KeyCode::Char('p'), KeyModifiers::CONTROL));
+        assert_eq!(app.query(), ".first");
+
+        // Press Ctrl+N - should go forward to .second
+        app.handle_key_event(key_with_mods(KeyCode::Char('n'), KeyModifiers::CONTROL));
+        assert_eq!(app.query(), ".second");
+
+        // Press Ctrl+N again - should go to .third
+        app.handle_key_event(key_with_mods(KeyCode::Char('n'), KeyModifiers::CONTROL));
+        assert_eq!(app.query(), ".third");
+    }
+
+    #[test]
+    fn test_ctrl_n_at_most_recent_clears_input() {
+        let mut app = app_with_query("");
+        app.editor_mode = EditorMode::Insert;
+
+        app.history.add_entry_in_memory(".test");
+
+        // Cycle to history
+        app.handle_key_event(key_with_mods(KeyCode::Char('p'), KeyModifiers::CONTROL));
+        assert_eq!(app.query(), ".test");
+
+        // Press Ctrl+N at most recent entry - should clear
+        app.handle_key_event(key_with_mods(KeyCode::Char('n'), KeyModifiers::CONTROL));
+        assert_eq!(app.query(), "");
+    }
+
+    #[test]
+    fn test_typing_resets_history_cycling() {
+        let mut app = app_with_query("");
+        app.editor_mode = EditorMode::Insert;
+
+        app.history.add_entry_in_memory(".first");
+        app.history.add_entry_in_memory(".second");
+
+        // Cycle to .second
+        app.handle_key_event(key_with_mods(KeyCode::Char('p'), KeyModifiers::CONTROL));
+        assert_eq!(app.query(), ".second");
+
+        // Type a character - should reset cycling
+        app.handle_key_event(key(KeyCode::Char('x')));
+
+        // Now Ctrl+P should start from beginning again
+        app.handle_key_event(key_with_mods(KeyCode::Char('p'), KeyModifiers::CONTROL));
+        // Should get most recent (.second), not continue from where we were
+        assert_eq!(app.query(), ".second");
+    }
+
+    #[test]
+    fn test_ctrl_p_with_empty_history_does_nothing() {
+        let mut app = app_with_query(".existing");
+        app.editor_mode = EditorMode::Insert;
+
+        // History is empty from app_with_query helper
+        assert_eq!(app.history.total_count(), 0);
+
+        app.handle_key_event(key_with_mods(KeyCode::Char('p'), KeyModifiers::CONTROL));
+
+        // Query should be unchanged
+        assert_eq!(app.query(), ".existing");
+    }
+
+    // ========== UTF-8 Edge Case Tests ==========
+
+    #[test]
+    fn test_history_with_emoji() {
+        let mut app = app_with_query("");
+        app.editor_mode = EditorMode::Insert;
+
+        app.history.add_entry_in_memory(".emoji_field 🚀");
+
+        app.handle_key_event(key_with_mods(KeyCode::Char('p'), KeyModifiers::CONTROL));
+        assert_eq!(app.query(), ".emoji_field 🚀");
+    }
+
+    #[test]
+    fn test_history_with_multibyte_chars() {
+        let mut app = app_with_query("");
+        app.editor_mode = EditorMode::Insert;
+
+        app.history.add_entry_in_memory(".café | .naïve");
+
+        app.handle_key_event(key_with_mods(KeyCode::Char('p'), KeyModifiers::CONTROL));
+        assert_eq!(app.query(), ".café | .naïve");
+    }
+
+    #[test]
+    fn test_history_search_with_unicode() {
+        let mut app = app_with_query("");
+        app.editor_mode = EditorMode::Insert;
+
+        app.history.add_entry_in_memory(".café");
+        app.history.add_entry_in_memory(".coffee");
+
+        app.handle_key_event(key_with_mods(KeyCode::Char('r'), KeyModifiers::CONTROL));
+
+        // Search for unicode
+        app.handle_key_event(key(KeyCode::Char('c')));
+        app.handle_key_event(key(KeyCode::Char('a')));
+        app.handle_key_event(key(KeyCode::Char('f')));
+
+        // Should filter to .café
+        assert_eq!(app.history.filtered_count(), 1);
+    }
+
+    // ========== Boundary Condition Tests ==========
+
+    #[test]
+    fn test_cycling_stops_at_oldest() {
+        let mut app = app_with_query("");
+        app.editor_mode = EditorMode::Insert;
+
+        app.history.add_entry_in_memory(".first");
+
+        // Cycle to first entry
+        app.handle_key_event(key_with_mods(KeyCode::Char('p'), KeyModifiers::CONTROL));
+        assert_eq!(app.query(), ".first");
+
+        // Spam Ctrl+P - should stay at .first
+        app.handle_key_event(key_with_mods(KeyCode::Char('p'), KeyModifiers::CONTROL));
+        app.handle_key_event(key_with_mods(KeyCode::Char('p'), KeyModifiers::CONTROL));
+        assert_eq!(app.query(), ".first");
+    }
+
+    #[test]
+    fn test_history_popup_with_single_entry() {
+        let mut app = app_with_query("");
+        app.editor_mode = EditorMode::Insert;
+
+        app.history.add_entry_in_memory(".single");
+
+        app.handle_key_event(key_with_mods(KeyCode::Char('r'), KeyModifiers::CONTROL));
+        assert!(app.history.is_visible());
+
+        // Should wrap on navigation
+        app.handle_key_event(key(KeyCode::Up));
+        assert_eq!(app.history.selected_index(), 0);
+
+        app.handle_key_event(key(KeyCode::Down));
+        assert_eq!(app.history.selected_index(), 0);
+    }
+
+    #[test]
+    fn test_filter_with_no_matches() {
+        let mut app = app_with_query("");
+        app.editor_mode = EditorMode::Insert;
+
+        app.history.add_entry_in_memory(".foo");
+        app.history.add_entry_in_memory(".bar");
+
+        app.handle_key_event(key_with_mods(KeyCode::Char('r'), KeyModifiers::CONTROL));
+
+        // Search for something that doesn't match
+        app.handle_key_event(key(KeyCode::Char('x')));
+        app.handle_key_event(key(KeyCode::Char('y')));
+        app.handle_key_event(key(KeyCode::Char('z')));
+
+        // Should have zero matches
+        assert_eq!(app.history.filtered_count(), 0);
+    }
+
+    #[test]
+    fn test_backspace_on_empty_search() {
+        let mut app = app_with_query("");
+        app.editor_mode = EditorMode::Insert;
+
+        app.history.add_entry_in_memory(".test");
+
+        app.handle_key_event(key_with_mods(KeyCode::Char('r'), KeyModifiers::CONTROL));
+
+        // Search is empty initially
+        assert_eq!(app.history.search_query(), "");
+
+        // Press backspace - should not crash
+        app.handle_key_event(key(KeyCode::Backspace));
+        assert_eq!(app.history.search_query(), "");
     }
 }

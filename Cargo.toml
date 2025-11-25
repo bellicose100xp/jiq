@@ -37,6 +37,12 @@ serde_json = "1.0"
 # Find executables in PATH
 which = "6.0"
 
+# Cross-platform directory paths
+dirs = "5.0"
+
+# Fuzzy matching (fzf-style)
+fuzzy-matcher = "0.3"
+
 [dev-dependencies]
 # Testing utilities
 tempfile = "3.8"

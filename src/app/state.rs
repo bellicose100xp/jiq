@@ -7,6 +7,7 @@ use tui_textarea::TextArea;
 use crate::autocomplete::{AutocompleteState, get_suggestions};
 use crate::autocomplete::json_analyzer::JsonAnalyzer;
 use crate::editor::EditorMode;
+use crate::history::HistoryState;
 use crate::query::executor::JqExecutor;
 
 // Autocomplete performance constants
@@ -41,6 +42,7 @@ pub struct App {
     pub autocomplete: AutocompleteState,
     pub json_analyzer: JsonAnalyzer,
     pub error_overlay_visible: bool,
+    pub history: HistoryState,
 }
 
 impl App {
@@ -87,6 +89,7 @@ impl App {
             autocomplete: AutocompleteState::new(),
             json_analyzer,
             error_overlay_visible: false, // Error overlay hidden by default
+            history: HistoryState::new(),
         }
     }
 

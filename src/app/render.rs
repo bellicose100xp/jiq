@@ -9,6 +9,7 @@ use ratatui::{
 
 use crate::autocomplete::SuggestionType;
 use crate::editor::EditorMode;
+use crate::history::MAX_VISIBLE_HISTORY;
 use crate::syntax::JqHighlighter;
 use super::state::{App, Focus};
 
@@ -19,6 +20,9 @@ const POPUP_BORDER_HEIGHT: u16 = 2;
 const POPUP_PADDING: u16 = 4;
 const POPUP_OFFSET_X: u16 = 2;
 const TYPE_LABEL_SPACING: usize = 3;
+
+// History popup display constants
+const HISTORY_SEARCH_HEIGHT: u16 = 3;
 
 impl App {
     /// Render the UI
@@ -47,6 +51,11 @@ impl App {
         // Render autocomplete popup (if visible) - render last so it overlays other widgets
         if self.autocomplete.is_visible() {
             self.render_autocomplete_popup(frame, input_area);
+        }
+
+        // Render history popup (if visible) - overlays autocomplete
+        if self.history.is_visible() {
+            self.render_history_popup(frame, input_area);
         }
 
         // Render error overlay (if visible and error exists) - render last to overlay results
@@ -419,5 +428,103 @@ impl App {
         );
 
         frame.render_widget(list, popup_area);
+    }
+
+    /// Render the history popup above the input field
+    fn render_history_popup(&self, frame: &mut Frame, input_area: Rect) {
+        // Calculate dimensions
+        let visible_count = self.history.filtered_count().min(MAX_VISIBLE_HISTORY);
+        let list_height = visible_count as u16 + 2; // +2 for borders
+        let total_height = list_height + HISTORY_SEARCH_HEIGHT;
+
+        // Position popup above input (full width)
+        let popup_y = input_area.y.saturating_sub(total_height);
+
+        let popup_area = Rect {
+            x: input_area.x,
+            y: popup_y,
+            width: input_area.width,
+            height: total_height.min(input_area.y),
+        };
+
+        // Clear background
+        frame.render_widget(Clear, popup_area);
+
+        // Split into list area and search area
+        let layout = Layout::vertical([
+            Constraint::Min(3),           // History list
+            Constraint::Length(HISTORY_SEARCH_HEIGHT), // Search box
+        ])
+        .split(popup_area);
+
+        let list_area = layout[0];
+        let search_area = layout[1];
+
+        // Build title with match count
+        let title = format!(
+            " History ({}/{}) ",
+            self.history.filtered_count(),
+            self.history.total_count()
+        );
+
+        // Calculate max text length based on available width
+        // Format: " ► text " with borders -> overhead = 6 chars (borders + padding + arrow)
+        let max_text_len = (list_area.width as usize).saturating_sub(6);
+
+        // Create list items
+        let items: Vec<ListItem> = self
+            .history
+            .visible_entries()
+            .map(|(display_idx, entry)| {
+                // Truncate long entries (char-safe for UTF-8)
+                let display_text = if entry.chars().count() > max_text_len {
+                    let truncated: String = entry.chars().take(max_text_len).collect();
+                    format!("{}…", truncated)
+                } else {
+                    entry.to_string()
+                };
+
+                let line = if display_idx == self.history.selected_index() {
+                    // Selected item
+                    Line::from(vec![Span::styled(
+                        format!(" ► {} ", display_text),
+                        Style::default()
+                            .fg(Color::Black)
+                            .bg(Color::Cyan)
+                            .add_modifier(Modifier::BOLD),
+                    )])
+                } else {
+                    // Unselected item
+                    Line::from(vec![Span::styled(
+                        format!("   {} ", display_text),
+                        Style::default().fg(Color::White).bg(Color::Black),
+                    )])
+                };
+
+                ListItem::new(line)
+            })
+            .collect();
+
+        // Render list
+        let list = List::new(items).block(
+            Block::default()
+                .borders(Borders::ALL)
+                .title(title)
+                .border_style(Style::default().fg(Color::Cyan))
+                .style(Style::default().bg(Color::Black)),
+        );
+        frame.render_widget(list, list_area);
+
+        // Render search box
+        let search_text = format!(" Search: {}", self.history.search_query());
+        let search_widget = Paragraph::new(search_text)
+            .block(
+                Block::default()
+                    .borders(Borders::ALL)
+                    .border_style(Style::default().fg(Color::Cyan))
+                    .style(Style::default().bg(Color::Black)),
+            )
+            .style(Style::default().fg(Color::White));
+        frame.render_widget(search_widget, search_area);
     }
 }

@@ -4,6 +4,7 @@
 
 - **Real-time query execution** - See results as you type
 - **Context-aware autocomplete** - Intelligent suggestions with JSON type information for fields and functions
+- **Query history** - Searchable history of successful queries
 - **Floating error overlay** - Syntax errors appear in a non-disruptive overlay (Ctrl+E to toggle)
 - **VIM keybindings** - VIM-style editing for power users
 - **Syntax highlighting** - Colorized JSON output and jq query syntax (experimental)
@@ -154,6 +155,31 @@ curl https://api.example.com/data | jiq
 | `Ctrl+u` / `PageUp` | Scroll half page up |
 | `g` / `Home` | Jump to top |
 | `G` | Jump to bottom |
+
+</details>
+
+<details>
+<summary><b>Query History</b> (last 1000 entries)</summary>
+
+Successful queries are saved to your platform's application data directory:
+- **Linux:** `~/.local/share/jiq/history`
+- **macOS:** `~/Library/Application Support/jiq/history`
+- **Windows:** `%APPDATA%\jiq\history`
+
+**Quick Cycling** (without opening popup):
+| Key | Action |
+|-----|--------|
+| `Ctrl+P` | Previous (older) query |
+| `Ctrl+N` | Next (newer) query |
+
+**History Search Popup**:
+| Key | Action |
+|-----|--------|
+| `Ctrl+R` or `↑` (when input empty) | Open history search |
+| `↑` / `↓` | Navigate entries |
+| Type characters | Fuzzy search filter |
+| `Enter` / `Tab` | Select entry and close |
+| `ESC` | Close without selecting |
 
 </details>
 
