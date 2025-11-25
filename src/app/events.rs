@@ -1443,12 +1443,25 @@ mod tests {
     }
 
     #[test]
-    fn test_q_sets_quit_flag() {
+    fn test_q_sets_quit_flag_in_normal_mode() {
         let mut app = app_with_query(".");
+        app.editor_mode = EditorMode::Normal;
 
         app.handle_key_event(key(KeyCode::Char('q')));
 
         assert!(app.should_quit);
+    }
+
+    #[test]
+    fn test_q_does_not_quit_in_insert_mode() {
+        let mut app = app_with_query(".");
+        app.editor_mode = EditorMode::Insert;
+
+        app.handle_key_event(key(KeyCode::Char('q')));
+
+        // Should NOT quit - 'q' should be typed instead
+        assert!(!app.should_quit);
+        assert_eq!(app.query(), ".q");
     }
 
     #[test]
