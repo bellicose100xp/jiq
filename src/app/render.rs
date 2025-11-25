@@ -151,14 +151,7 @@ impl App {
             return;
         }
 
-        // Highlight the query
-        let highlighted_spans = JqHighlighter::highlight(query);
-
-        // Create a line with highlighted spans
-        let highlighted_line = Line::from(highlighted_spans);
-
         // Calculate the inner area (inside the border)
-        // The border takes 1 character on each side
         let inner_area = Rect {
             x: area.x + 1,
             y: area.y + 1,
@@ -166,7 +159,20 @@ impl App {
             height: area.height.saturating_sub(2),
         };
 
-        // Render the highlighted text without a block (transparent overlay)
+        // Only render syntax highlighting if text fits in viewport
+        // This prevents sync issues with tui-textarea's internal horizontal scrolling
+        let query_len = query.chars().count();
+        let viewport_width = inner_area.width as usize;
+
+        if query_len >= viewport_width {
+            // Text would need horizontal scrolling - skip overlay to avoid cursor sync issues
+            // The textarea's native rendering handles scrolling correctly
+            return;
+        }
+
+        // Text fits in viewport - safe to render syntax highlighting
+        let highlighted_spans = JqHighlighter::highlight(query);
+        let highlighted_line = Line::from(highlighted_spans);
         let paragraph = Paragraph::new(highlighted_line);
         frame.render_widget(paragraph, inner_area);
     }
@@ -687,4 +693,9 @@ impl App {
 
         frame.render_widget(popup, popup_area);
     }
+}
+
+#[cfg(test)]
+mod tests {
+    include!("render_tests.rs");
 }
