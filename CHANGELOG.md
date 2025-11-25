@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.8.0] - 2025-11-24
+
+### Added
+- Smart array field autocomplete with proper jq syntax
+  - Typing `.array.` now suggests `[]`, `[].field1`, `[].field2` (guides user to use iterator)
+  - Typing `.array | .` now suggests `.[]`, `.[].field1`, `.[].field2` (preserves dot after pipe)
+  - Typing `.array[].` shows normal `.field` suggestions (iterator already present)
+  - Works with all array access patterns: `[]`, `[0]`, `[0:5]`
+- Standalone `[]` iterator suggestion when at an array (with description "iterate all elements")
+
+### Improved
+- Suggestion type labels are now more descriptive:
+  - `fn` → `function`
+  - `op` → `operator`
+  - `pat` → `iterator`
+- Added 12 new tests for comprehensive array autocomplete coverage
+
 ## [2.7.2] - 2025-11-24
 
 ### Fixed
