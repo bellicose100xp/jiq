@@ -431,10 +431,10 @@ impl App {
     }
 
     /// Render the history popup above the input field
-    fn render_history_popup(&self, frame: &mut Frame, input_area: Rect) {
-        // Calculate dimensions
+    fn render_history_popup(&mut self, frame: &mut Frame, input_area: Rect) {
+        // Calculate dimensions - ensure minimum 1 row for "No matches" message
         let visible_count = self.history.filtered_count().min(MAX_VISIBLE_HISTORY);
-        let list_height = visible_count as u16 + 2; // +2 for borders
+        let list_height = (visible_count as u16).max(1) + 2; // +2 for borders, min 1 row
         let total_height = list_height + HISTORY_SEARCH_HEIGHT;
 
         // Position popup above input (full width)
@@ -472,38 +472,45 @@ impl App {
         let max_text_len = (list_area.width as usize).saturating_sub(6);
 
         // Create list items
-        let items: Vec<ListItem> = self
-            .history
-            .visible_entries()
-            .map(|(display_idx, entry)| {
-                // Truncate long entries (char-safe for UTF-8)
-                let display_text = if entry.chars().count() > max_text_len {
-                    let truncated: String = entry.chars().take(max_text_len).collect();
-                    format!("{}…", truncated)
-                } else {
-                    entry.to_string()
-                };
+        let items: Vec<ListItem> = if self.history.filtered_count() == 0 {
+            // Show "No matches" when search has no results
+            vec![ListItem::new(Line::from(Span::styled(
+                "   No matches",
+                Style::default().fg(Color::DarkGray),
+            )))]
+        } else {
+            self.history
+                .visible_entries()
+                .map(|(display_idx, entry)| {
+                    // Truncate long entries (char-safe for UTF-8)
+                    let display_text = if entry.chars().count() > max_text_len {
+                        let truncated: String = entry.chars().take(max_text_len).collect();
+                        format!("{}…", truncated)
+                    } else {
+                        entry.to_string()
+                    };
 
-                let line = if display_idx == self.history.selected_index() {
-                    // Selected item
-                    Line::from(vec![Span::styled(
-                        format!(" ► {} ", display_text),
-                        Style::default()
-                            .fg(Color::Black)
-                            .bg(Color::Cyan)
-                            .add_modifier(Modifier::BOLD),
-                    )])
-                } else {
-                    // Unselected item
-                    Line::from(vec![Span::styled(
-                        format!("   {} ", display_text),
-                        Style::default().fg(Color::White).bg(Color::Black),
-                    )])
-                };
+                    let line = if display_idx == self.history.selected_index() {
+                        // Selected item
+                        Line::from(vec![Span::styled(
+                            format!(" ► {} ", display_text),
+                            Style::default()
+                                .fg(Color::Black)
+                                .bg(Color::Cyan)
+                                .add_modifier(Modifier::BOLD),
+                        )])
+                    } else {
+                        // Unselected item
+                        Line::from(vec![Span::styled(
+                            format!("   {} ", display_text),
+                            Style::default().fg(Color::White).bg(Color::Black),
+                        )])
+                    };
 
-                ListItem::new(line)
-            })
-            .collect();
+                    ListItem::new(line)
+                })
+                .collect()
+        };
 
         // Render list
         let list = List::new(items).block(
@@ -515,16 +522,16 @@ impl App {
         );
         frame.render_widget(list, list_area);
 
-        // Render search box
-        let search_text = format!(" Search: {}", self.history.search_query());
-        let search_widget = Paragraph::new(search_text)
-            .block(
-                Block::default()
-                    .borders(Borders::ALL)
-                    .border_style(Style::default().fg(Color::Cyan))
-                    .style(Style::default().bg(Color::Black)),
-            )
-            .style(Style::default().fg(Color::White));
-        frame.render_widget(search_widget, search_area);
+        // Render search box using TextArea
+        let search_textarea = self.history.search_textarea_mut();
+        search_textarea.set_block(
+            Block::default()
+                .borders(Borders::ALL)
+                .title(" Search ")
+                .border_style(Style::default().fg(Color::Cyan))
+                .style(Style::default().bg(Color::Black)),
+        );
+        search_textarea.set_style(Style::default().fg(Color::White).bg(Color::Black));
+        frame.render_widget(&*search_textarea, search_area);
     }
 }

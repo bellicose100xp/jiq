@@ -480,19 +480,14 @@ impl App {
                 self.history.close();
             }
 
-            // Search input
-            KeyCode::Backspace => {
-                self.history.pop_search_char();
-            }
-            KeyCode::Char(c) => {
-                if !key.modifiers.contains(KeyModifiers::CONTROL)
-                    && !key.modifiers.contains(KeyModifiers::ALT)
-                {
-                    self.history.push_search_char(c);
+            // Let TextArea handle all other input (chars, backspace, left/right arrows, etc.)
+            _ => {
+                let input = tui_textarea::Input::from(key);
+                if self.history.search_textarea_mut().input(input) {
+                    // Input was consumed, update filter
+                    self.history.on_search_input_changed();
                 }
             }
-
-            _ => {}
         }
     }
 

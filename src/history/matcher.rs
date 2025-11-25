@@ -30,8 +30,17 @@ impl HistoryMatcher {
     /// Filters entries by the given query using fuzzy matching.
     /// Returns indices of matching entries sorted by score (highest first).
     /// If query is empty, returns all indices in original order.
+    ///
+    /// Multiple space-separated terms are ANDed together (like fzf).
+    /// Each term must match somewhere in the entry for it to be included.
     pub fn filter(&self, query: &str, entries: &[String]) -> Vec<usize> {
         if query.is_empty() {
+            return (0..entries.len()).collect();
+        }
+
+        // Split query into terms (space-separated, like fzf)
+        let terms: Vec<&str> = query.split_whitespace().collect();
+        if terms.is_empty() {
             return (0..entries.len()).collect();
         }
 
@@ -39,9 +48,15 @@ impl HistoryMatcher {
             .iter()
             .enumerate()
             .filter_map(|(idx, entry)| {
-                self.matcher
-                    .fuzzy_match(entry, query)
-                    .map(|score| (idx, score))
+                // All terms must match (AND logic)
+                let mut total_score: i64 = 0;
+                for term in &terms {
+                    match self.matcher.fuzzy_match(entry, term) {
+                        Some(score) => total_score += score,
+                        None => return None, // Term didn't match, exclude entry
+                    }
+                }
+                Some((idx, total_score))
             })
             .collect();
 
@@ -112,6 +127,26 @@ mod tests {
 
         let result = matcher.filter("xyz", &entries);
         assert!(result.is_empty());
+    }
+
+    #[test]
+    fn test_multi_word_search_ands_terms() {
+        let matcher = HistoryMatcher::new();
+        let entries = vec![
+            ".organization.headquarters.facilities.buildings | .[].departments".to_string(),
+            ".headquarters.offices".to_string(),
+            ".buildings.floors".to_string(),
+            ".unrelated.data".to_string(),
+        ];
+
+        // Both "headquarters" and "building" must match
+        let result = matcher.filter("headquarters building", &entries);
+        assert_eq!(result.len(), 1);
+        assert_eq!(result[0], 0); // Only first entry has both terms
+
+        // Single term should match more
+        let result = matcher.filter("headquarters", &entries);
+        assert_eq!(result.len(), 2); // First two entries
     }
 
 }

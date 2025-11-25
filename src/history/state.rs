@@ -1,8 +1,19 @@
+use ratatui::style::{Modifier, Style};
+use tui_textarea::TextArea;
+
 use super::matcher::HistoryMatcher;
 use super::storage;
 
 /// Maximum number of history items to display in the popup.
 pub const MAX_VISIBLE_HISTORY: usize = 15;
+
+/// Creates a TextArea configured for history search input.
+fn create_search_textarea() -> TextArea<'static> {
+    let mut textarea = TextArea::default();
+    textarea.set_cursor_line_style(Style::default());
+    textarea.set_cursor_style(Style::default().add_modifier(Modifier::REVERSED));
+    textarea
+}
 
 /// Manages the state of the history popup.
 ///
@@ -11,11 +22,10 @@ pub const MAX_VISIBLE_HISTORY: usize = 15;
 /// history file. While trait-based dependency injection would be more "proper", it would
 /// add significant complexity for a single-user CLI tool with minimal benefit.
 /// This pragmatic approach keeps the codebase simple while ensuring test isolation.
-#[derive(Debug)]
 pub struct HistoryState {
     entries: Vec<String>,
     filtered_indices: Vec<usize>,
-    search_query: String,
+    search_textarea: TextArea<'static>,
     selected_index: usize,
     visible: bool,
     matcher: HistoryMatcher,
@@ -39,7 +49,7 @@ impl HistoryState {
         Self {
             entries,
             filtered_indices,
-            search_query: String::new(),
+            search_textarea: create_search_textarea(),
             selected_index: 0,
             visible: false,
             matcher: HistoryMatcher::new(),
@@ -55,7 +65,7 @@ impl HistoryState {
         Self {
             entries: Vec::new(),
             filtered_indices: Vec::new(),
-            search_query: String::new(),
+            search_textarea: create_search_textarea(),
             selected_index: 0,
             visible: false,
             matcher: HistoryMatcher::new(),
@@ -80,7 +90,12 @@ impl HistoryState {
     /// Opens the history popup with an optional initial search query.
     pub fn open(&mut self, initial_query: Option<&str>) {
         self.visible = true;
-        self.search_query = initial_query.unwrap_or("").to_string();
+        // Clear existing text and set initial query
+        self.search_textarea.select_all();
+        self.search_textarea.cut();
+        if let Some(q) = initial_query {
+            self.search_textarea.insert_str(q);
+        }
         self.update_filter();
         self.selected_index = 0;
     }
@@ -88,7 +103,8 @@ impl HistoryState {
     /// Closes the history popup and resets state.
     pub fn close(&mut self) {
         self.visible = false;
-        self.search_query.clear();
+        self.search_textarea.select_all();
+        self.search_textarea.cut();
         self.selected_index = 0;
         self.filtered_indices = (0..self.entries.len()).collect();
     }
@@ -98,21 +114,19 @@ impl HistoryState {
         self.visible
     }
 
-    /// Returns the current search query.
+    /// Returns the current search query (used for testing).
+    #[cfg(test)]
     pub fn search_query(&self) -> &str {
-        &self.search_query
+        self.search_textarea.lines().first().map(|s| s.as_str()).unwrap_or("")
     }
 
-    /// Appends a character to the search query and updates filtering.
-    pub fn push_search_char(&mut self, c: char) {
-        self.search_query.push(c);
-        self.update_filter();
-        self.selected_index = 0;
+    /// Returns a mutable reference to the search TextArea for input handling.
+    pub fn search_textarea_mut(&mut self) -> &mut TextArea<'static> {
+        &mut self.search_textarea
     }
 
-    /// Removes the last character from the search query and updates filtering.
-    pub fn pop_search_char(&mut self) {
-        self.search_query.pop();
+    /// Called after TextArea input to update the filter.
+    pub fn on_search_input_changed(&mut self) {
         self.update_filter();
         self.selected_index = 0;
     }
@@ -205,7 +219,8 @@ impl HistoryState {
 
     /// Updates the filtered indices based on the current search query.
     fn update_filter(&mut self) {
-        self.filtered_indices = self.matcher.filter(&self.search_query, &self.entries);
+        let query = self.search_textarea.lines().first().map(|s| s.as_str()).unwrap_or("");
+        self.filtered_indices = self.matcher.filter(query, &self.entries);
     }
 
     /// Cycle to the previous history entry (older).
@@ -257,7 +272,7 @@ mod tests {
         HistoryState {
             entries: entries.into_iter().map(String::from).collect(),
             filtered_indices: vec![0, 1, 2],
-            search_query: String::new(),
+            search_textarea: create_search_textarea(),
             selected_index: 0,
             visible: false,
             matcher: HistoryMatcher::new(),
@@ -316,17 +331,17 @@ mod tests {
     }
 
     #[test]
-    fn test_push_pop_search() {
+    fn test_textarea_search_input() {
         let mut state = create_test_state(vec![".foo", ".bar", ".baz"]);
 
-        state.push_search_char('f');
-        assert_eq!(state.search_query(), "f");
-
-        state.push_search_char('o');
+        // Insert text via TextArea
+        state.search_textarea_mut().insert_str("fo");
         assert_eq!(state.search_query(), "fo");
 
-        state.pop_search_char();
-        assert_eq!(state.search_query(), "f");
+        // Clear via select_all + cut
+        state.search_textarea_mut().select_all();
+        state.search_textarea_mut().cut();
+        assert_eq!(state.search_query(), "");
     }
 
     #[test]
@@ -370,8 +385,9 @@ mod tests {
         state.filtered_indices = vec![0, 1, 2];
         state.selected_index = 2;
 
-        // Push search char resets selection to 0
-        state.push_search_char('a');
+        // Input change resets selection to 0
+        state.search_textarea_mut().insert_char('a');
+        state.on_search_input_changed();
         assert_eq!(state.selected_index(), 0);
     }
 
