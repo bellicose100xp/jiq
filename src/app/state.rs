@@ -110,14 +110,13 @@ impl App {
         let before_cursor = &query[..cursor_pos.min(query.len())];
 
         // Find the start position to replace from
-        // For field suggestions (starting with . or []), find the last dot
-        // For other suggestions, find the token start
-        let replace_start = if suggestion.starts_with('.') || suggestion.starts_with('[') {
-            // Field suggestion or array access - find the last dot in before_cursor
-            // This handles:
-            // - .field suggestions (e.g., .name)
-            // - [].field suggestions (e.g., [].name for arrays)
-            // - [] suggestion (standalone array iterator)
+        let replace_start = if suggestion.starts_with('[') {
+            // Array access suggestion like [] or [].field
+            // Append after the current word (don't replace)
+            cursor_pos
+        } else if suggestion.starts_with('.') {
+            // Field suggestion - find the last dot to replace from there
+            // This handles: .field suggestions (e.g., .name)
             before_cursor.rfind('.').unwrap_or(0)
         } else {
             // Function/operator/pattern suggestion - find token start
@@ -392,5 +391,37 @@ mod tests {
         // Update scroll bounds
         app.results_scroll.update_bounds(0, 10);
         assert_eq!(app.results_scroll.max_offset, 0);
+    }
+
+    #[test]
+    fn test_array_suggestion_appends_to_path() {
+        // When accepting [].field suggestion for .services, should produce .services[].field
+        let json = r#"{"services": [{"name": "test"}]}"#;
+        let mut app = App::new(json.to_string());
+
+        // Simulate: user typed ".services" and cursor is at end
+        app.input.textarea.insert_str(".services");
+
+        // Accept autocomplete suggestion "[].name"
+        app.insert_autocomplete_suggestion("[].name");
+
+        // Should produce .services[].name (append, not replace)
+        assert_eq!(app.query(), ".services[].name");
+    }
+
+    #[test]
+    fn test_field_suggestion_replaces_from_dot() {
+        // When accepting .field suggestion, should replace from last dot
+        let json = r#"{"name": "test", "age": 30}"#;
+        let mut app = App::new(json.to_string());
+
+        // Simulate: user typed ".na" and cursor is at end
+        app.input.textarea.insert_str(".na");
+
+        // Accept autocomplete suggestion ".name"
+        app.insert_autocomplete_suggestion(".name");
+
+        // Should produce .name (replace from the dot)
+        assert_eq!(app.query(), ".name");
     }
 }
