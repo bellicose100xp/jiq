@@ -2,7 +2,7 @@ use ratatui::crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind, Ke
 use std::io;
 
 use crate::editor::EditorMode;
-use super::state::{App, Focus, OutputMode};
+use super::state::{App, Focus};
 
 mod global;
 mod history;
@@ -144,41 +144,5 @@ impl App {
 
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use tui_textarea::CursorMove;
+// No tests in this file - all tests are in submodules
 
-    // Test fixture data
-    const TEST_JSON: &str = r#"{"name": "test", "age": 30, "city": "NYC"}"#;
-
-    // Helper to create a KeyEvent without modifiers
-    fn key(code: KeyCode) -> KeyEvent {
-        KeyEvent::new(code, KeyModifiers::empty())
-    }
-
-    // Helper to create a KeyEvent with specific modifiers
-    fn key_with_mods(code: KeyCode, modifiers: KeyModifiers) -> KeyEvent {
-        KeyEvent::new(code, modifiers)
-    }
-
-    // Helper to set up an app with text in the query field
-    fn app_with_query(query: &str) -> App {
-        use crate::history::HistoryState;
-
-        let mut app = App::new(TEST_JSON.to_string());
-        app.input.textarea.insert_str(query);
-        // Use empty in-memory history for all tests to prevent disk writes
-        app.history = HistoryState::empty();
-        app
-    }
-
-    // Helper to move cursor to specific position by text content
-    fn move_cursor_to_position(app: &mut App, target_pos: usize) {
-        app.input.textarea.move_cursor(CursorMove::Head);
-        for _ in 0..target_pos {
-            app.input.textarea.move_cursor(CursorMove::Forward);
-        }
-    }
-
-}

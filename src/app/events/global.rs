@@ -216,13 +216,6 @@ mod tests {
         app
     }
 
-    // Helper to move cursor to specific position by text content
-    fn move_cursor_to_position(app: &mut App, target_pos: usize) {
-        app.input.textarea.move_cursor(CursorMove::Head);
-        for _ in 0..target_pos {
-            app.input.textarea.move_cursor(CursorMove::Forward);
-        }
-    }
     // ========== Error Overlay Tests ==========
 
     #[test]
@@ -917,6 +910,70 @@ mod tests {
     }
 
     // ========== Tab Autocomplete Acceptance Tests ==========
+
+    // ========== Dispatch Order and Focus Tests ==========
+
+    #[test]
+    fn test_tab_does_not_accept_autocomplete_in_results_pane() {
+        // Critical: Tab should only accept autocomplete when InputField is focused
+        let mut app = app_with_query(".na");
+        app.input.editor_mode = EditorMode::Insert;
+        app.focus = Focus::ResultsPane; // Focus on RESULTS, not input
+
+        let suggestions = vec![
+            crate::autocomplete::Suggestion::new(".name", crate::autocomplete::SuggestionType::Field),
+        ];
+        app.autocomplete.update_suggestions(suggestions);
+        assert!(app.autocomplete.is_visible());
+
+        // Press Tab while results pane is focused
+        app.handle_key_event(key(KeyCode::Tab));
+
+        // Should NOT accept autocomplete (focus check prevents it)
+        assert_eq!(app.query(), ".na"); // Query unchanged
+        assert!(app.autocomplete.is_visible()); // Still visible
+    }
+
+    #[test]
+    fn test_vim_navigation_blocked_when_help_visible() {
+        // Critical: VIM navigation should be blocked when help popup is open
+        let mut app = app_with_query(".test");
+        app.input.editor_mode = EditorMode::Normal;
+        app.focus = Focus::InputField;
+        app.help.visible = true;
+
+        // Try VIM navigation - should be blocked by help popup
+        app.handle_key_event(key(KeyCode::Char('h'))); // Move left
+        app.handle_key_event(key(KeyCode::Char('l'))); // Move right
+        app.handle_key_event(key(KeyCode::Char('w'))); // Word forward
+        app.handle_key_event(key(KeyCode::Char('x'))); // Delete char
+
+        // Query should be unchanged (all keys blocked by help)
+        assert_eq!(app.query(), ".test");
+        assert!(app.help.visible);
+    }
+
+    #[test]
+    fn test_history_popup_enter_not_intercepted_by_global() {
+        // Critical: Enter in history popup should select entry, not output mode
+        let mut app = app_with_query("");
+        app.input.editor_mode = EditorMode::Insert;
+
+        app.history.add_entry_in_memory(".selected");
+
+        // Open history popup
+        app.handle_key_event(key_with_mods(KeyCode::Char('r'), KeyModifiers::CONTROL));
+        assert!(app.history.is_visible());
+
+        // Press Enter - should select from history, NOT set output mode
+        app.handle_key_event(key(KeyCode::Enter));
+
+        // History should be closed and query should be selected entry
+        assert!(!app.history.is_visible());
+        assert_eq!(app.query(), ".selected");
+        assert!(app.output_mode.is_none()); // Should NOT set output mode
+        assert!(!app.should_quit); // Should NOT quit
+    }
 
     #[test]
     fn test_tab_accepts_field_suggestion_replaces_from_dot() {
