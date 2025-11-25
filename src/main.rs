@@ -12,6 +12,7 @@ mod input;
 mod query;
 mod scroll;
 mod syntax;
+mod widgets;
 
 use app::{App, OutputMode};
 use error::JiqError;

@@ -3,7 +3,7 @@ use ratatui::{
     layout::{Constraint, Layout, Rect},
     style::{Color, Modifier, Style},
     text::{Line, Span, Text},
-    widgets::{Block, Borders, Clear, List, ListItem, Paragraph},
+    widgets::{Block, Borders, List, ListItem, Paragraph},
     Frame,
 };
 
@@ -11,6 +11,7 @@ use crate::autocomplete::SuggestionType;
 use crate::editor::EditorMode;
 use crate::history::MAX_VISIBLE_HISTORY;
 use crate::syntax::JqHighlighter;
+use crate::widgets::popup;
 use super::state::{App, Focus};
 
 // Autocomplete popup display constants
@@ -276,16 +277,17 @@ impl App {
             // Position overlay at bottom of results pane, with 1 line gap from bottom border
             let overlay_y = results_area.bottom().saturating_sub(overlay_height + 1);
 
-            // Create overlay area with margins
+            // Create overlay area with margins and position at bottom
+            let overlay_with_margins = popup::inset_rect(results_area, 2, 0);
             let overlay_area = Rect {
-                x: results_area.x + 2,  // 2-char left margin
+                x: overlay_with_margins.x,
                 y: overlay_y,
-                width: results_area.width.saturating_sub(4),  // 2-char margins on both sides
+                width: overlay_with_margins.width,
                 height: overlay_height,
             };
 
             // Clear the background to make it truly floating
-            frame.render_widget(Clear, overlay_area);
+            popup::clear_area(frame, overlay_area);
 
             // Render error overlay with distinct styling
             let error_block = Block::default()
@@ -355,15 +357,7 @@ impl App {
         let popup_width = (max_text_width as u16) + POPUP_PADDING;
 
         // Position popup just above the input field
-        let popup_x = input_area.x + POPUP_OFFSET_X;
-        let popup_y = input_area.y.saturating_sub(popup_height);
-
-        let popup_area = Rect {
-            x: popup_x,
-            y: popup_y,
-            width: popup_width.min(input_area.width.saturating_sub(POPUP_PADDING)),
-            height: popup_height.min(input_area.y), // Don't overflow above input
-        };
+        let popup_area = popup::popup_above_anchor(input_area, popup_width, popup_height, POPUP_OFFSET_X);
 
         // Calculate max field text width for alignment
         let max_field_width = suggestions
@@ -440,7 +434,7 @@ impl App {
             .collect();
 
         // Clear the background area to prevent transparency
-        frame.render_widget(Clear, popup_area);
+        popup::clear_area(frame, popup_area);
 
         // Create the list widget
         let list = List::new(items).block(
@@ -472,7 +466,7 @@ impl App {
         };
 
         // Clear background
-        frame.render_widget(Clear, popup_area);
+        popup::clear_area(frame, popup_area);
 
         // Split into list area and search area
         let layout = Layout::vertical([
@@ -627,18 +621,10 @@ impl App {
         }
 
         // Center the popup
-        let popup_x = (frame_area.width.saturating_sub(popup_width)) / 2;
-        let popup_y = (frame_area.height.saturating_sub(popup_height)) / 2;
-
-        let popup_area = Rect {
-            x: popup_x,
-            y: popup_y,
-            width: popup_width,
-            height: popup_height,
-        };
+        let popup_area = popup::centered_popup(frame_area, popup_width, popup_height);
 
         // Clear the background for floating effect
-        frame.render_widget(Clear, popup_area);
+        popup::clear_area(frame, popup_area);
 
         // Create help text with proper formatting
         let mut lines: Vec<Line> = Vec::new();
@@ -697,5 +683,80 @@ impl App {
 
 #[cfg(test)]
 mod tests {
-    include!("render_tests.rs");
+    use super::*;
+
+    #[test]
+    fn test_syntax_highlighting_enabled_for_short_queries() {
+        // This test documents that syntax highlighting works for queries
+        // that fit within the viewport width
+
+        let json = r#"{"test": true}"#;
+        let app = App::new(json.to_string());
+
+        // Short query - should be eligible for highlighting
+        let short_query = ".test";
+        assert!(short_query.chars().count() < 50); // Typical viewport width
+
+        // Verify query method works (syntax highlighting uses this)
+        assert_eq!(app.query(), "");
+    }
+
+    #[test]
+    fn test_long_query_handling() {
+        // This test documents the behavior for queries that exceed viewport width
+        // Syntax highlighting is disabled to prevent cursor sync issues
+
+        let json = r#"{"test": true}"#;
+        let _app = App::new(json.to_string());
+
+        // Create a very long query (would exceed typical terminal width)
+        let long_query = ".field1 | .field2 | .field3 | .field4 | .field5 | .field6 | .field7 | .field8 | .field9 | .field10 | select(.value > 100)";
+        assert!(long_query.chars().count() > 100);
+
+        // The rendering logic will check: query_len >= viewport_width
+        // If true, it skips the syntax highlighting overlay
+        // This allows tui-textarea's native scrolling to work correctly
+    }
+
+    #[test]
+    fn test_viewport_width_threshold() {
+        // Documents the exact threshold behavior for syntax highlighting
+
+        let json = r#"{"test": true}"#;
+        let _app = App::new(json.to_string());
+
+        // If terminal inner width is 80 columns (typical)
+        // And query is 80+ characters, highlighting is disabled
+        // And query is <80 characters, highlighting is enabled
+
+        let at_threshold = "a".repeat(80);
+        assert_eq!(at_threshold.chars().count(), 80);
+
+        // The render logic checks: if query_len >= viewport_width { skip highlighting }
+        // So at exactly viewport_width, highlighting is disabled
+    }
+
+    #[test]
+    fn test_empty_query_has_no_highlighting() {
+        // Empty queries should not render any syntax highlighting
+
+        let json = r#"{"test": true}"#;
+        let app = App::new(json.to_string());
+
+        assert_eq!(app.query(), "");
+        // The render_syntax_highlighting method returns early for empty queries
+    }
+
+    #[test]
+    fn test_char_count_not_byte_count() {
+        // Verify we count characters (not bytes) for viewport comparison
+        // Important for UTF-8 queries with emoji or multi-byte characters
+
+        let emoji_query = "🔍 search term";
+        let char_count = emoji_query.chars().count();
+        let byte_count = emoji_query.len();
+
+        assert!(byte_count > char_count); // Emoji takes multiple bytes
+        // We use chars().count() which correctly handles UTF-8
+    }
 }
