@@ -130,9 +130,9 @@ pub fn handle_global_keys(app: &mut App, key: KeyEvent) -> bool {
             true
         }
 
-        // Accept autocomplete with Tab (only if visible)
-        KeyCode::Tab => {
-            if app.autocomplete.is_visible() {
+        // Accept autocomplete with Tab (only if visible in input field)
+        KeyCode::Tab if !key.modifiers.contains(KeyModifiers::CONTROL) => {
+            if app.focus == Focus::InputField && app.autocomplete.is_visible() {
                 if let Some(suggestion) = app.autocomplete.selected() {
                     let text = suggestion.text.clone();
                     app.insert_autocomplete_suggestion(&text);
@@ -943,6 +943,9 @@ mod tests {
         let mut app = app_with_query(".services");
         app.input.editor_mode = EditorMode::Insert;
         app.focus = Focus::InputField;
+
+        // Verify cursor is at end
+        assert_eq!(app.input.textarea.cursor().1, 9); // After ".services"
 
         let suggestions = vec![
             crate::autocomplete::Suggestion::new("[].name", crate::autocomplete::SuggestionType::Field),
