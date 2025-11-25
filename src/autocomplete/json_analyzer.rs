@@ -105,6 +105,15 @@ impl JsonAnalyzer {
                 fields.sort_by(|a, b| a.text.cmp(&b.text));
                 fields
             }
+            Value::Array(arr) => {
+                // Root is an array - suggest .[] and .[].field for element fields
+                if let Some(first) = arr.first() {
+                    // Use after_pipe=true to get "." prefix (e.g., ".[]" not "[]")
+                    extract_array_element_fields(first, prefix, true)
+                } else {
+                    Vec::new()
+                }
+            }
             _ => Vec::new(),
         }
     }
@@ -884,14 +893,20 @@ mod tests {
     }
 
     #[test]
-    fn test_root_level_array_returns_empty() {
+    fn test_root_level_array_shows_suggestions() {
         let json = r#"[{"id": 1, "name": "Item1"}, {"id": 2, "name": "Item2"}]"#;
         let mut analyzer = JsonAnalyzer::new();
         analyzer.analyze(json).unwrap();
 
-        // Top-level is an array, not an object, so should return empty
+        // Top-level array should suggest .[] and .[].field for element fields
         let suggestions = analyzer.get_contextual_field_suggestions("", "");
-        assert_eq!(suggestions.len(), 0);
+        assert!(suggestions.len() >= 3); // .[], .[].id, .[].name
+
+        // Should have .[] as first suggestion
+        assert!(suggestions.iter().any(|s| s.text == ".[]"));
+        // Should have field suggestions with .[]. prefix
+        assert!(suggestions.iter().any(|s| s.text == ".[].id"));
+        assert!(suggestions.iter().any(|s| s.text == ".[].name"));
     }
 
     // ===== Array Element Type Tests =====
@@ -1157,7 +1172,9 @@ mod tests {
         // Because user needs to iterate the root array
         let suggestions = analyzer.get_contextual_field_suggestions("", "");
         // Root array should show .[].field suggestions (with dot since we're at root)
-        assert!(suggestions.iter().any(|s| s.text == ".[]") || suggestions.is_empty());
+        assert!(suggestions.iter().any(|s| s.text == ".[]"));
+        assert!(suggestions.iter().any(|s| s.text == ".[].id"));
+        assert!(suggestions.iter().any(|s| s.text == ".[].name"));
     }
 
     #[test]
@@ -1184,5 +1201,68 @@ mod tests {
         let suggestions = analyzer.get_contextual_field_suggestions(".[0]", "");
         assert!(suggestions.iter().any(|s| s.text == ".id"));
         assert!(suggestions.iter().any(|s| s.text == ".name"));
+    }
+
+    #[test]
+    fn test_root_level_array_with_prefix_filter() {
+        let mut analyzer = JsonAnalyzer::new();
+        let json = r#"[{"id": 1, "name": "Item1", "notes": "test"}]"#;
+        analyzer.analyze(json).unwrap();
+
+        // Typing "n" as prefix should filter to fields starting with "n"
+        let suggestions = analyzer.get_contextual_field_suggestions("", "n");
+        assert!(suggestions.iter().any(|s| s.text == ".[].name"));
+        assert!(suggestions.iter().any(|s| s.text == ".[].notes"));
+        // Should NOT include .[].id (doesn't start with "n")
+        assert!(!suggestions.iter().any(|s| s.text == ".[].id"));
+        // Should NOT include standalone .[] when prefix is typed
+        assert!(!suggestions.iter().any(|s| s.text == ".[]"));
+    }
+
+    #[test]
+    fn test_root_level_empty_array() {
+        let mut analyzer = JsonAnalyzer::new();
+        let json = r#"[]"#;
+        analyzer.analyze(json).unwrap();
+
+        // Empty array has no elements to analyze, should return empty
+        let suggestions = analyzer.get_contextual_field_suggestions("", "");
+        assert!(suggestions.is_empty());
+    }
+
+    #[test]
+    fn test_root_level_array_of_primitives() {
+        let mut analyzer = JsonAnalyzer::new();
+        let json = r#"[1, 2, 3, 4, 5]"#;
+        analyzer.analyze(json).unwrap();
+
+        // Array of primitives - should suggest .[] but no field suggestions
+        let suggestions = analyzer.get_contextual_field_suggestions("", "");
+        assert_eq!(suggestions.len(), 1);
+        assert!(suggestions.iter().any(|s| s.text == ".[]"));
+    }
+
+    #[test]
+    fn test_root_level_array_of_strings() {
+        let mut analyzer = JsonAnalyzer::new();
+        let json = r#"["apple", "banana", "cherry"]"#;
+        analyzer.analyze(json).unwrap();
+
+        // Array of strings - should suggest .[] but no field suggestions
+        let suggestions = analyzer.get_contextual_field_suggestions("", "");
+        assert_eq!(suggestions.len(), 1);
+        assert!(suggestions.iter().any(|s| s.text == ".[]"));
+    }
+
+    #[test]
+    fn test_root_level_nested_array() {
+        let mut analyzer = JsonAnalyzer::new();
+        let json = r#"[[1, 2], [3, 4], [5, 6]]"#;
+        analyzer.analyze(json).unwrap();
+
+        // Array of arrays - should suggest .[] for outer array
+        let suggestions = analyzer.get_contextual_field_suggestions("", "");
+        assert_eq!(suggestions.len(), 1);
+        assert!(suggestions.iter().any(|s| s.text == ".[]"));
     }
 }
