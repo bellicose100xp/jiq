@@ -112,8 +112,26 @@ impl App {
         // Find the start position to replace from
         let replace_start = if suggestion.starts_with('[') {
             // Array access suggestion like [] or [].field
-            // Append after the current word (don't replace)
-            cursor_pos
+            // Two scenarios:
+            // 1. ".services" + "[].name" = ".services[].name" (append - no partial)
+            // 2. ".services.s" + "[].serviceArn" = ".services[].serviceArn" (replace partial ".s")
+
+            // Check if there's a dot followed by a short partial text (1-3 chars) before cursor
+            // This indicates user is filtering suggestions, not at a complete field
+            if let Some(last_dot_pos) = before_cursor.rfind('.') {
+                let after_dot = &before_cursor[last_dot_pos + 1..];
+                // If there's 1-3 chars after last dot, it's likely a partial being filtered
+                if !after_dot.is_empty() && after_dot.len() <= 3 && !after_dot.contains('[') {
+                    // Short partial text - replace from the dot
+                    last_dot_pos
+                } else {
+                    // Complete field name or no partial - append at cursor
+                    cursor_pos
+                }
+            } else {
+                // No dot found - append at cursor
+                cursor_pos
+            }
         } else if suggestion.starts_with('.') {
             // Field suggestion - find the last dot to replace from there
             // This handles: .field suggestions (e.g., .name)
@@ -399,7 +417,7 @@ mod tests {
         let json = r#"{"services": [{"name": "test"}]}"#;
         let mut app = App::new(json.to_string());
 
-        // Simulate: user typed ".services" and cursor is at end
+        // Simulate: user typed ".services" and cursor is at end (no partial)
         app.input.textarea.insert_str(".services");
 
         // Accept autocomplete suggestion "[].name"
@@ -407,6 +425,22 @@ mod tests {
 
         // Should produce .services[].name (append, not replace)
         assert_eq!(app.query(), ".services[].name");
+    }
+
+    #[test]
+    fn test_array_suggestion_replaces_partial_field() {
+        // When user types partial field after array name, accepting [] suggestion should replace partial
+        let json = r#"{"services": [{"serviceArn": "test"}]}"#;
+        let mut app = App::new(json.to_string());
+
+        // Simulate: user typed ".services.s" (partial match for serviceArn)
+        app.input.textarea.insert_str(".services.s");
+
+        // Accept autocomplete suggestion "[].serviceArn"
+        app.insert_autocomplete_suggestion("[].serviceArn");
+
+        // Should produce .services[].serviceArn (replace ".s" with "[].serviceArn")
+        assert_eq!(app.query(), ".services[].serviceArn");
     }
 
     #[test]
