@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.7.2] - 2025-11-24
+
+### Fixed
+- Scroll position now properly clamped to content bounds - prevents scrolling past results into empty space
+- 'q' key now works correctly in Results pane regardless of editor mode (fixes confusing behavior after focus switch)
+- Line count calculation now matches displayed content when showing cached results after query errors
+- Large files with >65,535 lines now handled correctly without overflow
+
+### Improved
+- Added comprehensive test coverage for scroll behavior, quit key interactions, and large file handling
+
 ## [2.7.1] - 2025-11-24
 
 ### Fixed

@@ -1,6 +1,6 @@
 [package]
 name = "jiq"
-version = "2.7.1"
+version = "2.7.2"
 edition = "2024"
 license = "MIT OR Apache-2.0"
 description = "Interactive JSON query tool with real-time filtering using jq"
