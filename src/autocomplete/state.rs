@@ -16,10 +16,10 @@ pub enum SuggestionType {
 impl fmt::Display for SuggestionType {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            SuggestionType::Function => write!(f, "fn"),
+            SuggestionType::Function => write!(f, "function"),
             SuggestionType::Field => write!(f, "field"),
-            SuggestionType::Operator => write!(f, "op"),
-            SuggestionType::Pattern => write!(f, "pat"),
+            SuggestionType::Operator => write!(f, "operator"),
+            SuggestionType::Pattern => write!(f, "iterator"),
         }
     }
 }

@@ -158,11 +158,14 @@ impl App {
         let before_cursor = &query[..cursor_pos.min(query.len())];
 
         // Find the start position to replace from
-        // For field suggestions (starting with .), find the last dot
+        // For field suggestions (starting with . or []), find the last dot
         // For other suggestions, find the token start
-        let replace_start = if suggestion.starts_with('.') {
-            // Field suggestion - find the last dot in before_cursor
-            // This handles nested fields like .services.service correctly
+        let replace_start = if suggestion.starts_with('.') || suggestion.starts_with('[') {
+            // Field suggestion or array access - find the last dot in before_cursor
+            // This handles:
+            // - .field suggestions (e.g., .name)
+            // - [].field suggestions (e.g., [].name for arrays)
+            // - [] suggestion (standalone array iterator)
             before_cursor.rfind('.').unwrap_or(0)
         } else {
             // Function/operator/pattern suggestion - find token start

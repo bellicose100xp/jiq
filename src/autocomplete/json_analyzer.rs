@@ -66,8 +66,16 @@ impl JsonAnalyzer {
             None => return Vec::new(), // Path doesn't exist, no suggestions
         };
 
+        // Check if path already has array access (ends with ])
+        // This covers [], [0], [0:5], etc.
+        let has_array_access = path.trim_end().ends_with(']');
+
+        // Check if we're after a pipe - in this case, suggestions need dot prefix
+        // e.g., ".items | ." should suggest ".[]" not "[]"
+        let after_pipe = path.trim_end().ends_with('|');
+
         // Extract fields from the value at this path
-        extract_fields_from_value(value_at_path, prefix)
+        extract_fields_from_value(value_at_path, prefix, has_array_access, after_pipe)
     }
 
     /// Get top-level fields only
@@ -191,7 +199,15 @@ fn detect_json_type(value: &Value) -> JsonFieldType {
 }
 
 /// Extract fields from a specific JSON value
-fn extract_fields_from_value(value: &Value, prefix: &str) -> Vec<Suggestion> {
+/// When `already_has_array_access` is true, arrays show normal .field suggestions
+/// When false, arrays show [].field suggestions to indicate [] is needed
+/// When `after_pipe` is true, suggestions need dot prefix (e.g., ".[]" instead of "[]")
+fn extract_fields_from_value(
+    value: &Value,
+    prefix: &str,
+    already_has_array_access: bool,
+    after_pipe: bool,
+) -> Vec<Suggestion> {
     match value {
         Value::Object(map) => {
             let mut fields: Vec<_> = map
@@ -215,13 +231,62 @@ fn extract_fields_from_value(value: &Value, prefix: &str) -> Vec<Suggestion> {
         Value::Array(arr) => {
             // For arrays, analyze the first element to get available fields
             if let Some(first) = arr.first() {
-                extract_fields_from_value(first, prefix)
+                if already_has_array_access {
+                    // User already typed [], [0], etc. - show normal .field suggestions
+                    extract_fields_from_value(first, prefix, true, after_pipe)
+                } else {
+                    // User needs [] - show [].field suggestions
+                    extract_array_element_fields(first, prefix, after_pipe)
+                }
             } else {
                 Vec::new()
             }
         }
         _ => Vec::new(), // Primitives have no fields
     }
+}
+
+/// Extract fields from array elements with [] prefix
+/// Used when the user is at an array but hasn't typed [] yet
+/// When `after_pipe` is true, prefix with "." (e.g., ".[]" instead of "[]")
+fn extract_array_element_fields(value: &Value, prefix: &str, after_pipe: bool) -> Vec<Suggestion> {
+    let mut suggestions = Vec::new();
+
+    // Determine the prefix for suggestions
+    // After a pipe, we need ".[]" and ".[].field"
+    // Otherwise, we need "[]" and "[].field"
+    let dot_prefix = if after_pipe { "." } else { "" };
+
+    // Add standalone [] as first suggestion (only if no prefix typed)
+    if prefix.is_empty() {
+        suggestions.push(
+            Suggestion::new(format!("{}[]", dot_prefix), SuggestionType::Pattern)
+                .with_description("iterate all elements"),
+        );
+    }
+
+    // Add [].field suggestions for object fields
+    if let Value::Object(map) = value {
+        let mut fields: Vec<_> = map
+            .iter()
+            .filter(|(k, _)| {
+                prefix.is_empty()
+                    || k.to_lowercase().starts_with(&prefix.to_lowercase())
+            })
+            .map(|(k, v)| {
+                let field_type = detect_json_type(v);
+                Suggestion::new_with_type(
+                    format!("{}[].{}", dot_prefix, k),
+                    SuggestionType::Field,
+                    Some(field_type),
+                )
+            })
+            .collect();
+        fields.sort_by(|a, b| a.text.cmp(&b.text));
+        suggestions.extend(fields);
+    }
+
+    suggestions
 }
 
 impl Default for JsonAnalyzer {
@@ -938,5 +1003,186 @@ mod tests {
             format!("{}", JsonFieldType::ArrayOf(Box::new(JsonFieldType::ArrayOf(Box::new(JsonFieldType::Number))))),
             "Array[Array[Number]]"
         );
+    }
+
+    // ===== Array Bracket Prefix Tests =====
+
+    #[test]
+    fn test_array_without_brackets_shows_bracket_prefix() {
+        let mut analyzer = JsonAnalyzer::new();
+        let json = r#"{"items": [{"id": 1, "name": "Item1"}]}"#;
+        analyzer.analyze(json).unwrap();
+
+        // .items. (no []) should suggest [], [].id, [].name
+        let suggestions = analyzer.get_contextual_field_suggestions(".items", "");
+
+        // First suggestion should be standalone []
+        assert_eq!(suggestions[0].text, "[]");
+        assert_eq!(suggestions[0].suggestion_type, SuggestionType::Pattern);
+
+        // Should have [].field suggestions
+        assert!(suggestions.iter().any(|s| s.text == "[].id"));
+        assert!(suggestions.iter().any(|s| s.text == "[].name"));
+
+        // Should NOT have bare .id, .name
+        assert!(!suggestions.iter().any(|s| s.text == ".id"));
+    }
+
+    #[test]
+    fn test_array_with_brackets_shows_normal_fields() {
+        let mut analyzer = JsonAnalyzer::new();
+        let json = r#"{"items": [{"id": 1, "name": "Item1"}]}"#;
+        analyzer.analyze(json).unwrap();
+
+        // .items[]. should suggest .id, .name (normal)
+        let suggestions = analyzer.get_contextual_field_suggestions(".items[]", "");
+        assert!(suggestions.iter().any(|s| s.text == ".id"));
+        assert!(suggestions.iter().any(|s| s.text == ".name"));
+        // Should NOT have [].id, [].name
+        assert!(!suggestions.iter().any(|s| s.text == "[].id"));
+        // Should NOT have standalone []
+        assert!(!suggestions.iter().any(|s| s.text == "[]"));
+    }
+
+    #[test]
+    fn test_array_with_index_shows_normal_fields() {
+        let mut analyzer = JsonAnalyzer::new();
+        let json = r#"{"items": [{"id": 1, "name": "Item1"}]}"#;
+        analyzer.analyze(json).unwrap();
+
+        // .items[0]. should suggest .id, .name (normal)
+        let suggestions = analyzer.get_contextual_field_suggestions(".items[0]", "");
+        assert!(suggestions.iter().any(|s| s.text == ".id"));
+        assert!(suggestions.iter().any(|s| s.text == ".name"));
+        // Should NOT have [].field
+        assert!(!suggestions.iter().any(|s| s.text == "[].id"));
+    }
+
+    #[test]
+    fn test_array_with_slice_shows_normal_fields() {
+        let mut analyzer = JsonAnalyzer::new();
+        let json = r#"{"items": [{"id": 1, "name": "Item1"}]}"#;
+        analyzer.analyze(json).unwrap();
+
+        // .items[0:5]. should suggest .id, .name (normal)
+        let suggestions = analyzer.get_contextual_field_suggestions(".items[0:5]", "");
+        assert!(suggestions.iter().any(|s| s.text == ".id"));
+        assert!(suggestions.iter().any(|s| s.text == ".name"));
+        // Should NOT have [].field
+        assert!(!suggestions.iter().any(|s| s.text == "[].id"));
+    }
+
+    #[test]
+    fn test_nested_array_without_brackets() {
+        let mut analyzer = JsonAnalyzer::new();
+        let json = r#"{"data": {"users": [{"id": 1, "profile": {"email": "test"}}]}}"#;
+        analyzer.analyze(json).unwrap();
+
+        // .data.users. should suggest [], [].id, [].profile
+        let suggestions = analyzer.get_contextual_field_suggestions(".data.users", "");
+        assert!(suggestions.iter().any(|s| s.text == "[]"));
+        assert!(suggestions.iter().any(|s| s.text == "[].id"));
+        assert!(suggestions.iter().any(|s| s.text == "[].profile"));
+    }
+
+    #[test]
+    fn test_array_with_pipe_without_brackets() {
+        let mut analyzer = JsonAnalyzer::new();
+        let json = r#"{"items": [{"id": 1, "name": "Item1"}]}"#;
+        analyzer.analyze(json).unwrap();
+
+        // .items | . should suggest .[], .[].id, .[].name (with dot prefix after pipe)
+        let suggestions = analyzer.get_contextual_field_suggestions(".items |", "");
+        assert!(suggestions.iter().any(|s| s.text == ".[]"));
+        assert!(suggestions.iter().any(|s| s.text == ".[].id"));
+        assert!(suggestions.iter().any(|s| s.text == ".[].name"));
+    }
+
+    #[test]
+    fn test_array_with_pipe_with_brackets() {
+        let mut analyzer = JsonAnalyzer::new();
+        let json = r#"{"items": [{"id": 1, "name": "Item1"}]}"#;
+        analyzer.analyze(json).unwrap();
+
+        // .items | .[]. should suggest .id, .name
+        let suggestions = analyzer.get_contextual_field_suggestions(".items | .[]", "");
+        assert!(suggestions.iter().any(|s| s.text == ".id"));
+        assert!(suggestions.iter().any(|s| s.text == ".name"));
+        // Should NOT have [].field
+        assert!(!suggestions.iter().any(|s| s.text == "[].id"));
+    }
+
+    #[test]
+    fn test_prefix_filtering_with_bracket_suggestions() {
+        let mut analyzer = JsonAnalyzer::new();
+        let json = r#"{"items": [{"id": 1, "name": "Item1", "note": "test"}]}"#;
+        analyzer.analyze(json).unwrap();
+
+        // .items. with prefix "n" should suggest [].name, [].note (no standalone [])
+        let suggestions = analyzer.get_contextual_field_suggestions(".items", "n");
+        assert_eq!(suggestions.len(), 2);
+        assert!(suggestions.iter().any(|s| s.text == "[].name"));
+        assert!(suggestions.iter().any(|s| s.text == "[].note"));
+        // Should NOT have [].id (doesn't match prefix)
+        assert!(!suggestions.iter().any(|s| s.text == "[].id"));
+        // Should NOT have standalone [] when prefix is typed
+        assert!(!suggestions.iter().any(|s| s.text == "[]"));
+    }
+
+    #[test]
+    fn test_prefix_filtering_with_pipe_bracket_suggestions() {
+        let mut analyzer = JsonAnalyzer::new();
+        let json = r#"{"items": [{"id": 1, "name": "Item1", "note": "test"}]}"#;
+        analyzer.analyze(json).unwrap();
+
+        // .items | . with prefix "n" should suggest .[].name, .[].note (with dot prefix)
+        let suggestions = analyzer.get_contextual_field_suggestions(".items |", "n");
+        assert_eq!(suggestions.len(), 2);
+        assert!(suggestions.iter().any(|s| s.text == ".[].name"));
+        assert!(suggestions.iter().any(|s| s.text == ".[].note"));
+        // Should NOT have .[].id (doesn't match prefix)
+        assert!(!suggestions.iter().any(|s| s.text == ".[].id"));
+        // Should NOT have standalone .[] when prefix is typed
+        assert!(!suggestions.iter().any(|s| s.text == ".[]"));
+    }
+
+    #[test]
+    fn test_root_level_array_without_brackets() {
+        let mut analyzer = JsonAnalyzer::new();
+        // JSON is a root-level array
+        let json = r#"[{"id": 1, "name": "Item1"}, {"id": 2, "name": "Item2"}]"#;
+        analyzer.analyze(json).unwrap();
+
+        // At root level with array, typing "." should suggest .[], .[].id, .[].name
+        // Because user needs to iterate the root array
+        let suggestions = analyzer.get_contextual_field_suggestions("", "");
+        // Root array should show .[].field suggestions (with dot since we're at root)
+        assert!(suggestions.iter().any(|s| s.text == ".[]") || suggestions.is_empty());
+    }
+
+    #[test]
+    fn test_root_level_array_with_brackets() {
+        let mut analyzer = JsonAnalyzer::new();
+        // JSON is a root-level array
+        let json = r#"[{"id": 1, "name": "Item1"}, {"id": 2, "name": "Item2"}]"#;
+        analyzer.analyze(json).unwrap();
+
+        // After typing .[], should suggest .id, .name
+        let suggestions = analyzer.get_contextual_field_suggestions(".[]", "");
+        assert!(suggestions.iter().any(|s| s.text == ".id"));
+        assert!(suggestions.iter().any(|s| s.text == ".name"));
+    }
+
+    #[test]
+    fn test_root_level_array_with_index() {
+        let mut analyzer = JsonAnalyzer::new();
+        // JSON is a root-level array
+        let json = r#"[{"id": 1, "name": "Item1"}, {"id": 2, "name": "Item2"}]"#;
+        analyzer.analyze(json).unwrap();
+
+        // After typing .[0], should suggest .id, .name
+        let suggestions = analyzer.get_contextual_field_suggestions(".[0]", "");
+        assert!(suggestions.iter().any(|s| s.text == ".id"));
+        assert!(suggestions.iter().any(|s| s.text == ".name"));
     }
 }
