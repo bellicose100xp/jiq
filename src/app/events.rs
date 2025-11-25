@@ -35,6 +35,79 @@ impl App {
     /// Handle global keys that work regardless of focus
     /// Returns true if key was handled, false otherwise
     fn handle_global_keys(&mut self, key: KeyEvent) -> bool {
+        // Handle help popup when visible (must be first to block other keys)
+        if self.help_visible {
+            match key.code {
+                // Close help
+                KeyCode::Esc | KeyCode::F(1) => {
+                    self.help_visible = false;
+                    self.help_scroll = 0;
+                    return true;
+                }
+                KeyCode::Char('q') if !key.modifiers.contains(KeyModifiers::CONTROL) => {
+                    self.help_visible = false;
+                    self.help_scroll = 0;
+                    return true;
+                }
+                KeyCode::Char('?') => {
+                    self.help_visible = false;
+                    self.help_scroll = 0;
+                    return true;
+                }
+                // Scroll down (j, J, Down, Ctrl+D)
+                KeyCode::Char('j') | KeyCode::Down => {
+                    self.help_scroll = self.help_scroll.saturating_add(1);
+                    return true;
+                }
+                KeyCode::Char('J') => {
+                    self.help_scroll = self.help_scroll.saturating_add(10);
+                    return true;
+                }
+                KeyCode::Char('d') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+                    self.help_scroll = self.help_scroll.saturating_add(10);
+                    return true;
+                }
+                KeyCode::PageDown => {
+                    self.help_scroll = self.help_scroll.saturating_add(10);
+                    return true;
+                }
+                // Scroll up (k, K, Up, Ctrl+U, PageUp)
+                // Note: clamp to actual max before subtracting to handle G overshoot
+                // Use help_max_scroll if available (set by render), otherwise use large value
+                KeyCode::Char('k') | KeyCode::Up => {
+                    let max = if self.help_max_scroll > 0 { self.help_max_scroll } else { u16::MAX };
+                    self.help_scroll = self.help_scroll.min(max).saturating_sub(1);
+                    return true;
+                }
+                KeyCode::Char('K') => {
+                    let max = if self.help_max_scroll > 0 { self.help_max_scroll } else { u16::MAX };
+                    self.help_scroll = self.help_scroll.min(max).saturating_sub(10);
+                    return true;
+                }
+                KeyCode::Char('u') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+                    let max = if self.help_max_scroll > 0 { self.help_max_scroll } else { u16::MAX };
+                    self.help_scroll = self.help_scroll.min(max).saturating_sub(10);
+                    return true;
+                }
+                KeyCode::PageUp => {
+                    let max = if self.help_max_scroll > 0 { self.help_max_scroll } else { u16::MAX };
+                    self.help_scroll = self.help_scroll.min(max).saturating_sub(10);
+                    return true;
+                }
+                // Jump to top/bottom
+                KeyCode::Char('g') | KeyCode::Home => {
+                    self.help_scroll = 0;
+                    return true;
+                }
+                KeyCode::Char('G') | KeyCode::End => {
+                    // Use large value that will be clamped to actual max in render
+                    self.help_scroll = u16::MAX;
+                    return true;
+                }
+                _ => return true, // Block all other keys when help is visible
+            }
+        }
+
         // Ctrl+C: Exit application
         if key.code == KeyCode::Char('c') && key.modifiers.contains(KeyModifiers::CONTROL) {
             self.should_quit = true;
@@ -49,8 +122,8 @@ impl App {
             return true;
         }
 
-        // Ctrl+/: Toggle help popup
-        if key.code == KeyCode::Char('/') && key.modifiers.contains(KeyModifiers::CONTROL) {
+        // F1: Toggle help popup (works in all modes)
+        if key.code == KeyCode::F(1) {
             self.help_visible = !self.help_visible;
             return true;
         }
@@ -123,17 +196,6 @@ impl App {
 
     /// Handle keys when Input field is focused
     fn handle_input_field_key(&mut self, key: KeyEvent) {
-        // Handle help popup when visible - close on ESC, q, or Ctrl+/
-        if self.help_visible {
-            if key.code == KeyCode::Esc
-                || (key.code == KeyCode::Char('q') && !key.modifiers.contains(KeyModifiers::CONTROL))
-                || (key.code == KeyCode::Char('/') && key.modifiers.contains(KeyModifiers::CONTROL))
-            {
-                self.help_visible = false;
-            }
-            return;
-        }
-
         // Handle history popup when visible
         if self.history.is_visible() {
             self.handle_history_popup_key(key);
@@ -242,6 +304,11 @@ impl App {
     /// Handle keys in Normal mode (VIM navigation and commands)
     fn handle_normal_mode_key(&mut self, key: KeyEvent) {
         match key.code {
+            // Toggle help popup
+            KeyCode::Char('?') => {
+                self.help_visible = !self.help_visible;
+            }
+
             // Basic cursor movement (h/l)
             KeyCode::Char('h') | KeyCode::Left => {
                 self.textarea.move_cursor(CursorMove::Back);
@@ -510,19 +577,13 @@ impl App {
 
     /// Handle keys when Results pane is focused
     fn handle_results_pane_key(&mut self, key: KeyEvent) {
-        // Handle help popup when visible - close on ESC, q, or Ctrl+/
-        if self.help_visible {
-            if key.code == KeyCode::Esc
-                || (key.code == KeyCode::Char('q') && !key.modifiers.contains(KeyModifiers::CONTROL))
-                || (key.code == KeyCode::Char('/') && key.modifiers.contains(KeyModifiers::CONTROL))
-            {
-                self.help_visible = false;
-            }
-            return;
-        }
-
         let max_scroll = self.max_scroll();
         match key.code {
+            // Toggle help popup
+            KeyCode::Char('?') => {
+                self.help_visible = !self.help_visible;
+            }
+
             // Basic line scrolling (1 line)
             KeyCode::Up | KeyCode::Char('k') => {
                 self.results_scroll = self.results_scroll.saturating_sub(1);
@@ -2149,5 +2210,260 @@ mod tests {
         // 'q' should quit in ResultsPane even with Insert mode
         app.handle_key_event(key(KeyCode::Char('q')));
         assert!(app.should_quit);
+    }
+
+    // ========== Help Popup Tests ==========
+
+    #[test]
+    fn test_help_popup_initializes_hidden() {
+        let app = App::new(TEST_JSON.to_string());
+        assert!(!app.help_visible);
+    }
+
+    #[test]
+    fn test_f1_toggles_help_popup() {
+        let mut app = app_with_query(".");
+        assert!(!app.help_visible);
+
+        app.handle_key_event(key(KeyCode::F(1)));
+        assert!(app.help_visible);
+
+        app.handle_key_event(key(KeyCode::F(1)));
+        assert!(!app.help_visible);
+    }
+
+    #[test]
+    fn test_question_mark_toggles_help_in_normal_mode() {
+        let mut app = app_with_query(".");
+        app.editor_mode = EditorMode::Normal;
+        app.focus = Focus::InputField;
+
+        app.handle_key_event(key(KeyCode::Char('?')));
+        assert!(app.help_visible);
+
+        app.handle_key_event(key(KeyCode::Char('?')));
+        assert!(!app.help_visible);
+    }
+
+    #[test]
+    fn test_question_mark_toggles_help_in_results_pane() {
+        let mut app = app_with_query(".");
+        app.focus = Focus::ResultsPane;
+
+        app.handle_key_event(key(KeyCode::Char('?')));
+        assert!(app.help_visible);
+    }
+
+    #[test]
+    fn test_question_mark_does_not_toggle_help_in_insert_mode() {
+        let mut app = app_with_query("");
+        app.editor_mode = EditorMode::Insert;
+        app.focus = Focus::InputField;
+
+        app.handle_key_event(key(KeyCode::Char('?')));
+        // Should type '?' not toggle help
+        assert!(!app.help_visible);
+        assert!(app.query().contains('?'));
+    }
+
+    #[test]
+    fn test_esc_closes_help_popup() {
+        let mut app = app_with_query(".");
+        app.help_visible = true;
+
+        app.handle_key_event(key(KeyCode::Esc));
+        assert!(!app.help_visible);
+    }
+
+    #[test]
+    fn test_q_closes_help_popup() {
+        let mut app = app_with_query(".");
+        app.help_visible = true;
+
+        app.handle_key_event(key(KeyCode::Char('q')));
+        assert!(!app.help_visible);
+    }
+
+    #[test]
+    fn test_help_popup_blocks_other_keys() {
+        let mut app = app_with_query(".");
+        app.help_visible = true;
+        app.editor_mode = EditorMode::Insert;
+
+        // Try to type - should be blocked
+        app.handle_key_event(key(KeyCode::Char('x')));
+        assert!(!app.query().contains('x'));
+        assert!(app.help_visible);
+    }
+
+    #[test]
+    fn test_f1_works_in_insert_mode() {
+        let mut app = app_with_query(".");
+        app.editor_mode = EditorMode::Insert;
+        app.focus = Focus::InputField;
+
+        app.handle_key_event(key(KeyCode::F(1)));
+        assert!(app.help_visible);
+    }
+
+    #[test]
+    fn test_help_popup_scroll_j_scrolls_down() {
+        let mut app = app_with_query(".");
+        app.help_visible = true;
+        app.help_scroll = 0;
+
+        app.handle_key_event(key(KeyCode::Char('j')));
+        assert_eq!(app.help_scroll, 1);
+    }
+
+    #[test]
+    fn test_help_popup_scroll_k_scrolls_up() {
+        let mut app = app_with_query(".");
+        app.help_visible = true;
+        app.help_scroll = 5;
+
+        app.handle_key_event(key(KeyCode::Char('k')));
+        assert_eq!(app.help_scroll, 4);
+    }
+
+    #[test]
+    fn test_help_popup_scroll_down_arrow() {
+        let mut app = app_with_query(".");
+        app.help_visible = true;
+        app.help_scroll = 0;
+
+        app.handle_key_event(key(KeyCode::Down));
+        assert_eq!(app.help_scroll, 1);
+    }
+
+    #[test]
+    fn test_help_popup_scroll_up_arrow() {
+        let mut app = app_with_query(".");
+        app.help_visible = true;
+        app.help_scroll = 5;
+
+        app.handle_key_event(key(KeyCode::Up));
+        assert_eq!(app.help_scroll, 4);
+    }
+
+    #[test]
+    fn test_help_popup_scroll_capital_j_scrolls_10() {
+        let mut app = app_with_query(".");
+        app.help_visible = true;
+        app.help_scroll = 0;
+
+        app.handle_key_event(key(KeyCode::Char('J')));
+        assert_eq!(app.help_scroll, 10);
+    }
+
+    #[test]
+    fn test_help_popup_scroll_capital_k_scrolls_10() {
+        let mut app = app_with_query(".");
+        app.help_visible = true;
+        app.help_scroll = 15;
+
+        app.handle_key_event(key(KeyCode::Char('K')));
+        assert_eq!(app.help_scroll, 5);
+    }
+
+    #[test]
+    fn test_help_popup_scroll_ctrl_d() {
+        let mut app = app_with_query(".");
+        app.help_visible = true;
+        app.help_scroll = 0;
+
+        app.handle_key_event(key_with_mods(KeyCode::Char('d'), KeyModifiers::CONTROL));
+        assert_eq!(app.help_scroll, 10);
+    }
+
+    #[test]
+    fn test_help_popup_scroll_ctrl_u() {
+        let mut app = app_with_query(".");
+        app.help_visible = true;
+        app.help_scroll = 15;
+
+        app.handle_key_event(key_with_mods(KeyCode::Char('u'), KeyModifiers::CONTROL));
+        assert_eq!(app.help_scroll, 5);
+    }
+
+    #[test]
+    fn test_help_popup_scroll_g_jumps_to_top() {
+        let mut app = app_with_query(".");
+        app.help_visible = true;
+        app.help_scroll = 20;
+
+        app.handle_key_event(key(KeyCode::Char('g')));
+        assert_eq!(app.help_scroll, 0);
+    }
+
+    #[test]
+    fn test_help_popup_scroll_capital_g_jumps_to_bottom() {
+        let mut app = app_with_query(".");
+        app.help_visible = true;
+        app.help_scroll = 0;
+
+        app.handle_key_event(key(KeyCode::Char('G')));
+        assert_eq!(app.help_scroll, u16::MAX);
+    }
+
+    #[test]
+    fn test_help_popup_scroll_k_saturates_at_zero() {
+        let mut app = app_with_query(".");
+        app.help_visible = true;
+        app.help_scroll = 0;
+
+        app.handle_key_event(key(KeyCode::Char('k')));
+        assert_eq!(app.help_scroll, 0);
+    }
+
+    #[test]
+    fn test_help_popup_close_resets_scroll() {
+        let mut app = app_with_query(".");
+        app.help_visible = true;
+        app.help_scroll = 10;
+
+        app.handle_key_event(key(KeyCode::Esc));
+        assert!(!app.help_visible);
+        assert_eq!(app.help_scroll, 0);
+    }
+
+    #[test]
+    fn test_help_popup_scroll_page_down() {
+        let mut app = app_with_query(".");
+        app.help_visible = true;
+        app.help_scroll = 0;
+
+        app.handle_key_event(key(KeyCode::PageDown));
+        assert_eq!(app.help_scroll, 10);
+    }
+
+    #[test]
+    fn test_help_popup_scroll_page_up() {
+        let mut app = app_with_query(".");
+        app.help_visible = true;
+        app.help_scroll = 15;
+
+        app.handle_key_event(key(KeyCode::PageUp));
+        assert_eq!(app.help_scroll, 5);
+    }
+
+    #[test]
+    fn test_help_popup_scroll_home_jumps_to_top() {
+        let mut app = app_with_query(".");
+        app.help_visible = true;
+        app.help_scroll = 20;
+
+        app.handle_key_event(key(KeyCode::Home));
+        assert_eq!(app.help_scroll, 0);
+    }
+
+    #[test]
+    fn test_help_popup_scroll_end_jumps_to_bottom() {
+        let mut app = app_with_query(".");
+        app.help_visible = true;
+        app.help_scroll = 0;
+
+        app.handle_key_event(key(KeyCode::End));
+        assert_eq!(app.help_scroll, u16::MAX);
     }
 }
