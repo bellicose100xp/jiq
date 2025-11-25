@@ -1,0 +1,928 @@
+//! Global key handlers
+//!
+//! This module handles keys that work regardless of which pane has focus,
+//! including help popup navigation, quit commands, output mode selection,
+//! focus switching, and error overlay toggle.
+
+use ratatui::crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
+
+use super::super::state::{App, Focus, OutputMode};
+
+/// Handle global keys that work regardless of focus
+/// Returns true if key was handled, false otherwise
+pub fn handle_global_keys(app: &mut App, key: KeyEvent) -> bool {
+    // Don't intercept keys when history popup is visible (except BackTab for focus switch)
+    // (Enter, Tab need to be handled by history handler)
+    if app.history.is_visible() && key.code != KeyCode::BackTab {
+        return false;
+    }
+
+    // Handle help popup when visible (must be first to block other keys)
+    if app.help.visible {
+        match key.code {
+            // Close help
+            KeyCode::Esc | KeyCode::F(1) => {
+                app.help.visible = false;
+                app.help.scroll.reset();
+                return true;
+            }
+            KeyCode::Char('q') if !key.modifiers.contains(KeyModifiers::CONTROL) => {
+                app.help.visible = false;
+                app.help.scroll.reset();
+                return true;
+            }
+            KeyCode::Char('?') => {
+                app.help.visible = false;
+                app.help.scroll.reset();
+                return true;
+            }
+            // Scroll down (j, J, Down, Ctrl+D)
+            KeyCode::Char('j') | KeyCode::Down => {
+                app.help.scroll.scroll_down(1);
+                return true;
+            }
+            KeyCode::Char('J') => {
+                app.help.scroll.scroll_down(10);
+                return true;
+            }
+            KeyCode::Char('d') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+                app.help.scroll.scroll_down(10);
+                return true;
+            }
+            KeyCode::PageDown => {
+                app.help.scroll.scroll_down(10);
+                return true;
+            }
+            // Scroll up (k, K, Up, Ctrl+U, PageUp)
+            KeyCode::Char('k') | KeyCode::Up => {
+                app.help.scroll.scroll_up(1);
+                return true;
+            }
+            KeyCode::Char('K') => {
+                app.help.scroll.scroll_up(10);
+                return true;
+            }
+            KeyCode::Char('u') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+                app.help.scroll.scroll_up(10);
+                return true;
+            }
+            KeyCode::PageUp => {
+                app.help.scroll.scroll_up(10);
+                return true;
+            }
+            // Jump to top/bottom
+            KeyCode::Char('g') | KeyCode::Home => {
+                app.help.scroll.jump_to_top();
+                return true;
+            }
+            KeyCode::Char('G') | KeyCode::End => {
+                app.help.scroll.jump_to_bottom();
+                return true;
+            }
+            _ => {
+                // Help popup blocks other keys
+                return true;
+            }
+        }
+    }
+
+    // Global keys (work even when help is not visible)
+    match key.code {
+        // Quit (Ctrl+C always works)
+        KeyCode::Char('c') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+            app.should_quit = true;
+            true
+        }
+        // Quit with 'q' in Normal mode (but not in Insert mode input field)
+        KeyCode::Char('q') if !key.modifiers.contains(KeyModifiers::CONTROL) => {
+            // Only quit in Normal mode or when results pane is focused
+            match app.focus {
+                Focus::ResultsPane => {
+                    app.should_quit = true;
+                    true
+                }
+                Focus::InputField => {
+                    // Check editor mode - only quit in Normal mode
+                    if app.input.editor_mode == crate::editor::EditorMode::Normal {
+                        app.should_quit = true;
+                        true
+                    } else {
+                        false // 'q' in Insert mode is just typing
+                    }
+                }
+            }
+        }
+
+        // Output mode selection (Enter/Shift+Enter/Alt+Enter)
+        KeyCode::Enter if key.modifiers.contains(KeyModifiers::SHIFT) => {
+            app.output_mode = Some(OutputMode::Query);
+            app.should_quit = true;
+            true
+        }
+        KeyCode::Enter if key.modifiers.contains(KeyModifiers::ALT) => {
+            app.output_mode = Some(OutputMode::Query);
+            app.should_quit = true;
+            true
+        }
+        KeyCode::Enter => {
+            app.output_mode = Some(OutputMode::Results);
+            app.should_quit = true;
+            true
+        }
+
+        // Accept autocomplete with Tab (only if visible)
+        KeyCode::Tab => {
+            if app.autocomplete.is_visible() {
+                if let Some(suggestion) = app.autocomplete.selected() {
+                    let new_query = suggestion.text.clone();
+
+                    // Replace the query
+                    app.input.textarea.delete_line_by_head();
+                    app.input.textarea.delete_line_by_end();
+                    app.input.textarea.insert_str(&new_query);
+
+                    // Execute the new query
+                    super::vim::execute_query(app);
+
+                    // Hide autocomplete
+                    app.autocomplete.hide();
+                }
+                true
+            } else {
+                false
+            }
+        }
+
+        // Switch focus with Shift+Tab
+        KeyCode::BackTab => {
+            // Close history popup if it's open
+            if app.history.is_visible() {
+                app.history.close();
+            }
+
+            app.focus = match app.focus {
+                Focus::InputField => Focus::ResultsPane,
+                Focus::ResultsPane => Focus::InputField,
+            };
+            true
+        }
+
+        // Toggle help popup (F1 or ?)
+        KeyCode::F(1) => {
+            app.help.visible = !app.help.visible;
+            true
+        }
+        KeyCode::Char('?') => {
+            // Only toggle help in Normal mode (Insert mode needs '?' for typing)
+            if app.input.editor_mode == crate::editor::EditorMode::Normal
+                || app.focus == Focus::ResultsPane
+            {
+                app.help.visible = !app.help.visible;
+                true
+            } else {
+                false
+            }
+        }
+
+        // Toggle error overlay with Ctrl+E
+        KeyCode::Char('e') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+            // Only toggle if there's an error to show
+            if app.query.result.is_err() {
+                app.error_overlay_visible = !app.error_overlay_visible;
+            }
+            true
+        }
+
+        _ => false, // Key not handled
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::editor::EditorMode;
+    use crate::history::HistoryState;
+    use tui_textarea::CursorMove;
+
+    // Test fixture data
+    const TEST_JSON: &str = r#"{"name": "test", "age": 30, "city": "NYC"}"#;
+
+    // Helper to create a KeyEvent without modifiers
+    fn key(code: KeyCode) -> KeyEvent {
+        KeyEvent::new(code, KeyModifiers::empty())
+    }
+
+    // Helper to create a KeyEvent with specific modifiers
+    fn key_with_mods(code: KeyCode, modifiers: KeyModifiers) -> KeyEvent {
+        KeyEvent::new(code, modifiers)
+    }
+
+    // Helper to set up an app with text in the query field
+    fn app_with_query(query: &str) -> App {
+        let mut app = App::new(TEST_JSON.to_string());
+        app.input.textarea.insert_str(query);
+        // Use empty in-memory history for all tests to prevent disk writes
+        app.history = HistoryState::empty();
+        app
+    }
+
+    // Helper to move cursor to specific position by text content
+    fn move_cursor_to_position(app: &mut App, target_pos: usize) {
+        app.input.textarea.move_cursor(CursorMove::Head);
+        for _ in 0..target_pos {
+            app.input.textarea.move_cursor(CursorMove::Forward);
+        }
+    }
+    // ========== Error Overlay Tests ==========
+
+    #[test]
+    fn test_error_overlay_initializes_hidden() {
+        let app = App::new(TEST_JSON.to_string());
+        assert!(!app.error_overlay_visible);
+    }
+
+    #[test]
+    fn test_ctrl_e_toggles_error_overlay_when_error_exists() {
+        let mut app = App::new(TEST_JSON.to_string());
+        app.input.editor_mode = EditorMode::Insert;
+
+        // Type an invalid query (| is invalid jq syntax)
+        app.handle_key_event(key(KeyCode::Char('|')));
+
+        // Should have an error now
+        assert!(app.query.result.is_err());
+        assert!(!app.error_overlay_visible); // Initially hidden
+
+        // Press Ctrl+E to show overlay
+        app.handle_key_event(key_with_mods(KeyCode::Char('e'), KeyModifiers::CONTROL));
+        assert!(app.error_overlay_visible);
+
+        // Press Ctrl+E again to hide overlay
+        app.handle_key_event(key_with_mods(KeyCode::Char('e'), KeyModifiers::CONTROL));
+        assert!(!app.error_overlay_visible);
+    }
+
+    #[test]
+    fn test_ctrl_e_does_nothing_when_no_error() {
+        let mut app = App::new(TEST_JSON.to_string());
+        // Initial query "." should succeed
+        assert!(app.query.result.is_ok());
+        assert!(!app.error_overlay_visible);
+
+        // Press Ctrl+E (should do nothing since no error)
+        app.handle_key_event(key_with_mods(KeyCode::Char('e'), KeyModifiers::CONTROL));
+        assert!(!app.error_overlay_visible); // Should remain hidden
+    }
+
+    #[test]
+    fn test_error_overlay_hides_on_query_change() {
+        let mut app = App::new(TEST_JSON.to_string());
+        app.input.editor_mode = EditorMode::Insert;
+
+        // Type invalid query
+        app.handle_key_event(key(KeyCode::Char('|')));
+        assert!(app.query.result.is_err());
+
+        // Show error overlay
+        app.handle_key_event(key_with_mods(KeyCode::Char('e'), KeyModifiers::CONTROL));
+        assert!(app.error_overlay_visible);
+
+        // Change query by pressing backspace to delete the invalid character
+        app.handle_key_event(key(KeyCode::Backspace));
+
+        // Overlay should auto-hide after query change
+        assert!(!app.error_overlay_visible);
+    }
+
+    #[test]
+    fn test_error_overlay_hides_on_query_change_in_normal_mode() {
+        let mut app = App::new(TEST_JSON.to_string());
+        app.input.editor_mode = EditorMode::Insert;
+
+        // Type invalid query
+        app.handle_key_event(key(KeyCode::Char('|')));
+        assert!(app.query.result.is_err());
+
+        // Show error overlay
+        app.handle_key_event(key_with_mods(KeyCode::Char('e'), KeyModifiers::CONTROL));
+        assert!(app.error_overlay_visible);
+
+        // Switch to Normal mode and delete the character
+        app.handle_key_event(key(KeyCode::Esc));
+        app.input.textarea.move_cursor(CursorMove::Head);
+        app.handle_key_event(key(KeyCode::Char('x')));
+
+        // Overlay should auto-hide after query change
+        assert!(!app.error_overlay_visible);
+    }
+
+    #[test]
+    fn test_ctrl_e_works_in_normal_mode() {
+        let mut app = App::new(TEST_JSON.to_string());
+        app.input.editor_mode = EditorMode::Insert;
+
+        // Type invalid query
+        app.handle_key_event(key(KeyCode::Char('|')));
+        assert!(app.query.result.is_err());
+
+        // Switch to Normal mode
+        app.handle_key_event(key(KeyCode::Esc));
+        assert_eq!(app.input.editor_mode, EditorMode::Normal);
+
+        // Press Ctrl+E in Normal mode
+        app.handle_key_event(key_with_mods(KeyCode::Char('e'), KeyModifiers::CONTROL));
+        assert!(app.error_overlay_visible);
+    }
+
+    #[test]
+    fn test_ctrl_e_works_when_results_pane_focused() {
+        let mut app = App::new(TEST_JSON.to_string());
+        app.input.editor_mode = EditorMode::Insert;
+
+        // Type invalid query
+        app.handle_key_event(key(KeyCode::Char('|')));
+        assert!(app.query.result.is_err());
+
+        // Switch focus to results pane
+        app.handle_key_event(key(KeyCode::BackTab));
+        assert_eq!(app.focus, Focus::ResultsPane);
+
+        // Press Ctrl+E while results pane is focused
+        app.handle_key_event(key_with_mods(KeyCode::Char('e'), KeyModifiers::CONTROL));
+        assert!(app.error_overlay_visible);
+    }
+
+    // ========== Global Key Handler Tests ==========
+
+    #[test]
+    fn test_ctrl_c_sets_quit_flag() {
+        let mut app = app_with_query(".");
+
+        app.handle_key_event(key_with_mods(KeyCode::Char('c'), KeyModifiers::CONTROL));
+
+        assert!(app.should_quit);
+    }
+
+    #[test]
+    fn test_q_sets_quit_flag_in_normal_mode() {
+        let mut app = app_with_query(".");
+        app.input.editor_mode = EditorMode::Normal;
+
+        app.handle_key_event(key(KeyCode::Char('q')));
+
+        assert!(app.should_quit);
+    }
+
+    #[test]
+    fn test_q_does_not_quit_in_insert_mode() {
+        let mut app = app_with_query(".");
+        app.input.editor_mode = EditorMode::Insert;
+
+        app.handle_key_event(key(KeyCode::Char('q')));
+
+        // Should NOT quit - 'q' should be typed instead
+        assert!(!app.should_quit);
+        assert_eq!(app.query(), ".q");
+    }
+
+    #[test]
+    fn test_enter_sets_results_output_mode() {
+        let mut app = app_with_query(".");
+
+        app.handle_key_event(key(KeyCode::Enter));
+
+        assert_eq!(app.output_mode, Some(OutputMode::Results));
+        assert!(app.should_quit);
+    }
+
+    #[test]
+    fn test_shift_enter_sets_query_output_mode() {
+        let mut app = app_with_query(".");
+
+        app.handle_key_event(key_with_mods(KeyCode::Enter, KeyModifiers::SHIFT));
+
+        assert_eq!(app.output_mode, Some(OutputMode::Query));
+        assert!(app.should_quit);
+    }
+
+    #[test]
+    fn test_alt_enter_sets_query_output_mode() {
+        let mut app = app_with_query(".");
+
+        // Some terminals send Alt+Enter instead of Shift+Enter
+        app.handle_key_event(key_with_mods(KeyCode::Enter, KeyModifiers::ALT));
+
+        assert_eq!(app.output_mode, Some(OutputMode::Query));
+        assert!(app.should_quit);
+    }
+
+    #[test]
+    fn test_shift_tab_switches_focus_to_results() {
+        let mut app = app_with_query(".");
+        app.focus = Focus::InputField;
+
+        app.handle_key_event(key(KeyCode::BackTab));
+
+        assert_eq!(app.focus, Focus::ResultsPane);
+    }
+
+    #[test]
+    fn test_shift_tab_switches_focus_to_input() {
+        let mut app = app_with_query(".");
+        app.focus = Focus::ResultsPane;
+
+        app.handle_key_event(key(KeyCode::BackTab));
+
+        assert_eq!(app.focus, Focus::InputField);
+    }
+
+    #[test]
+    fn test_global_keys_work_regardless_of_focus() {
+        let mut app = app_with_query(".");
+        app.focus = Focus::ResultsPane;
+
+        app.handle_key_event(key_with_mods(KeyCode::Char('c'), KeyModifiers::CONTROL));
+
+        // Ctrl+C should work even when results pane is focused
+        assert!(app.should_quit);
+    }
+
+    #[test]
+    fn test_insert_mode_text_input_updates_query() {
+        let mut app = app_with_query("");
+        app.input.editor_mode = EditorMode::Insert;
+
+        // Simulate typing a character
+        app.handle_key_event(key(KeyCode::Char('.')));
+
+        assert_eq!(app.query(), ".");
+    }
+
+    #[test]
+    fn test_query_execution_resets_scroll() {
+        let mut app = app_with_query("");
+        app.input.editor_mode = EditorMode::Insert;
+        app.results_scroll.offset =50;
+
+        // Insert text which should trigger query execution
+        app.handle_key_event(key(KeyCode::Char('.')));
+
+        // Scroll should be reset when query changes
+        assert_eq!(app.results_scroll.offset, 0);
+    }
+
+    // ========== UTF-8 Edge Case Tests ==========
+
+    #[test]
+    fn test_history_with_emoji() {
+        let mut app = app_with_query("");
+        app.input.editor_mode = EditorMode::Insert;
+
+        app.history.add_entry_in_memory(".emoji_field 🚀");
+
+        app.handle_key_event(key_with_mods(KeyCode::Char('p'), KeyModifiers::CONTROL));
+        assert_eq!(app.query(), ".emoji_field 🚀");
+    }
+
+    #[test]
+    fn test_history_with_multibyte_chars() {
+        let mut app = app_with_query("");
+        app.input.editor_mode = EditorMode::Insert;
+
+        app.history.add_entry_in_memory(".café | .naïve");
+
+        app.handle_key_event(key_with_mods(KeyCode::Char('p'), KeyModifiers::CONTROL));
+        assert_eq!(app.query(), ".café | .naïve");
+    }
+
+    #[test]
+    fn test_history_search_with_unicode() {
+        let mut app = app_with_query("");
+        app.input.editor_mode = EditorMode::Insert;
+
+        app.history.add_entry_in_memory(".café");
+        app.history.add_entry_in_memory(".coffee");
+
+        app.handle_key_event(key_with_mods(KeyCode::Char('r'), KeyModifiers::CONTROL));
+
+        // Search for unicode
+        app.handle_key_event(key(KeyCode::Char('c')));
+        app.handle_key_event(key(KeyCode::Char('a')));
+        app.handle_key_event(key(KeyCode::Char('f')));
+
+        // Should filter to .café
+        assert_eq!(app.history.filtered_count(), 1);
+    }
+
+    // ========== Boundary Condition Tests ==========
+
+    #[test]
+    fn test_cycling_stops_at_oldest() {
+        let mut app = app_with_query("");
+        app.input.editor_mode = EditorMode::Insert;
+
+        app.history.add_entry_in_memory(".first");
+
+        // Cycle to first entry
+        app.handle_key_event(key_with_mods(KeyCode::Char('p'), KeyModifiers::CONTROL));
+        assert_eq!(app.query(), ".first");
+
+        // Spam Ctrl+P - should stay at .first
+        app.handle_key_event(key_with_mods(KeyCode::Char('p'), KeyModifiers::CONTROL));
+        app.handle_key_event(key_with_mods(KeyCode::Char('p'), KeyModifiers::CONTROL));
+        assert_eq!(app.query(), ".first");
+    }
+
+    #[test]
+    fn test_history_popup_with_single_entry() {
+        let mut app = app_with_query("");
+        app.input.editor_mode = EditorMode::Insert;
+
+        app.history.add_entry_in_memory(".single");
+
+        app.handle_key_event(key_with_mods(KeyCode::Char('r'), KeyModifiers::CONTROL));
+        assert!(app.history.is_visible());
+
+        // Should wrap on navigation
+        app.handle_key_event(key(KeyCode::Up));
+        assert_eq!(app.history.selected_index(), 0);
+
+        app.handle_key_event(key(KeyCode::Down));
+        assert_eq!(app.history.selected_index(), 0);
+    }
+
+    #[test]
+    fn test_filter_with_no_matches() {
+        let mut app = app_with_query("");
+        app.input.editor_mode = EditorMode::Insert;
+
+        app.history.add_entry_in_memory(".foo");
+        app.history.add_entry_in_memory(".bar");
+
+        app.handle_key_event(key_with_mods(KeyCode::Char('r'), KeyModifiers::CONTROL));
+
+        // Search for something that doesn't match
+        app.handle_key_event(key(KeyCode::Char('x')));
+        app.handle_key_event(key(KeyCode::Char('y')));
+        app.handle_key_event(key(KeyCode::Char('z')));
+
+        // Should have zero matches
+        assert_eq!(app.history.filtered_count(), 0);
+    }
+
+    #[test]
+    fn test_backspace_on_empty_search() {
+        let mut app = app_with_query("");
+        app.input.editor_mode = EditorMode::Insert;
+
+        app.history.add_entry_in_memory(".test");
+
+        app.handle_key_event(key_with_mods(KeyCode::Char('r'), KeyModifiers::CONTROL));
+
+        // Search is empty initially
+        assert_eq!(app.history.search_query(), "");
+
+        // Press backspace - should not crash
+        app.handle_key_event(key(KeyCode::Backspace));
+        assert_eq!(app.history.search_query(), "");
+    }
+
+    // ========== 'q' key behavior tests ==========
+
+    #[test]
+    fn test_q_quits_in_results_pane_insert_mode() {
+        let mut app = app_with_query("");
+        app.focus = Focus::ResultsPane;
+        app.input.editor_mode = EditorMode::Insert;
+
+        // 'q' should quit even when editor is in Insert mode
+        // because we're in ResultsPane (not editing text)
+        app.handle_key_event(key(KeyCode::Char('q')));
+
+        assert!(app.should_quit);
+    }
+
+    #[test]
+    fn test_q_does_not_quit_in_input_field_insert_mode() {
+        let mut app = app_with_query("");
+        app.focus = Focus::InputField;
+        app.input.editor_mode = EditorMode::Insert;
+
+        // 'q' should NOT quit when in InputField with Insert mode
+        // (user is typing)
+        app.handle_key_event(key(KeyCode::Char('q')));
+
+        assert!(!app.should_quit);
+        // The 'q' should be inserted into the query
+        assert!(app.query().contains('q'));
+    }
+
+    #[test]
+    fn test_q_quits_in_input_field_normal_mode() {
+        let mut app = app_with_query("");
+        app.focus = Focus::InputField;
+        app.input.editor_mode = EditorMode::Normal;
+
+        // 'q' should quit when in Normal mode
+        app.handle_key_event(key(KeyCode::Char('q')));
+
+        assert!(app.should_quit);
+    }
+
+    #[test]
+    fn test_q_quits_in_results_pane_normal_mode() {
+        let mut app = app_with_query("");
+        app.focus = Focus::ResultsPane;
+        app.input.editor_mode = EditorMode::Normal;
+
+        // 'q' should quit when in ResultsPane Normal mode
+        app.handle_key_event(key(KeyCode::Char('q')));
+
+        assert!(app.should_quit);
+    }
+
+    #[test]
+    fn test_focus_switch_preserves_editor_mode() {
+        let mut app = app_with_query("");
+        app.focus = Focus::InputField;
+        app.input.editor_mode = EditorMode::Insert;
+
+        // Switch to ResultsPane
+        app.handle_key_event(key(KeyCode::BackTab));
+
+        // Editor mode should still be Insert
+        assert_eq!(app.focus, Focus::ResultsPane);
+        assert_eq!(app.input.editor_mode, EditorMode::Insert);
+
+        // 'q' should quit in ResultsPane even with Insert mode
+        app.handle_key_event(key(KeyCode::Char('q')));
+        assert!(app.should_quit);
+    }
+
+    // ========== Help Popup Tests ==========
+
+    #[test]
+    fn test_help_popup_initializes_hidden() {
+        let app = App::new(TEST_JSON.to_string());
+        assert!(!app.help.visible);
+    }
+
+    #[test]
+    fn test_f1_toggles_help_popup() {
+        let mut app = app_with_query(".");
+        assert!(!app.help.visible);
+
+        app.handle_key_event(key(KeyCode::F(1)));
+        assert!(app.help.visible);
+
+        app.handle_key_event(key(KeyCode::F(1)));
+        assert!(!app.help.visible);
+    }
+
+    #[test]
+    fn test_question_mark_toggles_help_in_normal_mode() {
+        let mut app = app_with_query(".");
+        app.input.editor_mode = EditorMode::Normal;
+        app.focus = Focus::InputField;
+
+        app.handle_key_event(key(KeyCode::Char('?')));
+        assert!(app.help.visible);
+
+        app.handle_key_event(key(KeyCode::Char('?')));
+        assert!(!app.help.visible);
+    }
+
+    #[test]
+    fn test_question_mark_does_not_toggle_help_in_insert_mode() {
+        let mut app = app_with_query("");
+        app.input.editor_mode = EditorMode::Insert;
+        app.focus = Focus::InputField;
+
+        app.handle_key_event(key(KeyCode::Char('?')));
+        // Should type '?' not toggle help
+        assert!(!app.help.visible);
+        assert!(app.query().contains('?'));
+    }
+
+    #[test]
+    fn test_esc_closes_help_popup() {
+        let mut app = app_with_query(".");
+        app.help.visible = true;
+
+        app.handle_key_event(key(KeyCode::Esc));
+        assert!(!app.help.visible);
+    }
+
+    #[test]
+    fn test_q_closes_help_popup() {
+        let mut app = app_with_query(".");
+        app.help.visible = true;
+
+        app.handle_key_event(key(KeyCode::Char('q')));
+        assert!(!app.help.visible);
+    }
+
+    #[test]
+    fn test_help_popup_blocks_other_keys() {
+        let mut app = app_with_query(".");
+        app.help.visible = true;
+        app.input.editor_mode = EditorMode::Insert;
+
+        // Try to type - should be blocked
+        app.handle_key_event(key(KeyCode::Char('x')));
+        assert!(!app.query().contains('x'));
+        assert!(app.help.visible);
+    }
+
+    #[test]
+    fn test_f1_works_in_insert_mode() {
+        let mut app = app_with_query(".");
+        app.input.editor_mode = EditorMode::Insert;
+        app.focus = Focus::InputField;
+
+        app.handle_key_event(key(KeyCode::F(1)));
+        assert!(app.help.visible);
+    }
+
+    #[test]
+    fn test_help_popup_scroll_j_scrolls_down() {
+        let mut app = app_with_query(".");
+        app.help.visible = true;
+
+        // Set up bounds for help content (48 lines + padding, viewport 20)
+        app.help.scroll.update_bounds(60, 20);
+        app.help.scroll.offset =0;
+
+        app.handle_key_event(key(KeyCode::Char('j')));
+        assert_eq!(app.help.scroll.offset, 1);
+    }
+
+    #[test]
+    fn test_help_popup_scroll_k_scrolls_up() {
+        let mut app = app_with_query(".");
+        app.help.visible = true;
+        app.help.scroll.offset =5;
+
+        app.handle_key_event(key(KeyCode::Char('k')));
+        assert_eq!(app.help.scroll.offset, 4);
+    }
+
+    #[test]
+    fn test_help_popup_scroll_down_arrow() {
+        let mut app = app_with_query(".");
+        app.help.visible = true;
+
+        // Set up bounds for help content
+        app.help.scroll.update_bounds(60, 20);
+        app.help.scroll.offset =0;
+
+        app.handle_key_event(key(KeyCode::Down));
+        assert_eq!(app.help.scroll.offset, 1);
+    }
+
+    #[test]
+    fn test_help_popup_scroll_up_arrow() {
+        let mut app = app_with_query(".");
+        app.help.visible = true;
+        app.help.scroll.offset =5;
+
+        app.handle_key_event(key(KeyCode::Up));
+        assert_eq!(app.help.scroll.offset, 4);
+    }
+
+    #[test]
+    fn test_help_popup_scroll_capital_j_scrolls_10() {
+        let mut app = app_with_query(".");
+        app.help.visible = true;
+
+        // Set up bounds for help content
+        app.help.scroll.update_bounds(60, 20);
+        app.help.scroll.offset =0;
+
+        app.handle_key_event(key(KeyCode::Char('J')));
+        assert_eq!(app.help.scroll.offset, 10);
+    }
+
+    #[test]
+    fn test_help_popup_scroll_capital_k_scrolls_10() {
+        let mut app = app_with_query(".");
+        app.help.visible = true;
+        app.help.scroll.offset =15;
+
+        app.handle_key_event(key(KeyCode::Char('K')));
+        assert_eq!(app.help.scroll.offset, 5);
+    }
+
+    #[test]
+    fn test_help_popup_scroll_ctrl_d() {
+        let mut app = app_with_query(".");
+        app.help.visible = true;
+
+        // Set up bounds for help content
+        app.help.scroll.update_bounds(60, 20);
+        app.help.scroll.offset =0;
+
+        app.handle_key_event(key_with_mods(KeyCode::Char('d'), KeyModifiers::CONTROL));
+        assert_eq!(app.help.scroll.offset, 10);
+    }
+
+    #[test]
+    fn test_help_popup_scroll_ctrl_u() {
+        let mut app = app_with_query(".");
+        app.help.visible = true;
+        app.help.scroll.offset =15;
+
+        app.handle_key_event(key_with_mods(KeyCode::Char('u'), KeyModifiers::CONTROL));
+        assert_eq!(app.help.scroll.offset, 5);
+    }
+
+    #[test]
+    fn test_help_popup_scroll_g_jumps_to_top() {
+        let mut app = app_with_query(".");
+        app.help.visible = true;
+        app.help.scroll.offset =20;
+
+        app.handle_key_event(key(KeyCode::Char('g')));
+        assert_eq!(app.help.scroll.offset, 0);
+    }
+
+    #[test]
+    fn test_help_popup_scroll_capital_g_jumps_to_bottom() {
+        let mut app = app_with_query(".");
+        app.help.visible = true;
+
+        // Set up bounds for help content
+        app.help.scroll.update_bounds(60, 20);
+        app.help.scroll.offset =0;
+
+        app.handle_key_event(key(KeyCode::Char('G')));
+        assert_eq!(app.help.scroll.offset, app.help.scroll.max_offset);
+    }
+
+    #[test]
+    fn test_help_popup_scroll_k_saturates_at_zero() {
+        let mut app = app_with_query(".");
+        app.help.visible = true;
+        app.help.scroll.offset =0;
+
+        app.handle_key_event(key(KeyCode::Char('k')));
+        assert_eq!(app.help.scroll.offset, 0);
+    }
+
+    #[test]
+    fn test_help_popup_close_resets_scroll() {
+        let mut app = app_with_query(".");
+        app.help.visible = true;
+        app.help.scroll.offset =10;
+
+        app.handle_key_event(key(KeyCode::Esc));
+        assert!(!app.help.visible);
+        assert_eq!(app.help.scroll.offset, 0);
+    }
+
+    #[test]
+    fn test_help_popup_scroll_page_down() {
+        let mut app = app_with_query(".");
+        app.help.visible = true;
+
+        // Set up bounds for help content
+        app.help.scroll.update_bounds(60, 20);
+        app.help.scroll.offset =0;
+
+        app.handle_key_event(key(KeyCode::PageDown));
+        assert_eq!(app.help.scroll.offset, 10);
+    }
+
+    #[test]
+    fn test_help_popup_scroll_page_up() {
+        let mut app = app_with_query(".");
+        app.help.visible = true;
+        app.help.scroll.offset =15;
+
+        app.handle_key_event(key(KeyCode::PageUp));
+        assert_eq!(app.help.scroll.offset, 5);
+    }
+
+    #[test]
+    fn test_help_popup_scroll_home_jumps_to_top() {
+        let mut app = app_with_query(".");
+        app.help.visible = true;
+        app.help.scroll.offset =20;
+
+        app.handle_key_event(key(KeyCode::Home));
+        assert_eq!(app.help.scroll.offset, 0);
+    }
+
+    #[test]
+    fn test_help_popup_scroll_end_jumps_to_bottom() {
+        let mut app = app_with_query(".");
+        app.help.visible = true;
+
+        // Set up bounds for help content
+        app.help.scroll.update_bounds(60, 20);
+        app.help.scroll.offset =0;
+
+        app.handle_key_event(key(KeyCode::End));
+        assert_eq!(app.help.scroll.offset, app.help.scroll.max_offset);
+    }
+}
