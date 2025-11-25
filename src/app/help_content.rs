@@ -1,0 +1,56 @@
+//! Help popup content
+//!
+//! Contains the keyboard shortcuts and descriptions shown in the help popup.
+
+/// Help entries as (key, description) pairs, grouped by category
+pub const HELP_ENTRIES: &[(&str, &str)] = &[
+    ("", ""),
+    ("", "── GLOBAL ──"),
+    ("F1 or ?", "Toggle this help"),
+    ("Ctrl+C", "Quit without output"),
+    ("Enter", "Output filtered JSON and exit"),
+    ("Ctrl+Q", "Output query string only and exit"),
+    ("Shift+Tab", "Switch focus (Input / Results)"),
+    ("q", "Quit (in Normal mode or Results pane)"),
+    ("", ""),
+    ("", "── INPUT: INSERT MODE ──"),
+    ("Esc", "Switch to Normal mode"),
+    ("Ctrl+R", "Search history"),
+    ("Ctrl+P/N", "Previous/Next query in history"),
+    ("Up", "Open history (when input empty)"),
+    ("", ""),
+    ("", "── INPUT: NORMAL MODE ──"),
+    ("i/a/I/A", "Enter Insert mode"),
+    ("h/l", "Move cursor left/right"),
+    ("0/$", "Jump to start/end of line"),
+    ("w/b/e", "Word navigation"),
+    ("x/X", "Delete character"),
+    ("dd/D", "Delete line/to end"),
+    ("u", "Undo"),
+    ("Ctrl+R", "Redo"),
+    ("", ""),
+    ("", "── AUTOCOMPLETE (when visible) ──"),
+    ("Up/Down", "Navigate suggestions"),
+    ("Tab", "Accept suggestion"),
+    ("Esc", "Dismiss"),
+    ("", ""),
+    ("", "── RESULTS PANE ──"),
+    ("j/k", "Scroll line by line"),
+    ("J/K", "Scroll 10 lines"),
+    ("g/Home", "Jump to top"),
+    ("G/End", "Jump to bottom"),
+    ("Ctrl+D/U", "Half page down/up"),
+    ("PageDown/Up", "Half page down/up"),
+    ("", ""),
+    ("", "── HISTORY POPUP ──"),
+    ("Up/Down", "Navigate entries"),
+    ("Type", "Fuzzy search filter"),
+    ("Enter/Tab", "Select entry and close"),
+    ("Esc", "Close without selecting"),
+    ("", ""),
+    ("", "── ERROR OVERLAY ──"),
+    ("Ctrl+E", "Toggle error details"),
+];
+
+/// Footer text shown at the bottom of the help popup
+pub const HELP_FOOTER: &str = "j/k: scroll | g/G: top/bottom | F1/q/?: close";
