@@ -10,6 +10,7 @@ use crate::editor::EditorMode;
 pub struct InputState {
     pub textarea: TextArea<'static>,
     pub editor_mode: EditorMode,
+    pub scroll_offset: usize,  // Track horizontal scroll for syntax overlay
 }
 
 impl InputState {
@@ -31,12 +32,29 @@ impl InputState {
         Self {
             textarea,
             editor_mode: EditorMode::default(),
+            scroll_offset: 0,
         }
     }
 
     /// Get the current query text
     pub fn query(&self) -> &str {
         self.textarea.lines()[0].as_ref()
+    }
+
+    /// Calculate the horizontal scroll offset to keep cursor visible
+    /// This mirrors tui-textarea's internal scroll logic
+    pub fn calculate_scroll_offset(&mut self, viewport_width: usize) {
+        let cursor_col = self.textarea.cursor().1;
+
+        // tui-textarea's scroll logic: keep cursor visible in viewport
+        if cursor_col < self.scroll_offset {
+            // Cursor moved left of viewport - scroll left
+            self.scroll_offset = cursor_col;
+        } else if cursor_col >= self.scroll_offset + viewport_width {
+            // Cursor moved right of viewport - scroll right
+            self.scroll_offset = cursor_col + 1 - viewport_width;
+        }
+        // Otherwise keep current scroll position (smooth scrolling)
     }
 }
 

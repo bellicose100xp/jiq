@@ -5,7 +5,7 @@
 
 use ratatui::{
     layout::Rect,
-    text::Line,
+    text::{Line, Span},
     widgets::Paragraph,
     Frame,
 };
@@ -32,23 +32,69 @@ impl App {
             height: area.height.saturating_sub(2),
         };
 
-        // Only render syntax highlighting if text fits in viewport
-        // This prevents sync issues with tui-textarea's internal horizontal scrolling
-        let query_len = query.chars().count();
         let viewport_width = inner_area.width as usize;
+        let scroll_offset = self.input.scroll_offset;
 
-        if query_len >= viewport_width {
-            // Text would need horizontal scrolling - skip overlay to avoid cursor sync issues
-            // The textarea's native rendering handles scrolling correctly
-            return;
-        }
-
-        // Text fits in viewport - safe to render syntax highlighting
+        // Get full highlighted spans
         let highlighted_spans = JqHighlighter::highlight(query);
-        let highlighted_line = Line::from(highlighted_spans);
+
+        // Extract only the visible portion based on scroll offset
+        let visible_spans = extract_visible_spans(
+            &highlighted_spans,
+            scroll_offset,
+            viewport_width,
+        );
+
+        let highlighted_line = Line::from(visible_spans);
         let paragraph = Paragraph::new(highlighted_line);
         frame.render_widget(paragraph, inner_area);
     }
+}
+
+/// Extract spans that are visible in the current viewport
+fn extract_visible_spans(
+    spans: &[Span<'static>],
+    scroll_offset: usize,
+    viewport_width: usize,
+) -> Vec<Span<'static>> {
+    let mut result = Vec::new();
+    let mut current_col = 0;
+    let end_col = scroll_offset + viewport_width;
+
+    for span in spans {
+        let span_len = span.content.chars().count();
+        let span_end = current_col + span_len;
+
+        if span_end <= scroll_offset {
+            // Span is entirely before visible area - skip
+            current_col = span_end;
+            continue;
+        }
+
+        if current_col >= end_col {
+            // Past visible area - done
+            break;
+        }
+
+        // Span overlaps with visible area
+        let start_in_span = scroll_offset.saturating_sub(current_col);
+        let end_in_span = (end_col - current_col).min(span_len);
+
+        if start_in_span < end_in_span {
+            let visible_content: String = span
+                .content
+                .chars()
+                .skip(start_in_span)
+                .take(end_in_span - start_in_span)
+                .collect();
+
+            result.push(Span::styled(visible_content, span.style));
+        }
+
+        current_col = span_end;
+    }
+
+    result
 }
 
 #[cfg(test)]
@@ -74,7 +120,7 @@ mod tests {
     #[test]
     fn test_long_query_handling() {
         // This test documents the behavior for queries that exceed viewport width
-        // Syntax highlighting is disabled to prevent cursor sync issues
+        // Syntax highlighting now works for long queries via scroll-aware rendering
 
         let json = r#"{"test": true}"#;
         let _app = App::new(json.to_string());
@@ -83,27 +129,25 @@ mod tests {
         let long_query = ".field1 | .field2 | .field3 | .field4 | .field5 | .field6 | .field7 | .field8 | .field9 | .field10 | select(.value > 100)";
         assert!(long_query.chars().count() > 100);
 
-        // The rendering logic will check: query_len >= viewport_width
-        // If true, it skips the syntax highlighting overlay
-        // This allows tui-textarea's native scrolling to work correctly
+        // The rendering logic now extracts only the visible portion of highlighted text
+        // based on scroll_offset, allowing syntax highlighting to work for any length
     }
 
     #[test]
     fn test_viewport_width_threshold() {
-        // Documents the exact threshold behavior for syntax highlighting
+        // Documents that syntax highlighting now works for all query lengths
 
         let json = r#"{"test": true}"#;
         let _app = App::new(json.to_string());
 
-        // If terminal inner width is 80 columns (typical)
-        // And query is 80+ characters, highlighting is disabled
-        // And query is <80 characters, highlighting is enabled
+        // Regardless of terminal width, syntax highlighting is always enabled
+        // The visible portion is extracted based on scroll_offset
 
         let at_threshold = "a".repeat(80);
         assert_eq!(at_threshold.chars().count(), 80);
 
-        // The render logic checks: if query_len >= viewport_width { skip highlighting }
-        // So at exactly viewport_width, highlighting is disabled
+        // The render logic uses extract_visible_spans() to show only the
+        // portion of highlighted text that fits in the viewport
     }
 
     #[test]

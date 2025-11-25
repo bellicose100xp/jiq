@@ -76,6 +76,10 @@ impl App {
 
     /// Render the input field (bottom)
     fn render_input_field(&mut self, frame: &mut Frame, area: ratatui::layout::Rect) {
+        // Calculate viewport width (inside borders) and update scroll offset
+        let viewport_width = area.width.saturating_sub(2) as usize;
+        self.input.calculate_scroll_offset(viewport_width);
+
         // Choose color based on mode
         let mode_color = match self.input.editor_mode {
             EditorMode::Insert => Color::Cyan,        // Cyan for Insert
