@@ -27,7 +27,6 @@ const HISTORY_SEARCH_HEIGHT: u16 = 3;
 // Help popup display constants
 const HELP_POPUP_WIDTH: u16 = 70;
 const HELP_POPUP_PADDING: u16 = 4; // borders (2) + footer (2)
-pub const HELP_CONTENT_LINES: u16 = 50; // approximate, used for scroll bounds
 
 impl App {
     /// Render the UI
