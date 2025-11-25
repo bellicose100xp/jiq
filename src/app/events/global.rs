@@ -115,16 +115,31 @@ pub fn handle_global_keys(app: &mut App, key: KeyEvent) -> bool {
 
         // Output mode selection (Enter/Shift+Enter/Alt+Enter)
         KeyCode::Enter if key.modifiers.contains(KeyModifiers::SHIFT) => {
+            // Save successful queries to history
+            if app.query.result.is_ok() && !app.query().is_empty() {
+                let query = app.query().to_string();
+                app.history.add_entry(&query);
+            }
             app.output_mode = Some(OutputMode::Query);
             app.should_quit = true;
             true
         }
         KeyCode::Enter if key.modifiers.contains(KeyModifiers::ALT) => {
+            // Save successful queries to history
+            if app.query.result.is_ok() && !app.query().is_empty() {
+                let query = app.query().to_string();
+                app.history.add_entry(&query);
+            }
             app.output_mode = Some(OutputMode::Query);
             app.should_quit = true;
             true
         }
         KeyCode::Enter => {
+            // Save successful queries to history
+            if app.query.result.is_ok() && !app.query().is_empty() {
+                let query = app.query().to_string();
+                app.history.add_entry(&query);
+            }
             app.output_mode = Some(OutputMode::Results);
             app.should_quit = true;
             true
@@ -375,6 +390,68 @@ mod tests {
         app.handle_key_event(key(KeyCode::Enter));
 
         assert_eq!(app.output_mode, Some(OutputMode::Results));
+        assert!(app.should_quit);
+    }
+
+    #[test]
+    fn test_enter_saves_successful_query_to_history() {
+        // CRITICAL: Enter should save query to history before exiting
+        let mut app = app_with_query(".name");
+        let initial_count = app.history.total_count();
+
+        // Ensure query is successful
+        assert!(app.query.result.is_ok());
+
+        app.handle_key_event(key(KeyCode::Enter));
+
+        // History should have one more entry
+        assert_eq!(app.history.total_count(), initial_count + 1);
+        assert!(app.should_quit);
+    }
+
+    #[test]
+    fn test_enter_does_not_save_failed_query_to_history() {
+        // Failed queries should NOT be saved to history
+        let mut app = App::new(r#"{"name": "test"}"#.to_string());
+        app.input.editor_mode = EditorMode::Insert;
+
+        // Type invalid query
+        app.handle_key_event(key(KeyCode::Char('|')));
+        let initial_count = app.history.total_count();
+
+        // Ensure query failed
+        assert!(app.query.result.is_err());
+
+        app.handle_key_event(key(KeyCode::Enter));
+
+        // History should NOT have changed
+        assert_eq!(app.history.total_count(), initial_count);
+        assert!(app.should_quit);
+    }
+
+    #[test]
+    fn test_enter_does_not_save_empty_query_to_history() {
+        // Empty queries should NOT be saved to history
+        let mut app = app_with_query("");
+        let initial_count = app.history.total_count();
+
+        app.handle_key_event(key(KeyCode::Enter));
+
+        // History should NOT have changed
+        assert_eq!(app.history.total_count(), initial_count);
+        assert!(app.should_quit);
+    }
+
+    #[test]
+    fn test_shift_enter_saves_query_to_history() {
+        // Shift+Enter should also save query to history
+        let mut app = app_with_query(".name");
+        let initial_count = app.history.total_count();
+
+        app.handle_key_event(key_with_mods(KeyCode::Enter, KeyModifiers::SHIFT));
+
+        assert_eq!(app.history.total_count(), initial_count + 1);
+        assert_eq!(app.output_mode, Some(OutputMode::Query));
         assert!(app.should_quit);
     }
 
