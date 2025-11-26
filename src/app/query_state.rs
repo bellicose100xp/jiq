@@ -22,10 +22,20 @@ impl QueryState {
     }
 
     /// Execute a query and update results
+    /// Only caches non-null results for autosuggestions
     pub fn execute(&mut self, query: &str) {
         self.result = self.executor.execute(query);
         if let Ok(result) = &self.result {
-            self.last_successful_result = Some(result.clone());
+            // Only cache non-null results for autosuggestions
+            // When typing partial queries like ".s", jq returns "null" (potentially with ANSI codes)
+            // We want to keep the last meaningful result for suggestions
+            let trimmed = result.trim();
+            // Check if result is just "null" (strip ANSI codes by checking if it contains "null")
+            let is_null = trimmed == "null" || (trimmed.contains("null") && trimmed.len() < 20);
+
+            if !is_null {
+                self.last_successful_result = Some(result.clone());
+            }
         }
     }
 
@@ -121,5 +131,33 @@ mod tests {
         state.last_successful_result = None;
 
         assert_eq!(state.line_count(), 0);
+    }
+
+    #[test]
+    fn test_null_results_dont_overwrite_cache() {
+        let json = r#"{"name": "test", "age": 30}"#;
+        let mut state = QueryState::new(json.to_string());
+
+        // Initial state: should have cached the root object
+        let initial_cache = state.last_successful_result.clone();
+        assert!(initial_cache.is_some());
+
+        // Execute a query that returns null (like typing partial field ".s")
+        state.execute(".nonexistent");
+        assert!(state.result.is_ok());
+        // jq returns "null" with ANSI codes, just check it contains "null"
+        assert!(state.result.as_ref().unwrap().contains("null"));
+
+        // Cache should NOT be updated - should still have the root object
+        assert_eq!(state.last_successful_result, initial_cache);
+
+        // Execute a valid query that returns data
+        state.execute(".name");
+        // jq returns with ANSI codes, just check it contains "test"
+        assert!(state.result.as_ref().unwrap().contains("test"));
+
+        // Cache should now be updated
+        assert_ne!(state.last_successful_result, initial_cache);
+        assert!(state.last_successful_result.as_ref().unwrap().contains("test"));
     }
 }
