@@ -40,6 +40,12 @@ echo '{}' | cargo run    # Run with stdin
 - Re-export in `mod.rs`
 - Document public APIs
 
+**Input rendering architecture:**
+- `tui-textarea` handles editing logic only (cursor movement, insert/delete, vim mode)
+- Custom rendering via styled `Paragraph` for syntax highlighting
+- Direct control over scroll and cursor display
+- No overlay - single rendering pass
+
 **Naming conventions:**
 
 | Type | Convention | Example |
@@ -61,7 +67,11 @@ Suggestion::new("func_name", SuggestionType::Function)
 
 ### Add Keybinding
 
-`src/app/events.rs` → Add to appropriate handler (global/INSERT/NORMAL/OPERATOR)
+`src/app/events/*.rs` → Add to appropriate handler:
+- `global.rs` - Keys that work everywhere
+- `vim.rs` - INSERT/NORMAL/OPERATOR mode keys
+- `history.rs` - History popup keys
+- `results.rs` - Results pane navigation
 
 ### Add Suggestion Type
 

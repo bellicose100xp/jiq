@@ -102,11 +102,11 @@ const MIN_CHARS_FOR_AUTOCOMPLETE: usize = 1;
 
 ## Testing
 
-**47 tests total:**
-- Context detection (8)
-- JSON analyzer (4)
-- App state (8)
-- Integration (8)
+Comprehensive test coverage:
+- Context detection
+- JSON analyzer
+- App state integration
+- Edge cases and error handling
 
 **Edge cases covered:**
 - Empty input

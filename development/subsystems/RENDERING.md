@@ -182,32 +182,31 @@ Error:
 └───────────────────────┘
 ```
 
+## Input Rendering Architecture
+
+**Current approach:** Direct styled `Paragraph` rendering for input field
+- `tui-textarea` handles editing logic (cursor, insert/delete, vim mode)
+- Custom rendering via styled `Paragraph` enables syntax highlighting
+- Direct control over scroll position and cursor display
+- Single rendering pass (no overlay)
+
 ## Future Enhancements
 
-### 1. Syntax Highlighting for Query
-
-Input field could highlight jq syntax:
-- Blue: strings
-- Green: operators
-- Yellow: keywords
-
-Requires custom TextArea or tui-textarea extension.
-
-### 2. Result Syntax Highlighting
+### 1. Result Syntax Highlighting
 
 Beyond jq's colors, could add:
 - Bracket matching
 - Indent guides
 - Folding for nested structures
 
-### 3. Responsive Layout
+### 2. Responsive Layout
 
 Adjust split based on terminal size:
 ```rust
 let split = if terminal_height < 24 { 40 } else { 30 };
 ```
 
-### 4. Tabs for Multiple Queries
+### 3. Tabs for Multiple Queries
 
 ```
 ┌─ Query 1 | Query 2 | Query 3 ─┐

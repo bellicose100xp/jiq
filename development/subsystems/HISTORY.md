@@ -131,8 +131,6 @@ O(n) linear scan, acceptable for 1000 entries.
 
 ## Testing Strategy
 
-**242 tests total, 13 for history:**
-
 **Test isolation:** `persist_to_disk: bool` flag
 - Production: `true` → writes to disk
 - Tests: `false` → in-memory only

@@ -1,6 +1,6 @@
 # Event System
 
-**File:** `src/app/events.rs` (413 lines, 54 tests)
+**Files:** `src/app/events.rs` + `src/app/events/*.rs`
 
 ## Event Flow
 
@@ -31,7 +31,9 @@ Keyboard → handle_events() → handle_key_event()
 
 ## Key Handlers
 
-### Global Keys (`events.rs:36-91`)
+Event handlers are split across focused modules:
+
+### Global Keys (`events/global.rs`)
 
 | Key | Action |
 |-----|--------|
@@ -40,10 +42,12 @@ Keyboard → handle_events() → handle_key_event()
 | Shift+Enter | Quit + output query |
 | Shift+Tab | Toggle focus |
 | Tab | Accept autocomplete (if visible) |
+| Ctrl+R | Open history search popup |
+| Ctrl+P/N | Cycle through history |
 
 **Tab handling:** Only works when autocomplete visible, returns `false` otherwise to allow tui-textarea handling.
 
-### Input Field - INSERT Mode (`events.rs:129-149`)
+### Input Field - INSERT Mode (`events/vim.rs`)
 
 ```rust
 fn handle_insert_mode_key(&mut self, key: KeyEvent) {
@@ -56,18 +60,18 @@ fn handle_insert_mode_key(&mut self, key: KeyEvent) {
 }
 ```
 
-### Input Field - NORMAL Mode (`events.rs:152-256`)
+### Input Field - NORMAL Mode (`events/vim.rs`)
 
 | Keys | Action |
 |------|--------|
-| h/l/←/→, 0/$, w/b/e | Cursor movement |
+| h/l/←/→, 0/$, w/b/e, ^ | Cursor movement |
 | i, a, I, A | Enter INSERT mode |
 | x, X, D | Delete operations |
 | C | Delete to end + INSERT |
 | d, c | Enter OPERATOR mode |
 | u, Ctrl+r | Undo/redo |
 
-### Input Field - OPERATOR Mode (`events.rs:259-343`)
+### Input Field - OPERATOR Mode (`events/vim.rs`)
 
 State machine: `NORMAL → d/c → OPERATOR(char) → motion/dd/cc → execute → NORMAL/INSERT`
 
@@ -81,7 +85,7 @@ cut()              // Execute delete/change
 **Motions:** w, b, e, $, 0, h, l
 **Double operator:** dd (delete line), cc (change line)
 
-### Results Pane (`events.rs:359-411`)
+### Results Pane (`events/results.rs`)
 
 | Keys | Scroll Amount |
 |------|---------------|
@@ -128,11 +132,12 @@ Every content change in any mode:
 
 ## Test Coverage
 
-54 tests across:
-- VIM operators (17): dw, db, de, d$, dd, cw, cc, etc.
-- Mode transitions (8): INSERT↔NORMAL, OPERATOR handling
-- VIM commands (9): x, X, D, C, u, Ctrl+r
-- Navigation (8): h, l, 0, $, w, b, e
-- Autocomplete (10): ESC, arrows, Tab
-- Results scroll (14): All scroll commands + bounds
-- Global keys (10): Quit, output modes, focus switch
+Comprehensive test coverage across event handlers:
+- VIM operators: dw, db, de, d$, dd, cw, cc, etc.
+- Mode transitions: INSERT↔NORMAL, OPERATOR handling
+- VIM commands: x, X, D, C, u, Ctrl+r, ^
+- Navigation: h, l, 0, $, w, b, e
+- Autocomplete: ESC, arrows, Tab
+- History: Ctrl+R, Ctrl+P/N, cycling, fuzzy search
+- Results scroll: All scroll commands + bounds
+- Global keys: Quit, output modes, focus switch, Ctrl+Q

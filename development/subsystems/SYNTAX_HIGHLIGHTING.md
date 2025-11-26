@@ -88,8 +88,11 @@ Possible enhancements for the future:
 
 ## Technical Details
 
-- **Location**: `src/syntax/mod.rs`
-- **Rendering**: Overlay approach using `Paragraph` widget on top of `tui-textarea`
-- **Performance**: Highlighting runs on every render, but is fast enough for single-line queries
+- **Location**: `src/syntax/mod.rs` and `src/app/syntax_overlay.rs`
+- **Rendering**: Direct styled `Paragraph` rendering (not overlay)
+  - `tui-textarea` handles editing logic only
+  - Custom rendering applies syntax highlighting via styled spans
+  - Single rendering pass with full control over display
+- **Performance**: Highlighting runs on every render, optimized for queries of any length
 - **Dependencies**: None - uses only built-in Rust string processing and ratatui's styling
 - **String handling**: Strings are parsed as single units - keywords inside strings are NOT highlighted separately (e.g., `"if"` is entirely green, not yellow)

@@ -66,7 +66,7 @@ fn test_cli_with_file() {
 
 ## Coverage
 
-**Current:** 47 tests across all modules
+**Current:** 382 tests (374 unit tests + 8 integration tests)
 
 **Priority:**
 - High: Public APIs, complex logic, error handling

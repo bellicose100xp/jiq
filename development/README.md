@@ -73,12 +73,13 @@ Technical documentation and architecture notes for the jiq codebase.
 **[subsystems/SYNTAX_HIGHLIGHTING.md](subsystems/SYNTAX_HIGHLIGHTING.md)** - jq syntax highlighting
 - Color scheme and token types
 - Character-by-character parser
-- Overlay rendering approach
+- Direct paragraph rendering
 - Edge cases and test coverage
 
-### Feature Documentation
-
-**[features/AUTOCOMPLETE.md](features/AUTOCOMPLETE.md)** - Original autocomplete feature notes
+**[subsystems/HISTORY.md](subsystems/HISTORY.md)** - Query history system
+- Persistent storage and recall
+- Fuzzy search filtering
+- Two interaction modes (cycling and popup)
 
 ## Project Structure
 
@@ -87,12 +88,23 @@ jiq/
 ├── src/
 │   ├── main.rs              # Entry point, CLI, main loop
 │   ├── error.rs             # Error types
+│   ├── scroll.rs            # Scroll position management
 │   │
 │   ├── app/                 # Application coordination
 │   │   ├── mod.rs           # Public API
 │   │   ├── state.rs         # App state, focus management
-│   │   ├── events.rs        # Event dispatch and handling
-│   │   └── render.rs        # UI rendering logic
+│   │   ├── events.rs        # Event dispatch
+│   │   ├── events/          # Event handlers
+│   │   │   ├── global.rs    # Global key handlers
+│   │   │   ├── vim.rs       # VIM mode handlers
+│   │   │   ├── history.rs   # History popup handlers
+│   │   │   └── results.rs   # Results pane handlers
+│   │   ├── render.rs        # UI rendering logic
+│   │   ├── input_state.rs   # Input field state
+│   │   ├── query_state.rs   # Query result state
+│   │   ├── help_state.rs    # Help popup state
+│   │   ├── help_content.rs  # Help popup content
+│   │   └── syntax_overlay.rs # Syntax highlighting overlay
 │   │
 │   ├── autocomplete/        # Autocomplete system
 │   │   ├── mod.rs
@@ -105,13 +117,28 @@ jiq/
 │   │   ├── mod.rs
 │   │   └── mode.rs          # Mode definitions
 │   │
+│   ├── history/             # Query history
+│   │   ├── mod.rs
+│   │   ├── state.rs         # HistoryState
+│   │   ├── storage.rs       # File I/O
+│   │   └── matcher.rs       # Fuzzy matching
+│   │
 │   ├── input/               # Input handling
 │   │   ├── mod.rs
 │   │   └── reader.rs        # JSON input reader
 │   │
-│   └── query/               # Query execution
+│   ├── query/               # Query execution
+│   │   ├── mod.rs
+│   │   └── executor.rs      # jq subprocess executor
+│   │
+│   ├── syntax/              # Syntax highlighting
+│   │   └── mod.rs
+│   │
+│   ├── ui/                  # UI utilities
+│   │
+│   └── widgets/             # Reusable widgets
 │       ├── mod.rs
-│       └── executor.rs      # jq subprocess executor
+│       └── popup.rs         # Popup positioning utilities
 │
 ├── tests/
 │   ├── integration_tests.rs
@@ -123,8 +150,7 @@ jiq/
     ├── DEVELOPMENT_GUIDE.md
     ├── TESTING.md
     ├── DEPLOYMENT.md
-    ├── subsystems/          # Detailed subsystem docs
-    └── features/            # Feature-specific notes
+    └── subsystems/          # Detailed subsystem docs
 ```
 
 ## Key Technologies

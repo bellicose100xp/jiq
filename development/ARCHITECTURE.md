@@ -74,10 +74,21 @@ main.rs (entry, CLI, event loop)
 src/
 ├── main.rs           # Entry point, CLI, event loop
 ├── error.rs          # JiqError enum
+├── scroll.rs         # Scroll position management
 ├── app/
 │   ├── state.rs      # App struct, Focus, OutputMode
-│   ├── events.rs     # Event dispatch by focus/mode
-│   └── render.rs     # UI rendering, autocomplete popup
+│   ├── events.rs     # Event dispatch
+│   ├── events/       # Event handlers
+│   │   ├── global.rs # Global key handlers
+│   │   ├── vim.rs    # VIM mode handlers
+│   │   ├── history.rs # History popup handlers
+│   │   └── results.rs # Results pane handlers
+│   ├── render.rs     # UI rendering, autocomplete popup
+│   ├── input_state.rs   # Input field state
+│   ├── query_state.rs   # Query result state
+│   ├── help_state.rs    # Help popup state
+│   ├── help_content.rs  # Help content constants
+│   └── syntax_overlay.rs # Syntax highlighting overlay
 ├── autocomplete/
 │   ├── state.rs      # Suggestions, selection
 │   ├── context.rs    # Field vs function detection
@@ -85,10 +96,18 @@ src/
 │   └── json_analyzer.rs  # Extract JSON fields
 ├── editor/
 │   └── mode.rs       # EditorMode enum
+├── history/
+│   ├── state.rs      # HistoryState
+│   ├── storage.rs    # File I/O
+│   └── matcher.rs    # Fuzzy matching
 ├── input/
 │   └── reader.rs     # Read JSON from file/stdin
-└── query/
-    └── executor.rs   # Spawn jq subprocess
+├── query/
+│   └── executor.rs   # Spawn jq subprocess
+├── syntax/
+│   └── mod.rs        # Syntax highlighting
+└── widgets/
+    └── popup.rs      # Popup positioning utilities
 ```
 
 ## Data Flow
@@ -208,7 +227,7 @@ Spawn jq subprocess     ▼              ▼
 4. Add color in `render.rs`
 
 **Adding VIM commands:**
-1. Add handler in appropriate mode function in `events.rs`
+1. Add handler in appropriate mode function in `events/vim.rs`
 2. Delegate to tui-textarea methods
 3. Call `execute_query()` if content changes
 
