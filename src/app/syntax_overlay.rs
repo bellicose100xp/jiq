@@ -1,58 +1,11 @@
-//! Syntax highlighting overlay rendering
+//! Syntax highlighting utilities
 //!
-//! Renders syntax-highlighted jq query text on top of the input textarea.
-//! Automatically disables for long queries to prevent cursor synchronization issues.
+//! Functions for rendering syntax-highlighted jq query text with cursor support.
 
-use ratatui::{
-    layout::Rect,
-    text::{Line, Span},
-    widgets::Paragraph,
-    Frame,
-};
-
-use crate::syntax::JqHighlighter;
-use super::state::App;
-
-impl App {
-    /// Render syntax highlighting overlay on top of the textarea
-    pub fn render_syntax_highlighting(&self, frame: &mut Frame, area: Rect) {
-        // Get the query text
-        let query = self.query();
-
-        // Skip if empty
-        if query.is_empty() {
-            return;
-        }
-
-        // Calculate the inner area (inside the border)
-        let inner_area = Rect {
-            x: area.x + 1,
-            y: area.y + 1,
-            width: area.width.saturating_sub(2),
-            height: area.height.saturating_sub(2),
-        };
-
-        let viewport_width = inner_area.width as usize;
-        let scroll_offset = self.input.scroll_offset;
-
-        // Get full highlighted spans
-        let highlighted_spans = JqHighlighter::highlight(query);
-
-        // Extract only the visible portion based on scroll offset
-        let visible_spans = extract_visible_spans(
-            &highlighted_spans,
-            scroll_offset,
-            viewport_width,
-        );
-
-        let highlighted_line = Line::from(visible_spans);
-        let paragraph = Paragraph::new(highlighted_line);
-        frame.render_widget(paragraph, inner_area);
-    }
-}
+use ratatui::text::Span;
 
 /// Extract spans that are visible in the current viewport
-fn extract_visible_spans(
+pub fn extract_visible_spans(
     spans: &[Span<'static>],
     scroll_offset: usize,
     viewport_width: usize,
@@ -97,80 +50,191 @@ fn extract_visible_spans(
     result
 }
 
+/// Insert cursor into spans at the given position (relative to visible area)
+/// The character at cursor_pos gets reversed style (like vim)
+pub fn insert_cursor_into_spans(
+    spans: Vec<Span<'static>>,
+    cursor_pos: usize,
+) -> Vec<Span<'static>> {
+    use ratatui::style::Modifier;
+
+    let mut result = Vec::new();
+    let mut current_pos = 0;
+
+    for span in &spans {
+        let span_chars: Vec<char> = span.content.chars().collect();
+        let span_len = span_chars.len();
+        let span_end = current_pos + span_len;
+
+        if cursor_pos < current_pos || cursor_pos >= span_end {
+            // Cursor not in this span - keep as is
+            result.push(span.clone());
+            current_pos = span_end;
+            continue;
+        }
+
+        // Cursor is within this span - split it
+        let cursor_in_span = cursor_pos - current_pos;
+
+        // Part before cursor
+        if cursor_in_span > 0 {
+            let before: String = span_chars[..cursor_in_span].iter().collect();
+            result.push(Span::styled(before, span.style));
+        }
+
+        // Character at cursor (with reversed style)
+        let cursor_char = span_chars[cursor_in_span].to_string();
+        result.push(Span::styled(
+            cursor_char,
+            span.style.add_modifier(Modifier::REVERSED),
+        ));
+
+        // Part after cursor
+        if cursor_in_span + 1 < span_len {
+            let after: String = span_chars[cursor_in_span + 1..].iter().collect();
+            result.push(Span::styled(after, span.style));
+        }
+
+        current_pos = span_end;
+    }
+
+    // If cursor is at end of all spans (no character under cursor), add reversed space
+    let total_len: usize = spans.iter().map(|s| s.content.chars().count()).sum();
+    if cursor_pos >= total_len {
+        use ratatui::style::Style;
+        result.push(Span::styled(
+            " ",
+            Style::default().add_modifier(Modifier::REVERSED),
+        ));
+    }
+
+    result
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    use ratatui::style::{Color, Modifier, Style};
 
     #[test]
-    fn test_syntax_highlighting_enabled_for_short_queries() {
-        // This test documents that syntax highlighting works for queries
-        // that fit within the viewport width
+    fn test_extract_visible_spans_no_scroll() {
+        let spans = vec![
+            Span::styled("Hello", Style::default().fg(Color::Red)),
+            Span::styled(" ", Style::default()),
+            Span::styled("World", Style::default().fg(Color::Blue)),
+        ];
 
-        let json = r#"{"test": true}"#;
-        let app = App::new(json.to_string());
+        let visible = extract_visible_spans(&spans, 0, 20);
 
-        // Short query - should be eligible for highlighting
-        let short_query = ".test";
-        assert!(short_query.chars().count() < 50); // Typical viewport width
-
-        // Verify query method works (syntax highlighting uses this)
-        assert_eq!(app.query(), "");
+        assert_eq!(visible.len(), 3);
+        assert_eq!(visible[0].content, "Hello");
+        assert_eq!(visible[2].content, "World");
     }
 
     #[test]
-    fn test_long_query_handling() {
-        // This test documents the behavior for queries that exceed viewport width
-        // Syntax highlighting now works for long queries via scroll-aware rendering
+    fn test_extract_visible_spans_with_scroll() {
+        let spans = vec![
+            Span::styled("0123456789", Style::default().fg(Color::Red)),
+            Span::styled("ABCDEFGHIJ", Style::default().fg(Color::Blue)),
+        ];
 
-        let json = r#"{"test": true}"#;
-        let _app = App::new(json.to_string());
+        // Scroll offset 5, viewport 10 → should show "56789ABCDE"
+        let visible = extract_visible_spans(&spans, 5, 10);
 
-        // Create a very long query (would exceed typical terminal width)
-        let long_query = ".field1 | .field2 | .field3 | .field4 | .field5 | .field6 | .field7 | .field8 | .field9 | .field10 | select(.value > 100)";
-        assert!(long_query.chars().count() > 100);
-
-        // The rendering logic now extracts only the visible portion of highlighted text
-        // based on scroll_offset, allowing syntax highlighting to work for any length
+        assert_eq!(visible.len(), 2);
+        assert_eq!(visible[0].content, "56789"); // Rest of first span
+        assert_eq!(visible[1].content, "ABCDE"); // Part of second span
     }
 
     #[test]
-    fn test_viewport_width_threshold() {
-        // Documents that syntax highlighting now works for all query lengths
+    fn test_extract_visible_spans_beyond_text() {
+        let spans = vec![Span::styled("Short", Style::default())];
 
-        let json = r#"{"test": true}"#;
-        let _app = App::new(json.to_string());
+        // Scroll past the text
+        let visible = extract_visible_spans(&spans, 10, 20);
 
-        // Regardless of terminal width, syntax highlighting is always enabled
-        // The visible portion is extracted based on scroll_offset
-
-        let at_threshold = "a".repeat(80);
-        assert_eq!(at_threshold.chars().count(), 80);
-
-        // The render logic uses extract_visible_spans() to show only the
-        // portion of highlighted text that fits in the viewport
+        assert_eq!(visible.len(), 0); // Nothing visible
     }
 
     #[test]
-    fn test_empty_query_has_no_highlighting() {
-        // Empty queries should not render any syntax highlighting
+    fn test_insert_cursor_at_start() {
+        let spans = vec![Span::styled("Hello", Style::default().fg(Color::Red))];
 
-        let json = r#"{"test": true}"#;
-        let app = App::new(json.to_string());
+        let result = insert_cursor_into_spans(spans, 0);
 
-        assert_eq!(app.query(), "");
-        // The render_syntax_highlighting method returns early for empty queries
+        // Should be: ["H" (reversed), "ello"]
+        assert_eq!(result.len(), 2);
+        assert_eq!(result[0].content, "H");
+        assert!(result[0].style.add_modifier.contains(Modifier::REVERSED));
+        assert_eq!(result[1].content, "ello");
     }
 
     #[test]
-    fn test_char_count_not_byte_count() {
-        // Verify we count characters (not bytes) for viewport comparison
-        // Important for UTF-8 queries with emoji or multi-byte characters
+    fn test_insert_cursor_in_middle() {
+        let spans = vec![Span::styled("Hello", Style::default().fg(Color::Red))];
 
-        let emoji_query = "🔍 search term";
-        let char_count = emoji_query.chars().count();
-        let byte_count = emoji_query.len();
+        let result = insert_cursor_into_spans(spans, 2);
 
-        assert!(byte_count > char_count); // Emoji takes multiple bytes
-        // We use chars().count() which correctly handles UTF-8
+        // Should be: ["He", "l" (reversed), "lo"]
+        assert_eq!(result.len(), 3);
+        assert_eq!(result[0].content, "He");
+        assert_eq!(result[1].content, "l");
+        assert!(result[1].style.add_modifier.contains(Modifier::REVERSED));
+        assert_eq!(result[2].content, "lo");
+    }
+
+    #[test]
+    fn test_insert_cursor_at_end() {
+        let spans = vec![Span::styled("Hi", Style::default().fg(Color::Red))];
+
+        let result = insert_cursor_into_spans(spans, 2);
+
+        // Should be: ["Hi", " " (reversed space)]
+        assert_eq!(result.len(), 2);
+        assert_eq!(result[0].content, "Hi");
+        assert_eq!(result[1].content, " ");
+        assert!(result[1].style.add_modifier.contains(Modifier::REVERSED));
+    }
+
+    #[test]
+    fn test_insert_cursor_across_spans() {
+        let spans = vec![
+            Span::styled("Hello", Style::default().fg(Color::Red)),
+            Span::styled("World", Style::default().fg(Color::Blue)),
+        ];
+
+        let result = insert_cursor_into_spans(spans, 5);
+
+        // Cursor at position 5 is the 'W' in "World" (first char of second span)
+        // Should be: ["Hello", "W" (reversed), "orld"]
+        assert!(result.len() >= 2);
+        assert_eq!(result[0].content, "Hello");
+        assert_eq!(result[1].content, "W");
+        assert!(result[1].style.add_modifier.contains(Modifier::REVERSED));
+    }
+
+    #[test]
+    fn test_insert_cursor_empty_spans() {
+        let spans = vec![];
+
+        let result = insert_cursor_into_spans(spans, 0);
+
+        // Should add a reversed space cursor
+        assert_eq!(result.len(), 1);
+        assert_eq!(result[0].content, " ");
+        assert!(result[0].style.add_modifier.contains(Modifier::REVERSED));
+    }
+
+    #[test]
+    fn test_extract_visible_spans_unicode() {
+        let spans = vec![Span::styled("Hello👋World", Style::default())];
+
+        // "Hello👋World" is 11 chars (emoji is 1 char)
+        // Extract middle portion
+        let visible = extract_visible_spans(&spans, 3, 5);
+
+        // Should get "lo👋Wo" (chars 3-7)
+        assert_eq!(visible.len(), 1);
+        assert_eq!(visible[0].content, "lo👋Wo");
     }
 }
