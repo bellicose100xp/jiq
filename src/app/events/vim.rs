@@ -52,8 +52,8 @@ pub fn handle_normal_mode_key(app: &mut App, key: KeyEvent) {
             app.input.textarea.move_cursor(CursorMove::Forward);
         }
 
-        // Line extent movement (0/$)
-        KeyCode::Char('0') | KeyCode::Home => {
+        // Line extent movement (0/^/$)
+        KeyCode::Char('0') | KeyCode::Char('^') | KeyCode::Home => {
             app.input.textarea.move_cursor(CursorMove::Head);
         }
         KeyCode::Char('$') | KeyCode::End => {
@@ -187,7 +187,7 @@ pub fn handle_operator_mode_key(app: &mut App, key: KeyEvent) {
         }
 
         // Line extent motions
-        KeyCode::Char('0') | KeyCode::Home => {
+        KeyCode::Char('0') | KeyCode::Char('^') | KeyCode::Home => {
             app.input.textarea.move_cursor(CursorMove::Head);
             true
         }
@@ -367,6 +367,19 @@ mod tests {
 
         app.handle_key_event(key(KeyCode::Char('d')));
         app.handle_key_event(key(KeyCode::Char('0')));
+
+        assert!(app.query().ends_with("first"));
+    }
+
+    #[test]
+    fn test_operator_d_caret_deletes_to_start_of_line() {
+        let mut app = app_with_query(".name.first");
+        // Move to middle of text
+        move_cursor_to_position(&mut app, 6);
+        app.input.editor_mode = EditorMode::Normal;
+
+        app.handle_key_event(key(KeyCode::Char('d')));
+        app.handle_key_event(key(KeyCode::Char('^')));
 
         assert!(app.query().ends_with("first"));
     }
@@ -665,6 +678,17 @@ mod tests {
         app.input.editor_mode = EditorMode::Normal;
 
         app.handle_key_event(key(KeyCode::Char('0')));
+
+        assert_eq!(app.input.textarea.cursor().1, 0);
+    }
+
+    #[test]
+    fn test_caret_moves_to_line_start() {
+        let mut app = app_with_query(".name");
+        app.input.textarea.move_cursor(CursorMove::End);
+        app.input.editor_mode = EditorMode::Normal;
+
+        app.handle_key_event(key(KeyCode::Char('^')));
 
         assert_eq!(app.input.textarea.cursor().1, 0);
     }

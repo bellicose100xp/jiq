@@ -22,7 +22,7 @@ pub const HELP_ENTRIES: &[(&str, &str)] = &[
     ("", "── INPUT: NORMAL MODE ──"),
     ("i/a/I/A", "Enter Insert mode"),
     ("h/l", "Move cursor left/right"),
-    ("0/$", "Jump to start/end of line"),
+    ("0/^/$", "Jump to start/end of line"),
     ("w/b/e", "Word navigation"),
     ("x/X", "Delete character"),
     ("dd/D", "Delete line/to end"),
