@@ -210,7 +210,7 @@ echo $QUERY | xargs -I {} jq {} mydata.json
 ## Tips
 
 - Empty query shows original JSON (identity filter `.`)
-- Invalid queries display jq errors in red
+- Invalid queries display `Syntax Error` message above input while preseving last successful output.
 - Results auto-scroll to top when query changes
 
 ## License
