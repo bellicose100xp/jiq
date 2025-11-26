@@ -123,27 +123,44 @@ impl App {
 
         let title = Line::from(title_spans);
 
-        // Set cursor color based on mode
-        let cursor_style = match self.input.editor_mode {
-            EditorMode::Insert => Style::default().fg(Color::Cyan).add_modifier(Modifier::REVERSED),
-            EditorMode::Normal => Style::default().fg(Color::Yellow).add_modifier(Modifier::REVERSED),
-            EditorMode::Operator(_) => Style::default().fg(Color::Green).add_modifier(Modifier::REVERSED),
-        };
-        self.input.textarea.set_cursor_style(cursor_style);
+        // Create block with mode-aware styling
+        let block = Block::default()
+            .borders(Borders::ALL)
+            .title(title)
+            .border_style(Style::default().fg(border_color));
 
-        // Update textarea block with mode-aware styling
-        self.input.textarea.set_block(
-            Block::default()
-                .borders(Borders::ALL)
-                .title(title)
-                .border_style(Style::default().fg(border_color)),
-        );
+        // Get query text and render with syntax highlighting + cursor
+        let query = self.query();
+        let cursor_col = self.input.textarea.cursor().1;
+        let scroll_offset = self.input.scroll_offset;
 
-        // Render the textarea widget
-        frame.render_widget(&self.input.textarea, area);
+        if query.is_empty() {
+            // Empty query - just show cursor
+            use crate::app::syntax_overlay::insert_cursor_into_spans;
+            let cursor_spans = insert_cursor_into_spans(vec![], 0);
+            let paragraph = Paragraph::new(Line::from(cursor_spans)).block(block);
+            frame.render_widget(paragraph, area);
+        } else {
+            // Render styled text with cursor
+            use crate::syntax::JqHighlighter;
+            use crate::app::syntax_overlay::{insert_cursor_into_spans, extract_visible_spans};
 
-        // Render syntax highlighting overlay
-        self.render_syntax_highlighting(frame, area);
+            let highlighted_spans = JqHighlighter::highlight(query);
+
+            // Extract visible portion based on scroll offset
+            let visible_spans = extract_visible_spans(
+                &highlighted_spans,
+                scroll_offset,
+                viewport_width,
+            );
+
+            // Insert cursor at the correct position (relative to visible area)
+            let cursor_in_viewport = cursor_col.saturating_sub(scroll_offset);
+            let spans_with_cursor = insert_cursor_into_spans(visible_spans, cursor_in_viewport);
+
+            let paragraph = Paragraph::new(Line::from(spans_with_cursor)).block(block);
+            frame.render_widget(paragraph, area);
+        }
     }
 
     /// Render the results pane (top)
