@@ -1,6 +1,6 @@
 mod context;
 mod jq_functions;
-pub mod json_analyzer;
+mod result_analyzer;
 mod state;
 
 pub use context::get_suggestions;

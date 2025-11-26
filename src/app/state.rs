@@ -4,7 +4,6 @@ use super::help_state::HelpPopupState;
 use super::input_state::InputState;
 use super::query_state::QueryState;
 use crate::autocomplete::{AutocompleteState, get_suggestions};
-use crate::autocomplete::json_analyzer::JsonAnalyzer;
 use crate::history::HistoryState;
 use crate::scroll::ScrollState;
 
@@ -34,7 +33,6 @@ pub struct App {
     pub output_mode: Option<OutputMode>,
     pub should_quit: bool,
     pub autocomplete: AutocompleteState,
-    pub json_analyzer: JsonAnalyzer,
     pub error_overlay_visible: bool,
     pub history: HistoryState,
     pub help: HelpPopupState,
@@ -43,10 +41,6 @@ pub struct App {
 impl App {
     /// Create a new App instance with JSON input
     pub fn new(json_input: String) -> Self {
-        // Initialize JSON analyzer with the input JSON
-        let mut json_analyzer = JsonAnalyzer::new();
-        let _ = json_analyzer.analyze(&json_input);
-
         Self {
             input: InputState::new(),
             query: QueryState::new(json_input),
@@ -55,7 +49,6 @@ impl App {
             output_mode: None,
             should_quit: false,
             autocomplete: AutocompleteState::new(),
-            json_analyzer,
             error_overlay_visible: false,
             history: HistoryState::new(),
             help: HelpPopupState::new(),
@@ -96,8 +89,9 @@ impl App {
             return;
         }
 
-        // Get suggestions based on context
-        let suggestions = get_suggestions(query, cursor_pos, &self.json_analyzer);
+        // Get suggestions based on query result
+        let result = self.query.last_successful_result.as_deref();
+        let suggestions = get_suggestions(query, cursor_pos, result);
 
         // Update autocomplete state
         self.autocomplete.update_suggestions(suggestions);
