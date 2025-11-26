@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.12.1] - 2025-11-25
+
+### Added
+- VIM keybinding `^` in Normal mode - moves cursor to start of line (same as `0`)
+- Support for `^` in Operator mode - enables `d^` and `c^` operations
+
 ## [2.12.0] - 2025-11-25
 
 ### Added

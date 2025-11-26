@@ -110,7 +110,7 @@ curl https://api.example.com/data | jiq
 |-----|--------|
 | `h` / `←` | Move left |
 | `l` / `→` | Move right |
-| `0` / `Home` | Line start |
+| `0` / `^` / `Home` | Line start |
 | `$` / `End` | Line end |
 | `w` | Next word start |
 | `b` | Previous word start |
@@ -130,11 +130,11 @@ curl https://api.example.com/data | jiq
 | Key | Action |
 |-----|--------|
 | `dw` / `db` / `de` | Delete word forward/back/end |
-| `d$` / `d0` | Delete to end/start |
+| `d$` / `d0` / `d^` | Delete to end/start |
 | `dd` | Delete entire line |
 | `D` | Delete to end of line (same as `d$`) |
 | `cw` / `cb` / `ce` | Change word forward/back/end |
-| `c$` / `cc` | Change to end/entire line |
+| `c$` / `c0` / `c^` / `cc` | Change to end/start/entire line |
 | `C` | Change to end of line (same as `c$`) |
 
 **Undo/Redo**
