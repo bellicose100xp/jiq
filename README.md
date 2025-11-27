@@ -3,11 +3,11 @@
 ## Features
 
 - **Real-time query execution** - See results as you type
-- **Context-aware autocomplete** - Intelligent suggestions with JSON type information for fields and functions
+- **[EXPERIMENTAL] Context-aware autocomplete** - Intelligent suggestions with JSON type information for fields and functions
 - **Query history** - Searchable history of successful queries
 - **Floating error overlay** - Syntax errors appear in a non-disruptive overlay (Ctrl+E to toggle)
 - **VIM keybindings** - VIM-style editing for power users
-- **Syntax highlighting** - Colorized JSON output and jq query syntax (experimental)
+- **[EXPERIMENTAL] Syntax highlighting** - Colorized JSON output and jq query syntax (experimental)
 - **Flexible output** - Export results or query string
 
 ## Demo
