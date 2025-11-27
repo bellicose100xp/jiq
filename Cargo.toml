@@ -43,6 +43,11 @@ dirs = "5.0"
 # Fuzzy matching (fzf-style)
 fuzzy-matcher = "0.3"
 
+# Logging (code only active in debug builds via #[cfg(debug_assertions)])
+log = "0.4"
+env_logger = "0.11"
+chrono = "0.4"
+
 [dev-dependencies]
 # Testing utilities
 tempfile = "3.8"

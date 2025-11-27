@@ -28,6 +28,37 @@ struct Args {
 }
 
 fn main() -> Result<()> {
+    // Initialize logger (only in debug builds)
+    // Writes to /tmp/jiq-debug.log at DEBUG level
+    #[cfg(debug_assertions)]
+    {
+        use std::io::Write;
+
+        let log_file = std::fs::OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open("/tmp/jiq-debug.log")
+            .expect("Failed to open /tmp/jiq-debug.log");
+
+        env_logger::Builder::new()
+            .filter_level(log::LevelFilter::Debug)
+            .target(env_logger::Target::Pipe(Box::new(log_file)))
+            .format(|buf, record| {
+                use std::time::SystemTime;
+                let datetime: chrono::DateTime<chrono::Local> = SystemTime::now().into();
+                writeln!(
+                    buf,
+                    "[{}] [{}] {}",
+                    datetime.format("%Y-%m-%dT%H:%M:%S%.3f"),
+                    record.level(),
+                    record.args()
+                )
+            })
+            .init();
+
+        log::debug!("=== JIQ DEBUG SESSION STARTED ===");
+    }
+
     // Install color-eyre panic hook for better error messages
     color_eyre::install()?;
 

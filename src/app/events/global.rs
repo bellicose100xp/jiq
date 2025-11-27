@@ -220,7 +220,13 @@ mod tests {
     use tui_textarea::CursorMove;
 
     // Test fixture data
-    const TEST_JSON: &str = r#"{"name": "test", "age": 30, "city": "NYC"}"#;
+    const TEST_JSON: &str = r#"{
+        "name": "test",
+        "age": 30,
+        "city": "NYC",
+        "services": [{"name": "svc1", "serviceArn": "arn1"}],
+        "items": [{"tags": [{"name": "tag1"}]}]
+    }"#;
 
     // Helper to create a KeyEvent without modifiers
     fn key(code: KeyCode) -> KeyEvent {
@@ -236,6 +242,8 @@ mod tests {
     fn app_with_query(query: &str) -> App {
         let mut app = App::new(TEST_JSON.to_string());
         app.input.textarea.insert_str(query);
+        // Execute the query to set up base state for autosuggestions
+        app.query.execute(query);
         // Use empty in-memory history for all tests to prevent disk writes
         app.history = HistoryState::empty();
         app
@@ -1143,14 +1151,23 @@ mod tests {
         app.input.editor_mode = EditorMode::Insert;
         app.focus = Focus::InputField;
 
+        // Validate base state
+        // .na returns null, so base_query stays at "." (from App::new())
+        use crate::app::query_state::ResultType;
+        assert_eq!(app.query.base_query_for_suggestions, Some(".".to_string()),
+                   "base_query should remain '.' since .na returns null");
+        assert_eq!(app.query.base_type_for_suggestions, Some(ResultType::Object),
+                   "base_type should be Object (root object)");
+
+        // Suggestion should be "name" (no leading dot) since after Dot (CharType::Dot)
         let suggestions = vec![
-            crate::autocomplete::Suggestion::new(".name", crate::autocomplete::SuggestionType::Field),
+            crate::autocomplete::Suggestion::new("name", crate::autocomplete::SuggestionType::Field),
         ];
         app.autocomplete.update_suggestions(suggestions);
 
         app.handle_key_event(key(KeyCode::Tab));
 
-        // Should replace from the dot: .na → .name
+        // Formula for Dot: base + suggestion = "." + "name" = ".name" ✅
         assert_eq!(app.query(), ".name");
         assert!(!app.autocomplete.is_visible());
     }
@@ -1161,6 +1178,13 @@ mod tests {
         let mut app = app_with_query(".services");
         app.input.editor_mode = EditorMode::Insert;
         app.focus = Focus::InputField;
+
+        // Validate base state was set up by app_with_query
+        use crate::app::query_state::ResultType;
+        assert_eq!(app.query.base_query_for_suggestions, Some(".services".to_string()),
+                   "base_query should be '.services'");
+        assert_eq!(app.query.base_type_for_suggestions, Some(ResultType::ArrayOfObjects),
+                   "base_type should be ArrayOfObjects");
 
         // Verify cursor is at end
         assert_eq!(app.input.textarea.cursor().1, 9); // After ".services"
@@ -1180,9 +1204,18 @@ mod tests {
     #[test]
     fn test_tab_accepts_array_suggestion_replaces_short_partial() {
         // Array suggestions should replace short partials (1-3 chars)
-        let mut app = app_with_query(".services.s");
+        // First execute base query to set up state
+        let mut app = app_with_query(".services");
         app.input.editor_mode = EditorMode::Insert;
         app.focus = Focus::InputField;
+
+        // Validate base state
+        use crate::app::query_state::ResultType;
+        assert_eq!(app.query.base_query_for_suggestions, Some(".services".to_string()));
+        assert_eq!(app.query.base_type_for_suggestions, Some(ResultType::ArrayOfObjects));
+
+        // Now add the partial to textarea
+        app.input.textarea.insert_str(".s");
 
         let suggestions = vec![
             crate::autocomplete::Suggestion::new("[].serviceArn", crate::autocomplete::SuggestionType::Field),
@@ -1191,18 +1224,29 @@ mod tests {
 
         app.handle_key_event(key(KeyCode::Tab));
 
-        // Should replace from dot: .services.s → .services[].serviceArn
+        // Should replace: base + suggestion = ".services" + "[].serviceArn"
         assert_eq!(app.query(), ".services[].serviceArn");
         assert!(!app.autocomplete.is_visible());
     }
 
     #[test]
     fn test_tab_accepts_nested_array_suggestion() {
-        // Nested array access should work correctly
+        // Nested array access: user types dot after .items[].tags to trigger autocomplete
         let mut app = app_with_query(".items[].tags");
         app.input.editor_mode = EditorMode::Insert;
         app.focus = Focus::InputField;
 
+        // Validate base state
+        use crate::app::query_state::ResultType;
+        assert_eq!(app.query.base_query_for_suggestions, Some(".items[].tags".to_string()),
+                   "base_query should be '.items[].tags'");
+        assert_eq!(app.query.base_type_for_suggestions, Some(ResultType::ArrayOfObjects),
+                   "base_type should be ArrayOfObjects");
+
+        // User types "." to trigger autocomplete
+        app.input.textarea.insert_char('.');
+
+        // Suggestion is "[].name" (no leading dot since after NoOp 's')
         let suggestions = vec![
             crate::autocomplete::Suggestion::new("[].name", crate::autocomplete::SuggestionType::Field),
         ];
@@ -1210,7 +1254,8 @@ mod tests {
 
         app.handle_key_event(key(KeyCode::Tab));
 
-        // Should append: .items[].tags → .items[].tags[].name
+        // Formula for NoOp: base + suggestion
+        // ".items[].tags" + "[].name" = ".items[].tags[].name" ✅
         assert_eq!(app.query(), ".items[].tags[].name");
         assert!(!app.autocomplete.is_visible());
     }

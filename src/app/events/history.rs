@@ -47,12 +47,8 @@ fn replace_query_with(app: &mut App, text: &str) {
 
     // Execute the new query
     let query = app.input.textarea.lines()[0].as_ref();
-    app.query.result = app.query.executor.execute(query);
-
-    // Cache successful results
-    if let Ok(result) = &app.query.result {
-        app.query.last_successful_result = Some(result.clone());
-    }
+    // Use QueryState::execute() which handles non-null result caching
+    app.query.execute(query);
 
     app.results_scroll.reset();
     app.error_overlay_visible = false;

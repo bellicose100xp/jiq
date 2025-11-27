@@ -20,12 +20,8 @@ pub fn handle_insert_mode_key(app: &mut App, key: KeyEvent) {
         app.history.reset_cycling();
 
         let query = app.input.textarea.lines()[0].as_ref();
-        app.query.result = app.query.executor.execute(query);
-
-        // Cache successful results
-        if let Ok(result) = &app.query.result {
-            app.query.last_successful_result = Some(result.clone());
-        }
+        // Use QueryState::execute() which handles non-null result caching
+        app.query.execute(query);
 
         // Reset scroll when query changes
         app.results_scroll.reset();
@@ -238,12 +234,8 @@ pub fn handle_operator_mode_key(app: &mut App, key: KeyEvent) {
 /// Execute current query and update results
 pub fn execute_query(app: &mut App) {
     let query = app.input.textarea.lines()[0].as_ref();
-    app.query.result = app.query.executor.execute(query);
-
-    // Cache successful results
-    if let Ok(result) = &app.query.result {
-        app.query.last_successful_result = Some(result.clone());
-    }
+    // Use QueryState::execute() which handles non-null result caching
+    app.query.execute(query);
 
     app.results_scroll.reset();
     app.error_overlay_visible = false; // Auto-hide error overlay on query change
@@ -814,17 +806,28 @@ mod tests {
 
     #[test]
     fn test_tab_accepts_autocomplete_suggestion() {
+        // Test accepting field suggestion at root level
         let mut app = app_with_query(".na");
         app.input.editor_mode = EditorMode::Insert;
         app.focus = Focus::InputField;
 
+        // Validate base state
+        // .na returns null, so base_query stays at "." (from App::new())
+        use crate::app::query_state::ResultType;
+        assert_eq!(app.query.base_query_for_suggestions, Some(".".to_string()),
+                   "base_query should remain '.' since .na returns null");
+        assert_eq!(app.query.base_type_for_suggestions, Some(ResultType::Object),
+                   "base_type should be Object (root object)");
+
+        // Suggestion should be "name" (no leading dot) since after Dot (CharType::Dot)
         let suggestions = vec![
-            Suggestion::new(".name", SuggestionType::Field),
+            Suggestion::new("name", SuggestionType::Field),
         ];
         app.autocomplete.update_suggestions(suggestions);
 
         app.handle_key_event(key(KeyCode::Tab));
 
+        // Formula for Dot: base + suggestion = "." + "name" = ".name" ✅
         assert_eq!(app.query(), ".name");
         assert!(!app.autocomplete.is_visible());
     }

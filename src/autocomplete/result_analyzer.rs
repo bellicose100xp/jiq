@@ -1,3 +1,4 @@
+use crate::app::query_state::ResultType;
 use crate::autocomplete::state::{JsonFieldType, Suggestion, SuggestionType};
 use serde_json::Value;
 
@@ -11,57 +12,29 @@ impl ResultAnalyzer {
     /// Main entry point: analyze a query result and extract suggestions
     ///
     /// # Arguments
-    /// * `result` - The query execution result (may contain ANSI codes, multiple values)
+    /// * `result` - The query execution result WITHOUT ANSI codes (pre-stripped)
+    /// * `result_type` - The type of result (ArrayOfObjects, DestructuredObjects, etc.)
+    /// * `needs_leading_dot` - Whether suggestions should include leading dot (based on trigger context)
     ///
     /// # Returns
-    /// Vector of field suggestions extracted from the result
-    pub fn analyze_result(result: &str) -> Vec<Suggestion> {
+    /// Vector of field suggestions in context-appropriate format
+    pub fn analyze_result(
+        result: &str,
+        result_type: ResultType,
+        needs_leading_dot: bool,
+    ) -> Vec<Suggestion> {
         if result.trim().is_empty() {
             return Vec::new();
         }
 
-        // Strip ANSI color codes from jq output
-        let clean_result = Self::strip_ansi_codes(result);
-
         // Parse the first JSON value from the result
-        let value = match Self::parse_first_json_value(&clean_result) {
+        let value = match Self::parse_first_json_value(result) {
             Some(v) => v,
             None => return Vec::new(),
         };
 
-        // Extract field suggestions from the parsed value
-        Self::extract_top_level_suggestions(&value)
-    }
-
-    /// Strip ANSI escape codes from a string
-    ///
-    /// jq outputs colored results with ANSI codes like:
-    /// - `\x1b[0m` (reset)
-    /// - `\x1b[1;39m` (bold)
-    /// - `\x1b[0;32m` (green)
-    ///
-    /// This function removes all ANSI codes efficiently
-    fn strip_ansi_codes(s: &str) -> String {
-        let mut result = String::with_capacity(s.len());
-        let mut chars = s.chars().peekable();
-
-        while let Some(ch) = chars.next() {
-            if ch == '\x1b' {
-                // Found escape character, skip until 'm' (end of ANSI sequence)
-                if chars.peek() == Some(&'[') {
-                    chars.next(); // consume '['
-                    while let Some(c) = chars.next() {
-                        if c == 'm' {
-                            break;
-                        }
-                    }
-                }
-            } else {
-                result.push(ch);
-            }
-        }
-
-        result
+        // Extract field suggestions based on result type and context
+        Self::extract_suggestions_for_type(&value, result_type, needs_leading_dot)
     }
 
     /// Parse the first JSON value from text (handles multi-value output)
@@ -74,6 +47,7 @@ impl ResultAnalyzer {
     /// ```
     ///
     /// This function parses the first valid JSON value and ignores the rest.
+    /// Handles both compact and pretty-printed JSON output.
     fn parse_first_json_value(text: &str) -> Option<Value> {
         let text = text.trim();
         if text.is_empty() {
@@ -85,52 +59,66 @@ impl ResultAnalyzer {
             return Some(value);
         }
 
-        // Handle multi-value output: parse line by line until we find valid JSON
-        for line in text.lines() {
-            let line = line.trim();
-            if line.is_empty() {
-                continue;
-            }
-
-            if let Ok(value) = serde_json::from_str(line) {
-                return Some(value);
-            }
+        // Handle multi-value output - could be pretty-printed or compact
+        // Strategy: Use serde_json's streaming parser to read first value
+        let mut deserializer = serde_json::Deserializer::from_str(text).into_iter();
+        if let Some(Ok(value)) = deserializer.next() {
+            return Some(value);
         }
 
         None
     }
 
-    /// Extract field suggestions from a JSON value
+    /// Extract suggestions based on result type and context
     ///
-    /// # Behavior based on value type:
-    /// - **Object**: Returns field names (`.fieldName`)
-    /// - **Array**: Returns array accessor (`.[]`) + suggestions for array elements
-    /// - **Primitives** (string/number/bool/null): Returns empty (no suggestions)
-    fn extract_top_level_suggestions(value: &Value) -> Vec<Suggestion> {
-        match value {
-            Value::Object(map) => {
-                let mut suggestions = Vec::new();
-                for (key, val) in map {
-                    let field_type = Self::detect_json_type(val);
-                    suggestions.push(Suggestion::new_with_type(
-                        format!(".{}", key),
-                        SuggestionType::Field,
-                        Some(field_type),
-                    ));
-                }
-                suggestions
-            }
-            Value::Array(arr) => {
+    /// Generates suggestions in format appropriate for the result type and trigger context:
+    /// - ArrayOfObjects: `[]`, `[].field` (with optional leading `.`)
+    /// - DestructuredObjects: `field` (with optional leading `.`)
+    /// - Object: `.field` (with optional leading `.`)
+    /// - Primitives: No suggestions
+    fn extract_suggestions_for_type(
+        value: &Value,
+        result_type: ResultType,
+        needs_leading_dot: bool,
+    ) -> Vec<Suggestion> {
+        match result_type {
+            ResultType::ArrayOfObjects => {
+                // Suggestions for array containing objects
+                let dot_prefix = if needs_leading_dot { "." } else { "" };
                 let mut suggestions = vec![
-                    Suggestion::new_with_type(".[]", SuggestionType::Pattern, None)
+                    Suggestion::new_with_type(
+                        format!("{}[]", dot_prefix),
+                        SuggestionType::Pattern,
+                        None,
+                    )
                 ];
 
-                // Add suggestions for array element fields if first element is an object
-                if let Some(Value::Object(map)) = arr.first() {
+                // Add field suggestions from first object
+                if let Value::Array(arr) = value {
+                    if let Some(Value::Object(map)) = arr.first() {
+                        for (key, val) in map {
+                            let field_type = Self::detect_json_type(val);
+                            suggestions.push(Suggestion::new_with_type(
+                                format!("{}[].{}", dot_prefix, key),
+                                SuggestionType::Field,
+                                Some(field_type),
+                            ));
+                        }
+                    }
+                }
+
+                suggestions
+            }
+            ResultType::DestructuredObjects => {
+                // Suggestions for destructured objects (from .[])
+                let prefix = if needs_leading_dot { "." } else { "" };
+                let mut suggestions = Vec::new();
+
+                if let Value::Object(map) = value {
                     for (key, val) in map {
                         let field_type = Self::detect_json_type(val);
                         suggestions.push(Suggestion::new_with_type(
-                            format!(".[]?.{}", key),
+                            format!("{}{}", prefix, key),
                             SuggestionType::Field,
                             Some(field_type),
                         ));
@@ -139,7 +127,34 @@ impl ResultAnalyzer {
 
                 suggestions
             }
-            _ => Vec::new(), // Primitives: no field suggestions
+            ResultType::Object => {
+                // Suggestions for single object
+                let prefix = if needs_leading_dot { "." } else { "" };
+                let mut suggestions = Vec::new();
+
+                if let Value::Object(map) = value {
+                    for (key, val) in map {
+                        let field_type = Self::detect_json_type(val);
+                        suggestions.push(Suggestion::new_with_type(
+                            format!("{}{}", prefix, key),
+                            SuggestionType::Field,
+                            Some(field_type),
+                        ));
+                    }
+                }
+
+                suggestions
+            }
+            ResultType::Array => {
+                // Array of primitives - just suggest []
+                let dot_prefix = if needs_leading_dot { "." } else { "" };
+                vec![Suggestion::new_with_type(
+                    format!("{}[]", dot_prefix),
+                    SuggestionType::Pattern,
+                    None,
+                )]
+            }
+            _ => Vec::new(), // Primitives (String, Number, Boolean, Null): no field suggestions
         }
     }
 
@@ -176,8 +191,13 @@ mod tests {
 
     #[test]
     fn test_analyze_simple_object() {
+        // Single object result after operator (needs leading dot)
         let result = r#"{"name": "test", "age": 30, "active": true}"#;
-        let suggestions = ResultAnalyzer::analyze_result(result);
+        let suggestions = ResultAnalyzer::analyze_result(
+            result,
+            ResultType::Object,
+            true, // After operator like | or at start
+        );
 
         assert_eq!(suggestions.len(), 3);
         assert!(suggestions.iter().any(|s| s.text == ".name"));
@@ -187,8 +207,9 @@ mod tests {
 
     #[test]
     fn test_analyze_nested_object() {
+        // Nested object after operator
         let result = r#"{"user": {"name": "Alice", "profile": {"city": "NYC"}}}"#;
-        let suggestions = ResultAnalyzer::analyze_result(result);
+        let suggestions = ResultAnalyzer::analyze_result(result, ResultType::Object, true);
 
         // Should only return top-level fields
         assert_eq!(suggestions.len(), 1);
@@ -196,20 +217,34 @@ mod tests {
     }
 
     #[test]
-    fn test_analyze_array_result() {
+    fn test_analyze_array_of_objects_after_operator() {
+        // Array of objects after operator (needs leading dot)
         let result = r#"[{"id": 1, "name": "a"}, {"id": 2, "name": "b"}]"#;
-        let suggestions = ResultAnalyzer::analyze_result(result);
+        let suggestions = ResultAnalyzer::analyze_result(result, ResultType::ArrayOfObjects, true);
 
-        // Should return .[] and element field suggestions
+        // Should return .[] and element field suggestions with leading dot
         assert!(suggestions.iter().any(|s| s.text == ".[]"));
-        assert!(suggestions.iter().any(|s| s.text == ".[]?.id"));
-        assert!(suggestions.iter().any(|s| s.text == ".[]?.name"));
+        assert!(suggestions.iter().any(|s| s.text == ".[].id"));
+        assert!(suggestions.iter().any(|s| s.text == ".[].name"));
+    }
+
+    #[test]
+    fn test_analyze_array_of_objects_after_continuation() {
+        // Array of objects after continuation like .services. (no leading dot)
+        let result = r#"[{"id": 1, "name": "a"}, {"id": 2, "name": "b"}]"#;
+        let suggestions = ResultAnalyzer::analyze_result(result, ResultType::ArrayOfObjects, false);
+
+        // Should return [] and element field suggestions without leading dot
+        assert!(suggestions.iter().any(|s| s.text == "[]"));
+        assert!(suggestions.iter().any(|s| s.text == "[].id"));
+        assert!(suggestions.iter().any(|s| s.text == "[].name"));
     }
 
     #[test]
     fn test_analyze_empty_array() {
+        // Empty array after operator
         let result = "[]";
-        let suggestions = ResultAnalyzer::analyze_result(result);
+        let suggestions = ResultAnalyzer::analyze_result(result, ResultType::Array, true);
 
         // Should only return .[] for empty arrays
         assert_eq!(suggestions.len(), 1);
@@ -218,36 +253,25 @@ mod tests {
 
     #[test]
     fn test_analyze_empty_object() {
+        // Empty object
         let result = "{}";
-        let suggestions = ResultAnalyzer::analyze_result(result);
+        let suggestions = ResultAnalyzer::analyze_result(result, ResultType::Object, true);
 
         assert_eq!(suggestions.len(), 0);
     }
 
     // ============================================================================
-    // ANSI Handling Tests
+    // Pretty-Printed JSON Handling Tests
     // ============================================================================
 
     #[test]
-    fn test_strip_ansi_simple() {
-        let input = "\x1b[0m{\x1b[1;39m\"name\"\x1b[0m: \x1b[0;32m\"test\"\x1b[0m}";
-        let output = ResultAnalyzer::strip_ansi_codes(input);
-        assert_eq!(output, r#"{"name": "test"}"#);
-    }
-
-    #[test]
-    fn test_strip_ansi_complex() {
-        let input = "\x1b[1;39m{\x1b[0m\n  \x1b[0;34m\"key\"\x1b[0m: \x1b[0;32m\"value\"\x1b[0m\n\x1b[1;39m}\x1b[0m";
-        let output = ResultAnalyzer::strip_ansi_codes(input);
-        assert!(output.contains(r#""key""#));
-        assert!(output.contains(r#""value""#));
-        assert!(!output.contains("\x1b"));
-    }
-
-    #[test]
-    fn test_analyze_colored_output() {
-        let result = "\x1b[0m{\x1b[1;39m\"name\"\x1b[0m: \x1b[0;32m\"Alice\"\x1b[0m, \x1b[1;39m\"age\"\x1b[0m: \x1b[0;33m30\x1b[0m}";
-        let suggestions = ResultAnalyzer::analyze_result(result);
+    fn test_analyze_pretty_printed_object() {
+        // Pretty-printed object after operator
+        let result = r#"{
+  "name": "Alice",
+  "age": 30
+}"#;
+        let suggestions = ResultAnalyzer::analyze_result(result, ResultType::Object, true);
 
         assert_eq!(suggestions.len(), 2);
         assert!(suggestions.iter().any(|s| s.text == ".name"));
@@ -259,40 +283,75 @@ mod tests {
     // ============================================================================
 
     #[test]
-    fn test_multivalue_objects() {
+    fn test_multivalue_destructured_objects_after_bracket() {
+        // Destructured objects after [] (no leading dot needed)
         let result = r#"{"name": "Alice", "age": 30}
 {"name": "Bob", "age": 25}
 {"name": "Charlie", "age": 35}"#;
-        let suggestions = ResultAnalyzer::analyze_result(result);
+        let suggestions = ResultAnalyzer::analyze_result(result, ResultType::DestructuredObjects, false);
 
-        // Should parse first object only
+        // Should parse first object only, no leading dot
         assert_eq!(suggestions.len(), 2);
+        assert!(suggestions.iter().any(|s| s.text == "name"));
+        assert!(suggestions.iter().any(|s| s.text == "age"));
+    }
+
+    #[test]
+    fn test_multivalue_destructured_objects_after_operator() {
+        // Destructured objects after operator (with leading dot)
+        let result = r#"{"clusterArn": "arn1", "name": "svc1"}
+{"clusterArn": "arn2", "name": "svc2"}"#;
+        let suggestions = ResultAnalyzer::analyze_result(result, ResultType::DestructuredObjects, true);
+
+        // Should parse first object with leading dot
+        assert_eq!(suggestions.len(), 2);
+        assert!(suggestions.iter().any(|s| s.text == ".clusterArn"));
         assert!(suggestions.iter().any(|s| s.text == ".name"));
-        assert!(suggestions.iter().any(|s| s.text == ".age"));
+    }
+
+    #[test]
+    fn test_multivalue_pretty_printed_destructured_after_bracket() {
+        // Pretty-printed destructured objects after [] (no leading dot)
+        let result = r#"{
+  "clusterArn": "arn1",
+  "name": "svc1"
+}
+{
+  "clusterArn": "arn2",
+  "name": "svc2"
+}"#;
+        let suggestions = ResultAnalyzer::analyze_result(result, ResultType::DestructuredObjects, false);
+
+        // Should parse first object, no leading dot
+        assert_eq!(suggestions.len(), 2);
+        assert!(suggestions.iter().any(|s| s.text == "clusterArn"));
+        assert!(suggestions.iter().any(|s| s.text == "name"));
     }
 
     #[test]
     fn test_multivalue_mixed_types() {
+        // Multiple primitives - first is number
         let result = r#"42
 "hello"
 {"field": "value"}"#;
-        let suggestions = ResultAnalyzer::analyze_result(result);
+        let suggestions = ResultAnalyzer::analyze_result(result, ResultType::Number, true);
 
-        // Should parse first value (42), which is a primitive -> no suggestions
+        // Primitives have no field suggestions
         assert_eq!(suggestions.len(), 0);
     }
 
     #[test]
     fn test_multivalue_with_whitespace() {
+        // Object with whitespace, after operator
         let result = r#"
 
 {"key1": "val1"}
 
 {"key2": "val2"}
 "#;
-        let suggestions = ResultAnalyzer::analyze_result(result);
+        let suggestions = ResultAnalyzer::analyze_result(result, ResultType::DestructuredObjects, true);
 
-        // Should skip empty lines and parse first object
+        // Should skip empty lines and parse first object with leading dot
         assert_eq!(suggestions.len(), 1);
         assert_eq!(suggestions[0].text, ".key1");
     }
@@ -302,11 +361,11 @@ mod tests {
     // ============================================================================
 
     #[test]
-    fn test_object_constructor_suggestions() {
-        // This is THE main fix: after `.services[] | {name: .serviceName, cap: .base}`
-        // the result is objects with ONLY "name" and "cap" fields
+    fn test_object_constructor_suggestions_after_operator() {
+        // THE main fix: after `.services[] | {name: .serviceName, cap: .base}`
+        // Result is object with ONLY "name" and "cap" fields
         let result = r#"{"name": "MyService", "cap": 10}"#;
-        let suggestions = ResultAnalyzer::analyze_result(result);
+        let suggestions = ResultAnalyzer::analyze_result(result, ResultType::Object, true);
 
         assert_eq!(suggestions.len(), 2);
         assert!(suggestions.iter().any(|s| s.text == ".name"));
@@ -319,9 +378,9 @@ mod tests {
 
     #[test]
     fn test_array_constructor_suggestions() {
-        // After `[.field1, .field2]` the result is an array
+        // After `[.field1, .field2]` the result is a primitive array
         let result = r#"["value1", "value2"]"#;
-        let suggestions = ResultAnalyzer::analyze_result(result);
+        let suggestions = ResultAnalyzer::analyze_result(result, ResultType::Array, true);
 
         // Should suggest .[] for array access
         assert!(suggestions.iter().any(|s| s.text == ".[]"));
@@ -333,31 +392,30 @@ mod tests {
 
     #[test]
     fn test_primitive_results() {
-        // Number
-        assert_eq!(ResultAnalyzer::analyze_result("42").len(), 0);
-        // String
-        assert_eq!(ResultAnalyzer::analyze_result(r#""hello""#).len(), 0);
-        // Boolean
-        assert_eq!(ResultAnalyzer::analyze_result("true").len(), 0);
+        // Primitives have no field suggestions
+        assert_eq!(ResultAnalyzer::analyze_result("42", ResultType::Number, true).len(), 0);
+        assert_eq!(ResultAnalyzer::analyze_result(r#""hello""#, ResultType::String, true).len(), 0);
+        assert_eq!(ResultAnalyzer::analyze_result("true", ResultType::Boolean, true).len(), 0);
     }
 
     #[test]
     fn test_null_result() {
-        let suggestions = ResultAnalyzer::analyze_result("null");
+        let suggestions = ResultAnalyzer::analyze_result("null", ResultType::Null, true);
         assert_eq!(suggestions.len(), 0);
     }
 
     #[test]
     fn test_empty_string_result() {
-        let suggestions = ResultAnalyzer::analyze_result("");
+        // Empty result treated as null
+        let suggestions = ResultAnalyzer::analyze_result("", ResultType::Null, true);
         assert_eq!(suggestions.len(), 0);
     }
 
     #[test]
     fn test_invalid_json_result() {
+        // Invalid JSON treated as null - returns empty gracefully
         let result = "not valid json {]";
-        let suggestions = ResultAnalyzer::analyze_result(result);
-        // Should return empty gracefully
+        let suggestions = ResultAnalyzer::analyze_result(result, ResultType::Null, true);
         assert_eq!(suggestions.len(), 0);
     }
 
@@ -373,13 +431,13 @@ mod tests {
         }
         result.push(']');
 
-        let suggestions = ResultAnalyzer::analyze_result(&result);
+        let suggestions = ResultAnalyzer::analyze_result(&result, ResultType::ArrayOfObjects, true);
 
-        // Should extract fields from first array element
+        // Should extract fields from first array element with leading dot
         assert!(suggestions.iter().any(|s| s.text == ".[]"));
-        assert!(suggestions.iter().any(|s| s.text == ".[]?.id"));
-        assert!(suggestions.iter().any(|s| s.text == ".[]?.name"));
-        assert!(suggestions.iter().any(|s| s.text == ".[]?.value"));
+        assert!(suggestions.iter().any(|s| s.text == ".[].id"));
+        assert!(suggestions.iter().any(|s| s.text == ".[].name"));
+        assert!(suggestions.iter().any(|s| s.text == ".[].value"));
     }
 
     // ============================================================================
@@ -388,9 +446,9 @@ mod tests {
 
     #[test]
     fn test_array_with_nulls_in_result() {
-        // Result contains nulls from optional chaining
+        // Array with nulls from optional chaining, after operator
         let result = r#"[null, null, {"field": "value"}]"#;
-        let suggestions = ResultAnalyzer::analyze_result(result);
+        let suggestions = ResultAnalyzer::analyze_result(result, ResultType::ArrayOfObjects, true);
 
         // Should suggest based on first element (null has no fields)
         assert!(suggestions.iter().any(|s| s.text == ".[]"));
@@ -401,21 +459,125 @@ mod tests {
     fn test_bounded_scan_in_results() {
         // Test that we only look at the first element, not all elements
         let result = r#"[{"a": 1}, {"b": 2}, {"c": 3}]"#;
-        let suggestions = ResultAnalyzer::analyze_result(result);
+        let suggestions = ResultAnalyzer::analyze_result(result, ResultType::ArrayOfObjects, true);
 
-        // Should only have fields from first element
+        // Should only have fields from first element with leading dot
         assert!(suggestions.iter().any(|s| s.text == ".[]"));
-        assert!(suggestions.iter().any(|s| s.text == ".[]?.a"));
-        assert!(!suggestions.iter().any(|s| s.text == ".[]?.b"));
-        assert!(!suggestions.iter().any(|s| s.text == ".[]?.c"));
+        assert!(suggestions.iter().any(|s| s.text == ".[].a"));
+        assert!(!suggestions.iter().any(|s| s.text == ".[].b"));
+        assert!(!suggestions.iter().any(|s| s.text == ".[].c"));
     }
 
     // ============================================================================
     // Type Detection Tests
     // ============================================================================
 
+    // ============================================================================
+    // Type-Aware Suggestion Generation Tests
+    // ============================================================================
+
+    #[test]
+    fn test_destructured_objects_after_bracket_no_prefix() {
+        // After .services[]. → destructured objects, no prefix
+        let result = r#"{"serviceArn": "arn1", "config": {}}
+{"serviceArn": "arn2", "config": {}}"#;
+        let suggestions = ResultAnalyzer::analyze_result(result, ResultType::DestructuredObjects, false);
+
+        // Should suggest fields without any prefix
+        assert!(suggestions.iter().any(|s| s.text == "serviceArn"));
+        assert!(suggestions.iter().any(|s| s.text == "config"));
+        // Should NOT have leading dot
+        assert!(!suggestions.iter().any(|s| s.text.starts_with('.')));
+    }
+
+    #[test]
+    fn test_destructured_objects_after_pipe_with_prefix() {
+        // After .services[] | . → destructured objects, needs leading dot
+        let result = r#"{"serviceArn": "arn1"}
+{"serviceArn": "arn2"}"#;
+        let suggestions = ResultAnalyzer::analyze_result(result, ResultType::DestructuredObjects, true);
+
+        // Should suggest fields WITH leading dot
+        assert!(suggestions.iter().any(|s| s.text == ".serviceArn"));
+        // All should start with dot
+        assert!(suggestions.iter().all(|s| s.text.starts_with('.')));
+    }
+
+    #[test]
+    fn test_array_of_objects_after_dot_no_prefix() {
+        // After .services. → array of objects, no leading dot
+        let result = r#"[{"id": 1}, {"id": 2}]"#;
+        let suggestions = ResultAnalyzer::analyze_result(result, ResultType::ArrayOfObjects, false);
+
+        // Should suggest [] and [].field without leading dot
+        assert!(suggestions.iter().any(|s| s.text == "[]"));
+        assert!(suggestions.iter().any(|s| s.text == "[].id"));
+        // Should NOT start with dot
+        assert!(!suggestions.iter().any(|s| s.text.starts_with('.')));
+    }
+
+    #[test]
+    fn test_array_of_objects_after_pipe_with_prefix() {
+        // After .services | . → array of objects, needs leading dot
+        let result = r#"[{"id": 1}, {"id": 2}]"#;
+        let suggestions = ResultAnalyzer::analyze_result(result, ResultType::ArrayOfObjects, true);
+
+        // Should suggest .[] and .[].field with leading dot
+        assert!(suggestions.iter().any(|s| s.text == ".[]"));
+        assert!(suggestions.iter().any(|s| s.text == ".[].id"));
+        // All should start with dot
+        assert!(suggestions.iter().all(|s| s.text.starts_with('.')));
+    }
+
+    #[test]
+    fn test_single_object_after_bracket_no_prefix() {
+        // After .user[0]. → single object, no leading dot
+        let result = r#"{"name": "Alice", "age": 30}"#;
+        let suggestions = ResultAnalyzer::analyze_result(result, ResultType::Object, false);
+
+        // Should suggest fields without leading dot
+        assert!(suggestions.iter().any(|s| s.text == "name"));
+        assert!(suggestions.iter().any(|s| s.text == "age"));
+        assert!(!suggestions.iter().any(|s| s.text.starts_with('.')));
+    }
+
+    #[test]
+    fn test_single_object_after_operator_with_prefix() {
+        // After .user | . → single object, needs leading dot
+        let result = r#"{"name": "Alice", "age": 30}"#;
+        let suggestions = ResultAnalyzer::analyze_result(result, ResultType::Object, true);
+
+        // Should suggest fields WITH leading dot
+        assert!(suggestions.iter().any(|s| s.text == ".name"));
+        assert!(suggestions.iter().any(|s| s.text == ".age"));
+        assert!(suggestions.iter().all(|s| s.text.starts_with('.')));
+    }
+
+    #[test]
+    fn test_primitive_array_after_operator() {
+        // Array of primitives after operator
+        let result = "[1, 2, 3]";
+        let suggestions = ResultAnalyzer::analyze_result(result, ResultType::Array, true);
+
+        // Should only suggest .[]
+        assert_eq!(suggestions.len(), 1);
+        assert_eq!(suggestions[0].text, ".[]");
+    }
+
+    #[test]
+    fn test_primitive_array_after_continuation() {
+        // Array of primitives after continuation
+        let result = "[1, 2, 3]";
+        let suggestions = ResultAnalyzer::analyze_result(result, ResultType::Array, false);
+
+        // Should only suggest [] (no leading dot)
+        assert_eq!(suggestions.len(), 1);
+        assert_eq!(suggestions[0].text, "[]");
+    }
+
     #[test]
     fn test_field_type_detection() {
+        // Object with various field types, after operator
         let result = r#"{
             "str": "hello",
             "num": 42,
@@ -424,7 +586,7 @@ mod tests {
             "obj": {"nested": "value"},
             "arr": [1, 2, 3]
         }"#;
-        let suggestions = ResultAnalyzer::analyze_result(result);
+        let suggestions = ResultAnalyzer::analyze_result(result, ResultType::Object, true);
 
         // Verify types are correctly detected
         let str_field = suggestions.iter().find(|s| s.text == ".str").unwrap();
