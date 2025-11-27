@@ -26,13 +26,39 @@ pub fn handle_results_pane_key(app: &mut App, key: KeyEvent) {
             app.results_scroll.scroll_down(10);
         }
 
+        // Horizontal scrolling (1 column)
+        KeyCode::Left | KeyCode::Char('h') => {
+            app.results_scroll.scroll_left(1);
+        }
+        KeyCode::Right | KeyCode::Char('l') => {
+            app.results_scroll.scroll_right(1);
+        }
+
+        // Horizontal scrolling (10 columns)
+        KeyCode::Char('H') => {
+            app.results_scroll.scroll_left(10);
+        }
+        KeyCode::Char('L') => {
+            app.results_scroll.scroll_right(10);
+        }
+
+        // Jump to left edge
+        KeyCode::Char('0') | KeyCode::Char('^') => {
+            app.results_scroll.jump_to_left();
+        }
+
+        // Jump to right edge
+        KeyCode::Char('$') => {
+            app.results_scroll.jump_to_right();
+        }
+
         // Jump to top
         KeyCode::Home | KeyCode::Char('g') => {
             app.results_scroll.jump_to_top();
         }
 
         // Jump to bottom
-        KeyCode::Char('G') => {
+        KeyCode::End | KeyCode::Char('G') => {
             app.results_scroll.jump_to_bottom();
         }
 
@@ -396,5 +422,144 @@ mod tests {
 
         app.handle_key_event(key(KeyCode::Char('?')));
         assert!(app.help.visible);
+    }
+
+    // ========== Horizontal Scroll Tests ==========
+
+    fn app_with_wide_content() -> App {
+        let mut app = app_with_query(".");
+        app.focus = Focus::ResultsPane;
+        // Content with long lines (100 chars each)
+        let content: String = (0..10)
+            .map(|i| format!("{}{}\n", i, "x".repeat(100)))
+            .collect();
+        app.query.result = Ok(content);
+        app.results_scroll.update_h_bounds(101, 40); // max_h_offset = 61
+        app
+    }
+
+    #[test]
+    fn test_h_scrolls_left_one_column() {
+        let mut app = app_with_wide_content();
+        app.results_scroll.h_offset = 10;
+
+        app.handle_key_event(key(KeyCode::Char('h')));
+
+        assert_eq!(app.results_scroll.h_offset, 9);
+    }
+
+    #[test]
+    fn test_l_scrolls_right_one_column() {
+        let mut app = app_with_wide_content();
+        app.results_scroll.h_offset = 0;
+
+        app.handle_key_event(key(KeyCode::Char('l')));
+
+        assert_eq!(app.results_scroll.h_offset, 1);
+    }
+
+    #[test]
+    fn test_left_arrow_scrolls_left() {
+        let mut app = app_with_wide_content();
+        app.results_scroll.h_offset = 10;
+
+        app.handle_key_event(key(KeyCode::Left));
+
+        assert_eq!(app.results_scroll.h_offset, 9);
+    }
+
+    #[test]
+    fn test_right_arrow_scrolls_right() {
+        let mut app = app_with_wide_content();
+        app.results_scroll.h_offset = 0;
+
+        app.handle_key_event(key(KeyCode::Right));
+
+        assert_eq!(app.results_scroll.h_offset, 1);
+    }
+
+    #[test]
+    fn test_capital_h_scrolls_left_ten_columns() {
+        let mut app = app_with_wide_content();
+        app.results_scroll.h_offset = 30;
+
+        app.handle_key_event(key(KeyCode::Char('H')));
+
+        assert_eq!(app.results_scroll.h_offset, 20);
+    }
+
+    #[test]
+    fn test_capital_l_scrolls_right_ten_columns() {
+        let mut app = app_with_wide_content();
+        app.results_scroll.h_offset = 0;
+
+        app.handle_key_event(key(KeyCode::Char('L')));
+
+        assert_eq!(app.results_scroll.h_offset, 10);
+    }
+
+    #[test]
+    fn test_zero_jumps_to_left_edge() {
+        let mut app = app_with_wide_content();
+        app.results_scroll.h_offset = 50;
+
+        app.handle_key_event(key(KeyCode::Char('0')));
+
+        assert_eq!(app.results_scroll.h_offset, 0);
+    }
+
+    #[test]
+    fn test_caret_jumps_to_left_edge() {
+        let mut app = app_with_wide_content();
+        app.results_scroll.h_offset = 50;
+
+        app.handle_key_event(key(KeyCode::Char('^')));
+
+        assert_eq!(app.results_scroll.h_offset, 0);
+    }
+
+    #[test]
+    fn test_dollar_jumps_to_right_edge() {
+        let mut app = app_with_wide_content();
+        app.results_scroll.h_offset = 0;
+
+        app.handle_key_event(key(KeyCode::Char('$')));
+
+        assert_eq!(app.results_scroll.h_offset, 61); // max_h_offset
+    }
+
+    #[test]
+    fn test_h_scroll_left_clamped_at_zero() {
+        let mut app = app_with_wide_content();
+        app.results_scroll.h_offset = 0;
+
+        app.handle_key_event(key(KeyCode::Char('h')));
+
+        assert_eq!(app.results_scroll.h_offset, 0);
+    }
+
+    #[test]
+    fn test_l_scroll_right_clamped_at_max() {
+        let mut app = app_with_wide_content();
+        app.results_scroll.h_offset = 61; // at max
+
+        app.handle_key_event(key(KeyCode::Char('l')));
+
+        assert_eq!(app.results_scroll.h_offset, 61);
+    }
+
+    #[test]
+    fn test_end_jumps_to_bottom() {
+        let mut app = app_with_query(".");
+        app.focus = Focus::ResultsPane;
+
+        let content: String = (0..20).map(|i| format!("line{}\n", i)).collect();
+        app.query.result = Ok(content);
+        app.results_scroll.update_bounds(20, 10);
+        app.results_scroll.offset = 0;
+
+        app.handle_key_event(key(KeyCode::End));
+
+        assert_eq!(app.results_scroll.offset, 10); // max_offset
     }
 }

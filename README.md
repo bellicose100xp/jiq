@@ -152,10 +152,14 @@ curl https://api.example.com/data | jiq
 |-----|--------|
 | `j` / `k` / `↑` / `↓` | Scroll 1 line |
 | `J` / `K` | Scroll 10 lines |
+| `h` / `l` / `←` / `→` | Scroll 1 column |
+| `H` / `L` | Scroll 10 columns |
+| `0` / `^` | Jump to left edge |
+| `$` | Jump to right edge |
 | `Ctrl+d` / `PageDown` | Scroll half page down |
 | `Ctrl+u` / `PageUp` | Scroll half page up |
 | `g` / `Home` | Jump to top |
-| `G` | Jump to bottom |
+| `G` / `End` | Jump to bottom |
 
 </details>
 

@@ -248,6 +248,20 @@ impl QueryState {
             }
         }
     }
+
+    /// Get the maximum line width in the current results (for horizontal scrolling)
+    pub fn max_line_width(&self) -> u16 {
+        let content = match &self.result {
+            Ok(result) => result,
+            Err(_) => self.last_successful_result.as_deref().unwrap_or(""),
+        };
+        content
+            .lines()
+            .map(|l| l.len())
+            .max()
+            .unwrap_or(0)
+            .min(u16::MAX as usize) as u16
+    }
 }
 
 #[cfg(test)]

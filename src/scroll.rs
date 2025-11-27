@@ -1,21 +1,27 @@
 /// Manages scroll state for scrollable content
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ScrollState {
-    /// Current scroll offset (0-based, 0 = top)
+    /// Current vertical scroll offset (0-based, 0 = top)
     pub offset: u16,
-    /// Maximum valid scroll offset (content_lines - viewport_height)
+    /// Maximum valid vertical scroll offset
     pub max_offset: u16,
     /// Height of the visible viewport
     pub viewport_height: u16,
+    /// Current horizontal scroll offset (0-based, 0 = left)
+    pub h_offset: u16,
+    /// Maximum valid horizontal scroll offset
+    pub max_h_offset: u16,
 }
 
 impl ScrollState {
-    /// Create a new ScrollState initialized to top
+    /// Create a new ScrollState initialized to top-left
     pub fn new() -> Self {
         Self {
             offset: 0,
             max_offset: 0,
             viewport_height: 0,
+            h_offset: 0,
+            max_h_offset: 0,
         }
     }
 
@@ -68,9 +74,36 @@ impl ScrollState {
         self.offset = self.max_offset;
     }
 
+    /// Update horizontal bounds based on content and viewport width
+    pub fn update_h_bounds(&mut self, max_line_width: u16, viewport_width: u16) {
+        self.max_h_offset = max_line_width.saturating_sub(viewport_width);
+        self.h_offset = self.h_offset.min(self.max_h_offset);
+    }
+
+    /// Scroll right by the specified number of columns
+    pub fn scroll_right(&mut self, cols: u16) {
+        self.h_offset = self.h_offset.saturating_add(cols).min(self.max_h_offset);
+    }
+
+    /// Scroll left by the specified number of columns
+    pub fn scroll_left(&mut self, cols: u16) {
+        self.h_offset = self.h_offset.saturating_sub(cols);
+    }
+
+    /// Jump to the left edge
+    pub fn jump_to_left(&mut self) {
+        self.h_offset = 0;
+    }
+
+    /// Jump to the right edge
+    pub fn jump_to_right(&mut self) {
+        self.h_offset = self.max_h_offset;
+    }
+
     /// Reset scroll state to initial position
     pub fn reset(&mut self) {
         self.offset = 0;
+        self.h_offset = 0;
     }
 }
 
@@ -90,6 +123,8 @@ mod tests {
         assert_eq!(scroll.offset, 0);
         assert_eq!(scroll.max_offset, 0);
         assert_eq!(scroll.viewport_height, 0);
+        assert_eq!(scroll.h_offset, 0);
+        assert_eq!(scroll.max_h_offset, 0);
     }
 
     #[test]

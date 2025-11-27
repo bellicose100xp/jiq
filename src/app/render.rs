@@ -189,8 +189,11 @@ impl App {
             Ok(result) => {
                 // Update scroll bounds based on content and viewport
                 let viewport_height = area.height.saturating_sub(2);
+                let viewport_width = area.width.saturating_sub(2);
                 let line_count = self.results_line_count_u32();
                 self.results_scroll.update_bounds(line_count, viewport_height);
+                self.results_scroll
+                    .update_h_bounds(self.query.max_line_width(), viewport_width);
 
                 let block = Block::default()
                     .borders(Borders::ALL)
@@ -206,7 +209,7 @@ impl App {
 
                 let content = Paragraph::new(colored_text)
                     .block(block)
-                    .scroll((self.results_scroll.offset, 0));
+                    .scroll((self.results_scroll.offset, self.results_scroll.h_offset));
 
                 frame.render_widget(content, area);
             }
@@ -214,8 +217,11 @@ impl App {
                 // When there's an error, show last successful result in full area (no splitting)
                 // The error overlay will be rendered separately if user requests it with Ctrl+E
                 let viewport_height = area.height.saturating_sub(2);
+                let viewport_width = area.width.saturating_sub(2);
                 let line_count = self.results_line_count_u32();
                 self.results_scroll.update_bounds(line_count, viewport_height);
+                self.results_scroll
+                    .update_h_bounds(self.query.max_line_width(), viewport_width);
 
                 if let Some(last_result) = &self.query.last_successful_result {
                     // Render last successful result with error title
@@ -233,7 +239,7 @@ impl App {
 
                     let results_widget = Paragraph::new(colored_text)
                         .block(results_block)
-                        .scroll((self.results_scroll.offset, 0));
+                        .scroll((self.results_scroll.offset, self.results_scroll.h_offset));
 
                     frame.render_widget(results_widget, area);
                 } else {
