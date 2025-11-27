@@ -172,6 +172,19 @@ impl App {
             Color::DarkGray // Unfocused
         };
 
+        // Determine title text and style based on error state
+        let (title_text, title_style) = if self.query.result.is_err() {
+            (
+                " ⚠ Syntax Error (last successful query result) ",
+                Style::default().fg(Color::Yellow)
+            )
+        } else {
+            (
+                " Results ",
+                Style::default().fg(border_color)
+            )
+        };
+
         match &self.query.result {
             Ok(result) => {
                 // Update scroll bounds based on content and viewport
@@ -181,7 +194,7 @@ impl App {
 
                 let block = Block::default()
                     .borders(Borders::ALL)
-                    .title(" Results ")
+                    .title(Span::styled(title_text, title_style))
                     .border_style(Style::default().fg(border_color));
 
                 // Parse jq's ANSI color codes into Ratatui Text
@@ -205,10 +218,10 @@ impl App {
                 self.results_scroll.update_bounds(line_count, viewport_height);
 
                 if let Some(last_result) = &self.query.last_successful_result {
-                    // Render last successful result
+                    // Render last successful result with error title
                     let results_block = Block::default()
                         .borders(Borders::ALL)
-                        .title(" Results (last valid query) ")
+                        .title(Span::styled(title_text, title_style))
                         .border_style(Style::default().fg(border_color));
 
                     // Parse cached result with colors
@@ -224,10 +237,10 @@ impl App {
 
                     frame.render_widget(results_widget, area);
                 } else {
-                    // No cached result, show empty results pane
+                    // No cached result, show empty results pane with error title
                     let block = Block::default()
                         .borders(Borders::ALL)
-                        .title(" Results ")
+                        .title(Span::styled(title_text, title_style))
                         .border_style(Style::default().fg(border_color));
 
                     let empty_text = Text::from("");
@@ -844,6 +857,82 @@ mod snapshot_tests {
         // Create an error state
         app.query.result = Err("jq: compile error: syntax error at line 1".to_string());
         app.error_overlay_visible = true;
+
+        let output = render_to_string(&mut app, TEST_WIDTH, TEST_HEIGHT);
+        assert_snapshot!(output);
+    }
+
+    // === Error State Title Tests ===
+
+    #[test]
+    fn snapshot_results_pane_with_syntax_error_unfocused() {
+        let json = r#"{"name": "Alice", "age": 30}"#;
+        let mut app = App::new(json.to_string());
+        
+        // Execute a successful query first to populate last_successful_result
+        app.input.textarea.insert_str(".name");
+        app.query.execute(".name");
+        
+        // Now create an error state
+        app.input.textarea.delete_line_by_head();
+        app.input.textarea.insert_str(".invalid[");
+        app.query.execute(".invalid[");
+        
+        // Ensure results pane is unfocused
+        app.focus = Focus::InputField;
+
+        let output = render_to_string(&mut app, TEST_WIDTH, TEST_HEIGHT);
+        assert_snapshot!(output);
+    }
+
+    #[test]
+    fn snapshot_results_pane_with_syntax_error_focused() {
+        let json = r#"{"name": "Alice", "age": 30}"#;
+        let mut app = App::new(json.to_string());
+        
+        // Execute a successful query first to populate last_successful_result
+        app.input.textarea.insert_str(".name");
+        app.query.execute(".name");
+        
+        // Now create an error state
+        app.input.textarea.delete_line_by_head();
+        app.input.textarea.insert_str(".invalid[");
+        app.query.execute(".invalid[");
+        
+        // Focus the results pane to verify cyan border with yellow title
+        app.focus = Focus::ResultsPane;
+
+        let output = render_to_string(&mut app, TEST_WIDTH, TEST_HEIGHT);
+        assert_snapshot!(output);
+    }
+
+    #[test]
+    fn snapshot_results_pane_with_success_unfocused() {
+        let json = r#"{"name": "Alice", "age": 30}"#;
+        let mut app = App::new(json.to_string());
+        
+        // Execute a successful query
+        app.input.textarea.insert_str(".name");
+        app.query.execute(".name");
+        
+        // Ensure results pane is unfocused
+        app.focus = Focus::InputField;
+
+        let output = render_to_string(&mut app, TEST_WIDTH, TEST_HEIGHT);
+        assert_snapshot!(output);
+    }
+
+    #[test]
+    fn snapshot_results_pane_with_success_focused() {
+        let json = r#"{"name": "Alice", "age": 30}"#;
+        let mut app = App::new(json.to_string());
+        
+        // Execute a successful query
+        app.input.textarea.insert_str(".name");
+        app.query.execute(".name");
+        
+        // Focus the results pane to verify cyan border and title
+        app.focus = Focus::ResultsPane;
 
         let output = render_to_string(&mut app, TEST_WIDTH, TEST_HEIGHT);
         assert_snapshot!(output);

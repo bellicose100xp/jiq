@@ -3,9 +3,9 @@ source: src/app/render.rs
 expression: output
 ---
 "┌ ⚠ Syntax Error (last successful query result) ───────────────────────────────┐"
-"│{                                                                             │"
-"│  "test": true                                                                │"
-"│}                                                                             │"
+"│"Alice"                                                                       │"
+"│                                                                              │"
+"│                                                                              │"
 "│                                                                              │"
 "│                                                                              │"
 "│                                                                              │"
