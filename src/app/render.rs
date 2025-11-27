@@ -616,3 +616,237 @@ impl App {
     }
 }
 
+#[cfg(test)]
+mod test_helpers {
+    use super::*;
+    use ratatui::backend::TestBackend;
+    use ratatui::Terminal;
+
+    /// Create a test terminal with specified dimensions
+    pub fn create_test_terminal(width: u16, height: u16) -> Terminal<TestBackend> {
+        let backend = TestBackend::new(width, height);
+        Terminal::new(backend).unwrap()
+    }
+
+    /// Render an App to a test terminal and return the buffer as a string
+    pub fn render_to_string(app: &mut App, width: u16, height: u16) -> String {
+        let mut terminal = create_test_terminal(width, height);
+        terminal.draw(|f| app.render(f)).unwrap();
+        terminal.backend().to_string()
+    }
+}
+
+#[cfg(test)]
+mod snapshot_tests {
+    use super::*;
+    use super::test_helpers::render_to_string;
+    use crate::app::state::App;
+    use crate::editor::EditorMode;
+    use crate::history::HistoryState;
+    use insta::assert_snapshot;
+
+    const TEST_WIDTH: u16 = 80;
+    const TEST_HEIGHT: u16 = 24;
+
+    // === Basic UI Layout Tests ===
+
+    #[test]
+    fn snapshot_initial_ui_empty_query() {
+        let json = r#"{"name": "Alice", "age": 30}"#;
+        let mut app = App::new(json.to_string());
+
+        let output = render_to_string(&mut app, TEST_WIDTH, TEST_HEIGHT);
+        assert_snapshot!(output);
+    }
+
+    #[test]
+    fn snapshot_ui_with_query() {
+        let json = r#"{"name": "Alice", "age": 30}"#;
+        let mut app = App::new(json.to_string());
+        app.input.textarea.insert_str(".name");
+        app.query.execute(".name");
+
+        let output = render_to_string(&mut app, TEST_WIDTH, TEST_HEIGHT);
+        assert_snapshot!(output);
+    }
+
+    #[test]
+    fn snapshot_ui_with_array_data() {
+        let json = r#"[{"name": "Alice"}, {"name": "Bob"}, {"name": "Charlie"}]"#;
+        let mut app = App::new(json.to_string());
+        app.input.textarea.insert_str(".[].name");
+        app.query.execute(".[].name");
+
+        let output = render_to_string(&mut app, TEST_WIDTH, TEST_HEIGHT);
+        assert_snapshot!(output);
+    }
+
+    // === Focus State Tests ===
+
+    #[test]
+    fn snapshot_ui_input_focused() {
+        let json = r#"{"test": true}"#;
+        let mut app = App::new(json.to_string());
+        app.focus = Focus::InputField;
+
+        let output = render_to_string(&mut app, TEST_WIDTH, TEST_HEIGHT);
+        assert_snapshot!(output);
+    }
+
+    #[test]
+    fn snapshot_ui_results_focused() {
+        let json = r#"{"test": true}"#;
+        let mut app = App::new(json.to_string());
+        app.focus = Focus::ResultsPane;
+
+        let output = render_to_string(&mut app, TEST_WIDTH, TEST_HEIGHT);
+        assert_snapshot!(output);
+    }
+
+    // === Editor Mode Tests ===
+
+    #[test]
+    fn snapshot_ui_insert_mode() {
+        let json = r#"{"test": true}"#;
+        let mut app = App::new(json.to_string());
+        app.input.editor_mode = EditorMode::Insert;
+
+        let output = render_to_string(&mut app, TEST_WIDTH, TEST_HEIGHT);
+        assert_snapshot!(output);
+    }
+
+    #[test]
+    fn snapshot_ui_normal_mode() {
+        let json = r#"{"test": true}"#;
+        let mut app = App::new(json.to_string());
+        app.input.editor_mode = EditorMode::Normal;
+
+        let output = render_to_string(&mut app, TEST_WIDTH, TEST_HEIGHT);
+        assert_snapshot!(output);
+    }
+
+    #[test]
+    fn snapshot_ui_operator_mode() {
+        let json = r#"{"test": true}"#;
+        let mut app = App::new(json.to_string());
+        app.input.editor_mode = EditorMode::Operator('d');
+
+        let output = render_to_string(&mut app, TEST_WIDTH, TEST_HEIGHT);
+        assert_snapshot!(output);
+    }
+
+    // === Error State Tests ===
+
+    #[test]
+    fn snapshot_ui_with_error() {
+        let json = r#"{"test": true}"#;
+        let mut app = App::new(json.to_string());
+        app.input.textarea.insert_str(".invalid[");
+        app.query.execute(".invalid[");
+
+        let output = render_to_string(&mut app, TEST_WIDTH, TEST_HEIGHT);
+        assert_snapshot!(output);
+    }
+
+    #[test]
+    fn snapshot_ui_error_overlay_visible() {
+        let json = r#"{"test": true}"#;
+        let mut app = App::new(json.to_string());
+        app.input.textarea.insert_str(".invalid[");
+        app.query.execute(".invalid[");
+        app.error_overlay_visible = true;
+
+        let output = render_to_string(&mut app, TEST_WIDTH, TEST_HEIGHT);
+        assert_snapshot!(output);
+    }
+
+    // === Terminal Size Tests ===
+
+    #[test]
+    fn snapshot_ui_small_terminal() {
+        let json = r#"{"name": "Alice"}"#;
+        let mut app = App::new(json.to_string());
+
+        let output = render_to_string(&mut app, 40, 10);
+        assert_snapshot!(output);
+    }
+
+    #[test]
+    fn snapshot_ui_wide_terminal() {
+        let json = r#"{"name": "Alice"}"#;
+        let mut app = App::new(json.to_string());
+
+        let output = render_to_string(&mut app, 120, 30);
+        assert_snapshot!(output);
+    }
+
+    // === Popup/Overlay Tests ===
+
+    #[test]
+    fn snapshot_history_popup() {
+        let json = r#"{"test": true}"#;
+        let mut app = App::new(json.to_string());
+
+        // Add some history entries (using test helper)
+        app.history = HistoryState::empty();
+        app.history.add_entry_in_memory(".name");
+        app.history.add_entry_in_memory(".age");
+        app.history.add_entry_in_memory(".users[]");
+        app.history.open(None);
+
+        let output = render_to_string(&mut app, TEST_WIDTH, TEST_HEIGHT);
+        assert_snapshot!(output);
+    }
+
+    #[test]
+    fn snapshot_history_popup_with_search() {
+        let json = r#"{"test": true}"#;
+        let mut app = App::new(json.to_string());
+
+        app.history = HistoryState::empty();
+        app.history.add_entry_in_memory(".name");
+        app.history.add_entry_in_memory(".age");
+        app.history.add_entry_in_memory(".users[]");
+        app.history.open(Some("na"));
+
+        let output = render_to_string(&mut app, TEST_WIDTH, TEST_HEIGHT);
+        assert_snapshot!(output);
+    }
+
+    #[test]
+    fn snapshot_history_popup_no_matches() {
+        let json = r#"{"test": true}"#;
+        let mut app = App::new(json.to_string());
+
+        app.history = HistoryState::empty();
+        app.history.add_entry_in_memory(".name");
+        app.history.open(Some("xyz"));
+
+        let output = render_to_string(&mut app, TEST_WIDTH, TEST_HEIGHT);
+        assert_snapshot!(output);
+    }
+
+    #[test]
+    fn snapshot_help_popup() {
+        let json = r#"{"test": true}"#;
+        let mut app = App::new(json.to_string());
+        app.help.visible = true;
+
+        let output = render_to_string(&mut app, TEST_WIDTH, TEST_HEIGHT);
+        assert_snapshot!(output);
+    }
+
+    #[test]
+    fn snapshot_error_overlay() {
+        let json = r#"{"test": true}"#;
+        let mut app = App::new(json.to_string());
+
+        // Create an error state
+        app.query.result = Err("jq: compile error: syntax error at line 1".to_string());
+        app.error_overlay_visible = true;
+
+        let output = render_to_string(&mut app, TEST_WIDTH, TEST_HEIGHT);
+        assert_snapshot!(output);
+    }
+}
+

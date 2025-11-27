@@ -1,0 +1,6 @@
+---
+source: src/syntax/mod.rs
+expression: serialize_spans(&spans)
+---
+- content: "\"unterminated"
+  fg: green

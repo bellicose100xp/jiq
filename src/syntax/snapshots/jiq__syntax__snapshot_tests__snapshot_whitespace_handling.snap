@@ -1,0 +1,12 @@
+---
+source: src/syntax/mod.rs
+expression: serialize_spans(&spans)
+---
+- content: "  "
+- content: ".name"
+- content: "  "
+- content: "|"
+  fg: magenta
+- content: "  "
+- content: ".age"
+- content: "  "

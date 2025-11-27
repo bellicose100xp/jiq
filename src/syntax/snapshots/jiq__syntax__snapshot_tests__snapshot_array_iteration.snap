@@ -1,0 +1,20 @@
+---
+source: src/syntax/mod.rs
+expression: serialize_spans(&spans)
+---
+- content: ".items"
+- content: "["
+  fg: magenta
+- content: "]"
+  fg: magenta
+- content: " "
+- content: "|"
+  fg: magenta
+- content: " "
+- content: select
+  fg: blue
+- content: (
+  fg: magenta
+- content: ".active"
+- content: )
+  fg: magenta

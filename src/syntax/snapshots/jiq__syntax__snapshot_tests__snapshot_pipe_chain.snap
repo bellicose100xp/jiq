@@ -1,0 +1,28 @@
+---
+source: src/syntax/mod.rs
+expression: serialize_spans(&spans)
+---
+- content: ".users"
+- content: " "
+- content: "|"
+  fg: magenta
+- content: " "
+- content: map
+  fg: blue
+- content: (
+  fg: magenta
+- content: ".name"
+- content: )
+  fg: magenta
+- content: " "
+- content: "|"
+  fg: magenta
+- content: " "
+- content: sort
+  fg: blue
+- content: " "
+- content: "|"
+  fg: magenta
+- content: " "
+- content: unique
+  fg: blue

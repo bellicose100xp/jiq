@@ -1,0 +1,46 @@
+---
+source: src/syntax/mod.rs
+expression: results
+---
+- - map
+  - - content: map
+      fg: blue
+- - select
+  - - content: select
+      fg: blue
+- - sort
+  - - content: sort
+      fg: blue
+- - keys
+  - - content: keys
+      fg: blue
+- - values
+  - - content: values
+      fg: blue
+- - length
+  - - content: length
+      fg: blue
+- - type
+  - - content: type
+      fg: blue
+- - add
+  - - content: add
+      fg: blue
+- - first
+  - - content: first
+      fg: blue
+- - last
+  - - content: last
+      fg: blue
+- - has
+  - - content: has
+      fg: blue
+- - contains
+  - - content: contains
+      fg: blue
+- - split
+  - - content: split
+      fg: blue
+- - join
+  - - content: join
+      fg: blue
