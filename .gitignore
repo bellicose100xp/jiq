@@ -16,6 +16,7 @@ Cargo.lock
 # Editor directories
 .vscode/
 .idea/
+.kiro/
 
 # Test artifacts
 *.profraw
