@@ -306,9 +306,16 @@ impl App {
     fn render_help_line(&self, frame: &mut Frame, area: ratatui::layout::Rect) {
         // Mode-aware help text: in Insert mode 'q' and '?' type characters
         let help_text = if self.focus == Focus::InputField && self.input.editor_mode == EditorMode::Insert {
-            " F1: Help | Shift+Tab: Switch Focus | Enter: Exit with Results | Ctrl+Q: Exit with Query"
+            let query_empty = self.query().is_empty();
+            if query_empty {
+                // Empty input: show history navigation
+                " F1: Help | Shift+Tab: Switch Pane | Ctrl+P/N: Cycle History | ↑/Ctrl+R: History"
+            } else {
+                // Has content: show exit shortcuts + history
+                " F1: Help | Shift+Tab: Switch Pane | ↑/Ctrl+R: History | Enter: Output Result | Ctrl+Q: Output Query"
+            }
         } else {
-            " F1/?: Help | Shift+Tab: Switch Focus | Enter: Exit with Results | Ctrl+Q: Exit with Query | q: Quit"
+            " F1/?: Help | Shift+Tab: Switch Pane | Enter: Output Result | Ctrl+Q: Output Query | q: Quit"
         };
 
         let help = Paragraph::new(help_text)

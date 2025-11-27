@@ -176,7 +176,7 @@ Successful queries are saved to your platform's application data directory:
 **History Search Popup**:
 | Key | Action |
 |-----|--------|
-| `Ctrl+R` or `↑` (when input empty) | Open history search |
+| `Ctrl+R` or `↑` | Open history search |
 | `↑` / `↓` | Navigate entries |
 | Type characters | Fuzzy search filter |
 | `Enter` / `Tab` | Select entry and close |

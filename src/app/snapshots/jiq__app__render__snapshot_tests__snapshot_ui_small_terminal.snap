@@ -11,4 +11,4 @@ expression: output
 "┌ Query [INSERT] ──────────────────────┐"
 "│                                      │"
 "└──────────────────────────────────────┘"
-" F1: Help | Shift+Tab: Switch Focus | En"
+" F1: Help | Shift+Tab: Switch Pane | Ctr"

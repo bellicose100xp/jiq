@@ -71,9 +71,6 @@ impl App {
 
         // Handle history trigger (in Insert mode only)
         if self.input.editor_mode == EditorMode::Insert {
-            let cursor_col = self.input.textarea.cursor().1;
-            let query_empty = self.query().is_empty();
-
             // Ctrl+P: Cycle to previous (older) history entry
             if key.code == KeyCode::Char('p') && key.modifiers.contains(KeyModifiers::CONTROL) {
                 if let Some(entry) = self.history.cycle_previous() {
@@ -101,8 +98,8 @@ impl App {
                 return;
             }
 
-            // Up arrow: Open history if input empty or cursor at start
-            if key.code == KeyCode::Up && (query_empty || cursor_col == 0) {
+            // Up arrow: Open history popup (always)
+            if key.code == KeyCode::Up {
                 self.open_history_popup();
                 return;
             }

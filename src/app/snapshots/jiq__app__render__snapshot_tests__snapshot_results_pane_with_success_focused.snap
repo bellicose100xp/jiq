@@ -25,4 +25,4 @@ expression: output
 "┌ Query [INSERT] ──────────────────────────────────────────────────────────────┐"
 "│.name                                                                         │"
 "└──────────────────────────────────────────────────────────────────────────────┘"
-" F1/?: Help | Shift+Tab: Switch Focus | Enter: Exit with Results | Ctrl+Q: Exit "
+" F1/?: Help | Shift+Tab: Switch Pane | Enter: Output Result | Ctrl+Q: Output Que"
