@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.14.2] - 2025-11-27
+
+### Added
+- Horizontal scrolling in results pane for viewing wide JSON content
+  - `h`/`l`/`←`/`→` to scroll 1 column left/right
+  - `H`/`L` to scroll 10 columns left/right
+  - `0`/`^` to jump to left edge
+  - `$` to jump to right edge
+  - `End` key to jump to bottom (alongside `G`)
+
+### Documentation
+- Updated README and help popup with horizontal scroll keybindings
+
 ## [2.14.1] - 2025-11-27
 
 ### Improved
