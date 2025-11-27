@@ -1,0 +1,29 @@
+---
+source: src/syntax/mod.rs
+expression: serialize_spans(&spans)
+---
+- content: if
+  fg: yellow
+- content: " "
+- content: ".value"
+- content: " "
+- content: ">"
+  fg: magenta
+- content: " "
+- content: "10"
+  fg: cyan
+- content: " "
+- content: then
+  fg: yellow
+- content: " "
+- content: "\"high\""
+  fg: green
+- content: " "
+- content: else
+  fg: yellow
+- content: " "
+- content: "\"low\""
+  fg: green
+- content: " "
+- content: end
+  fg: yellow

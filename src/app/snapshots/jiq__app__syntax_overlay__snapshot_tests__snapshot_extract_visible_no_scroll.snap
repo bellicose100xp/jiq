@@ -1,0 +1,9 @@
+---
+source: src/app/syntax_overlay.rs
+expression: serialize_spans(&visible)
+---
+- content: Hello
+  fg: red
+- content: " "
+- content: World
+  fg: blue

@@ -1,0 +1,7 @@
+---
+source: src/app/syntax_overlay.rs
+expression: serialize_spans(&result)
+---
+- content: " "
+  modifiers:
+    - reversed

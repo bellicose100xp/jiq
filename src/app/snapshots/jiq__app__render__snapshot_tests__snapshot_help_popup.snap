@@ -1,0 +1,28 @@
+---
+source: src/app/render.rs
+expression: output
+---
+"┌ Res┌ Keyboard Shortcuts ────────────────────────────────────────────────┐────┐"
+"│{   │                                                                    │    │"
+"│  "t│  ── GLOBAL ──                                                      │    │"
+"│}   │  F1 or ?        Toggle this help                                   │    │"
+"│    │  Ctrl+C         Quit without output                                │    │"
+"│    │  Enter          Output filtered JSON and exit                      │    │"
+"│    │  Ctrl+Q         Output query string only and exit                  │    │"
+"│    │  Shift+Tab      Switch focus (Input / Results)                     │    │"
+"│    │  q              Quit (in Normal mode or Results pane)              │    │"
+"│    │                                                                    │    │"
+"│    │  ── INPUT: INSERT MODE ──                                          │    │"
+"│    │  Esc            Switch to Normal mode                              │    │"
+"│    │  Ctrl+R         Search history                                     │    │"
+"│    │  Ctrl+P/N       Previous/Next query in history                     │    │"
+"│    │  Up             Open history (when input empty)                    │    │"
+"│    │                                                                    │    │"
+"│    │  ── INPUT: NORMAL MODE ──                                          │    │"
+"│    │  i/a/I/A        Enter Insert mode                                  │    │"
+"│    │  h/l            Move cursor left/right                             │    │"
+"└────│  0/^/$          Jump to start/end of line                          │────┘"
+"┌ Que│  w/b/e          Word navigation                                    │────┐"
+"│    │  x/X            Delete character                                   │    │"
+"└────│  dd/D           Delete line/to end                                 │────┘"
+" F1: └────────────────────────────────────────────────────────────────────┘it wi"

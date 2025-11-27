@@ -1,0 +1,33 @@
+---
+source: src/syntax/mod.rs
+expression: serialize_spans(&spans)
+---
+- content: reduce
+  fg: yellow
+- content: " "
+- content: "."
+- content: "["
+  fg: magenta
+- content: "]"
+  fg: magenta
+- content: " "
+- content: as
+  fg: yellow
+- content: " "
+- content: $x
+- content: " "
+- content: (
+  fg: magenta
+- content: "0"
+  fg: cyan
+- content: ;
+  fg: magenta
+- content: " "
+- content: "."
+- content: " "
+- content: +
+  fg: magenta
+- content: " "
+- content: $x
+- content: )
+  fg: magenta
