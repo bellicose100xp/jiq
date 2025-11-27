@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.14.0] - 2025-11-27
+
+### Improved
+- Refactored autosuggestions to use query execution results
+  - Suggestions now based on actual jq output structure instead of input JSON
+  - More accurate field suggestions after transformations (map, select, etc.)
+  - Better handling of complex query chains and filters
+
+### Documentation
+- Updated development documentation to reflect current codebase structure
+- Improved README with clearer examples and usage instructions
+
 ## [2.13.0] - 2025-11-25
 
 ### Added

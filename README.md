@@ -210,8 +210,13 @@ echo $QUERY | xargs -I {} jq {} mydata.json
 ## Tips
 
 - Empty query shows original JSON (identity filter `.`)
-- Invalid queries display `Syntax Error` message above input while preseving last successful output.
+- Invalid queries display `Syntax Error` message above input while preserving last successful output.
 - Results auto-scroll to top when query changes
+
+## Known Limitations
+
+- **Autocomplete** - Suggestions are based on output visible in results area. Editing in the middle of a query may produce suboptimal or no suggestions.
+- **Syntax highlighting** - Basic keyword-based only, does not analyze structure like tree-sitter.
 
 ## License
 
