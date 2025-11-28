@@ -222,6 +222,10 @@ echo $QUERY | xargs -I {} jq {} mydata.json
 - **Autocomplete** - Suggestions are based on output visible in results area. Editing in the middle of a query may produce suboptimal or no suggestions.
 - **Syntax highlighting** - Basic keyword-based only, does not analyze structure like tree-sitter.
 
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines on code architecture, testing, and pull requests.
+
 ## License
 
 Dual-licensed under [MIT](LICENSE-MIT) OR [Apache-2.0](LICENSE-APACHE)
