@@ -1,6 +1,8 @@
 use ratatui::crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
 use std::io;
+use std::time::Duration;
 
+use crate::clipboard;
 use crate::editor::EditorMode;
 use super::state::{App, Focus};
 
@@ -9,15 +11,21 @@ mod history;
 mod results;
 mod vim;
 
+/// Timeout for event polling - allows periodic UI refresh for notifications
+const EVENT_POLL_TIMEOUT: Duration = Duration::from_millis(100);
+
 impl App {
     /// Handle events and update application state
     pub fn handle_events(&mut self) -> io::Result<()> {
-        match event::read()? {
-            // Check that it's a key press event to avoid duplicates
-            Event::Key(key_event) if key_event.kind == KeyEventKind::Press => {
-                self.handle_key_event(key_event);
+        // Poll with timeout to allow periodic refresh for notification expiration
+        if event::poll(EVENT_POLL_TIMEOUT)? {
+            match event::read()? {
+                // Check that it's a key press event to avoid duplicates
+                Event::Key(key_event) if key_event.kind == KeyEventKind::Press => {
+                    self.handle_key_event(key_event);
+                }
+                _ => {}
             }
-            _ => {}
         }
         Ok(())
     }
@@ -27,6 +35,11 @@ impl App {
         // Try global keys first
         if global::handle_global_keys(self, key) {
             return; // Key was handled globally
+        }
+
+        // Handle clipboard Ctrl+Y before mode-specific handling
+        if clipboard::events::handle_clipboard_key(self, key, self.clipboard_backend) {
+            return; // Key was handled by clipboard
         }
 
         // Not a global key, delegate to focused pane

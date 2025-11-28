@@ -6,6 +6,7 @@
 use ratatui::crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use tui_textarea::CursorMove;
 
+use crate::clipboard;
 use crate::editor::EditorMode;
 use super::super::state::App;
 
@@ -125,6 +126,10 @@ pub fn handle_normal_mode_key(app: &mut App, key: KeyEvent) {
             app.input.editor_mode = EditorMode::Operator('c');
             app.input.textarea.start_selection();
         }
+        KeyCode::Char('y') => {
+            // y - Yank operator (wait for motion, yy copies entire line)
+            app.input.editor_mode = EditorMode::Operator('y');
+        }
 
         // Undo/Redo
         KeyCode::Char('u') => {
@@ -151,17 +156,29 @@ pub fn handle_operator_mode_key(app: &mut App, key: KeyEvent) {
         _ => return, // Should never happen
     };
 
-    // Check for double operator (dd, cc)
+    // Check for double operator (dd, cc, yy)
     if key.code == KeyCode::Char(operator) {
-        // dd or cc - delete entire line
-        app.input.textarea.delete_line_by_head();
-        app.input.textarea.delete_line_by_end();
-        app.input.editor_mode = if operator == 'c' {
-            EditorMode::Insert
-        } else {
-            EditorMode::Normal
-        };
-        execute_query(app);
+        match operator {
+            'y' => {
+                // yy - yank (copy) entire query to clipboard
+                clipboard::events::handle_yank_key(app, app.clipboard_backend);
+                app.input.editor_mode = EditorMode::Normal;
+            }
+            'd' | 'c' => {
+                // dd or cc - delete entire line
+                app.input.textarea.delete_line_by_head();
+                app.input.textarea.delete_line_by_end();
+                app.input.editor_mode = if operator == 'c' {
+                    EditorMode::Insert
+                } else {
+                    EditorMode::Normal
+                };
+                execute_query(app);
+            }
+            _ => {
+                app.input.editor_mode = EditorMode::Normal;
+            }
+        }
         return;
     }
 
@@ -246,11 +263,17 @@ mod tests {
     use super::*;
     use crate::app::state::Focus;
     use crate::autocomplete::{Suggestion, SuggestionType};
+    use crate::config::ClipboardBackend;
     use crate::history::HistoryState;
     use tui_textarea::CursorMove;
 
     // Test fixture data
     const TEST_JSON: &str = r#"{"name": "test", "age": 30, "city": "NYC"}"#;
+
+    /// Helper to create App with default clipboard backend for tests
+    fn test_app(json: &str) -> App {
+        App::new(json.to_string(), ClipboardBackend::Auto)
+    }
 
     // Helper to create a KeyEvent without modifiers
     fn key(code: KeyCode) -> KeyEvent {
@@ -264,7 +287,7 @@ mod tests {
 
     // Helper to set up an app with text in the query field
     fn app_with_query(query: &str) -> App {
-        let mut app = App::new(TEST_JSON.to_string());
+        let mut app = test_app(TEST_JSON);
         app.input.textarea.insert_str(query);
         // Use empty in-memory history for all tests to prevent disk writes
         app.history = HistoryState::empty();

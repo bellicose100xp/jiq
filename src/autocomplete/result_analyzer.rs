@@ -94,8 +94,8 @@ impl ResultAnalyzer {
                 ];
 
                 // Add field suggestions from first object
-                if let Value::Array(arr) = value {
-                    if let Some(Value::Object(map)) = arr.first() {
+                if let Value::Array(arr) = value
+                    && let Some(Value::Object(map)) = arr.first() {
                         for (key, val) in map {
                             let field_type = Self::detect_json_type(val);
                             suggestions.push(Suggestion::new_with_type(
@@ -105,7 +105,6 @@ impl ResultAnalyzer {
                             ));
                         }
                     }
-                }
 
                 suggestions
             }

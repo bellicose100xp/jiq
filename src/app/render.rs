@@ -10,6 +10,7 @@ use ratatui::{
 use crate::autocomplete::SuggestionType;
 use crate::editor::EditorMode;
 use crate::history::MAX_VISIBLE_HISTORY;
+use crate::notification::render_notification;
 use crate::widgets::popup;
 use super::help_content;
 use super::state::{App, Focus};
@@ -72,6 +73,9 @@ impl App {
         if self.help.visible {
             self.render_help_popup(frame);
         }
+
+        // Render notification overlay (if active) - render last to overlay everything
+        render_notification(frame, &mut self.notification);
     }
 
     /// Render the input field (bottom)
@@ -667,6 +671,7 @@ mod snapshot_tests {
     use super::*;
     use super::test_helpers::render_to_string;
     use crate::app::state::App;
+    use crate::config::ClipboardBackend;
     use crate::editor::EditorMode;
     use crate::history::HistoryState;
     use insta::assert_snapshot;
@@ -674,12 +679,17 @@ mod snapshot_tests {
     const TEST_WIDTH: u16 = 80;
     const TEST_HEIGHT: u16 = 24;
 
+    /// Helper to create App with default clipboard backend for tests
+    fn test_app(json: &str) -> App {
+        App::new(json.to_string(), ClipboardBackend::Auto)
+    }
+
     // === Basic UI Layout Tests ===
 
     #[test]
     fn snapshot_initial_ui_empty_query() {
         let json = r#"{"name": "Alice", "age": 30}"#;
-        let mut app = App::new(json.to_string());
+        let mut app = test_app(json);
 
         let output = render_to_string(&mut app, TEST_WIDTH, TEST_HEIGHT);
         assert_snapshot!(output);
@@ -688,7 +698,7 @@ mod snapshot_tests {
     #[test]
     fn snapshot_ui_with_query() {
         let json = r#"{"name": "Alice", "age": 30}"#;
-        let mut app = App::new(json.to_string());
+        let mut app = test_app(json);
         app.input.textarea.insert_str(".name");
         app.query.execute(".name");
 
@@ -699,7 +709,7 @@ mod snapshot_tests {
     #[test]
     fn snapshot_ui_with_array_data() {
         let json = r#"[{"name": "Alice"}, {"name": "Bob"}, {"name": "Charlie"}]"#;
-        let mut app = App::new(json.to_string());
+        let mut app = test_app(json);
         app.input.textarea.insert_str(".[].name");
         app.query.execute(".[].name");
 
@@ -712,7 +722,7 @@ mod snapshot_tests {
     #[test]
     fn snapshot_ui_input_focused() {
         let json = r#"{"test": true}"#;
-        let mut app = App::new(json.to_string());
+        let mut app = test_app(json);
         app.focus = Focus::InputField;
 
         let output = render_to_string(&mut app, TEST_WIDTH, TEST_HEIGHT);
@@ -722,7 +732,7 @@ mod snapshot_tests {
     #[test]
     fn snapshot_ui_results_focused() {
         let json = r#"{"test": true}"#;
-        let mut app = App::new(json.to_string());
+        let mut app = test_app(json);
         app.focus = Focus::ResultsPane;
 
         let output = render_to_string(&mut app, TEST_WIDTH, TEST_HEIGHT);
@@ -734,7 +744,7 @@ mod snapshot_tests {
     #[test]
     fn snapshot_ui_insert_mode() {
         let json = r#"{"test": true}"#;
-        let mut app = App::new(json.to_string());
+        let mut app = test_app(json);
         app.input.editor_mode = EditorMode::Insert;
 
         let output = render_to_string(&mut app, TEST_WIDTH, TEST_HEIGHT);
@@ -744,7 +754,7 @@ mod snapshot_tests {
     #[test]
     fn snapshot_ui_normal_mode() {
         let json = r#"{"test": true}"#;
-        let mut app = App::new(json.to_string());
+        let mut app = test_app(json);
         app.input.editor_mode = EditorMode::Normal;
 
         let output = render_to_string(&mut app, TEST_WIDTH, TEST_HEIGHT);
@@ -754,7 +764,7 @@ mod snapshot_tests {
     #[test]
     fn snapshot_ui_operator_mode() {
         let json = r#"{"test": true}"#;
-        let mut app = App::new(json.to_string());
+        let mut app = test_app(json);
         app.input.editor_mode = EditorMode::Operator('d');
 
         let output = render_to_string(&mut app, TEST_WIDTH, TEST_HEIGHT);
@@ -766,7 +776,7 @@ mod snapshot_tests {
     #[test]
     fn snapshot_ui_with_error() {
         let json = r#"{"test": true}"#;
-        let mut app = App::new(json.to_string());
+        let mut app = test_app(json);
         app.input.textarea.insert_str(".invalid[");
         app.query.execute(".invalid[");
 
@@ -777,7 +787,7 @@ mod snapshot_tests {
     #[test]
     fn snapshot_ui_error_overlay_visible() {
         let json = r#"{"test": true}"#;
-        let mut app = App::new(json.to_string());
+        let mut app = test_app(json);
         app.input.textarea.insert_str(".invalid[");
         app.query.execute(".invalid[");
         app.error_overlay_visible = true;
@@ -791,7 +801,7 @@ mod snapshot_tests {
     #[test]
     fn snapshot_ui_small_terminal() {
         let json = r#"{"name": "Alice"}"#;
-        let mut app = App::new(json.to_string());
+        let mut app = test_app(json);
 
         let output = render_to_string(&mut app, 40, 10);
         assert_snapshot!(output);
@@ -800,7 +810,7 @@ mod snapshot_tests {
     #[test]
     fn snapshot_ui_wide_terminal() {
         let json = r#"{"name": "Alice"}"#;
-        let mut app = App::new(json.to_string());
+        let mut app = test_app(json);
 
         let output = render_to_string(&mut app, 120, 30);
         assert_snapshot!(output);
@@ -811,7 +821,7 @@ mod snapshot_tests {
     #[test]
     fn snapshot_history_popup() {
         let json = r#"{"test": true}"#;
-        let mut app = App::new(json.to_string());
+        let mut app = test_app(json);
 
         // Add some history entries (using test helper)
         app.history = HistoryState::empty();
@@ -827,7 +837,7 @@ mod snapshot_tests {
     #[test]
     fn snapshot_history_popup_with_search() {
         let json = r#"{"test": true}"#;
-        let mut app = App::new(json.to_string());
+        let mut app = test_app(json);
 
         app.history = HistoryState::empty();
         app.history.add_entry_in_memory(".name");
@@ -842,7 +852,7 @@ mod snapshot_tests {
     #[test]
     fn snapshot_history_popup_no_matches() {
         let json = r#"{"test": true}"#;
-        let mut app = App::new(json.to_string());
+        let mut app = test_app(json);
 
         app.history = HistoryState::empty();
         app.history.add_entry_in_memory(".name");
@@ -855,7 +865,7 @@ mod snapshot_tests {
     #[test]
     fn snapshot_help_popup() {
         let json = r#"{"test": true}"#;
-        let mut app = App::new(json.to_string());
+        let mut app = test_app(json);
         app.help.visible = true;
 
         let output = render_to_string(&mut app, TEST_WIDTH, TEST_HEIGHT);
@@ -865,7 +875,7 @@ mod snapshot_tests {
     #[test]
     fn snapshot_error_overlay() {
         let json = r#"{"test": true}"#;
-        let mut app = App::new(json.to_string());
+        let mut app = test_app(json);
 
         // Create an error state
         app.query.result = Err("jq: compile error: syntax error at line 1".to_string());
@@ -880,7 +890,7 @@ mod snapshot_tests {
     #[test]
     fn snapshot_results_pane_with_syntax_error_unfocused() {
         let json = r#"{"name": "Alice", "age": 30}"#;
-        let mut app = App::new(json.to_string());
+        let mut app = test_app(json);
         
         // Execute a successful query first to populate last_successful_result
         app.input.textarea.insert_str(".name");
@@ -901,7 +911,7 @@ mod snapshot_tests {
     #[test]
     fn snapshot_results_pane_with_syntax_error_focused() {
         let json = r#"{"name": "Alice", "age": 30}"#;
-        let mut app = App::new(json.to_string());
+        let mut app = test_app(json);
         
         // Execute a successful query first to populate last_successful_result
         app.input.textarea.insert_str(".name");
@@ -922,7 +932,7 @@ mod snapshot_tests {
     #[test]
     fn snapshot_results_pane_with_success_unfocused() {
         let json = r#"{"name": "Alice", "age": 30}"#;
-        let mut app = App::new(json.to_string());
+        let mut app = test_app(json);
         
         // Execute a successful query
         app.input.textarea.insert_str(".name");
@@ -938,7 +948,7 @@ mod snapshot_tests {
     #[test]
     fn snapshot_results_pane_with_success_focused() {
         let json = r#"{"name": "Alice", "age": 30}"#;
-        let mut app = App::new(json.to_string());
+        let mut app = test_app(json);
         
         // Execute a successful query
         app.input.textarea.insert_str(".name");

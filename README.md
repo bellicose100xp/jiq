@@ -5,6 +5,7 @@
 - **Real-time query execution** - See results as you type
 - **[EXPERIMENTAL] Context-aware autocomplete** - Intelligent suggestions with JSON type information for fields and functions
 - **Query history** - Searchable history of successful queries
+- **Clipboard support** - Copy query or results to clipboard (also supports OSC 52 for remote terminals)
 - **Floating error overlay** - Syntax errors appear in a non-disruptive overlay (Ctrl+E to toggle)
 - **VIM keybindings** - VIM-style editing for power users
 - **[EXPERIMENTAL] Syntax highlighting** - Colorized JSON output and jq query syntax (experimental)
@@ -80,6 +81,8 @@ curl https://api.example.com/data | jiq
 |-----|--------|
 | `F1` or `?` | Toggle keyboard shortcuts help popup |
 | `Shift+Tab` | Switch focus between Input and Results |
+| `Ctrl+Y` | Copy current query or results to clipboard |
+| `yy` | Copy current query or results to clipboard (NORMAL mode) |
 | `Ctrl+E` | Toggle error overlay (when syntax error exists) |
 | `Enter` | Exit and output filtered JSON |
 | `Ctrl+Q` | Exit and output query string only (`Shift+Enter` may also work in some modern terminal emulators) |
@@ -217,10 +220,27 @@ echo $QUERY | xargs -I {} jq {} mydata.json
 - Invalid queries display `Syntax Error` message above input while preserving last successful output.
 - Results auto-scroll to top when query changes
 
+## Configuration
+
+jiq looks for a configuration file at `~/.config/jiq/config.toml` (or the platform default location).
+
+```toml
+[clipboard]
+# Clipboard backend: "auto" (default), "system", or "osc52"
+# - auto: tries system clipboard first, falls back to OSC 52
+# - system: use only OS clipboard (may not work in SSH/tmux)
+# - osc52: use terminal escape sequences (works in most modern terminals over SSH)
+backend = "auto"
+```
+
 ## Known Limitations
 
 - **Autocomplete** - Suggestions are based on output visible in results area. Editing in the middle of a query may produce suboptimal or no suggestions.
 - **Syntax highlighting** - Basic keyword-based only, does not analyze structure like tree-sitter.
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines on code architecture, testing, and pull requests.
 
 ## License
 
