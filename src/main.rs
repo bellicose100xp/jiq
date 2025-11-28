@@ -5,6 +5,7 @@ use std::path::PathBuf;
 
 mod app;
 mod autocomplete;
+mod config;
 mod editor;
 mod error;
 mod history;
@@ -61,6 +62,9 @@ fn main() -> Result<()> {
 
     // Install color-eyre panic hook for better error messages
     color_eyre::install()?;
+
+    // Load configuration early in startup
+    let _config = config::load_config();
 
     // Parse CLI arguments
     let args = Args::parse();

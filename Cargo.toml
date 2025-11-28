@@ -41,6 +41,9 @@ which = "6.0"
 # Cross-platform directory paths
 dirs = "5.0"
 
+# Configuration file parsing
+toml = "0.8"
+
 # Fuzzy matching (fzf-style)
 fuzzy-matcher = "0.3"
 
@@ -57,6 +60,9 @@ predicates = "3.0"
 
 # Snapshot testing
 insta = { version = "1.40", features = ["yaml"] }
+
+# Property-based testing
+proptest = "1.4"
 
 [profile.release]
 # Optimize for size and performance
