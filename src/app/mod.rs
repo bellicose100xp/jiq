@@ -8,4 +8,4 @@ mod state;
 mod syntax_overlay;
 
 // Re-export public types
-pub use state::{App, OutputMode};
+pub use state::{App, Focus, OutputMode};

@@ -41,6 +41,10 @@ which = "6.0"
 # Cross-platform directory paths
 dirs = "5.0"
 
+# Clipboard support
+arboard = "3.4"
+base64 = "0.22"
+
 # Configuration file parsing
 toml = "0.8"
 

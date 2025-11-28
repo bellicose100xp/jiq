@@ -29,18 +29,12 @@ impl Default for ClipboardConfig {
 
 /// Root configuration structure
 #[derive(Debug, Clone, Deserialize)]
+#[derive(Default)]
 pub struct Config {
     #[serde(default)]
     pub clipboard: ClipboardConfig,
 }
 
-impl Default for Config {
-    fn default() -> Self {
-        Config {
-            clipboard: ClipboardConfig::default(),
-        }
-    }
-}
 
 #[cfg(test)]
 mod tests {

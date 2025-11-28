@@ -3,46 +3,80 @@
 
 mod types;
 
-pub use types::{ClipboardBackend, ClipboardConfig, Config};
+pub use types::{ClipboardBackend, Config};
 
 use std::fs;
 use std::path::PathBuf;
 
+/// Result of loading configuration
+pub struct ConfigResult {
+    pub config: Config,
+    pub warning: Option<String>,
+}
+
 /// Loads configuration from ~/.config/jiq/config.toml
 /// Returns default configuration if file doesn't exist or on parse errors
-pub fn load_config() -> Config {
+pub fn load_config() -> ConfigResult {
     let config_path = get_config_path();
-    
+
+    #[cfg(debug_assertions)]
+    log::debug!("Loading config from {:?}", config_path);
+
     // If file doesn't exist, return defaults silently
     if !config_path.exists() {
-        return Config::default();
+        #[cfg(debug_assertions)]
+        log::debug!("Config file does not exist, using defaults");
+        return ConfigResult {
+            config: Config::default(),
+            warning: None,
+        };
     }
-    
+
     // Try to read the file
     let contents = match fs::read_to_string(&config_path) {
-        Ok(contents) => contents,
+        Ok(contents) => {
+            #[cfg(debug_assertions)]
+            log::debug!("Config file read successfully, {} bytes", contents.len());
+            contents
+        }
         Err(e) => {
             #[cfg(debug_assertions)]
             log::error!("Failed to read config file {:?}: {}", config_path, e);
-            return Config::default();
+            return ConfigResult {
+                config: Config::default(),
+                warning: Some(format!("Failed to read config: {}", e)),
+            };
         }
     };
-    
+
     // Try to parse TOML
     match toml::from_str::<Config>(&contents) {
-        Ok(config) => config,
+        Ok(config) => {
+            #[cfg(debug_assertions)]
+            log::debug!("Config parsed successfully: {:?}", config.clipboard.backend);
+            ConfigResult {
+                config,
+                warning: None,
+            }
+        }
         Err(e) => {
             #[cfg(debug_assertions)]
             log::error!("Failed to parse config file {:?}: {}", config_path, e);
-            return Config::default();
+            ConfigResult {
+                config: Config::default(),
+                warning: Some(format!("Invalid config: {}", e)),
+            }
         }
     }
 }
 
 /// Returns the path to the configuration file
+///
+/// Always uses ~/.config/jiq/config.toml on all platforms for consistency.
 fn get_config_path() -> PathBuf {
-    dirs::config_dir()
+    dirs::home_dir()
         .unwrap_or_else(|| PathBuf::from("."))
+        .join(".config")
         .join("jiq")
         .join("config.toml")
 }

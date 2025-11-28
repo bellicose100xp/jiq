@@ -215,6 +215,7 @@ pub fn handle_global_keys(app: &mut App, key: KeyEvent) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::config::ClipboardBackend;
     use crate::editor::EditorMode;
     use crate::history::HistoryState;
     use tui_textarea::CursorMove;
@@ -228,6 +229,11 @@ mod tests {
         "items": [{"tags": [{"name": "tag1"}]}]
     }"#;
 
+    /// Helper to create App with default clipboard backend for tests
+    fn test_app(json: &str) -> App {
+        App::new(json.to_string(), ClipboardBackend::Auto)
+    }
+
     // Helper to create a KeyEvent without modifiers
     fn key(code: KeyCode) -> KeyEvent {
         KeyEvent::new(code, KeyModifiers::empty())
@@ -240,7 +246,7 @@ mod tests {
 
     // Helper to set up an app with text in the query field
     fn app_with_query(query: &str) -> App {
-        let mut app = App::new(TEST_JSON.to_string());
+        let mut app = test_app(TEST_JSON);
         app.input.textarea.insert_str(query);
         // Execute the query to set up base state for autosuggestions
         app.query.execute(query);
@@ -253,13 +259,13 @@ mod tests {
 
     #[test]
     fn test_error_overlay_initializes_hidden() {
-        let app = App::new(TEST_JSON.to_string());
+        let app = test_app(TEST_JSON);
         assert!(!app.error_overlay_visible);
     }
 
     #[test]
     fn test_ctrl_e_toggles_error_overlay_when_error_exists() {
-        let mut app = App::new(TEST_JSON.to_string());
+        let mut app = test_app(TEST_JSON);
         app.input.editor_mode = EditorMode::Insert;
 
         // Type an invalid query (| is invalid jq syntax)
@@ -280,7 +286,7 @@ mod tests {
 
     #[test]
     fn test_ctrl_e_does_nothing_when_no_error() {
-        let mut app = App::new(TEST_JSON.to_string());
+        let mut app = test_app(TEST_JSON);
         // Initial query "." should succeed
         assert!(app.query.result.is_ok());
         assert!(!app.error_overlay_visible);
@@ -292,7 +298,7 @@ mod tests {
 
     #[test]
     fn test_error_overlay_hides_on_query_change() {
-        let mut app = App::new(TEST_JSON.to_string());
+        let mut app = test_app(TEST_JSON);
         app.input.editor_mode = EditorMode::Insert;
 
         // Type invalid query
@@ -312,7 +318,7 @@ mod tests {
 
     #[test]
     fn test_error_overlay_hides_on_query_change_in_normal_mode() {
-        let mut app = App::new(TEST_JSON.to_string());
+        let mut app = test_app(TEST_JSON);
         app.input.editor_mode = EditorMode::Insert;
 
         // Type invalid query
@@ -334,7 +340,7 @@ mod tests {
 
     #[test]
     fn test_ctrl_e_works_in_normal_mode() {
-        let mut app = App::new(TEST_JSON.to_string());
+        let mut app = test_app(TEST_JSON);
         app.input.editor_mode = EditorMode::Insert;
 
         // Type invalid query
@@ -352,7 +358,7 @@ mod tests {
 
     #[test]
     fn test_ctrl_e_works_when_results_pane_focused() {
-        let mut app = App::new(TEST_JSON.to_string());
+        let mut app = test_app(TEST_JSON);
         app.input.editor_mode = EditorMode::Insert;
 
         // Type invalid query
@@ -430,7 +436,7 @@ mod tests {
     #[test]
     fn test_enter_does_not_save_failed_query_to_history() {
         // Failed queries should NOT be saved to history
-        let mut app = App::new(r#"{"name": "test"}"#.to_string());
+        let mut app = test_app(r#"{"name": "test"}"#);
         app.input.editor_mode = EditorMode::Insert;
 
         // Type invalid query
@@ -476,7 +482,7 @@ mod tests {
 
     #[test]
     fn test_ctrl_q_does_not_save_failed_query() {
-        let mut app = App::new(TEST_JSON.to_string());
+        let mut app = test_app(TEST_JSON);
         app.input.editor_mode = EditorMode::Insert;
         app.history = HistoryState::empty();
 
@@ -512,7 +518,7 @@ mod tests {
 
     #[test]
     fn test_shift_enter_does_not_save_failed_query() {
-        let mut app = App::new(TEST_JSON.to_string());
+        let mut app = test_app(TEST_JSON);
         app.input.editor_mode = EditorMode::Insert;
         app.history = HistoryState::empty();
 
@@ -548,7 +554,7 @@ mod tests {
 
     #[test]
     fn test_alt_enter_does_not_save_failed_query() {
-        let mut app = App::new(TEST_JSON.to_string());
+        let mut app = test_app(TEST_JSON);
         app.input.editor_mode = EditorMode::Insert;
         app.history = HistoryState::empty();
 
@@ -815,7 +821,7 @@ mod tests {
 
     #[test]
     fn test_help_popup_initializes_hidden() {
-        let app = App::new(TEST_JSON.to_string());
+        let app = test_app(TEST_JSON);
         assert!(!app.help.visible);
     }
 

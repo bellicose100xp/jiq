@@ -58,12 +58,18 @@ fn replace_query_with(app: &mut App, text: &str) {
 mod tests {
     use super::*;
     use crate::app::state::{App, Focus};
+    use crate::config::ClipboardBackend;
     use crate::editor::EditorMode;
     use crate::history::HistoryState;
     use ratatui::crossterm::event::KeyModifiers;
 
     // Test fixture data
     const TEST_JSON: &str = r#"{"name": "test", "age": 30, "city": "NYC"}"#;
+
+    /// Helper to create App with default clipboard backend for tests
+    fn test_app(json: &str) -> App {
+        App::new(json.to_string(), ClipboardBackend::Auto)
+    }
 
     // Helper to create a KeyEvent without modifiers
     fn key(code: KeyCode) -> KeyEvent {
@@ -77,7 +83,7 @@ mod tests {
 
     // Helper to set up an app with text in the query field
     fn app_with_query(query: &str) -> App {
-        let mut app = App::new(TEST_JSON.to_string());
+        let mut app = test_app(TEST_JSON);
         app.input.textarea.insert_str(query);
         // Use empty in-memory history for all tests to prevent disk writes
         app.history = HistoryState::empty();

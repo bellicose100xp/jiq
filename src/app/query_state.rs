@@ -220,7 +220,7 @@ impl QueryState {
                 // Found escape character, skip until 'm' (end of ANSI sequence)
                 if chars.peek() == Some(&'[') {
                     chars.next(); // consume '['
-                    while let Some(c) = chars.next() {
+                    for c in chars.by_ref() {
                         if c == 'm' {
                             break;
                         }

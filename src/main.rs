@@ -5,11 +5,13 @@ use std::path::PathBuf;
 
 mod app;
 mod autocomplete;
+mod clipboard;
 mod config;
 mod editor;
 mod error;
 mod history;
 mod input;
+mod notification;
 mod query;
 mod scroll;
 mod syntax;
@@ -64,7 +66,7 @@ fn main() -> Result<()> {
     color_eyre::install()?;
 
     // Load configuration early in startup
-    let _config = config::load_config();
+    let config_result = config::load_config();
 
     // Parse CLI arguments
     let args = Args::parse();
@@ -84,8 +86,8 @@ fn main() -> Result<()> {
     // Initialize terminal (handles raw mode, alternate screen, etc.)
     let terminal = ratatui::init();
 
-    // Run the application with JSON input
-    let app = run(terminal, json_input.clone())?;
+    // Run the application with JSON input and config
+    let app = run(terminal, json_input.clone(), config_result)?;
 
     // Restore terminal (automatic cleanup)
     ratatui::restore();
@@ -102,8 +104,17 @@ fn validate_jq_exists() -> Result<(), JiqError> {
     Ok(())
 }
 
-fn run(mut terminal: DefaultTerminal, json_input: String) -> Result<App> {
-    let mut app = App::new(json_input);
+fn run(
+    mut terminal: DefaultTerminal,
+    json_input: String,
+    config_result: config::ConfigResult,
+) -> Result<App> {
+    let mut app = App::new(json_input, config_result.config.clipboard.backend);
+
+    // Show config warning if there was one
+    if let Some(warning) = config_result.warning {
+        app.notification.show_warning(&warning);
+    }
 
     loop {
         // Render the UI

@@ -1,6 +1,7 @@
 use ratatui::crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 
 use crate::app::state::App;
+use crate::clipboard;
 
 /// Handle keys when Results pane is focused
 pub fn handle_results_pane_key(app: &mut App, key: KeyEvent) {
@@ -8,6 +9,13 @@ pub fn handle_results_pane_key(app: &mut App, key: KeyEvent) {
         // Toggle help popup
         KeyCode::Char('?') => {
             app.help.visible = !app.help.visible;
+        }
+
+        // Yank (copy) result to clipboard
+        KeyCode::Char('y') => {
+            // yy command - copy result to clipboard
+            // Note: Ctrl+Y is handled globally in events.rs before this
+            clipboard::events::handle_yank_key(app, app.clipboard_backend);
         }
 
         // Basic line scrolling (1 line)
@@ -80,10 +88,16 @@ pub fn handle_results_pane_key(app: &mut App, key: KeyEvent) {
 mod tests {
     use super::*;
     use crate::app::state::{App, Focus};
+    use crate::config::ClipboardBackend;
     use crate::history::HistoryState;
 
     // Test fixture data
     const TEST_JSON: &str = r#"{"name": "test", "age": 30, "city": "NYC"}"#;
+
+    /// Helper to create App with default clipboard backend for tests
+    fn test_app(json: &str) -> App {
+        App::new(json.to_string(), ClipboardBackend::Auto)
+    }
 
     // Helper to create a KeyEvent without modifiers
     fn key(code: KeyCode) -> KeyEvent {
@@ -97,7 +111,7 @@ mod tests {
 
     // Helper to set up an app with text in the query field
     fn app_with_query(query: &str) -> App {
-        let mut app = App::new(TEST_JSON.to_string());
+        let mut app = test_app(TEST_JSON);
         app.input.textarea.insert_str(query);
         // Use empty in-memory history for all tests to prevent disk writes
         app.history = HistoryState::empty();
@@ -193,7 +207,7 @@ mod tests {
     #[test]
     fn test_capital_g_jumps_to_bottom() {
         let json = r#"{"line1": 1, "line2": 2, "line3": 3}"#;
-        let mut app = App::new(json.to_string());
+        let mut app = test_app(json);
         app.input.textarea.insert_str(".");
         app.focus = Focus::ResultsPane;
         app.results_scroll.offset = 0;

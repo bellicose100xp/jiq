@@ -4,7 +4,9 @@ use super::help_state::HelpPopupState;
 use super::input_state::InputState;
 use super::query_state::QueryState;
 use crate::autocomplete::{AutocompleteState, get_suggestions};
+use crate::config::ClipboardBackend;
 use crate::history::HistoryState;
+use crate::notification::NotificationState;
 use crate::scroll::ScrollState;
 
 #[cfg(debug_assertions)]
@@ -39,11 +41,13 @@ pub struct App {
     pub error_overlay_visible: bool,
     pub history: HistoryState,
     pub help: HelpPopupState,
+    pub notification: NotificationState,
+    pub clipboard_backend: ClipboardBackend,
 }
 
 impl App {
-    /// Create a new App instance with JSON input
-    pub fn new(json_input: String) -> Self {
+    /// Create a new App instance with JSON input and clipboard backend preference
+    pub fn new(json_input: String, clipboard_backend: ClipboardBackend) -> Self {
         Self {
             input: InputState::new(),
             query: QueryState::new(json_input),
@@ -55,6 +59,8 @@ impl App {
             error_overlay_visible: false,
             history: HistoryState::new(),
             help: HelpPopupState::new(),
+            notification: NotificationState::new(),
+            clipboard_backend,
         }
     }
 
@@ -453,11 +459,17 @@ impl App {
 mod tests {
     use super::*;
     use crate::app::query_state::ResultType;
+    use crate::config::ClipboardBackend;
+
+    /// Helper to create App with default clipboard backend for tests
+    fn test_app(json: &str) -> App {
+        App::new(json.to_string(), ClipboardBackend::Auto)
+    }
 
     #[test]
     fn test_app_initialization() {
         let json = r#"{"name": "Alice", "age": 30}"#;
-        let app = App::new(json.to_string());
+        let app = test_app(json);
 
         // Check default state
         assert_eq!(app.focus, Focus::InputField);
@@ -470,7 +482,7 @@ mod tests {
     #[test]
     fn test_initial_query_result() {
         let json = r#"{"name": "Bob"}"#;
-        let app = App::new(json.to_string());
+        let app = test_app(json);
 
         // Initial query should execute identity filter "."
         assert!(app.query.result.is_ok());
@@ -495,7 +507,7 @@ mod tests {
     #[test]
     fn test_should_quit_getter() {
         let json = r#"{}"#;
-        let mut app = App::new(json.to_string());
+        let mut app = test_app(json);
 
         assert!(!app.should_quit());
 
@@ -506,7 +518,7 @@ mod tests {
     #[test]
     fn test_output_mode_getter() {
         let json = r#"{}"#;
-        let mut app = App::new(json.to_string());
+        let mut app = test_app(json);
 
         assert_eq!(app.output_mode(), None);
 
@@ -520,7 +532,7 @@ mod tests {
     #[test]
     fn test_query_getter_empty() {
         let json = r#"{"test": true}"#;
-        let app = App::new(json.to_string());
+        let app = test_app(json);
 
         assert_eq!(app.query(), "");
     }
@@ -528,7 +540,7 @@ mod tests {
     #[test]
     fn test_app_with_empty_json_object() {
         let json = "{}";
-        let app = App::new(json.to_string());
+        let app = test_app(json);
 
         assert!(app.query.result.is_ok());
     }
@@ -536,7 +548,7 @@ mod tests {
     #[test]
     fn test_app_with_json_array() {
         let json = r#"[1, 2, 3]"#;
-        let app = App::new(json.to_string());
+        let app = test_app(json);
 
         assert!(app.query.result.is_ok());
         let result = app.query.result.as_ref().unwrap();
@@ -549,7 +561,7 @@ mod tests {
     #[test]
     fn test_max_scroll_large_content() {
         let json = r#"{"test": true}"#;
-        let mut app = App::new(json.to_string());
+        let mut app = test_app(json);
 
         // Simulate large content result
         let large_result: String = (0..70000).map(|i| format!("line {}\n", i)).collect();
@@ -569,7 +581,7 @@ mod tests {
     #[test]
     fn test_results_line_count_large_file() {
         let json = r#"{"test": true}"#;
-        let mut app = App::new(json.to_string());
+        let mut app = test_app(json);
 
         // Simulate result with exactly u16::MAX lines
         let result: String = (0..65535).map(|_| "x\n").collect();
@@ -588,7 +600,7 @@ mod tests {
     #[test]
     fn test_line_count_uses_last_result_on_error() {
         let json = r#"{"test": true}"#;
-        let mut app = App::new(json.to_string());
+        let mut app = test_app(json);
 
         // Execute a valid query first to cache result
         let valid_result: String = (0..50).map(|i| format!("line{}\n", i)).collect();
@@ -612,7 +624,7 @@ mod tests {
     #[test]
     fn test_line_count_with_error_no_cached_result() {
         let json = r#"{"test": true}"#;
-        let mut app = App::new(json.to_string());
+        let mut app = test_app(json);
 
         // Set error without any cached result
         app.query.last_successful_result = None;
@@ -630,7 +642,7 @@ mod tests {
     fn test_array_suggestion_appends_to_path() {
         // When accepting [].field suggestion for .services, should produce .services[].field
         let json = r#"{"services": [{"name": "alice"}, {"name": "bob"}, {"name": "charlie"}]}"#;
-        let mut app = App::new(json.to_string());
+        let mut app = test_app(json);
 
         // Step 1: Execute ".services" to cache base
         app.input.textarea.insert_str(".services");
@@ -664,7 +676,7 @@ mod tests {
         // Test simple path continuation: .object.field
         // This is the bug: .services[0].deploymentConfiguration.alarms becomes deploymentConfigurationalarms
         let json = r#"{"user": {"name": "Alice", "age": 30, "address": {"city": "NYC"}}}"#;
-        let mut app = App::new(json.to_string());
+        let mut app = test_app(json);
 
         // Step 1: Execute base query
         app.input.textarea.insert_str(".user");
@@ -693,7 +705,7 @@ mod tests {
     fn test_array_suggestion_replaces_partial_field() {
         // When user types partial field after array name, accepting [] suggestion should replace partial
         let json = r#"{"services": [{"serviceArn": "arn1"}, {"serviceArn": "arn2"}, {"serviceArn": "arn3"}]}"#;
-        let mut app = App::new(json.to_string());
+        let mut app = test_app(json);
 
         // Step 1: Execute ".services" to cache base
         app.input.textarea.insert_str(".services");
@@ -730,7 +742,7 @@ mod tests {
     fn test_array_suggestion_replaces_trailing_dot() {
         // When user types ".services." (trailing dot, no partial), array suggestion should replace the dot
         let json = r#"{"services": [{"deploymentConfiguration": {"x": 1}}, {"deploymentConfiguration": {"x": 2}}]}"#;
-        let mut app = App::new(json.to_string());
+        let mut app = test_app(json);
 
         // Step 1: Execute ".services" to cache base query and type
         app.input.textarea.insert_str(".services");
@@ -762,7 +774,7 @@ mod tests {
     fn test_nested_array_suggestion_replaces_trailing_dot() {
         // Test deeply nested arrays: .services[].capacityProviderStrategy[].
         let json = r#"{"services": [{"capacityProviderStrategy": [{"base": 0, "weight": 1}]}]}"#;
-        let mut app = App::new(json.to_string());
+        let mut app = test_app(json);
 
         // Step 1: Execute base query to cache state
         app.input.textarea.insert_str(".services[].capacityProviderStrategy[]");
@@ -792,7 +804,7 @@ mod tests {
     fn test_array_suggestion_after_pipe() {
         // After pipe, array suggestions should include leading dot
         let json = r#"{"services": [{"name": "svc1"}]}"#;
-        let mut app = App::new(json.to_string());
+        let mut app = test_app(json);
 
         // Step 1: Execute base query
         app.input.textarea.insert_str(".services");
@@ -820,7 +832,7 @@ mod tests {
     fn test_array_suggestion_after_pipe_exact_user_flow() {
         // Replicate exact user flow: type partial, select, then pipe
         let json = r#"{"services": [{"capacityProviderStrategy": [{"base": 0}]}]}"#;
-        let mut app = App::new(json.to_string());
+        let mut app = test_app(json);
 
         // Step 1: Type ".ser" (partial)
         app.input.textarea.insert_str(".ser");
@@ -853,7 +865,7 @@ mod tests {
     fn test_pipe_after_typing_space() {
         // Test typing space then pipe character by character
         let json = r#"{"services": [{"name": "svc1"}]}"#;
-        let mut app = App::new(json.to_string());
+        let mut app = test_app(json);
 
         // Step 1: Type and execute ".services"
         app.input.textarea.insert_str(".services");
@@ -884,7 +896,7 @@ mod tests {
     fn test_suggestions_persist_when_typing_partial_after_array() {
         // Critical: When typing partial field after [], suggestions should persist
         let json = r#"{"services": [{"capacityProviderStrategy": [{"base": 0, "weight": 1, "capacityProvider": "x"}]}]}"#;
-        let mut app = App::new(json.to_string());
+        let mut app = test_app(json);
 
         // Step 1: Type the full path up to the last array
         app.input.textarea.insert_str(".services[].capacityProviderStrategy[]");
@@ -947,7 +959,7 @@ mod tests {
                 }
             ]
         }"#;
-        let mut app = App::new(json.to_string());
+        let mut app = test_app(json);
 
         // Step 1: Execute query with optional chaining up to the array
         app.input.textarea.insert_str(".services[].capacityProviderStrategy[]?");
@@ -989,7 +1001,7 @@ mod tests {
     fn test_jq_keyword_autocomplete_no_dot_prefix() {
         // Test that jq keywords like "then", "else", "end" don't get a dot prefix
         let json = r#"{"services": [{"capacityProviderStrategy": [{"base": 0}]}]}"#;
-        let mut app = App::new(json.to_string());
+        let mut app = test_app(json);
 
         // Step 1: Type the beginning of an if statement
         app.input.textarea.insert_str(".services | if has(\"capacityProviderStrategy\")");
@@ -1014,7 +1026,7 @@ mod tests {
     fn test_jq_keyword_else_autocomplete() {
         // Test "else" keyword autocomplete
         let json = r#"{"value": 42}"#;
-        let mut app = App::new(json.to_string());
+        let mut app = test_app(json);
 
         // Type an if-then statement
         app.input.textarea.insert_str("if .value > 10 then \"high\" el");
@@ -1032,7 +1044,7 @@ mod tests {
     fn test_jq_keyword_end_autocomplete() {
         // Test "end" keyword autocomplete
         let json = r#"{"value": 42}"#;
-        let mut app = App::new(json.to_string());
+        let mut app = test_app(json);
 
         // Type a complete if-then-else statement
         app.input.textarea.insert_str("if .value > 10 then \"high\" else \"low\" en");
@@ -1051,7 +1063,7 @@ mod tests {
         // Test that field access after "then" preserves the space
         // Bug: ".services[] | if has(\"x\") then .field" becomes "then.field" (no space)
         let json = r#"{"services": [{"capacityProviderStrategy": [{"base": 0}]}]}"#;
-        let mut app = App::new(json.to_string());
+        let mut app = test_app(json);
 
         // Step 1: Execute base query
         app.input.textarea.insert_str(".services[]");
@@ -1081,7 +1093,7 @@ mod tests {
     fn test_field_access_after_else_preserves_space() {
         // Test that field access after "else" preserves the space
         let json = r#"{"services": [{"name": "test"}]}"#;
-        let mut app = App::new(json.to_string());
+        let mut app = test_app(json);
 
         // Execute base query
         app.input.textarea.insert_str(".services[]");
@@ -1161,7 +1173,7 @@ mod tests {
     fn test_autocomplete_inside_if_statement() {
         // Autocomplete inside complex query should only replace the local part
         let json = r#"{"services": [{"capacityProviderStrategy": [{"base": 0}]}]}"#;
-        let mut app = App::new(json.to_string());
+        let mut app = test_app(json);
 
         // User types complex query with if/then
         app.input.textarea.insert_str(".services | if has(\"capacityProviderStrategy\") then .ca");
@@ -1181,7 +1193,7 @@ mod tests {
     fn test_root_field_suggestion() {
         // At root, typing "." and selecting field should replace "." with ".field"
         let json = r#"{"services": [{"name": "test"}], "status": "active"}"#;
-        let mut app = App::new(json.to_string());
+        let mut app = test_app(json);
 
         // Validate initial state
         assert_eq!(app.query.base_query_for_suggestions, Some(".".to_string()),
@@ -1207,7 +1219,7 @@ mod tests {
     fn test_field_suggestion_replaces_from_dot() {
         // When accepting .field suggestion at root, should replace from last dot
         let json = r#"{"name": "test", "age": 30}"#;
-        let mut app = App::new(json.to_string());
+        let mut app = test_app(json);
 
         // Initial state: "." was executed during App::new()
         // Validate initial state
@@ -1238,7 +1250,7 @@ mod tests {
                 {"serviceArn": "arn:aws:ecs:region:account:service/cluster/svc5", "serviceName": "service5"}
             ]
         }"#;
-        let mut app = App::new(json.to_string());
+        let mut app = test_app(json);
 
         // Step 1: Execute ".services" to cache base
         app.input.textarea.insert_str(".services");
