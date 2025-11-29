@@ -159,8 +159,8 @@ pub fn handle_global_keys(app: &mut App, key: KeyEvent) -> bool {
         KeyCode::Tab if !key.modifiers.contains(KeyModifiers::CONTROL) => {
             if app.focus == Focus::InputField && app.autocomplete.is_visible() {
                 if let Some(suggestion) = app.autocomplete.selected() {
-                    let text = suggestion.text.clone();
-                    app.insert_autocomplete_suggestion(&text);
+                    let suggestion_clone = suggestion.clone();
+                    app.insert_autocomplete_suggestion(&suggestion_clone);
                 }
                 true
             } else {

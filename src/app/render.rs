@@ -346,9 +346,18 @@ impl App {
         let popup_height = (visible_count as u16) + POPUP_BORDER_HEIGHT;
 
         // Calculate max width needed for suggestions
+        // Use signature for functions if available, otherwise use text
         let max_text_width = suggestions
             .iter()
             .map(|s| {
+                // Get display text: signature for functions, text for others
+                let display_text_len = match s.suggestion_type {
+                    SuggestionType::Function => {
+                        s.signature.as_ref().map(|sig| sig.len()).unwrap_or(s.text.len())
+                    }
+                    _ => s.text.len(),
+                };
+
                 // Calculate actual type label length including field type if present
                 let type_label_len = match &s.suggestion_type {
                     SuggestionType::Field => {
@@ -364,7 +373,7 @@ impl App {
                         s.suggestion_type.to_string().len() + 2 // "[]" wrapping
                     }
                 };
-                s.text.len() + type_label_len + TYPE_LABEL_SPACING
+                display_text_len + type_label_len + TYPE_LABEL_SPACING
             })
             .max()
             .unwrap_or(20)
@@ -374,11 +383,17 @@ impl App {
         // Position popup just above the input field
         let popup_area = popup::popup_above_anchor(input_area, popup_width, popup_height, POPUP_OFFSET_X);
 
-        // Calculate max field text width for alignment
-        let max_field_width = suggestions
+        // Calculate max display text width for alignment
+        // Use signature for functions if available, otherwise use text
+        let max_display_width = suggestions
             .iter()
             .take(MAX_VISIBLE_SUGGESTIONS)
-            .map(|s| s.text.len())
+            .map(|s| match s.suggestion_type {
+                SuggestionType::Function => {
+                    s.signature.as_ref().map(|sig| sig.len()).unwrap_or(s.text.len())
+                }
+                _ => s.text.len(),
+            })
             .max()
             .unwrap_or(0);
 
@@ -406,15 +421,23 @@ impl App {
                     _ => format!("[{}]", suggestion.suggestion_type),
                 };
 
+                // Get display text: signature for functions, text for others
+                let display_text = match suggestion.suggestion_type {
+                    SuggestionType::Function => {
+                        suggestion.signature.as_deref().unwrap_or(&suggestion.text)
+                    }
+                    _ => &suggestion.text,
+                };
+
                 // Calculate padding to align type labels
-                let padding_needed = max_field_width.saturating_sub(suggestion.text.len());
+                let padding_needed = max_display_width.saturating_sub(display_text.len());
                 let padding = " ".repeat(padding_needed);
 
                 let line = if i == self.autocomplete.selected_index() {
                     // Highlight selected item with high contrast colors
                     Line::from(vec![
                         Span::styled(
-                            format!("► {} {}", suggestion.text, padding),
+                            format!("► {} {}", display_text, padding),
                             Style::default()
                                 .fg(Color::Black)
                                 .bg(Color::Cyan)
@@ -430,7 +453,7 @@ impl App {
                 } else {
                     Line::from(vec![
                         Span::styled(
-                            format!("  {} {}", suggestion.text, padding),
+                            format!("  {} {}", display_text, padding),
                             Style::default()
                                 .fg(Color::White)
                                 .bg(Color::Black),
@@ -956,6 +979,88 @@ mod snapshot_tests {
         
         // Focus the results pane to verify cyan border and title
         app.focus = Focus::ResultsPane;
+
+        let output = render_to_string(&mut app, TEST_WIDTH, TEST_HEIGHT);
+        assert_snapshot!(output);
+    }
+
+    // === Autocomplete Popup Tests ===
+
+    #[test]
+    fn snapshot_autocomplete_popup_with_function_signatures() {
+        use crate::autocomplete::{Suggestion, SuggestionType};
+
+        let json = r#"{"name": "Alice", "age": 30}"#;
+        let mut app = test_app(json);
+        
+        // Set up autocomplete with function suggestions that have signatures
+        let suggestions = vec![
+            Suggestion::new("select", SuggestionType::Function)
+                .with_description("Filter elements by condition")
+                .with_signature("select(expr)")
+                .with_needs_parens(true),
+            Suggestion::new("sort", SuggestionType::Function)
+                .with_description("Sort array")
+                .with_signature("sort"),
+            Suggestion::new("sort_by", SuggestionType::Function)
+                .with_description("Sort array by expression")
+                .with_signature("sort_by(expr)")
+                .with_needs_parens(true),
+        ];
+        app.autocomplete.update_suggestions(suggestions);
+
+        let output = render_to_string(&mut app, TEST_WIDTH, TEST_HEIGHT);
+        assert_snapshot!(output);
+    }
+
+    #[test]
+    fn snapshot_autocomplete_popup_selected_item_with_signature() {
+        use crate::autocomplete::{Suggestion, SuggestionType};
+
+        let json = r#"{"name": "Alice", "age": 30}"#;
+        let mut app = test_app(json);
+        
+        // Set up autocomplete with function suggestions
+        let suggestions = vec![
+            Suggestion::new("map", SuggestionType::Function)
+                .with_description("Apply expression to each element")
+                .with_signature("map(expr)")
+                .with_needs_parens(true),
+            Suggestion::new("max", SuggestionType::Function)
+                .with_description("Maximum value")
+                .with_signature("max"),
+            Suggestion::new("max_by", SuggestionType::Function)
+                .with_description("Maximum by expression")
+                .with_signature("max_by(expr)")
+                .with_needs_parens(true),
+        ];
+        app.autocomplete.update_suggestions(suggestions);
+        
+        // Select the second item (max)
+        app.autocomplete.select_next();
+
+        let output = render_to_string(&mut app, TEST_WIDTH, TEST_HEIGHT);
+        assert_snapshot!(output);
+    }
+
+    #[test]
+    fn snapshot_autocomplete_popup_mixed_types() {
+        use crate::autocomplete::{Suggestion, SuggestionType, JsonFieldType};
+
+        let json = r#"{"name": "Alice", "age": 30}"#;
+        let mut app = test_app(json);
+        
+        // Set up autocomplete with mixed suggestion types
+        let suggestions = vec![
+            Suggestion::new("keys", SuggestionType::Function)
+                .with_description("Get object keys or array indices")
+                .with_signature("keys"),
+            Suggestion::new_with_type("name", SuggestionType::Field, Some(JsonFieldType::String))
+                .with_description("String field"),
+            Suggestion::new(".[]", SuggestionType::Pattern)
+                .with_description("Iterate over array/object values"),
+        ];
+        app.autocomplete.update_suggestions(suggestions);
 
         let output = render_to_string(&mut app, TEST_WIDTH, TEST_HEIGHT);
         assert_snapshot!(output);

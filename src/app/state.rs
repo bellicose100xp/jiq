@@ -99,7 +99,7 @@ impl App {
 
     /// Insert an autocomplete suggestion at the current cursor position
     /// Delegates to the autocomplete insertion module
-    pub fn insert_autocomplete_suggestion(&mut self, suggestion: &str) {
+    pub fn insert_autocomplete_suggestion(&mut self, suggestion: &autocomplete::state::Suggestion) {
         // Delegate to autocomplete module
         insertion::insert_suggestion(&mut self.input.textarea, &mut self.query, suggestion);
 
@@ -115,10 +115,16 @@ mod tests {
     use super::*;
     use crate::query::ResultType;
     use crate::config::ClipboardBackend;
+    use crate::autocomplete::state::{Suggestion, SuggestionType};
 
     /// Helper to create App with default clipboard backend for tests
     fn test_app(json: &str) -> App {
         App::new(json.to_string(), ClipboardBackend::Auto)
+    }
+
+    /// Helper to create a test suggestion from text (for backward compatibility with existing tests)
+    fn test_suggestion(text: &str) -> Suggestion {
+        Suggestion::new(text, SuggestionType::Field)
     }
 
     #[test]
@@ -310,7 +316,7 @@ mod tests {
                    "base_type should be ArrayOfObjects");
 
         // Step 2: Accept autocomplete suggestion "[].name" (no leading dot since after NoOp)
-        app.insert_autocomplete_suggestion("[].name");
+        app.insert_autocomplete_suggestion(&test_suggestion("[].name"));
 
         // Should produce .services[].name (append, not replace)
         assert_eq!(app.query(), ".services[].name");
@@ -345,7 +351,7 @@ mod tests {
         app.input.textarea.insert_str(".na");
 
         // Step 3: Accept suggestion "name" (no leading dot since continuing path)
-        app.insert_autocomplete_suggestion("name");
+        app.insert_autocomplete_suggestion(&test_suggestion("name"));
 
         // Should produce: .user.name
         // NOT: .username (missing dot)
@@ -375,7 +381,7 @@ mod tests {
         app.input.textarea.insert_char('s');
 
         // Step 3: Accept autocomplete suggestion "[].serviceArn"
-        app.insert_autocomplete_suggestion("[].serviceArn");
+        app.insert_autocomplete_suggestion(&test_suggestion("[].serviceArn"));
 
         // Should produce .services[].serviceArn (replace ".s" with "[].serviceArn")
         assert_eq!(app.query(), ".services[].serviceArn");
@@ -413,7 +419,7 @@ mod tests {
         app.input.textarea.insert_char('.');
 
         // Step 3: Accept autocomplete suggestion "[].deploymentConfiguration"
-        app.insert_autocomplete_suggestion("[].deploymentConfiguration");
+        app.insert_autocomplete_suggestion(&test_suggestion("[].deploymentConfiguration"));
 
         // Should produce .services[].deploymentConfiguration (NOT .services.[].deploymentConfiguration)
         assert_eq!(app.query(), ".services[].deploymentConfiguration");
@@ -445,7 +451,7 @@ mod tests {
 
         // Step 3: Accept autocomplete suggestion "base"
         // Note: suggestion is "base" (no prefix) since Object after CloseBracket
-        app.insert_autocomplete_suggestion("base");
+        app.insert_autocomplete_suggestion(&test_suggestion("base"));
 
         // Should produce .services[].capacityProviderStrategy[].base
         assert_eq!(app.query(), ".services[].capacityProviderStrategy[].base");
@@ -473,7 +479,7 @@ mod tests {
         app.input.textarea.insert_str(" | .");
 
         // Step 3: Accept autocomplete suggestion ".[].name" (WITH leading dot after pipe)
-        app.insert_autocomplete_suggestion(".[].name");
+        app.insert_autocomplete_suggestion(&test_suggestion(".[].name"));
 
         // Should produce .services | .[].name (NOT .services | . | .[].name)
         assert_eq!(app.query(), ".services | .[].name");
@@ -495,7 +501,7 @@ mod tests {
 
         // Step 2: Select ".services" from autocomplete
         // In real app, user would Tab here with suggestion ".services"
-        app.insert_autocomplete_suggestion(".services");
+        app.insert_autocomplete_suggestion(&test_suggestion(".services"));
 
         // Validate: should now be ".services"
         assert_eq!(app.query(), ".services");
@@ -509,7 +515,7 @@ mod tests {
         app.input.textarea.insert_str(" | .");
 
         // Step 5: Select ".[].capacityProviderStrategy"
-        app.insert_autocomplete_suggestion(".[].capacityProviderStrategy");
+        app.insert_autocomplete_suggestion(&test_suggestion(".[].capacityProviderStrategy"));
 
         // Should produce: .services | .[].capacityProviderStrategy
         // NOT: .services | . | .[].capacityProviderStrategy
@@ -540,7 +546,7 @@ mod tests {
         app.input.textarea.insert_str(" .");
 
         // Step 5: Accept suggestion
-        app.insert_autocomplete_suggestion(".[].name");
+        app.insert_autocomplete_suggestion(&test_suggestion(".[].name"));
 
         // Should be: base + " | " + suggestion
         // Base is trimmed, so: ".services" + " | " + ".[].name" = ".services | .[].name" ✅
@@ -667,7 +673,7 @@ mod tests {
 
         // Step 3: Accept "then" from autocomplete
         // This should NOT add a dot before "then"
-        app.insert_autocomplete_suggestion("then");
+        app.insert_autocomplete_suggestion(&test_suggestion("then"));
 
         // Should produce: .services | if has("capacityProviderStrategy") then
         // NOT: .services | if has("capacityProviderStrategy") .then
@@ -687,7 +693,7 @@ mod tests {
         app.input.textarea.insert_str("if .value > 10 then \"high\" el");
         
         // Accept "else" from autocomplete
-        app.insert_autocomplete_suggestion("else");
+        app.insert_autocomplete_suggestion(&test_suggestion("else"));
 
         // Should produce: if .value > 10 then "high" else
         // NOT: if .value > 10 then "high" .else
@@ -705,7 +711,7 @@ mod tests {
         app.input.textarea.insert_str("if .value > 10 then \"high\" else \"low\" en");
         
         // Accept "end" from autocomplete
-        app.insert_autocomplete_suggestion("end");
+        app.insert_autocomplete_suggestion(&test_suggestion("end"));
 
         // Should produce: if .value > 10 then "high" else "low" end
         // NOT: if .value > 10 then "high" else "low" .end
@@ -728,7 +734,7 @@ mod tests {
         app.input.textarea.insert_str(" | if has(\"capacityProviderStrategy\") then .ca");
 
         // Step 3: Accept field suggestion (with leading dot as it would come from get_suggestions)
-        app.insert_autocomplete_suggestion(".capacityProviderStrategy");
+        app.insert_autocomplete_suggestion(&test_suggestion(".capacityProviderStrategy"));
 
         // Should produce: .services[] | if has("capacityProviderStrategy") then .capacityProviderStrategy
         // NOT: .services[] | if has("capacityProviderStrategy") thencapacityProviderStrategy
@@ -758,7 +764,7 @@ mod tests {
         app.input.textarea.insert_str(" | if has(\"name\") then .name else .na");
 
         // Accept field suggestion (with leading dot as it would come from get_suggestions)
-        app.insert_autocomplete_suggestion(".name");
+        app.insert_autocomplete_suggestion(&test_suggestion(".name"));
 
         // Should have space between "else" and field
         assert!(app.query().contains("else .name"), 
@@ -803,7 +809,7 @@ mod tests {
         app.input.textarea.insert_str(".");
 
         // Accept suggestion ".services" (with leading dot since at root after NoOp)
-        app.insert_autocomplete_suggestion(".services");
+        app.insert_autocomplete_suggestion(&test_suggestion(".services"));
 
         // Should produce ".services" NOT "..services"
         assert_eq!(app.query(), ".services");
@@ -830,7 +836,7 @@ mod tests {
         app.input.textarea.insert_str(".na");
 
         // Accept autocomplete suggestion "name" (no leading dot since after Dot)
-        app.insert_autocomplete_suggestion("name");
+        app.insert_autocomplete_suggestion(&test_suggestion("name"));
 
         // Should produce .name (replace from the dot)
         assert_eq!(app.query(), ".name");
@@ -864,7 +870,7 @@ mod tests {
         app.input.textarea.insert_str(".s");
 
         // Step 3: Accept "[].serviceArn" (no leading dot since after NoOp)
-        app.insert_autocomplete_suggestion("[].serviceArn");
+        app.insert_autocomplete_suggestion(&test_suggestion("[].serviceArn"));
 
         let query_text = app.query();
         assert_eq!(query_text, ".services[].serviceArn");

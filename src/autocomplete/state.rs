@@ -68,6 +68,10 @@ pub struct Suggestion {
     pub description: Option<String>,
     /// Optional JSON field type (for Field suggestions)
     pub field_type: Option<JsonFieldType>,
+    /// Display signature like "select(expr)" for functions
+    pub signature: Option<String>,
+    /// Whether to append ( on insertion (for functions requiring arguments)
+    pub needs_parens: bool,
 }
 
 impl Suggestion {
@@ -77,6 +81,8 @@ impl Suggestion {
             suggestion_type,
             description: None,
             field_type: None,
+            signature: None,
+            needs_parens: false,
         }
     }
 
@@ -90,11 +96,25 @@ impl Suggestion {
             suggestion_type,
             description: None,
             field_type,
+            signature: None,
+            needs_parens: false,
         }
     }
 
     pub fn with_description(mut self, desc: impl Into<String>) -> Self {
         self.description = Some(desc.into());
+        self
+    }
+
+    /// Set the display signature for this suggestion
+    pub fn with_signature(mut self, sig: impl Into<String>) -> Self {
+        self.signature = Some(sig.into());
+        self
+    }
+
+    /// Set whether this suggestion needs parentheses on insertion
+    pub fn with_needs_parens(mut self, needs_parens: bool) -> Self {
+        self.needs_parens = needs_parens;
         self
     }
 }
