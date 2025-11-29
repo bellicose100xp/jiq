@@ -53,6 +53,7 @@ pub struct QueryState {
     pub base_type_for_suggestions: Option<ResultType>,
 }
 
+
 impl QueryState {
     /// Create a new QueryState with the given JSON input
     pub fn new(json_input: String) -> Self {
@@ -263,6 +264,7 @@ impl QueryState {
             .min(u16::MAX as usize) as u16
     }
 }
+
 
 #[cfg(test)]
 mod tests {

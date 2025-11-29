@@ -1,7 +1,7 @@
 use ratatui::crossterm::event::{KeyCode, KeyEvent};
 use tui_textarea::Input;
 
-use crate::app::state::App;
+use crate::app::App;
 
 /// Handle keys when history popup is visible
 pub fn handle_history_popup_key(app: &mut App, key: KeyEvent) {
@@ -54,10 +54,11 @@ fn replace_query_with(app: &mut App, text: &str) {
     app.error_overlay_visible = false;
 }
 
+
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::app::state::{App, Focus};
+    use crate::app::{App, Focus};
     use crate::config::ClipboardBackend;
     use crate::editor::EditorMode;
     use crate::history::HistoryState;

@@ -275,7 +275,7 @@ mod tests {
         #[test]
         fn prop_empty_content_rejection_query(
             // Generate whitespace-only strings (empty or spaces/tabs/newlines)
-            whitespace in "[ \t\n]*"
+            _whitespace in "[ \t\n]*"
         ) {
             // Create app with minimal JSON
             let mut app = test_app("{}");

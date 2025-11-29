@@ -4,12 +4,12 @@ use std::time::Duration;
 
 use crate::clipboard;
 use crate::editor::EditorMode;
+use crate::editor;
+use crate::history;
+use crate::results;
 use super::state::{App, Focus};
 
 mod global;
-mod history;
-mod results;
-mod vim;
 
 /// Timeout for event polling - allows periodic UI refresh for notifications
 const EVENT_POLL_TIMEOUT: Duration = Duration::from_millis(100);
@@ -31,7 +31,7 @@ impl App {
     }
 
     /// Handle key press events
-    fn handle_key_event(&mut self, key: KeyEvent) {
+    pub fn handle_key_event(&mut self, key: KeyEvent) {
         // Try global keys first
         if global::handle_global_keys(self, key) {
             return; // Key was handled globally
@@ -45,7 +45,7 @@ impl App {
         // Not a global key, delegate to focused pane
         match self.focus {
             Focus::InputField => self.handle_input_field_key(key),
-            Focus::ResultsPane => results::handle_results_pane_key(self, key),
+            Focus::ResultsPane => results::events::handle_results_pane_key(self, key),
         }
     }
 
@@ -53,7 +53,7 @@ impl App {
     fn handle_input_field_key(&mut self, key: KeyEvent) {
         // Handle history popup when visible
         if self.history.is_visible() {
-            history::handle_history_popup_key(self, key);
+            history::events::handle_history_popup_key(self, key);
             return;
         }
 
@@ -100,7 +100,7 @@ impl App {
                     // At most recent, clear the input
                     self.input.textarea.delete_line_by_head();
                     self.input.textarea.delete_line_by_end();
-                    vim::execute_query(self);
+                    editor::events::execute_query(self);
                 }
                 return;
             }
@@ -120,9 +120,9 @@ impl App {
 
         // Handle input based on current mode
         match self.input.editor_mode {
-            EditorMode::Insert => vim::handle_insert_mode_key(self, key),
-            EditorMode::Normal => vim::handle_normal_mode_key(self, key),
-            EditorMode::Operator(_) => vim::handle_operator_mode_key(self, key),
+            EditorMode::Insert => editor::events::handle_insert_mode_key(self, key),
+            EditorMode::Normal => editor::events::handle_normal_mode_key(self, key),
+            EditorMode::Operator(_) => editor::events::handle_operator_mode_key(self, key),
         }
     }
 
@@ -132,7 +132,7 @@ impl App {
         self.input.textarea.delete_line_by_head();
         self.input.textarea.delete_line_by_end();
         self.input.textarea.insert_str(text);
-        vim::execute_query(self);
+        editor::events::execute_query(self);
     }
 
     /// Open the history popup with current query as initial search

@@ -1159,7 +1159,7 @@ mod tests {
 
         // Validate base state
         // .na returns null, so base_query stays at "." (from App::new())
-        use crate::app::query_state::ResultType;
+        use crate::query::ResultType;
         assert_eq!(app.query.base_query_for_suggestions, Some(".".to_string()),
                    "base_query should remain '.' since .na returns null");
         assert_eq!(app.query.base_type_for_suggestions, Some(ResultType::Object),
@@ -1186,7 +1186,7 @@ mod tests {
         app.focus = Focus::InputField;
 
         // Validate base state was set up by app_with_query
-        use crate::app::query_state::ResultType;
+        use crate::query::ResultType;
         assert_eq!(app.query.base_query_for_suggestions, Some(".services".to_string()),
                    "base_query should be '.services'");
         assert_eq!(app.query.base_type_for_suggestions, Some(ResultType::ArrayOfObjects),
@@ -1216,7 +1216,7 @@ mod tests {
         app.focus = Focus::InputField;
 
         // Validate base state
-        use crate::app::query_state::ResultType;
+        use crate::query::ResultType;
         assert_eq!(app.query.base_query_for_suggestions, Some(".services".to_string()));
         assert_eq!(app.query.base_type_for_suggestions, Some(ResultType::ArrayOfObjects));
 
@@ -1243,7 +1243,7 @@ mod tests {
         app.focus = Focus::InputField;
 
         // Validate base state
-        use crate::app::query_state::ResultType;
+        use crate::query::ResultType;
         assert_eq!(app.query.base_query_for_suggestions, Some(".items[].tags".to_string()),
                    "base_query should be '.items[].tags'");
         assert_eq!(app.query.base_type_for_suggestions, Some(ResultType::ArrayOfObjects),

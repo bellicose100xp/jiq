@@ -10,7 +10,7 @@ use crate::editor::EditorMode;
 pub struct InputState {
     pub textarea: TextArea<'static>,
     pub editor_mode: EditorMode,
-    pub scroll_offset: usize,  // Track horizontal scroll for syntax overlay
+    pub scroll_offset: usize, // Track horizontal scroll for syntax overlay
 }
 
 impl InputState {
@@ -57,6 +57,7 @@ impl InputState {
             // Cursor moved right of viewport - scroll right
             new_scroll = cursor_col + 1 - viewport_width;
         }
+
 
         // Phase 2: reduce scroll if text is shorter than visible area
         // (handles deletion case - scroll left to fill available space)
@@ -113,9 +114,12 @@ mod tests {
         assert!(
             cursor_col >= scroll && cursor_col < scroll + viewport_width,
             "DESYNC: Cursor at {} not visible in viewport [{}, {})",
-            cursor_col, scroll, scroll + viewport_width
+            cursor_col,
+            scroll,
+            scroll + viewport_width
         );
     }
+
 
     /// Helper: Simulate the actual visible text that would be rendered
     /// Returns the text portion that should be visible based on scroll_offset
@@ -172,6 +176,7 @@ mod tests {
         state.scroll_offset = 10;
         state.calculate_scroll_offset(viewport_width);
         assert_eq!(state.scroll_offset, 10); // Cursor visible, no change
+
 
         // Delete 4 chars forward (x key in vim deletes forward)
         for _ in 0..4 {
@@ -237,13 +242,16 @@ mod tests {
 
             // Cursor must be within visible range
             assert!(
-                cursor_col >= state.scroll_offset &&
-                cursor_col < state.scroll_offset + viewport_width,
+                cursor_col >= state.scroll_offset
+                    && cursor_col < state.scroll_offset + viewport_width,
                 "Cursor at {} not visible with scroll_offset {} and viewport_width {}",
-                cursor_col, state.scroll_offset, viewport_width
+                cursor_col,
+                state.scroll_offset,
+                viewport_width
             );
         }
     }
+
 
     #[test]
     fn test_scroll_offset_unicode_chars() {
@@ -320,6 +328,7 @@ mod tests {
         assert_eq!(state.scroll_offset, 1);
     }
 
+
     // ========== Synchronization verification tests ==========
     // These tests verify that scroll_offset stays synchronized with cursor position
     // and would catch desynchronization bugs
@@ -330,7 +339,9 @@ mod tests {
         let viewport_width = 20;
 
         // Realistic scenario: User types a long query
-        state.textarea.insert_str(".services | select(.[].capacityProviderStrategy | length > 0) | .[0].capacity");
+        state.textarea.insert_str(
+            ".services | select(.[].capacityProviderStrategy | length > 0) | .[0].capacity",
+        );
         state.calculate_scroll_offset(viewport_width);
 
         // Verify cursor visible after initial insert
@@ -353,7 +364,10 @@ mod tests {
             assert!(
                 cursor - scroll <= visible.chars().count(),
                 "Iteration {}: Cursor at {} with scroll {} points beyond visible text '{}'",
-                i, cursor, scroll, visible
+                i,
+                cursor,
+                scroll,
+                visible
             );
         }
     }
@@ -364,7 +378,9 @@ mod tests {
         let viewport_width = 15;
 
         // Insert text
-        state.textarea.insert_str("abcdefghijklmnopqrstuvwxyz0123456789");
+        state
+            .textarea
+            .insert_str("abcdefghijklmnopqrstuvwxyz0123456789");
         state.calculate_scroll_offset(viewport_width);
         assert_cursor_visible(&state, viewport_width);
 
@@ -391,18 +407,23 @@ mod tests {
 
         // Move cursor right
         for _ in 0..5 {
-            state.textarea.move_cursor(tui_textarea::CursorMove::Forward);
+            state
+                .textarea
+                .move_cursor(tui_textarea::CursorMove::Forward);
             state.calculate_scroll_offset(viewport_width);
             assert_cursor_visible(&state, viewport_width);
         }
     }
+
 
     #[test]
     fn test_sync_visible_text_contains_cursor() {
         let mut state = InputState::new();
         let viewport_width = 10;
 
-        state.textarea.insert_str("0123456789ABCDEFGHIJKLMNOP");
+        state
+            .textarea
+            .insert_str("0123456789ABCDEFGHIJKLMNOP");
         state.calculate_scroll_offset(viewport_width);
 
         // Move to various positions and verify visible text is correct
@@ -414,7 +435,9 @@ mod tests {
                 state.textarea.move_cursor(tui_textarea::CursorMove::Head);
             }
             for _ in 0..target_pos {
-                state.textarea.move_cursor(tui_textarea::CursorMove::Forward);
+                state
+                    .textarea
+                    .move_cursor(tui_textarea::CursorMove::Forward);
             }
 
             state.calculate_scroll_offset(viewport_width);
@@ -444,7 +467,9 @@ mod tests {
             assert!(
                 cursor_in_viewport <= visible.chars().count(),
                 "At cursor {}: cursor_in_viewport {} > visible.len() {}",
-                cursor, cursor_in_viewport, visible.chars().count()
+                cursor,
+                cursor_in_viewport,
+                visible.chars().count()
             );
         }
     }
@@ -476,10 +501,13 @@ mod tests {
             assert!(
                 state.scroll_offset <= max_expected_scroll,
                 "Text length {}, viewport {}: scroll_offset {} creates empty space",
-                text_len, viewport_width, state.scroll_offset
+                text_len,
+                viewport_width,
+                state.scroll_offset
             );
         }
     }
+
 
     #[test]
     fn test_sync_deletion_middle_maintains_visibility() {
@@ -522,7 +550,9 @@ mod tests {
         let viewport_width = 20;
 
         // Insert long text
-        state.textarea.insert_str("ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789");
+        state
+            .textarea
+            .insert_str("ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789");
         state.calculate_scroll_offset(viewport_width);
 
         let initial_scroll = state.scroll_offset;
@@ -538,7 +568,8 @@ mod tests {
         assert!(
             state.scroll_offset < initial_scroll,
             "Expected scroll to reduce from {} after deletions, but got {}",
-            initial_scroll, state.scroll_offset
+            initial_scroll,
+            state.scroll_offset
         );
 
         // CRITICAL: Now try to use CursorMove::InViewport which should use
@@ -570,7 +601,9 @@ mod tests {
             scroll_jump <= 1,
             "Scroll jumped by {} after small cursor movement (from {} to {}). \
              This indicates desync between our scroll_offset and textarea's internal scroll.",
-            scroll_jump, scroll_before_move, scroll_after_move
+            scroll_jump,
+            scroll_before_move,
+            scroll_after_move
         );
     }
 }

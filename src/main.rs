@@ -14,8 +14,9 @@ mod history;
 mod input;
 mod notification;
 mod query;
+mod results;
 mod scroll;
-mod syntax;
+mod syntax_highlight;
 mod widgets;
 
 use app::{App, OutputMode};

@@ -8,7 +8,7 @@ use tui_textarea::CursorMove;
 
 use crate::clipboard;
 use crate::editor::EditorMode;
-use super::super::state::App;
+use crate::app::App;
 
 /// Handle keys in Insert mode
 pub fn handle_insert_mode_key(app: &mut App, key: KeyEvent) {
@@ -149,6 +149,7 @@ pub fn handle_normal_mode_key(app: &mut App, key: KeyEvent) {
     }
 }
 
+
 /// Handle keys in Operator mode (waiting for motion after d/c)
 pub fn handle_operator_mode_key(app: &mut App, key: KeyEvent) {
     let operator = match app.input.editor_mode {
@@ -258,10 +259,11 @@ pub fn execute_query(app: &mut App) {
     app.error_overlay_visible = false; // Auto-hide error overlay on query change
 }
 
+
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::app::state::Focus;
+    use crate::app::Focus;
     use crate::autocomplete::{Suggestion, SuggestionType};
     use crate::config::ClipboardBackend;
     use crate::history::HistoryState;
@@ -333,6 +335,7 @@ mod tests {
         assert!(app.query().len() < ".name.first".len());
         assert!(app.query().starts_with(".name"));
     }
+
 
     #[test]
     fn test_operator_db_deletes_word_backward() {
@@ -500,6 +503,7 @@ mod tests {
         assert_eq!(app.input.editor_mode, EditorMode::Normal);
     }
 
+
     // ========== Mode Transition Tests ==========
 
     #[test]
@@ -660,6 +664,7 @@ mod tests {
         // After redo, query should be back
         assert_eq!(app.query(), ".name");
     }
+
 
     // ========== VIM Navigation Tests ==========
 
@@ -827,6 +832,7 @@ mod tests {
         assert_eq!(app.autocomplete.selected().unwrap().text, ".name");
     }
 
+
     #[test]
     fn test_tab_accepts_autocomplete_suggestion() {
         // Test accepting field suggestion at root level
@@ -836,7 +842,7 @@ mod tests {
 
         // Validate base state
         // .na returns null, so base_query stays at "." (from App::new())
-        use crate::app::query_state::ResultType;
+        use crate::query::ResultType;
         assert_eq!(app.query.base_query_for_suggestions, Some(".".to_string()),
                    "base_query should remain '.' since .na returns null");
         assert_eq!(app.query.base_type_for_suggestions, Some(ResultType::Object),

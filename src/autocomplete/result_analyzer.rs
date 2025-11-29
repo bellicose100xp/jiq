@@ -1,4 +1,4 @@
-use crate::app::query_state::ResultType;
+use crate::query::ResultType;
 use crate::autocomplete::state::{JsonFieldType, Suggestion, SuggestionType};
 use serde_json::Value;
 

@@ -1,19 +1,11 @@
-use tui_textarea::CursorMove;
-
 use crate::help::HelpPopupState;
-use super::input_state::InputState;
-use super::query_state::QueryState;
-use crate::autocomplete::{AutocompleteState, get_suggestions};
+use crate::input::InputState;
+use crate::query::QueryState;
+use crate::autocomplete::{self, AutocompleteState, insertion};
 use crate::config::ClipboardBackend;
 use crate::history::HistoryState;
 use crate::notification::NotificationState;
 use crate::scroll::ScrollState;
-
-#[cfg(debug_assertions)]
-use log::debug;
-
-// Autocomplete performance constants
-const MIN_CHARS_FOR_AUTOCOMPLETE: usize = 1;
 
 /// Which pane has focus
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -88,368 +80,31 @@ impl App {
 
 
     /// Update autocomplete suggestions based on current query and cursor position
+    /// Delegates to the autocomplete module for the actual logic
     pub fn update_autocomplete(&mut self) {
-        let query = self.query();
+        // Clone values to avoid borrow conflicts
+        let query = self.input.query().to_string();
         let cursor_pos = self.input.textarea.cursor().1; // Column position
-
-        // Performance optimization: only show autocomplete for non-empty queries
-        if query.trim().len() < MIN_CHARS_FOR_AUTOCOMPLETE {
-            self.autocomplete.hide();
-            return;
-        }
-
-        // Get suggestions based on unformatted query result (no ANSI codes)
-        let result = self.query.last_successful_result_unformatted.as_deref();
+        let result = self.query.last_successful_result_unformatted.clone();
         let result_type = self.query.base_type_for_suggestions.clone();
-        let suggestions = get_suggestions(query, cursor_pos, result, result_type);
 
-        // Update autocomplete state
-        self.autocomplete.update_suggestions(suggestions);
+        autocomplete::update_suggestions(
+            &mut self.autocomplete,
+            &query,
+            cursor_pos,
+            result.as_deref(),
+            result_type,
+        );
     }
 
     /// Insert an autocomplete suggestion at the current cursor position
-    /// Uses explicit state-based formulas for each context type
+    /// Delegates to the autocomplete insertion module
     pub fn insert_autocomplete_suggestion(&mut self, suggestion: &str) {
-        use crate::app::query_state::QueryState;
-        use crate::autocomplete::{analyze_context, find_char_before_field_access, SuggestionContext};
+        // Delegate to autocomplete module
+        insertion::insert_suggestion(&mut self.input.textarea, &mut self.query, suggestion);
 
-        // Get base query that produced these suggestions
-        let base_query = match &self.query.base_query_for_suggestions {
-            Some(b) => b.clone(),
-            None => {
-                // Fallback to current query if no base (shouldn't happen)
-                self.query().to_string()
-            }
-        };
-
-        let query = self.query().to_string();
-        let cursor_pos = self.input.textarea.cursor().1;
-        let before_cursor = &query[..cursor_pos.min(query.len())];
-
-        #[cfg(debug_assertions)]
-        debug!(
-            "insert_autocomplete_suggestion: current_query='{}' base_query='{}' suggestion='{}' cursor_pos={}",
-            query, base_query, suggestion, cursor_pos
-        );
-
-        // Determine the trigger context
-        let (context, partial) = analyze_context(before_cursor);
-        
-        #[cfg(debug_assertions)]
-        debug!(
-            "context_analysis: context={:?} partial='{}'",
-            context, partial
-        );
-        
-        // For function/operator context (jq keywords like then, else, end, etc.),
-        // we should do simple replacement without adding dots or complex formulas
-        if context == SuggestionContext::FunctionContext {
-            // Simple replacement: remove the partial and insert the suggestion
-            let replacement_start = cursor_pos.saturating_sub(partial.len());
-            let new_query = format!("{}{}{}", 
-                &query[..replacement_start],
-                suggestion,
-                &query[cursor_pos..]
-            );
-            
-            #[cfg(debug_assertions)]
-            debug!("function_context_replacement: partial='{}' new_query='{}'", partial, new_query);
-            
-            // Replace the entire line with new query
-            self.input.textarea.delete_line_by_head();
-            self.input.textarea.insert_str(&new_query);
-            
-            // Move cursor to end of inserted suggestion
-            let target_pos = replacement_start + suggestion.len();
-            self.move_cursor_to_column(target_pos);
-            
-            // Hide autocomplete and execute query
-            self.autocomplete.hide();
-            self.execute_query_and_update();
-            return;
-        }
-        
-        // For field context, continue with the existing complex logic
-        let char_before = find_char_before_field_access(before_cursor, &partial);
-        let trigger_type = QueryState::classify_char(char_before);
-
-        // Extract middle_query: everything between base and current field being typed
-        // This preserves complex expressions like if/then/else, functions, etc.
-        let mut middle_query = Self::extract_middle_query(&query, &base_query, before_cursor, &partial);
-        let mut adjusted_base = base_query.clone();
-        let mut adjusted_suggestion = suggestion.to_string();
-
-        #[cfg(debug_assertions)]
-        debug!(
-            "field_context: partial='{}' char_before={:?} trigger_type={:?} middle_query='{}'",
-            partial, char_before, trigger_type, middle_query
-        );
-
-        // Special handling for CloseBracket trigger with [] in middle_query
-        // This handles nested arrays like: .services[].capacityProviderStrategy[].field
-        // When user types [], it becomes part of middle_query, but should be part of base
-        if trigger_type == crate::app::query_state::CharType::CloseBracket && middle_query == "[]" {
-            #[cfg(debug_assertions)]
-            debug!("nested_array_adjustment: detected [] in middle_query, moving to base");
-            
-            // Move [] from middle to base
-            adjusted_base = format!("{}{}", base_query, middle_query);
-            middle_query = String::new();
-            
-            // Strip [] prefix from suggestion if present (it's already in the query)
-            // Also strip the leading dot since CloseBracket formula will add it
-            if let Some(stripped) = adjusted_suggestion.strip_prefix("[]") {
-                // Strip leading dot if present (e.g., "[].base" -> "base")
-                adjusted_suggestion = stripped.strip_prefix('.').unwrap_or(stripped).to_string();
-                
-                #[cfg(debug_assertions)]
-                debug!("nested_array_adjustment: stripped [] and leading dot from suggestion");
-            }
-            
-            #[cfg(debug_assertions)]
-            debug!(
-                "nested_array_adjustment: adjusted_base='{}' adjusted_suggestion='{}' middle_query='{}'",
-                adjusted_base, adjusted_suggestion, middle_query
-            );
-        }
-
-        // Special case: if base is root "." and suggestion starts with ".",
-        // replace the base entirely instead of appending
-        // This prevents: "." + ".services" = "..services"
-        let new_query = if adjusted_base == "." && adjusted_suggestion.starts_with('.') && middle_query.is_empty() {
-            #[cfg(debug_assertions)]
-            debug!("formula: root_replacement (special case for root '.')");
-            
-            adjusted_suggestion.to_string()
-        } else {
-            // Apply insertion formula: base + middle + (operator) + suggestion
-            // The middle preserves complex expressions between base and current field
-            let formula_result = match trigger_type {
-                crate::app::query_state::CharType::NoOp => {
-                    // NoOp means continuing a path, but we need to check if suggestion needs a dot
-                    // - If suggestion starts with special char like [, {, etc., don't add dot
-                    // - If base is root ".", don't add another dot
-                    // - Otherwise, add dot for path continuation (like .user.name)
-                    let needs_dot = !adjusted_suggestion.starts_with('[') 
-                        && !adjusted_suggestion.starts_with('{')
-                        && !adjusted_suggestion.starts_with('.')
-                        && adjusted_base != ".";
-                    
-                    if needs_dot {
-                        #[cfg(debug_assertions)]
-                        debug!("formula: NoOp -> base + middle + '.' + suggestion");
-                        
-                        format!("{}{}.{}", adjusted_base, middle_query, adjusted_suggestion)
-                    } else {
-                        #[cfg(debug_assertions)]
-                        debug!("formula: NoOp -> base + middle + suggestion (no dot added)");
-                        
-                        format!("{}{}{}", adjusted_base, middle_query, adjusted_suggestion)
-                    }
-                }
-            crate::app::query_state::CharType::CloseBracket => {
-                #[cfg(debug_assertions)]
-                debug!("formula: CloseBracket -> base + middle + '.' + suggestion");
-                
-                // Formula: base + middle + "." + suggestion
-                format!("{}{}.{}", adjusted_base, middle_query, adjusted_suggestion)
-            }
-            crate::app::query_state::CharType::PipeOperator => {
-                #[cfg(debug_assertions)]
-                debug!("formula: PipeOperator -> base + middle + ' ' + suggestion");
-                
-                // Formula: base + middle + " " + suggestion
-                // Trim trailing space from middle to avoid double spaces
-                let trimmed_middle = middle_query.trim_end();
-                format!("{}{} {}", adjusted_base, trimmed_middle, adjusted_suggestion)
-            }
-            crate::app::query_state::CharType::Semicolon => {
-                #[cfg(debug_assertions)]
-                debug!("formula: Semicolon -> base + middle + ' ' + suggestion");
-                
-                // Formula: base + middle + " " + suggestion
-                // Trim trailing space from middle to avoid double spaces
-                let trimmed_middle = middle_query.trim_end();
-                format!("{}{} {}", adjusted_base, trimmed_middle, adjusted_suggestion)
-            }
-            crate::app::query_state::CharType::Comma => {
-                #[cfg(debug_assertions)]
-                debug!("formula: Comma -> base + middle + ' ' + suggestion");
-                
-                // Formula: base + middle + " " + suggestion
-                // Trim trailing space from middle to avoid double spaces
-                let trimmed_middle = middle_query.trim_end();
-                format!("{}{} {}", adjusted_base, trimmed_middle, adjusted_suggestion)
-            }
-            crate::app::query_state::CharType::Colon => {
-                #[cfg(debug_assertions)]
-                debug!("formula: Colon -> base + middle + ' ' + suggestion");
-                
-                // Formula: base + middle + " " + suggestion
-                // Trim trailing space from middle to avoid double spaces
-                let trimmed_middle = middle_query.trim_end();
-                format!("{}{} {}", adjusted_base, trimmed_middle, adjusted_suggestion)
-            }
-            crate::app::query_state::CharType::OpenParen => {
-                #[cfg(debug_assertions)]
-                debug!("formula: OpenParen -> base + middle + suggestion (paren already in middle)");
-                
-                // Formula: base + middle + suggestion
-                // The ( is already in middle_query, don't add it again
-                format!("{}{}{}", adjusted_base, middle_query, adjusted_suggestion)
-            }
-            crate::app::query_state::CharType::OpenBracket => {
-                #[cfg(debug_assertions)]
-                debug!("formula: OpenBracket -> base + middle + suggestion (bracket already in middle)");
-                
-                // Formula: base + middle + suggestion
-                // The [ is already in middle_query, don't add it again
-                format!("{}{}{}", adjusted_base, middle_query, adjusted_suggestion)
-            }
-            crate::app::query_state::CharType::OpenBrace => {
-                #[cfg(debug_assertions)]
-                debug!("formula: OpenBrace -> base + middle + suggestion (brace already in middle)");
-                
-                // Formula: base + middle + suggestion
-                // The { is already in middle_query, don't add it again
-                format!("{}{}{}", adjusted_base, middle_query, adjusted_suggestion)
-            }
-            crate::app::query_state::CharType::QuestionMark => {
-                #[cfg(debug_assertions)]
-                debug!("formula: QuestionMark -> base + middle + '.' + suggestion");
-                
-                // Formula: base + middle + "." + suggestion
-                format!("{}{}.{}", adjusted_base, middle_query, adjusted_suggestion)
-            }
-            crate::app::query_state::CharType::Dot => {
-                #[cfg(debug_assertions)]
-                debug!("formula: Dot -> base + middle + suggestion");
-                
-                // Formula: base + middle + suggestion
-                format!("{}{}{}", adjusted_base, middle_query, adjusted_suggestion)
-            }
-            crate::app::query_state::CharType::CloseParen |
-            crate::app::query_state::CharType::CloseBrace => {
-                #[cfg(debug_assertions)]
-                debug!("formula: CloseParen/CloseBrace -> base + middle + '.' + suggestion");
-                
-                // Formula: base + middle + "." + suggestion
-                format!("{}{}.{}", adjusted_base, middle_query, adjusted_suggestion)
-            }
-            };
-            
-            #[cfg(debug_assertions)]
-            debug!("formula_components: base='{}' middle='{}' suggestion='{}'", 
-                   adjusted_base, middle_query, adjusted_suggestion);
-            
-            formula_result
-        };
-
-        #[cfg(debug_assertions)]
-        debug!("new_query_constructed: '{}'", new_query);
-
-        // Replace the entire line with new query
-        self.input.textarea.delete_line_by_head();
-        self.input.textarea.insert_str(&new_query);
-
-        #[cfg(debug_assertions)]
-        debug!("query_after_insertion: '{}'", self.query());
-
-        // Move cursor to end of query
-        let target_pos = new_query.len();
-        self.move_cursor_to_column(target_pos);
-
-        // Hide autocomplete and execute query
+        // Hide autocomplete and reset scroll/error state
         self.autocomplete.hide();
-        self.execute_query_and_update();
-    }
-
-    /// Extract middle query: everything between base and current field being typed
-    ///
-    /// Examples:
-    /// - Query: ".services | if has(...) then .ca", base: ".services"
-    ///   → middle: " | if has(...) then "
-    /// - Query: ".services | .ca", base: ".services"
-    ///   → middle: " | "
-    /// - Query: ".services.ca", base: ".services"
-    ///   → middle: ""
-    fn extract_middle_query(
-        current_query: &str,
-        base_query: &str,
-        before_cursor: &str,
-        partial: &str,
-    ) -> String {
-        // Find where base ends in current query
-        if !current_query.starts_with(base_query) {
-            // Base is not a prefix of current query (shouldn't happen, but handle gracefully)
-            return String::new();
-        }
-
-
-        // Find where the trigger char is in before_cursor
-        // Middle should be: everything after base, up to but not including trigger char
-        // Examples:
-        //   Query: ".services | .ca", partial: "ca", base: ".services"
-        //   → trigger is the dot at position 11
-        //   → middle = query[9..11] = " | " (with trailing space, no dot)
-        let trigger_pos_in_before_cursor = if partial.is_empty() {
-            // Just typed trigger char - it's the last char
-            before_cursor.len().saturating_sub(1)
-        } else {
-            // Partial being typed - trigger is one char before partial
-            before_cursor.len().saturating_sub(partial.len() + 1)
-        };
-        
-        #[cfg(debug_assertions)]
-        debug!(
-            "extract_middle_query: current_query='{}' before_cursor='{}' partial='{}' trigger_pos={} base_len={}",
-            current_query, before_cursor, partial, trigger_pos_in_before_cursor, base_query.len()
-        );
-
-        // Middle is everything from end of base to (but not including) trigger
-        let base_len = base_query.len();
-        if trigger_pos_in_before_cursor <= base_len {
-            // Trigger at or before base ends - no middle
-            return String::new();
-        }
-
-        // Extract middle - preserve all whitespace as it may be significant
-        // (e.g., "then " needs the space before the field access)
-        let middle = current_query[base_len..trigger_pos_in_before_cursor].to_string();
-        
-        #[cfg(debug_assertions)]
-        debug!("extract_middle_query: extracted_middle='{}'", middle);
-        
-        middle
-    }
-
-    /// Move cursor to a specific column position (helper method)
-    fn move_cursor_to_column(&mut self, target_col: usize) {
-        let current_col = self.input.textarea.cursor().1;
-
-        match target_col.cmp(&current_col) {
-            std::cmp::Ordering::Less => {
-                // Move backward
-                for _ in 0..(current_col - target_col) {
-                    self.input.textarea.move_cursor(CursorMove::Back);
-                }
-            }
-            std::cmp::Ordering::Greater => {
-                // Move forward
-                for _ in 0..(target_col - current_col) {
-                    self.input.textarea.move_cursor(CursorMove::Forward);
-                }
-            }
-            std::cmp::Ordering::Equal => {
-                // Already at target position
-            }
-        }
-    }
-
-    /// Execute query and update results (helper method)
-    fn execute_query_and_update(&mut self) {
-        let query_text = self.query().to_string();
-        self.query.execute(&query_text);
         self.results_scroll.reset();
         self.error_overlay_visible = false; // Auto-hide error overlay on query change
     }
@@ -458,7 +113,7 @@ impl App {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::app::query_state::ResultType;
+    use crate::query::ResultType;
     use crate::config::ClipboardBackend;
 
     /// Helper to create App with default clipboard backend for tests
@@ -1110,63 +765,6 @@ mod tests {
                 "Should have space between 'else' and field name");
         assert!(!app.query().contains("elsename"), 
                 "Should NOT concatenate 'else' with field name");
-    }
-
-    // ============================================================================
-    // Middle Query Extraction Tests
-    // ============================================================================
-
-    #[test]
-    fn test_extract_middle_query_simple_path() {
-        // Simple path: no middle
-        let result = App::extract_middle_query(".services.ca", ".services", ".services.ca", "ca");
-        assert_eq!(result, "", "Simple path should have empty middle");
-    }
-
-    #[test]
-    fn test_extract_middle_query_after_pipe() {
-        // After pipe with identity - preserves trailing space
-        let result = App::extract_middle_query(".services | .ca", ".services", ".services | .ca", "ca");
-        assert_eq!(result, " | ", "Middle: pipe with trailing space (before dot)");
-    }
-
-    #[test]
-    fn test_extract_middle_query_with_if_then() {
-        // Complex: if/then between base and current field - preserves trailing space
-        let query = ".services | if has(\"x\") then .ca";
-        let before_cursor = query;
-        let result = App::extract_middle_query(query, ".services", before_cursor, "ca");
-        assert_eq!(result, " | if has(\"x\") then ", "Middle with trailing space (important for 'then ')");
-    }
-
-    #[test]
-    fn test_extract_middle_query_with_select() {
-        // With select function - preserves trailing space
-        let query = ".items | select(.active) | .na";
-        let result = App::extract_middle_query(query, ".items", query, "na");
-        assert_eq!(result, " | select(.active) | ", "Middle: includes pipe with trailing space");
-    }
-
-    #[test]
-    fn test_extract_middle_query_no_partial() {
-        // Just typed dot, no partial yet - preserves trailing space
-        let result = App::extract_middle_query(".services | .", ".services", ".services | .", "");
-        assert_eq!(result, " | ", "Middle with trailing space before trigger dot");
-    }
-
-    #[test]
-    fn test_extract_middle_query_base_not_prefix() {
-        // Edge case: base is not prefix of current query (shouldn't happen)
-        let result = App::extract_middle_query(".items.ca", ".services", ".items.ca", "ca");
-        assert_eq!(result, "", "Should return empty if base not a prefix");
-    }
-
-    #[test]
-    fn test_extract_middle_query_nested_pipes() {
-        // Multiple pipes and functions - preserves trailing space
-        let query = ".a | .b | map(.c) | .d";
-        let result = App::extract_middle_query(query, ".a", query, "d");
-        assert_eq!(result, " | .b | map(.c) | ", "Middle with trailing space");
     }
 
     #[test]

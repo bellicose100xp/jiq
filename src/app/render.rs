@@ -140,14 +140,14 @@ impl App {
 
         if query.is_empty() {
             // Empty query - just show cursor
-            use crate::app::syntax_overlay::insert_cursor_into_spans;
+            use crate::syntax_highlight::overlay::insert_cursor_into_spans;
             let cursor_spans = insert_cursor_into_spans(vec![], 0);
             let paragraph = Paragraph::new(Line::from(cursor_spans)).block(block);
             frame.render_widget(paragraph, area);
         } else {
             // Render styled text with cursor
-            use crate::syntax::JqHighlighter;
-            use crate::app::syntax_overlay::{insert_cursor_into_spans, extract_visible_spans};
+            use crate::syntax_highlight::JqHighlighter;
+            use crate::syntax_highlight::overlay::{insert_cursor_into_spans, extract_visible_spans};
 
             let highlighted_spans = JqHighlighter::highlight(query);
 

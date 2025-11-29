@@ -1,3 +1,4 @@
+pub mod events;
 mod matcher;
 mod state;
 pub mod storage;

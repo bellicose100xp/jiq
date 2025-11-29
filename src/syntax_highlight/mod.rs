@@ -1,3 +1,5 @@
+pub mod overlay;
+
 use ratatui::style::{Color, Style};
 use ratatui::text::Span;
 

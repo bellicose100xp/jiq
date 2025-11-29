@@ -1,6 +1,10 @@
+//! Results pane event handling
+//!
+//! This module handles keyboard events when the results pane is focused.
+
 use ratatui::crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 
-use crate::app::state::App;
+use crate::app::App;
 use crate::clipboard;
 
 /// Handle keys when Results pane is focused
@@ -50,6 +54,7 @@ pub fn handle_results_pane_key(app: &mut App, key: KeyEvent) {
             app.results_scroll.scroll_right(10);
         }
 
+
         // Jump to left edge
         KeyCode::Char('0') | KeyCode::Char('^') => {
             app.results_scroll.jump_to_left();
@@ -87,7 +92,7 @@ pub fn handle_results_pane_key(app: &mut App, key: KeyEvent) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::app::state::{App, Focus};
+    use crate::app::{App, Focus};
     use crate::config::ClipboardBackend;
     use crate::history::HistoryState;
 
@@ -117,6 +122,7 @@ mod tests {
         app.history = HistoryState::empty();
         app
     }
+
 
     // ========== Results Scrolling Tests ==========
 
@@ -329,6 +335,7 @@ mod tests {
 
         assert_eq!(app.results_scroll.offset, 0);
     }
+
 
     // ========== Scroll clamping tests ==========
 

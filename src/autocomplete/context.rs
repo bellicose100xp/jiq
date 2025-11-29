@@ -1,4 +1,4 @@
-use crate::app::query_state::ResultType;
+use crate::query::ResultType;
 use super::jq_functions::filter_builtins;
 use super::result_analyzer::ResultAnalyzer;
 use super::state::Suggestion;
