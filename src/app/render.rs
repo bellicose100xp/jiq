@@ -12,7 +12,7 @@ use crate::editor::EditorMode;
 use crate::history::MAX_VISIBLE_HISTORY;
 use crate::notification::render_notification;
 use crate::widgets::popup;
-use super::help_content;
+use crate::help::{HELP_ENTRIES, HELP_FOOTER};
 use super::state::{App, Focus};
 
 // Autocomplete popup display constants
@@ -571,7 +571,7 @@ impl App {
     /// Render the help popup (centered modal with keyboard shortcuts)
     fn render_help_popup(&mut self, frame: &mut Frame) {
         // Calculate popup dimensions
-        let content_height = help_content::HELP_ENTRIES.len() as u16;
+        let content_height = HELP_ENTRIES.len() as u16;
         let ideal_popup_height = content_height + HELP_POPUP_PADDING;
         let ideal_popup_width = HELP_POPUP_WIDTH;
 
@@ -594,7 +594,7 @@ impl App {
         // Create help text with proper formatting
         let mut lines: Vec<Line> = Vec::new();
 
-        for (key, desc) in help_content::HELP_ENTRIES {
+        for (key, desc) in HELP_ENTRIES {
             if key.is_empty() && desc.is_empty() {
                 // Empty line for spacing
                 lines.push(Line::from(""));
@@ -619,7 +619,7 @@ impl App {
         lines.push(Line::from(""));
         lines.push(Line::from(vec![
             Span::styled(
-                format!("           {}          ", help_content::HELP_FOOTER),
+                format!("           {}          ", HELP_FOOTER),
                 Style::default().fg(Color::DarkGray),
             ),
         ]));

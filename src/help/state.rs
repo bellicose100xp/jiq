@@ -14,7 +14,6 @@ impl HelpPopupState {
             scroll: ScrollState::new(),
         }
     }
-
 }
 
 impl Default for HelpPopupState {
@@ -33,5 +32,4 @@ mod tests {
         assert!(!state.visible);
         assert_eq!(state.scroll.offset, 0);
     }
-
 }

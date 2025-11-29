@@ -9,6 +9,7 @@ mod clipboard;
 mod config;
 mod editor;
 mod error;
+mod help;
 mod history;
 mod input;
 mod notification;

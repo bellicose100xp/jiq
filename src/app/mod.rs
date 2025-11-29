@@ -1,6 +1,4 @@
 mod events;
-mod help_content;
-mod help_state;
 mod input_state;
 pub mod query_state;
 mod render;

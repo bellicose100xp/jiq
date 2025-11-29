@@ -1,6 +1,6 @@
 use tui_textarea::CursorMove;
 
-use super::help_state::HelpPopupState;
+use crate::help::HelpPopupState;
 use super::input_state::InputState;
 use super::query_state::QueryState;
 use crate::autocomplete::{AutocompleteState, get_suggestions};
