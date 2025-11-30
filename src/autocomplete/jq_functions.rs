@@ -85,8 +85,10 @@ pub static JQ_FUNCTION_METADATA: &[JqFunction] = &[
     // Date functions with arguments
     JqFunction::new("strftime", "strftime(fmt)", "Format timestamp", true),
     JqFunction::new("strptime", "strptime(fmt)", "Parse timestamp", true),
-    JqFunction::new("fromdate", "fromdate(fmt)", "Parse date string", true),
-    JqFunction::new("todate", "todate(fmt)", "Format date", true),
+    
+    // Date functions without arguments (ISO 8601 only)
+    JqFunction::new("fromdate", "fromdate", "Parse ISO 8601 date to timestamp", false),
+    JqFunction::new("todate", "todate", "Format timestamp as ISO 8601", false),
     
     // ===== Functions not requiring arguments (needs_parens = false) =====
     
@@ -313,7 +315,7 @@ mod tests {
             "with_entries", "recurse", "walk", "until", "while", "limit", "nth", "range",
             "getpath", "setpath", "delpaths", "del", "ltrimstr", "rtrimstr",
             "startswith", "endswith", "inside", "index", "rindex", "indices",
-            "capture", "scan", "splits", "strftime", "strptime", "fromdate", "todate",
+            "capture", "scan", "splits", "strftime", "strptime",
         ];
 
         for name in functions_requiring_args {
@@ -340,7 +342,7 @@ mod tests {
             "floor", "ceil", "round", "sqrt", "abs", "now", "empty", "error", "not",
             "ascii_downcase", "ascii_upcase", "arrays", "objects", "iterables", "booleans",
             "numbers", "strings", "nulls", "scalars", "to_entries", "from_entries",
-            "paths", "leaf_paths", "transpose", "env",
+            "paths", "leaf_paths", "transpose", "env", "fromdate", "todate",
         ];
 
         for name in functions_not_requiring_args {

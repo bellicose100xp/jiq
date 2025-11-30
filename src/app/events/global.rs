@@ -161,6 +161,8 @@ pub fn handle_global_keys(app: &mut App, key: KeyEvent) -> bool {
                 if let Some(suggestion) = app.autocomplete.selected() {
                     let suggestion_clone = suggestion.clone();
                     app.insert_autocomplete_suggestion(&suggestion_clone);
+                    // Update tooltip after insertion (cursor may now be inside function parens)
+                    app.update_tooltip();
                 }
                 true
             } else {
@@ -205,6 +207,13 @@ pub fn handle_global_keys(app: &mut App, key: KeyEvent) -> bool {
             if app.query.result.is_err() {
                 app.error_overlay_visible = !app.error_overlay_visible;
             }
+            true
+        }
+
+        // Toggle tooltip with Ctrl+T (T for Tooltip)
+        // Requirements 2.1, 2.2, 2.3: Toggle tooltip state on/off
+        KeyCode::Char('t') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+            crate::tooltip::events::handle_tooltip_toggle(&mut app.tooltip);
             true
         }
 
@@ -1264,5 +1273,89 @@ mod tests {
         // ".items[].tags" + "[].name" = ".items[].tags[].name" ✅
         assert_eq!(app.query(), ".items[].tags[].name");
         assert!(!app.autocomplete.is_visible());
+    }
+
+    // ========== Tooltip Toggle Tests (Ctrl+T) ==========
+
+    #[test]
+    fn test_tooltip_initializes_enabled() {
+        let app = test_app(TEST_JSON);
+        assert!(app.tooltip.enabled);
+    }
+
+    #[test]
+    fn test_ctrl_t_toggles_tooltip_from_enabled() {
+        let mut app = app_with_query(".");
+        assert!(app.tooltip.enabled);
+
+        app.handle_key_event(key_with_mods(KeyCode::Char('t'), KeyModifiers::CONTROL));
+        assert!(!app.tooltip.enabled);
+    }
+
+    #[test]
+    fn test_ctrl_t_toggles_tooltip_from_disabled() {
+        let mut app = app_with_query(".");
+        app.tooltip.toggle(); // disable first
+        assert!(!app.tooltip.enabled);
+
+        app.handle_key_event(key_with_mods(KeyCode::Char('t'), KeyModifiers::CONTROL));
+        assert!(app.tooltip.enabled);
+    }
+
+    #[test]
+    fn test_ctrl_t_works_in_insert_mode() {
+        let mut app = app_with_query(".");
+        app.input.editor_mode = EditorMode::Insert;
+        app.focus = Focus::InputField;
+        assert!(app.tooltip.enabled);
+
+        app.handle_key_event(key_with_mods(KeyCode::Char('t'), KeyModifiers::CONTROL));
+        assert!(!app.tooltip.enabled);
+    }
+
+    #[test]
+    fn test_ctrl_t_works_in_normal_mode() {
+        let mut app = app_with_query(".");
+        app.input.editor_mode = EditorMode::Normal;
+        app.focus = Focus::InputField;
+        assert!(app.tooltip.enabled);
+
+        app.handle_key_event(key_with_mods(KeyCode::Char('t'), KeyModifiers::CONTROL));
+        assert!(!app.tooltip.enabled);
+    }
+
+    #[test]
+    fn test_ctrl_t_works_when_results_pane_focused() {
+        let mut app = app_with_query(".");
+        app.focus = Focus::ResultsPane;
+        assert!(app.tooltip.enabled);
+
+        app.handle_key_event(key_with_mods(KeyCode::Char('t'), KeyModifiers::CONTROL));
+        assert!(!app.tooltip.enabled);
+    }
+
+    #[test]
+    fn test_ctrl_t_preserves_current_function() {
+        let mut app = app_with_query("select(.x)");
+        app.tooltip.set_current_function(Some("select".to_string()));
+        assert!(app.tooltip.enabled);
+
+        app.handle_key_event(key_with_mods(KeyCode::Char('t'), KeyModifiers::CONTROL));
+
+        // Should toggle enabled but preserve current_function
+        assert!(!app.tooltip.enabled);
+        assert_eq!(app.tooltip.current_function, Some("select".to_string()));
+    }
+
+    #[test]
+    fn test_ctrl_t_round_trip() {
+        let mut app = app_with_query(".");
+        let initial_enabled = app.tooltip.enabled;
+
+        // Toggle twice should return to original state
+        app.handle_key_event(key_with_mods(KeyCode::Char('t'), KeyModifiers::CONTROL));
+        app.handle_key_event(key_with_mods(KeyCode::Char('t'), KeyModifiers::CONTROL));
+
+        assert_eq!(app.tooltip.enabled, initial_enabled);
     }
 }

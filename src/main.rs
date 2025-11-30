@@ -17,6 +17,7 @@ mod query;
 mod results;
 mod scroll;
 mod syntax_highlight;
+mod tooltip;
 mod widgets;
 
 use app::{App, OutputMode};
