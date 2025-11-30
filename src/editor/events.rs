@@ -31,6 +31,9 @@ pub fn handle_insert_mode_key(app: &mut App, key: KeyEvent) {
 
     // Update autocomplete suggestions after any input
     app.update_autocomplete();
+    
+    // Update tooltip based on cursor position
+    app.update_tooltip();
 }
 
 /// Handle keys in Normal mode (VIM navigation and commands)
@@ -147,6 +150,9 @@ pub fn handle_normal_mode_key(app: &mut App, key: KeyEvent) {
             // Other VIM commands not yet implemented
         }
     }
+    
+    // Update tooltip based on cursor position after any cursor movement
+    app.update_tooltip();
 }
 
 
@@ -247,6 +253,9 @@ pub fn handle_operator_mode_key(app: &mut App, key: KeyEvent) {
         app.input.textarea.cancel_selection();
         app.input.editor_mode = EditorMode::Normal;
     }
+    
+    // Update tooltip based on cursor position after any operation
+    app.update_tooltip();
 }
 
 /// Execute current query and update results

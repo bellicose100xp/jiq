@@ -6,6 +6,7 @@ use crate::config::ClipboardBackend;
 use crate::history::HistoryState;
 use crate::notification::NotificationState;
 use crate::scroll::ScrollState;
+use crate::tooltip::{self, TooltipState};
 
 /// Which pane has focus
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -35,6 +36,7 @@ pub struct App {
     pub help: HelpPopupState,
     pub notification: NotificationState,
     pub clipboard_backend: ClipboardBackend,
+    pub tooltip: TooltipState,
 }
 
 impl App {
@@ -53,6 +55,7 @@ impl App {
             help: HelpPopupState::new(),
             notification: NotificationState::new(),
             clipboard_backend,
+            tooltip: TooltipState::new(),
         }
     }
 
@@ -95,6 +98,16 @@ impl App {
             result.as_deref(),
             result_type,
         );
+    }
+
+    /// Update tooltip state based on current cursor position
+    /// Detects if cursor is on or inside a jq function and updates tooltip accordingly
+    pub fn update_tooltip(&mut self) {
+        let query = self.input.query();
+        let cursor_pos = self.input.textarea.cursor().1; // Column position
+        
+        let detected_function = tooltip::detect_function_at_cursor(query, cursor_pos);
+        self.tooltip.set_current_function(detected_function.map(|s| s.to_string()));
     }
 
     /// Insert an autocomplete suggestion at the current cursor position
@@ -893,5 +906,256 @@ mod tests {
             .collect();
 
         assert!(non_null_lines.len() >= 5, "Should have at least 5 non-null results, got {}", non_null_lines.len());
+    }
+
+    // ========== Tooltip Integration Tests ==========
+
+    #[test]
+    fn test_tooltip_initialized_enabled() {
+        let json = r#"{"name": "test"}"#;
+        let app = test_app(json);
+        
+        // Tooltip should be enabled by default
+        assert!(app.tooltip.enabled);
+        assert!(app.tooltip.current_function.is_none());
+    }
+
+    #[test]
+    fn test_update_tooltip_detects_function() {
+        let json = r#"{"name": "test"}"#;
+        let mut app = test_app(json);
+        
+        // Type a query with a function
+        app.input.textarea.insert_str("select(.name)");
+        
+        // Move cursor to be on "select"
+        app.input.textarea.move_cursor(tui_textarea::CursorMove::Head);
+        app.input.textarea.move_cursor(tui_textarea::CursorMove::Forward); // Position 1
+        
+        app.update_tooltip();
+        
+        assert_eq!(app.tooltip.current_function, Some("select".to_string()));
+        assert!(app.tooltip.should_show());
+    }
+
+    #[test]
+    fn test_update_tooltip_inside_function_parens() {
+        let json = r#"{"name": "test"}"#;
+        let mut app = test_app(json);
+        
+        // Type a query with a function
+        app.input.textarea.insert_str("select(.name)");
+        
+        // Move cursor inside the parentheses (on ".name")
+        app.input.textarea.move_cursor(tui_textarea::CursorMove::Head);
+        for _ in 0..8 { // Position 8 is inside parens
+            app.input.textarea.move_cursor(tui_textarea::CursorMove::Forward);
+        }
+        
+        app.update_tooltip();
+        
+        assert_eq!(app.tooltip.current_function, Some("select".to_string()));
+        assert!(app.tooltip.should_show());
+    }
+
+    #[test]
+    fn test_update_tooltip_no_function() {
+        let json = r#"{"name": "test"}"#;
+        let mut app = test_app(json);
+        
+        // Type a query without a function
+        app.input.textarea.insert_str(".name");
+        
+        app.update_tooltip();
+        
+        assert!(app.tooltip.current_function.is_none());
+        assert!(!app.tooltip.should_show());
+    }
+
+    #[test]
+    fn test_tooltip_disabled_does_not_show() {
+        let json = r#"{"name": "test"}"#;
+        let mut app = test_app(json);
+        
+        // Type a query with a function
+        app.input.textarea.insert_str("select(.name)");
+        app.input.textarea.move_cursor(tui_textarea::CursorMove::Head);
+        
+        // Disable tooltip
+        app.tooltip.toggle();
+        assert!(!app.tooltip.enabled);
+        
+        app.update_tooltip();
+        
+        // Function should be detected but should_show returns false
+        assert_eq!(app.tooltip.current_function, Some("select".to_string()));
+        assert!(!app.tooltip.should_show());
+    }
+
+    // **Feature: function-tooltip, Property 1: Tooltip visibility follows cursor on functions**
+    // *For any* query string containing jq functions and any cursor position, when tooltip is enabled:
+    // - If cursor is inside a function's parentheses, `should_show()` returns true and `current_function` matches the innermost enclosing function
+    // - If cursor is on a recognized function name, `should_show()` returns true and `current_function` matches that function
+    // - If cursor is not within any function context, `should_show()` returns false
+    // **Validates: Requirements 1.1, 1.2, 1.3**
+    mod property_tests {
+        use super::*;
+        use proptest::prelude::*;
+        use crate::autocomplete::jq_functions::JQ_FUNCTION_METADATA;
+
+        proptest! {
+            #![proptest_config(ProptestConfig::with_cases(100))]
+
+            #[test]
+            fn prop_tooltip_visibility_on_function_name(
+                func_index in 0usize..JQ_FUNCTION_METADATA.len(),
+                prefix in "[.| ]{0,3}",
+                suffix in "[()| ]{0,5}"
+            ) {
+                let func = &JQ_FUNCTION_METADATA[func_index];
+                let func_name = func.name;
+                
+                let query = format!("{}{}{}", prefix, func_name, suffix);
+                let func_start = prefix.len();
+                
+                let json = r#"{"test": true}"#;
+                let mut app = test_app(json);
+                
+                // Insert the query
+                app.input.textarea.insert_str(&query);
+                
+                // Move cursor to be on the function name
+                app.input.textarea.move_cursor(tui_textarea::CursorMove::Head);
+                for _ in 0..func_start {
+                    app.input.textarea.move_cursor(tui_textarea::CursorMove::Forward);
+                }
+                
+                // Update tooltip
+                app.update_tooltip();
+                
+                // When cursor is on a function name and tooltip is enabled, should_show should be true
+                prop_assert!(
+                    app.tooltip.should_show(),
+                    "Tooltip should show when cursor is on function '{}' in query '{}'",
+                    func_name,
+                    query
+                );
+                prop_assert_eq!(
+                    app.tooltip.current_function.as_deref(),
+                    Some(func_name),
+                    "Current function should be '{}' when cursor is on it",
+                    func_name
+                );
+            }
+
+            #[test]
+            fn prop_tooltip_visibility_inside_function_parens(
+                func_index in 0usize..JQ_FUNCTION_METADATA.len(),
+                inner_content in "[.a-z0-9]{1,8}"
+            ) {
+                let func = &JQ_FUNCTION_METADATA[func_index];
+                
+                // Only test functions that take arguments
+                if !func.needs_parens {
+                    return Ok(());
+                }
+                
+                let func_name = func.name;
+                let query = format!("{}({})", func_name, inner_content);
+                let content_start = func_name.len() + 1; // Position after opening paren
+                
+                let json = r#"{"test": true}"#;
+                let mut app = test_app(json);
+                
+                // Insert the query
+                app.input.textarea.insert_str(&query);
+                
+                // Move cursor inside the parentheses
+                app.input.textarea.move_cursor(tui_textarea::CursorMove::Head);
+                for _ in 0..content_start {
+                    app.input.textarea.move_cursor(tui_textarea::CursorMove::Forward);
+                }
+                
+                // Update tooltip
+                app.update_tooltip();
+                
+                // When cursor is inside function parens and tooltip is enabled, should_show should be true
+                prop_assert!(
+                    app.tooltip.should_show(),
+                    "Tooltip should show when cursor is inside '{}' parens in query '{}'",
+                    func_name,
+                    query
+                );
+                prop_assert_eq!(
+                    app.tooltip.current_function.as_deref(),
+                    Some(func_name),
+                    "Current function should be '{}' when cursor is inside its parens",
+                    func_name
+                );
+            }
+
+            #[test]
+            fn prop_tooltip_not_visible_outside_function_context(
+                field_name in "[a-z]{1,8}"
+            ) {
+                // Query with just field access, no function
+                let query = format!(".{}", field_name);
+                
+                let json = r#"{"test": true}"#;
+                let mut app = test_app(json);
+                
+                // Insert the query
+                app.input.textarea.insert_str(&query);
+                
+                // Cursor is at end of query (after field name)
+                app.update_tooltip();
+                
+                // When cursor is not in any function context, should_show should be false
+                prop_assert!(
+                    !app.tooltip.should_show(),
+                    "Tooltip should not show when cursor is outside function context in query '{}'",
+                    query
+                );
+                prop_assert!(
+                    app.tooltip.current_function.is_none(),
+                    "Current function should be None when cursor is outside function context"
+                );
+            }
+
+            #[test]
+            fn prop_tooltip_disabled_never_shows(
+                func_index in 0usize..JQ_FUNCTION_METADATA.len()
+            ) {
+                let func = &JQ_FUNCTION_METADATA[func_index];
+                let func_name = func.name;
+                let query = format!("{}(.x)", func_name);
+                
+                let json = r#"{"test": true}"#;
+                let mut app = test_app(json);
+                
+                // Insert the query
+                app.input.textarea.insert_str(&query);
+                app.input.textarea.move_cursor(tui_textarea::CursorMove::Head);
+                
+                // Disable tooltip
+                app.tooltip.toggle();
+                
+                // Update tooltip
+                app.update_tooltip();
+                
+                // When tooltip is disabled, should_show should always be false
+                prop_assert!(
+                    !app.tooltip.should_show(),
+                    "Tooltip should not show when disabled, even on function '{}'",
+                    func_name
+                );
+                // But current_function should still be detected
+                prop_assert_eq!(
+                    app.tooltip.current_function.as_deref(),
+                    Some(func_name),
+                    "Current function should still be detected when disabled"
+                );
+            }
+        }
     }
 }

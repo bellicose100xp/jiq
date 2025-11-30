@@ -11,6 +11,7 @@ use crate::autocomplete::SuggestionType;
 use crate::editor::EditorMode;
 use crate::history::MAX_VISIBLE_HISTORY;
 use crate::notification::render_notification;
+use crate::tooltip::get_tooltip_content;
 use crate::widgets::popup;
 use crate::help::{HELP_ENTRIES, HELP_FOOTER};
 use super::state::{App, Focus};
@@ -29,6 +30,47 @@ const HISTORY_SEARCH_HEIGHT: u16 = 3;
 // Help popup display constants
 const HELP_POPUP_WIDTH: u16 = 70;
 const HELP_POPUP_PADDING: u16 = 4; // borders (2) + footer (2)
+
+// Tooltip popup display constants
+const TOOLTIP_MIN_WIDTH: u16 = 40;
+const TOOLTIP_MAX_WIDTH: u16 = 90;
+const TOOLTIP_BORDER_HEIGHT: u16 = 2;
+const TOOLTIP_BORDER_WIDTH: u16 = 4; // left border + padding + right border + padding
+const TOOLTIP_MIN_HEIGHT: u16 = 8;
+const TOOLTIP_MAX_HEIGHT: u16 = 18; // Increased to allow for wrapped tips
+
+/// Wrap text to fit within a given width, breaking at word boundaries (max 2 lines)
+fn wrap_text(text: &str, max_width: usize) -> Vec<String> {
+    if text.len() <= max_width {
+        return vec![text.to_string()];
+    }
+
+    let mut lines = Vec::new();
+    let mut current_line = String::new();
+
+    for word in text.split_whitespace() {
+        if current_line.is_empty() {
+            current_line = word.to_string();
+        } else if current_line.len() + 1 + word.len() <= max_width {
+            current_line.push(' ');
+            current_line.push_str(word);
+        } else {
+            lines.push(current_line);
+            current_line = word.to_string();
+        }
+    }
+
+    if !current_line.is_empty() {
+        lines.push(current_line);
+    }
+
+    // Limit to 2 lines max for tips
+    if lines.len() > 2 {
+        lines.truncate(2);
+    }
+
+    lines
+}
 
 impl App {
     /// Render the UI
@@ -54,7 +96,12 @@ impl App {
         // Render help line
         self.render_help_line(frame, help_area);
 
-        // Render autocomplete popup (if visible) - render last so it overlays other widgets
+        // Render tooltip popup (if visible) - render on right side, before autocomplete
+        if self.tooltip.should_show() {
+            self.render_tooltip_popup(frame, input_area);
+        }
+
+        // Render autocomplete popup (if visible) - render after tooltip so it overlays
         if self.autocomplete.is_visible() {
             self.render_autocomplete_popup(frame, input_area);
         }
@@ -127,11 +174,27 @@ impl App {
 
         let title = Line::from(title_spans);
 
+        // Build tooltip hint for top-right of input border
+        // Show hint when tooltip is disabled AND cursor is on a function
+        let tooltip_hint = if !self.tooltip.enabled && self.tooltip.current_function.is_some() {
+            Some(Line::from(vec![Span::styled(
+                " Ctrl+T for tooltip ",
+                Style::default().fg(Color::Magenta),
+            )]))
+        } else {
+            None
+        };
+
         // Create block with mode-aware styling
-        let block = Block::default()
+        let mut block = Block::default()
             .borders(Borders::ALL)
             .title(title)
             .border_style(Style::default().fg(border_color));
+
+        // Add tooltip hint to top-right if applicable
+        if let Some(hint) = tooltip_hint {
+            block = block.title_top(hint.alignment(ratatui::layout::Alignment::Right));
+        }
 
         // Get query text and render with syntax highlighting + cursor
         let query = self.query();
@@ -667,6 +730,186 @@ impl App {
 
         frame.render_widget(popup, popup_area);
     }
+
+    /// Render the tooltip popup on the right side, above the input field
+    fn render_tooltip_popup(&self, frame: &mut Frame, input_area: Rect) {
+        // Get the current function name
+        let function_name = match &self.tooltip.current_function {
+            Some(name) => name.as_str(),
+            None => return,
+        };
+
+        // Get tooltip content for the function
+        let content = match get_tooltip_content(function_name) {
+            Some(c) => c,
+            None => return,
+        };
+
+        // Parse examples into (code, description) pairs
+        let parsed_examples: Vec<(&str, &str)> = content
+            .examples
+            .iter()
+            .map(|e| {
+                if let Some(idx) = e.find('#') {
+                    (e[..idx].trim_end(), e[idx + 1..].trim_start())
+                } else {
+                    (*e, "")
+                }
+            })
+            .collect();
+
+        // Calculate the max code width for alignment
+        let max_code_width = parsed_examples
+            .iter()
+            .map(|(code, _)| code.len())
+            .max()
+            .unwrap_or(0);
+
+        // Calculate required width based on content (code + separator + description)
+        let description_width = content.description.len();
+        let max_example_width = parsed_examples
+            .iter()
+            .map(|(code, desc)| {
+                if desc.is_empty() {
+                    code.len() + 2 // just code + indent
+                } else {
+                    max_code_width + 3 + desc.len() + 2 // code + " │ " + desc + indent
+                }
+            })
+            .max()
+            .unwrap_or(0);
+        // Don't let tip width drive popup width - tips will wrap
+        let dismiss_hint_len = 19; // "Ctrl+T to dismiss"
+        let title_width = function_name.len() + dismiss_hint_len + 4; // title + dismiss + spacing
+
+        let content_width = description_width
+            .max(max_example_width)
+            .max(title_width);
+
+        let popup_width = ((content_width as u16) + TOOLTIP_BORDER_WIDTH)
+            .clamp(TOOLTIP_MIN_WIDTH, TOOLTIP_MAX_WIDTH);
+
+        // Calculate tip wrapping - available width for tip text
+        let tip_available_width = (popup_width as usize).saturating_sub(6); // borders + padding + emoji
+        let wrapped_tip_lines: Vec<String> = if let Some(tip) = content.tip {
+            wrap_text(tip, tip_available_width)
+        } else {
+            Vec::new()
+        };
+        let tip_line_count = wrapped_tip_lines.len() as u16;
+
+        // Calculate content height: description (1) + blank (1) + examples + tip (blank + lines)
+        let example_count = parsed_examples.len() as u16;
+        let tip_height = if content.tip.is_some() {
+            1 + tip_line_count // blank line + wrapped tip lines
+        } else {
+            0
+        };
+        let content_height = 1 + 1 + example_count + tip_height; // description + blank + examples + tip
+        let popup_height = (content_height + TOOLTIP_BORDER_HEIGHT)
+            .clamp(TOOLTIP_MIN_HEIGHT, TOOLTIP_MAX_HEIGHT);
+
+        // Position popup on the right side, above input box
+        let frame_area = frame.area();
+        // Allow up to 75% of screen width for tooltip
+        let max_allowed_width = (frame_area.width * 3) / 4;
+        let final_width = popup_width.min(max_allowed_width);
+
+        // Position on right side with some margin
+        let popup_x = frame_area.width.saturating_sub(final_width + 2);
+        let popup_y = input_area.y.saturating_sub(popup_height);
+
+        let popup_area = Rect {
+            x: popup_x,
+            y: popup_y,
+            width: final_width,
+            height: popup_height.min(input_area.y),
+        };
+
+        // Clear the background for floating effect
+        popup::clear_area(frame, popup_area);
+
+        // Build content lines
+        let mut lines: Vec<Line> = Vec::new();
+
+        // Description line
+        lines.push(Line::from(vec![Span::styled(
+            content.description,
+            Style::default().fg(Color::White),
+        )]));
+
+        // Blank line before examples
+        lines.push(Line::from(""));
+
+        // Examples with two-column layout: code │ description
+        for (code, desc) in &parsed_examples {
+            if desc.is_empty() {
+                // No description, just show code
+                lines.push(Line::from(vec![Span::styled(
+                    format!("  {}", code),
+                    Style::default().fg(Color::Cyan),
+                )]));
+            } else {
+                // Two-column: code (padded) │ description
+                let padded_code = format!("{:width$}", code, width = max_code_width);
+                lines.push(Line::from(vec![
+                    Span::styled(format!("  {}", padded_code), Style::default().fg(Color::Cyan)),
+                    Span::styled(" │ ", Style::default().fg(Color::DarkGray)),
+                    Span::styled(*desc, Style::default().fg(Color::Gray)),
+                ]));
+            }
+        }
+
+        // Optional tip (with wrapping)
+        if content.tip.is_some() && !wrapped_tip_lines.is_empty() {
+            lines.push(Line::from(""));
+            // First line with emoji prefix
+            lines.push(Line::from(vec![
+                Span::styled("💡 ", Style::default()),
+                Span::styled(wrapped_tip_lines[0].clone(), Style::default().fg(Color::Yellow)),
+            ]));
+            // Subsequent lines with spacing to align with first line
+            for line in wrapped_tip_lines.iter().skip(1) {
+                lines.push(Line::from(vec![
+                    Span::raw("   "), // 3 spaces to align with text after emoji
+                    Span::styled(line.clone(), Style::default().fg(Color::Yellow)),
+                ]));
+            }
+        }
+
+        let text = Text::from(lines);
+
+        // Build title with function name in purple (left side)
+        let title = Line::from(vec![
+            Span::raw(" "),
+            Span::styled(
+                function_name,
+                Style::default()
+                    .fg(Color::Magenta)
+                    .add_modifier(Modifier::BOLD),
+            ),
+            Span::raw(" "),
+        ]);
+
+        // Build dismiss hint for top-right of border
+        let dismiss_hint = Line::from(vec![Span::styled(
+            " Ctrl+T to dismiss ",
+            Style::default().fg(Color::DarkGray),
+        )]);
+
+        // Create the popup widget with purple border
+        // Title on top-left, dismiss hint on top-right
+        let popup_widget = Paragraph::new(text).block(
+            Block::default()
+                .borders(Borders::ALL)
+                .title(title)
+                .title_top(dismiss_hint.alignment(ratatui::layout::Alignment::Right))
+                .border_style(Style::default().fg(Color::Magenta))
+                .style(Style::default().bg(Color::Black)),
+        );
+
+        frame.render_widget(popup_widget, popup_area);
+    }
 }
 
 #[cfg(test)]
@@ -1063,6 +1306,144 @@ mod snapshot_tests {
         app.autocomplete.update_suggestions(suggestions);
 
         let output = render_to_string(&mut app, TEST_WIDTH, TEST_HEIGHT);
+        assert_snapshot!(output);
+    }
+
+    // === Tooltip Popup Tests ===
+
+    // Tooltip tests use wider terminal (120) to show full content
+    const TOOLTIP_TEST_WIDTH: u16 = 120;
+    const TOOLTIP_TEST_HEIGHT: u16 = 30;
+
+    #[test]
+    fn snapshot_tooltip_popup_with_all_fields() {
+        let json = r#"{"name": "Alice", "age": 30}"#;
+        let mut app = test_app(json);
+        
+        // Enable tooltip and set current function to one with a tip
+        app.tooltip.enabled = true;
+        app.tooltip.set_current_function(Some("select".to_string()));
+
+        let output = render_to_string(&mut app, TOOLTIP_TEST_WIDTH, TOOLTIP_TEST_HEIGHT);
+        assert_snapshot!(output);
+    }
+
+    #[test]
+    fn snapshot_tooltip_popup_without_tip() {
+        let json = r#"{"name": "Alice", "age": 30}"#;
+        let mut app = test_app(json);
+        
+        // Enable tooltip and set current function to one without a tip
+        app.tooltip.enabled = true;
+        app.tooltip.set_current_function(Some("del".to_string()));
+
+        let output = render_to_string(&mut app, TOOLTIP_TEST_WIDTH, TOOLTIP_TEST_HEIGHT);
+        assert_snapshot!(output);
+    }
+
+    #[test]
+    fn snapshot_tooltip_popup_positioning() {
+        // Test tooltip positioning on right side with wider terminal
+        let json = r#"{"name": "Alice", "age": 30}"#;
+        let mut app = test_app(json);
+        
+        app.tooltip.enabled = true;
+        app.tooltip.set_current_function(Some("map".to_string()));
+
+        let output = render_to_string(&mut app, TOOLTIP_TEST_WIDTH, TOOLTIP_TEST_HEIGHT);
+        assert_snapshot!(output);
+    }
+
+    #[test]
+    fn snapshot_tooltip_dismiss_hint() {
+        let json = r#"{"name": "Alice", "age": 30}"#;
+        let mut app = test_app(json);
+        
+        // Enable tooltip to show dismiss hint on border
+        app.tooltip.enabled = true;
+        app.tooltip.set_current_function(Some("sort_by".to_string()));
+
+        let output = render_to_string(&mut app, TOOLTIP_TEST_WIDTH, TOOLTIP_TEST_HEIGHT);
+        assert_snapshot!(output);
+    }
+
+    // === Input Border Hint Text Tests ===
+
+    #[test]
+    fn snapshot_input_border_hint_disabled_on_function() {
+        // When tooltip is disabled AND cursor is on a function, show hint on input border
+        let json = r#"{"name": "Alice", "age": 30}"#;
+        let mut app = test_app(json);
+        
+        // Disable tooltip and set current function
+        app.tooltip.enabled = false;
+        app.tooltip.set_current_function(Some("select".to_string()));
+
+        let output = render_to_string(&mut app, TEST_WIDTH, TEST_HEIGHT);
+        assert_snapshot!(output);
+    }
+
+    #[test]
+    fn snapshot_input_border_no_hint_enabled() {
+        // When tooltip is enabled, no hint on input border (hint is on tooltip instead)
+        let json = r#"{"name": "Alice", "age": 30}"#;
+        let mut app = test_app(json);
+        
+        // Enable tooltip with a function
+        app.tooltip.enabled = true;
+        app.tooltip.set_current_function(Some("select".to_string()));
+
+        let output = render_to_string(&mut app, TEST_WIDTH, TEST_HEIGHT);
+        assert_snapshot!(output);
+    }
+
+    #[test]
+    fn snapshot_input_border_no_hint_disabled_no_function() {
+        // When tooltip is disabled AND not on a function, no hint
+        let json = r#"{"name": "Alice", "age": 30}"#;
+        let mut app = test_app(json);
+        
+        // Disable tooltip with no function detected
+        app.tooltip.enabled = false;
+        app.tooltip.set_current_function(None);
+
+        let output = render_to_string(&mut app, TEST_WIDTH, TEST_HEIGHT);
+        assert_snapshot!(output);
+    }
+
+    // === Tooltip + Autocomplete Coexistence Tests ===
+
+    #[test]
+    fn snapshot_tooltip_and_autocomplete_both_visible() {
+        use crate::autocomplete::{Suggestion, SuggestionType};
+
+        // Test that both popups can be visible without overlap
+        // Autocomplete on left, tooltip on right, autocomplete renders on top
+        let json = r#"{"name": "Alice", "age": 30}"#;
+        let mut app = test_app(json);
+        
+        // Set up autocomplete with suggestions (appears on left)
+        let suggestions = vec![
+            Suggestion::new("select", SuggestionType::Function)
+                .with_description("Filter elements by condition")
+                .with_signature("select(expr)")
+                .with_needs_parens(true),
+            Suggestion::new("sort", SuggestionType::Function)
+                .with_description("Sort array")
+                .with_signature("sort"),
+            Suggestion::new("sort_by", SuggestionType::Function)
+                .with_description("Sort array by expression")
+                .with_signature("sort_by(expr)")
+                .with_needs_parens(true),
+        ];
+        app.autocomplete.update_suggestions(suggestions);
+        
+        // Enable tooltip with a function (appears on right)
+        app.tooltip.enabled = true;
+        app.tooltip.set_current_function(Some("map".to_string()));
+
+        // Use wider terminal to ensure both popups have room
+        let output = render_to_string(&mut app, 120, 30);
         assert_snapshot!(output);
     }
 }
