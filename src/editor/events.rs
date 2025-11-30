@@ -15,14 +15,15 @@ pub fn handle_insert_mode_key(app: &mut App, key: KeyEvent) {
     // Use textarea's built-in input handling
     let content_changed = app.input.textarea.input(key);
 
-    // Execute query on every keystroke that changes content
+    // Schedule debounced query execution on content change
     if content_changed {
         // Reset history cycling when user types
         app.history.reset_cycling();
 
-        let query = app.input.textarea.lines()[0].as_ref();
-        // Use QueryState::execute() which handles non-null result caching
-        app.query.execute(query);
+        // Schedule debounced execution instead of immediate execution
+        // The event loop will check should_execute() and run the query
+        // after the debounce period (50ms) has elapsed
+        app.debouncer.schedule_execution();
 
         // Reset scroll when query changes
         app.results_scroll.reset();

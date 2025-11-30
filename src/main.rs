@@ -1,6 +1,12 @@
 use clap::Parser;
 use color_eyre::Result;
+use ratatui::crossterm::event::{DisableBracketedPaste, EnableBracketedPaste};
+use ratatui::crossterm::execute;
+use ratatui::crossterm::terminal::{
+    disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen,
+};
 use ratatui::DefaultTerminal;
+use std::io::stdout;
 use std::path::PathBuf;
 
 mod app;
@@ -87,14 +93,14 @@ fn main() -> Result<()> {
         }
     };
 
-    // Initialize terminal (handles raw mode, alternate screen, etc.)
-    let terminal = ratatui::init();
+    // Initialize terminal (handles raw mode, alternate screen, bracketed paste)
+    let terminal = init_terminal()?;
 
     // Run the application with JSON input and config
     let app = run(terminal, json_input.clone(), config_result)?;
 
-    // Restore terminal (automatic cleanup)
-    ratatui::restore();
+    // Restore terminal (cleanup raw mode, alternate screen, bracketed paste)
+    restore_terminal()?;
 
     // Output results AFTER terminal is restored
     handle_output(&app, &json_input)?;
@@ -105,6 +111,21 @@ fn main() -> Result<()> {
 /// Validate that jq binary exists in PATH
 fn validate_jq_exists() -> Result<(), JiqError> {
     which::which("jq").map_err(|_| JiqError::JqNotFound)?;
+    Ok(())
+}
+
+/// Initialize terminal with raw mode, alternate screen, and bracketed paste
+fn init_terminal() -> Result<DefaultTerminal> {
+    enable_raw_mode()?;
+    execute!(stdout(), EnterAlternateScreen, EnableBracketedPaste)?;
+    let terminal = ratatui::Terminal::new(ratatui::backend::CrosstermBackend::new(stdout()))?;
+    Ok(terminal)
+}
+
+/// Restore terminal to normal state
+fn restore_terminal() -> Result<()> {
+    execute!(stdout(), DisableBracketedPaste, LeaveAlternateScreen)?;
+    disable_raw_mode()?;
     Ok(())
 }
 

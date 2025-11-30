@@ -1,6 +1,6 @@
 use crate::help::HelpPopupState;
 use crate::input::InputState;
-use crate::query::QueryState;
+use crate::query::{Debouncer, QueryState};
 use crate::autocomplete::{self, AutocompleteState, insertion};
 use crate::config::ClipboardBackend;
 use crate::history::HistoryState;
@@ -39,6 +39,7 @@ pub struct App {
     pub clipboard_backend: ClipboardBackend,
     pub tooltip: TooltipState,
     pub stats: StatsState,
+    pub debouncer: Debouncer,
 }
 
 impl App {
@@ -59,6 +60,7 @@ impl App {
             clipboard_backend,
             tooltip: TooltipState::new(),
             stats: StatsState::default(),
+            debouncer: Debouncer::new(),
         }
     }
 

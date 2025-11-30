@@ -115,6 +115,11 @@ pub fn handle_global_keys(app: &mut App, key: KeyEvent) -> bool {
 
         // Output query string: Ctrl+Q (primary), Shift+Enter, or Alt+Enter
         KeyCode::Char('q') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+            // Execute any pending debounced query immediately (bypass debounce)
+            if app.debouncer.has_pending() {
+                crate::editor::events::execute_query(app);
+                app.debouncer.mark_executed();
+            }
             // Save successful queries to history
             if app.query.result.is_ok() && !app.query().is_empty() {
                 let query = app.query().to_string();
@@ -125,6 +130,11 @@ pub fn handle_global_keys(app: &mut App, key: KeyEvent) -> bool {
             true
         }
         KeyCode::Enter if key.modifiers.contains(KeyModifiers::SHIFT) => {
+            // Execute any pending debounced query immediately (bypass debounce)
+            if app.debouncer.has_pending() {
+                crate::editor::events::execute_query(app);
+                app.debouncer.mark_executed();
+            }
             // Save successful queries to history
             if app.query.result.is_ok() && !app.query().is_empty() {
                 let query = app.query().to_string();
@@ -135,6 +145,11 @@ pub fn handle_global_keys(app: &mut App, key: KeyEvent) -> bool {
             true
         }
         KeyCode::Enter if key.modifiers.contains(KeyModifiers::ALT) => {
+            // Execute any pending debounced query immediately (bypass debounce)
+            if app.debouncer.has_pending() {
+                crate::editor::events::execute_query(app);
+                app.debouncer.mark_executed();
+            }
             // Save successful queries to history
             if app.query.result.is_ok() && !app.query().is_empty() {
                 let query = app.query().to_string();
@@ -145,6 +160,11 @@ pub fn handle_global_keys(app: &mut App, key: KeyEvent) -> bool {
             true
         }
         KeyCode::Enter => {
+            // Execute any pending debounced query immediately (bypass debounce)
+            if app.debouncer.has_pending() {
+                crate::editor::events::execute_query(app);
+                app.debouncer.mark_executed();
+            }
             // Save successful queries to history
             if app.query.result.is_ok() && !app.query().is_empty() {
                 let query = app.query().to_string();
@@ -161,6 +181,9 @@ pub fn handle_global_keys(app: &mut App, key: KeyEvent) -> bool {
                 if let Some(suggestion) = app.autocomplete.selected() {
                     let suggestion_clone = suggestion.clone();
                     app.insert_autocomplete_suggestion(&suggestion_clone);
+                    // Mark debouncer as executed since insert_autocomplete_suggestion
+                    // already executes the query immediately
+                    app.debouncer.mark_executed();
                     // Update tooltip after insertion (cursor may now be inside function parens)
                     app.update_tooltip();
                 }
@@ -264,6 +287,15 @@ mod tests {
         app
     }
 
+    // Helper to execute any pending debounced query
+    // In tests, we need to manually trigger execution since there's no event loop
+    fn flush_debounced_query(app: &mut App) {
+        if app.debouncer.has_pending() {
+            crate::editor::events::execute_query(app);
+            app.debouncer.mark_executed();
+        }
+    }
+
     // ========== Error Overlay Tests ==========
 
     #[test]
@@ -279,6 +311,8 @@ mod tests {
 
         // Type an invalid query (| is invalid jq syntax)
         app.handle_key_event(key(KeyCode::Char('|')));
+        // Flush debounced query to execute immediately (simulates debounce period passing)
+        flush_debounced_query(&mut app);
 
         // Should have an error now
         assert!(app.query.result.is_err());
@@ -312,6 +346,8 @@ mod tests {
 
         // Type invalid query
         app.handle_key_event(key(KeyCode::Char('|')));
+        // Flush debounced query to execute immediately
+        flush_debounced_query(&mut app);
         assert!(app.query.result.is_err());
 
         // Show error overlay
@@ -332,6 +368,8 @@ mod tests {
 
         // Type invalid query
         app.handle_key_event(key(KeyCode::Char('|')));
+        // Flush debounced query to execute immediately
+        flush_debounced_query(&mut app);
         assert!(app.query.result.is_err());
 
         // Show error overlay
@@ -354,6 +392,8 @@ mod tests {
 
         // Type invalid query
         app.handle_key_event(key(KeyCode::Char('|')));
+        // Flush debounced query to execute immediately
+        flush_debounced_query(&mut app);
         assert!(app.query.result.is_err());
 
         // Switch to Normal mode
@@ -372,6 +412,8 @@ mod tests {
 
         // Type invalid query
         app.handle_key_event(key(KeyCode::Char('|')));
+        // Flush debounced query to execute immediately
+        flush_debounced_query(&mut app);
         assert!(app.query.result.is_err());
 
         // Switch focus to results pane
@@ -450,6 +492,8 @@ mod tests {
 
         // Type invalid query
         app.handle_key_event(key(KeyCode::Char('|')));
+        // Flush debounced query to execute immediately
+        flush_debounced_query(&mut app);
         let initial_count = app.history.total_count();
 
         // Ensure query failed
@@ -497,6 +541,8 @@ mod tests {
 
         // Type invalid query
         app.handle_key_event(key(KeyCode::Char('|')));
+        // Flush debounced query to execute immediately
+        flush_debounced_query(&mut app);
         let initial_count = app.history.total_count();
 
         // Ensure query failed
@@ -533,6 +579,8 @@ mod tests {
 
         // Type invalid query
         app.handle_key_event(key(KeyCode::Char('|')));
+        // Flush debounced query to execute immediately
+        flush_debounced_query(&mut app);
         let initial_count = app.history.total_count();
 
         // Ensure query failed
@@ -569,6 +617,8 @@ mod tests {
 
         // Type invalid query
         app.handle_key_event(key(KeyCode::Char('|')));
+        // Flush debounced query to execute immediately
+        flush_debounced_query(&mut app);
         let initial_count = app.history.total_count();
 
         // Ensure query failed
