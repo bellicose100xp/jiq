@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.19.1] - 2025-11-30
+
+### Added
+- Bracketed paste mode for efficient paste handling
+  - Terminal now enables bracketed paste mode on startup
+  - Pasted content is handled as a single operation
+  - Immediate query execution after paste completes
+- Query debouncing for improved performance during fast typing
+  - 50ms delay before query execution while typing
+  - Prevents excessive jq invocations during rapid input
+  - Debounce bypassed for Enter/Tab for immediate feedback
+
+### Internal
+- Added Debouncer module with configurable delay
+- Property-based tests for debounce timer reset and state consistency
+- Unit tests for paste event handling and debouncer functionality
+
 ## [2.18.0] - 2025-11-30
 
 ### Added
