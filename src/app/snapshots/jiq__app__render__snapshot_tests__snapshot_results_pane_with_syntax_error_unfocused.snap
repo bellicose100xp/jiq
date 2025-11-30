@@ -2,7 +2,7 @@
 source: src/app/render.rs
 expression: output
 ---
-"┌ ⚠ Syntax Error (last successful query result) ───────────────────────────────┐"
+"┌ ⚠ Syntax Error (String - last successful query result) ──────────────────────┐"
 "│"Alice"                                                                       │"
 "│                                                                              │"
 "│                                                                              │"

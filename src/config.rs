@@ -140,7 +140,7 @@ backend = "{}"
                 "[clipboard\nbackend = \"auto\"\n]",    // Bracket in wrong place
             ])
         ) {
-            let config: Result<Config, _> = toml::from_str(&malformed);
+            let config: Result<Config, _> = toml::from_str(malformed);
             
             // Should fail to parse
             prop_assert!(config.is_err(), "Malformed TOML should fail to parse");

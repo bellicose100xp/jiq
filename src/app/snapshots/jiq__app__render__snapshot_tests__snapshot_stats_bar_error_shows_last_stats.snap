@@ -2,14 +2,14 @@
 source: src/app/render.rs
 expression: output
 ---
-"┌ ⚠ Syntax Error (Object - last successful query result) ──────────────────────┐"
-"│{                                                                             │"
-"│  "test": true                                                                │"
-"│}                                                                             │"
-"│                                                                              │"
-"│                                                                              │"
-"│                                                                              │"
-"│                                                                              │"
+"┌ ⚠ Syntax Error (Array [5 numbers] - last successful query result) ───────────┐"
+"│[                                                                             │"
+"│  1,                                                                          │"
+"│  2,                                                                          │"
+"│  3,                                                                          │"
+"│  4,                                                                          │"
+"│  5                                                                           │"
+"│]                                                                             │"
 "│                                                                              │"
 "│                                                                              │"
 "│                                                                              │"

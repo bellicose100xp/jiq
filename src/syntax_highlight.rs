@@ -668,7 +668,7 @@ mod snapshot_tests {
 
     #[test]
     fn snapshot_string_literals() {
-        let strings = vec![
+        let strings = [
             r#""hello""#,
             r#""hello world""#,
             r#""hello \"escaped\" world""#,
@@ -684,7 +684,7 @@ mod snapshot_tests {
 
     #[test]
     fn snapshot_number_literals() {
-        let numbers = vec!["0", "42", "-123", "3.14", "-0.5"];
+        let numbers = ["0", "42", "-123", "3.14", "-0.5"];
 
         let results: Vec<_> = numbers.iter()
             .map(|n| (n.to_string(), serialize_spans(&JqHighlighter::highlight(n))))

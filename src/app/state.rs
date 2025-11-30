@@ -6,6 +6,7 @@ use crate::config::ClipboardBackend;
 use crate::history::HistoryState;
 use crate::notification::NotificationState;
 use crate::scroll::ScrollState;
+use crate::stats::StatsState;
 use crate::tooltip::{self, TooltipState};
 
 /// Which pane has focus
@@ -37,6 +38,7 @@ pub struct App {
     pub notification: NotificationState,
     pub clipboard_backend: ClipboardBackend,
     pub tooltip: TooltipState,
+    pub stats: StatsState,
 }
 
 impl App {
@@ -56,6 +58,7 @@ impl App {
             notification: NotificationState::new(),
             clipboard_backend,
             tooltip: TooltipState::new(),
+            stats: StatsState::default(),
         }
     }
 
@@ -108,6 +111,14 @@ impl App {
         
         let detected_function = tooltip::detect_function_at_cursor(query, cursor_pos);
         self.tooltip.set_current_function(detected_function.map(|s| s.to_string()));
+    }
+
+    /// Update stats based on the last successful result
+    /// Uses the unformatted result (no ANSI codes) for accurate parsing
+    pub fn update_stats(&mut self) {
+        if let Some(result) = &self.query.last_successful_result_unformatted {
+            self.stats.compute(result);
+        }
     }
 
     /// Insert an autocomplete suggestion at the current cursor position

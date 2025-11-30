@@ -87,6 +87,9 @@ impl App {
         let input_area = layout[1];
         let help_area = layout[2];
 
+        // Update stats from last successful result (for stats bar display)
+        self.update_stats();
+
         // Render results pane
         self.render_results_pane(frame, results_area);
 
@@ -239,17 +242,33 @@ impl App {
             Color::DarkGray // Unfocused
         };
 
-        // Determine title text and style based on error state
-        let (title_text, title_style) = if self.query.result.is_err() {
-            (
-                " ⚠ Syntax Error (last successful query result) ",
-                Style::default().fg(Color::Yellow)
-            )
+        // Build title based on state: stats info replaces "Results" text
+        // On error: "⚠ Syntax Error (Array [5 objects]) - last successful"
+        // On success: "Array [5 objects]" or "Object" etc.
+        let title = if self.query.result.is_err() {
+            // Error state: show warning icon + stats from last successful result
+            let stats_info = self.stats.display().unwrap_or_default();
+            if stats_info.is_empty() {
+                Line::from(vec![
+                    Span::styled(" ⚠ Syntax Error ", Style::default().fg(Color::Yellow)),
+                ])
+            } else {
+                Line::from(vec![
+                    Span::styled(" ⚠ Syntax Error ", Style::default().fg(Color::Yellow)),
+                    Span::styled(
+                        format!("({} - last successful query result) ", stats_info),
+                        Style::default().fg(Color::Gray),
+                    ),
+                ])
+            }
         } else {
-            (
-                " Results ",
-                Style::default().fg(border_color)
-            )
+            // Success state: show stats info as title
+            // Always use Cyan (highlighted border color) for stats text on success
+            let stats_info = self.stats.display().unwrap_or_else(|| "Results".to_string());
+            Line::from(Span::styled(
+                format!(" {} ", stats_info),
+                Style::default().fg(Color::Cyan),
+            ))
         };
 
         match &self.query.result {
@@ -264,7 +283,7 @@ impl App {
 
                 let block = Block::default()
                     .borders(Borders::ALL)
-                    .title(Span::styled(title_text, title_style))
+                    .title(title)
                     .border_style(Style::default().fg(border_color));
 
                 // Parse jq's ANSI color codes into Ratatui Text
@@ -294,7 +313,7 @@ impl App {
                     // Render last successful result with error title
                     let results_block = Block::default()
                         .borders(Borders::ALL)
-                        .title(Span::styled(title_text, title_style))
+                        .title(title)
                         .border_style(Style::default().fg(border_color));
 
                     // Parse cached result with colors
@@ -313,7 +332,7 @@ impl App {
                     // No cached result, show empty results pane with error title
                     let block = Block::default()
                         .borders(Borders::ALL)
-                        .title(Span::styled(title_text, title_style))
+                        .title(title)
                         .border_style(Style::default().fg(border_color));
 
                     let empty_text = Text::from("");
@@ -1444,6 +1463,60 @@ mod snapshot_tests {
 
         // Use wider terminal to ensure both popups have room
         let output = render_to_string(&mut app, 120, 30);
+        assert_snapshot!(output);
+    }
+
+    // === Stats Bar Tests ===
+
+    #[test]
+    fn snapshot_stats_bar_array_focused() {
+        // Test stats bar with array result when results pane is focused
+        let json = r#"[{"id": 1}, {"id": 2}, {"id": 3}]"#;
+        let mut app = test_app(json);
+        
+        // Execute identity query to show the array
+        app.query.execute(".");
+        
+        // Focus the results pane to verify cyan stats color
+        app.focus = Focus::ResultsPane;
+
+        let output = render_to_string(&mut app, TEST_WIDTH, TEST_HEIGHT);
+        assert_snapshot!(output);
+    }
+
+    #[test]
+    fn snapshot_stats_bar_object_unfocused() {
+        // Test stats bar with object result when results pane is unfocused
+        let json = r#"{"name": "Alice", "age": 30}"#;
+        let mut app = test_app(json);
+        
+        // Execute identity query to show the object
+        app.query.execute(".");
+        
+        // Ensure results pane is unfocused to verify gray stats color
+        app.focus = Focus::InputField;
+
+        let output = render_to_string(&mut app, TEST_WIDTH, TEST_HEIGHT);
+        assert_snapshot!(output);
+    }
+
+    #[test]
+    fn snapshot_stats_bar_error_shows_last_stats() {
+        // Test that stats bar shows last successful stats during error state
+        let json = r#"[1, 2, 3, 4, 5]"#;
+        let mut app = test_app(json);
+        
+        // Execute a successful query first to populate stats
+        app.query.execute(".");
+        
+        // Now create an error state
+        app.input.textarea.insert_str(".invalid[");
+        app.query.execute(".invalid[");
+        
+        // Stats should still show "Array [5 numbers]" from last successful result
+        app.focus = Focus::InputField;
+
+        let output = render_to_string(&mut app, TEST_WIDTH, TEST_HEIGHT);
         assert_snapshot!(output);
     }
 }

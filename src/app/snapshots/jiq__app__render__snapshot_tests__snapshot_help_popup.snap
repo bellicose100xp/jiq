@@ -2,7 +2,7 @@
 source: src/app/render.rs
 expression: output
 ---
-"┌ Res┌ Keyboard Shortcuts ────────────────────────────────────────────────┐────┐"
+"┌ Obj┌ Keyboard Shortcuts ────────────────────────────────────────────────┐────┐"
 "│{   │                                                                    │    │"
 "│  "t│  ── GLOBAL ──                                                      │    │"
 "│}   │  F1 or ?        Toggle this help                                   │    │"

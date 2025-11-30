@@ -2,7 +2,7 @@
 source: src/app/render.rs
 expression: output
 ---
-"┌ Results ─────────────────────────────┐"
+"┌ Object ──────────────────────────────┐"
 "│{                                     │"
 "│  "name": "Alice"                     │"
 "│}                                     │"

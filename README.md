@@ -3,6 +3,7 @@
 ## Features
 
 - **Real-time query execution** - See results as you type
+- **Stats bar** - Shows result type and count (e.g., "Array [5 objects]", "Stream [3 values]")
 - **[EXPERIMENTAL] Context-aware autocomplete** - Intelligent suggestions with JSON type information for fields and functions
 - **Function tooltip** - Quick reference help for jq functions with examples
 - **Query history** - Searchable history of successful queries
