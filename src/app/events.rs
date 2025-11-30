@@ -84,11 +84,10 @@ impl App {
             return;
         }
 
-        // Handle ESC - close autocomplete or switch to Normal mode
+        // Handle ESC - close autocomplete and switch to Normal mode
         if key.code == KeyCode::Esc {
             if self.autocomplete.is_visible() {
                 self.autocomplete.hide();
-                return;
             }
             self.input.editor_mode = EditorMode::Normal;
             return;

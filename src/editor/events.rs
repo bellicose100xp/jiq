@@ -791,7 +791,7 @@ mod tests {
 
         assert!(!app.autocomplete.is_visible());
         assert_eq!(app.query(), ".na"); // Query unchanged
-        assert_eq!(app.input.editor_mode, EditorMode::Insert); // Still in insert mode
+        assert_eq!(app.input.editor_mode, EditorMode::Normal); // Switches to normal mode
     }
 
     #[test]
