@@ -1,6 +1,6 @@
 use ansi_to_tui::IntoText;
 use ratatui::{
-    layout::{Constraint, Layout, Rect},
+    layout::{Alignment, Constraint, Layout, Rect},
     style::{Color, Modifier, Style},
     text::{Line, Span, Text},
     widgets::{Block, Borders, List, ListItem, Paragraph},
@@ -11,10 +11,22 @@ use crate::autocomplete::SuggestionType;
 use crate::editor::EditorMode;
 use crate::history::MAX_VISIBLE_HISTORY;
 use crate::notification::render_notification;
+use crate::search::Match;
 use crate::tooltip::get_tooltip_content;
 use crate::widgets::popup;
 use crate::help::{HELP_ENTRIES, HELP_FOOTER};
 use super::state::{App, Focus};
+
+// Search highlight styles
+// Non-selected matches: lighter gray for subtle indication
+const MATCH_HIGHLIGHT_BG: Color = Color::Rgb(128, 128, 128); // Gray
+const MATCH_HIGHLIGHT_FG: Color = Color::White;
+// Current match: bright orange for clear visibility
+const CURRENT_MATCH_HIGHLIGHT_BG: Color = Color::Rgb(255, 165, 0); // Orange
+const CURRENT_MATCH_HIGHLIGHT_FG: Color = Color::Black;
+
+// Search bar display constants
+const SEARCH_BAR_HEIGHT: u16 = 3;
 
 // Autocomplete popup display constants
 const MAX_VISIBLE_SUGGESTIONS: usize = 10;
@@ -70,6 +82,159 @@ fn wrap_text(text: &str, max_width: usize) -> Vec<String> {
     }
 
     lines
+}
+
+/// Apply search match highlighting to a Text object
+/// 
+/// This function takes the parsed ANSI text and overlays search match highlights
+/// on the visible portion of the content.
+/// 
+/// # Arguments
+/// * `text` - The parsed Text with ANSI colors
+/// * `matches` - All search matches found in the content
+/// * `current_match_index` - Index of the currently selected match
+/// * `scroll_offset` - Current vertical scroll offset
+/// * `viewport_height` - Height of the visible viewport
+fn apply_search_highlights(
+    text: Text<'_>,
+    matches: &[Match],
+    current_match_index: usize,
+    scroll_offset: u16,
+    viewport_height: u16,
+) -> Text<'static> {
+    if matches.is_empty() {
+        // No matches, return text as-is (converted to owned)
+        return Text::from(
+            text.lines
+                .into_iter()
+                .map(|line| {
+                    Line::from(
+                        line.spans
+                            .into_iter()
+                            .map(|span| Span::styled(span.content.to_string(), span.style))
+                            .collect::<Vec<_>>(),
+                    )
+                })
+                .collect::<Vec<_>>(),
+        );
+    }
+
+    // Note: We apply highlights to ALL lines, not just visible ones.
+    // The Paragraph::scroll() call handles showing the right portion at render time.
+    // The scroll_offset and viewport_height parameters are kept for potential
+    // future optimization (only processing visible lines).
+    let _ = (scroll_offset, viewport_height); // Suppress unused warnings
+
+    // Convert text lines to owned and apply highlights
+    // Note: text.lines contains ALL lines, not just visible ones.
+    // The Paragraph::scroll() call handles the actual scrolling at render time.
+    // So line_idx directly corresponds to the absolute line number in the content.
+    let highlighted_lines: Vec<Line<'static>> = text
+        .lines
+        .into_iter()
+        .enumerate()
+        .map(|(line_idx, line)| {
+            // line_idx is the absolute line number (0-indexed)
+            // We apply highlights to ALL lines, not just visible ones,
+            // because Paragraph::scroll() will handle showing the right portion
+            
+            // Find matches on this line (check against all matches, not just visible)
+            let line_matches: Vec<(usize, &Match)> = matches
+                .iter()
+                .enumerate()
+                .filter(|(_, m)| m.line as usize == line_idx)
+                .collect();
+
+            if line_matches.is_empty() {
+                // No matches on this line, convert to owned
+                Line::from(
+                    line.spans
+                        .into_iter()
+                        .map(|span| Span::styled(span.content.to_string(), span.style))
+                        .collect::<Vec<_>>(),
+                )
+            } else {
+                // Apply highlights to this line
+                // Note: We don't pass h_scroll_offset here because Paragraph::scroll() handles horizontal scrolling
+                apply_highlights_to_line(line, &line_matches, current_match_index)
+            }
+        })
+        .collect();
+
+    Text::from(highlighted_lines)
+}
+
+/// Apply search highlights to a single line
+fn apply_highlights_to_line(
+    line: Line<'_>,
+    matches: &[(usize, &Match)],
+    current_match_index: usize,
+) -> Line<'static> {
+    // First, flatten all spans into a single string with style info
+    let mut char_styles: Vec<(char, Style)> = Vec::new();
+    
+    for span in &line.spans {
+        for ch in span.content.chars() {
+            char_styles.push((ch, span.style));
+        }
+    }
+
+    // Apply match highlights (overriding existing styles)
+    for (match_idx, m) in matches {
+        let col_start = m.col as usize;
+        let col_end = col_start + m.len as usize;
+        
+        // Determine highlight style based on whether this is the current match
+        let highlight_style = if *match_idx == current_match_index {
+            Style::default()
+                .fg(CURRENT_MATCH_HIGHLIGHT_FG)
+                .bg(CURRENT_MATCH_HIGHLIGHT_BG)
+                .add_modifier(Modifier::BOLD)
+        } else {
+            Style::default()
+                .fg(MATCH_HIGHLIGHT_FG)
+                .bg(MATCH_HIGHLIGHT_BG)
+        };
+
+        // Apply highlight to character range
+        for i in col_start..col_end.min(char_styles.len()) {
+            char_styles[i].1 = highlight_style;
+        }
+    }
+
+    // Don't skip characters here - Paragraph::scroll() handles horizontal scrolling
+    let visible_chars: Vec<(char, Style)> = char_styles;
+
+    // Rebuild spans from character styles (grouping consecutive same-style chars)
+    let mut result_spans: Vec<Span<'static>> = Vec::new();
+    let mut current_text = String::new();
+    let mut current_style: Option<Style> = None;
+
+    for (ch, style) in visible_chars {
+        match current_style {
+            Some(s) if s == style => {
+                current_text.push(ch);
+            }
+            _ => {
+                if !current_text.is_empty() {
+                    if let Some(s) = current_style {
+                        result_spans.push(Span::styled(current_text.clone(), s));
+                    }
+                }
+                current_text = ch.to_string();
+                current_style = Some(style);
+            }
+        }
+    }
+
+    // Don't forget the last span
+    if !current_text.is_empty() {
+        if let Some(s) = current_style {
+            result_spans.push(Span::styled(current_text, s));
+        }
+    }
+
+    Line::from(result_spans)
 }
 
 impl App {
@@ -235,6 +400,18 @@ impl App {
 
     /// Render the results pane (top)
     fn render_results_pane(&mut self, frame: &mut Frame, area: ratatui::layout::Rect) {
+        // Split area for search bar if visible
+        let (results_area, search_area) = if self.search.is_visible() {
+            let layout = Layout::vertical([
+                Constraint::Min(3),                    // Results content
+                Constraint::Length(SEARCH_BAR_HEIGHT), // Search bar (3 lines: borders + input)
+            ])
+            .split(area);
+            (layout[0], Some(layout[1]))
+        } else {
+            (area, None)
+        };
+
         // Set border color based on focus
         let border_color = if self.focus == Focus::ResultsPane {
             Color::Cyan // Focused
@@ -274,8 +451,8 @@ impl App {
         match &self.query.result {
             Ok(result) => {
                 // Update scroll bounds based on content and viewport
-                let viewport_height = area.height.saturating_sub(2);
-                let viewport_width = area.width.saturating_sub(2);
+                let viewport_height = results_area.height.saturating_sub(2);
+                let viewport_width = results_area.width.saturating_sub(2);
                 let line_count = self.results_line_count_u32();
                 self.results_scroll.update_bounds(line_count, viewport_height);
                 self.results_scroll
@@ -293,17 +470,43 @@ impl App {
                     .into_text()
                     .unwrap_or_else(|_| Text::raw(result)); // Fallback to plain text on parse error
 
-                let content = Paragraph::new(colored_text)
+                // Apply search highlights if search is active
+                let final_text = if self.search.is_visible() && !self.search.matches().is_empty() {
+                    #[cfg(debug_assertions)]
+                    {
+                        if let Some(current_match) = self.search.current_match() {
+                            log::debug!(
+                                "render: applying highlights, current_match at line={} col={} len={}, scroll=({}, {})",
+                                current_match.line,
+                                current_match.col,
+                                current_match.len,
+                                self.results_scroll.offset,
+                                self.results_scroll.h_offset
+                            );
+                        }
+                    }
+                    apply_search_highlights(
+                        colored_text,
+                        self.search.matches(),
+                        self.search.current_index(),
+                        self.results_scroll.offset,
+                        viewport_height,
+                    )
+                } else {
+                    colored_text
+                };
+
+                let content = Paragraph::new(final_text)
                     .block(block)
                     .scroll((self.results_scroll.offset, self.results_scroll.h_offset));
 
-                frame.render_widget(content, area);
+                frame.render_widget(content, results_area);
             }
             Err(_error) => {
                 // When there's an error, show last successful result in full area (no splitting)
                 // The error overlay will be rendered separately if user requests it with Ctrl+E
-                let viewport_height = area.height.saturating_sub(2);
-                let viewport_width = area.width.saturating_sub(2);
+                let viewport_height = results_area.height.saturating_sub(2);
+                let viewport_width = results_area.width.saturating_sub(2);
                 let line_count = self.results_line_count_u32();
                 self.results_scroll.update_bounds(line_count, viewport_height);
                 self.results_scroll
@@ -323,11 +526,24 @@ impl App {
                         .into_text()
                         .unwrap_or_else(|_| Text::raw(last_result));
 
-                    let results_widget = Paragraph::new(colored_text)
+                    // Apply search highlights if search is active
+                    let final_text = if self.search.is_visible() && !self.search.matches().is_empty() {
+                        apply_search_highlights(
+                            colored_text,
+                            self.search.matches(),
+                            self.search.current_index(),
+                            self.results_scroll.offset,
+                            viewport_height,
+                        )
+                    } else {
+                        colored_text
+                    };
+
+                    let results_widget = Paragraph::new(final_text)
                         .block(results_block)
                         .scroll((self.results_scroll.offset, self.results_scroll.h_offset));
 
-                    frame.render_widget(results_widget, area);
+                    frame.render_widget(results_widget, results_area);
                 } else {
                     // No cached result, show empty results pane with error title
                     let block = Block::default()
@@ -338,10 +554,50 @@ impl App {
                     let empty_text = Text::from("");
                     let content = Paragraph::new(empty_text).block(block);
 
-                    frame.render_widget(content, area);
+                    frame.render_widget(content, results_area);
                 }
             }
         }
+
+        // Render search bar if visible
+        if let Some(search_rect) = search_area {
+            self.render_search_bar(frame, search_rect);
+        }
+    }
+
+    /// Render the search bar at the bottom of the results pane
+    fn render_search_bar(&mut self, frame: &mut Frame, area: Rect) {
+        // Build match count display for the right side
+        let match_count = self.search.match_count_display();
+        let match_count_style = if self.search.matches().is_empty() && !self.search.query().is_empty() {
+            // No matches found - show in red
+            Style::default().fg(Color::Red)
+        } else {
+            Style::default().fg(Color::Gray)
+        };
+
+        // Create the search bar block with cyan border (matching other popups)
+        let block = Block::default()
+            .borders(Borders::ALL)
+            .title(" Search: ")
+            .title_top(
+                Line::from(Span::styled(format!(" {} ", match_count), match_count_style))
+                    .alignment(Alignment::Right),
+            )
+            .border_style(Style::default().fg(Color::Cyan))
+            .style(Style::default().bg(Color::Black));
+
+        // Calculate inner area for the TextArea
+        let inner_area = block.inner(area);
+
+        // Render the block first
+        frame.render_widget(block, area);
+
+        // Configure and render the search TextArea
+        let search_textarea = self.search.search_textarea_mut();
+        search_textarea.set_style(Style::default().fg(Color::White).bg(Color::Black));
+        search_textarea.set_cursor_line_style(Style::default());
+        frame.render_widget(&*search_textarea, inner_area);
     }
 
     /// Render the error overlay (floating at the bottom of results pane)
@@ -1515,6 +1771,190 @@ mod snapshot_tests {
         
         // Stats should still show "Array [5 numbers]" from last successful result
         app.focus = Focus::InputField;
+
+        let output = render_to_string(&mut app, TEST_WIDTH, TEST_HEIGHT);
+        assert_snapshot!(output);
+    }
+
+    // === Search Bar Tests ===
+
+    #[test]
+    fn snapshot_search_bar_visible() {
+        // Test UI with search bar open
+        let json = r#"{"name": "Alice", "email": "alice@example.com", "role": "admin"}"#;
+        let mut app = test_app(json);
+        
+        // Execute identity query to show the JSON
+        app.query.execute(".");
+        
+        // Open search and type a query
+        app.search.open();
+        app.search.search_textarea_mut().insert_str("alice");
+        
+        // Update matches based on the result content (use unformatted for correct positions)
+        if let Some(content) = &app.query.last_successful_result_unformatted {
+            app.search.update_matches(content);
+        }
+        
+        // Focus results pane (where search bar appears)
+        app.focus = Focus::ResultsPane;
+
+        let output = render_to_string(&mut app, TEST_WIDTH, TEST_HEIGHT);
+        assert_snapshot!(output);
+    }
+
+    #[test]
+    fn snapshot_search_bar_with_match_count() {
+        // Test search bar showing match count "(current/total)"
+        let json = r#"[{"name": "alice"}, {"name": "bob"}, {"name": "alice"}]"#;
+        let mut app = test_app(json);
+        
+        // Execute identity query
+        app.query.execute(".");
+        
+        // Open search and type a query that has multiple matches
+        app.search.open();
+        app.search.search_textarea_mut().insert_str("alice");
+        
+        // Update matches (use unformatted for correct positions)
+        if let Some(content) = &app.query.last_successful_result_unformatted {
+            app.search.update_matches(content);
+        }
+        
+        app.focus = Focus::ResultsPane;
+
+        let output = render_to_string(&mut app, TEST_WIDTH, TEST_HEIGHT);
+        assert_snapshot!(output);
+    }
+
+    #[test]
+    fn snapshot_search_bar_no_matches() {
+        // Test search bar showing "(0/0)" when no matches found
+        let json = r#"{"name": "Alice", "age": 30}"#;
+        let mut app = test_app(json);
+        
+        // Execute identity query
+        app.query.execute(".");
+        
+        // Open search and type a query that has no matches
+        app.search.open();
+        app.search.search_textarea_mut().insert_str("xyz");
+        
+        // Update matches (should find none, use unformatted for correct positions)
+        if let Some(content) = &app.query.last_successful_result_unformatted {
+            app.search.update_matches(content);
+        }
+        
+        app.focus = Focus::ResultsPane;
+
+        let output = render_to_string(&mut app, TEST_WIDTH, TEST_HEIGHT);
+        assert_snapshot!(output);
+    }
+
+    #[test]
+    fn snapshot_search_with_highlighted_matches() {
+        // Test UI showing highlighted matches with different styles
+        // Current match should have orange background (bold), other matches yellow background
+        let json = r#"[{"name": "alice", "email": "alice@test.com"}, {"name": "bob"}, {"name": "alice"}]"#;
+        let mut app = test_app(json);
+        
+        // Execute identity query to show the JSON
+        app.query.execute(".");
+        
+        // Open search and type a query that has multiple matches
+        app.search.open();
+        app.search.search_textarea_mut().insert_str("alice");
+        
+        // Update matches based on the result content (use unformatted for correct positions)
+        if let Some(content) = &app.query.last_successful_result_unformatted {
+            app.search.update_matches(content);
+        }
+        
+        // Navigate to second match to show different highlight styles
+        // First match (index 0) will be other match style (yellow)
+        // Second match (index 1) will be current match style (orange, bold)
+        app.search.next_match();
+        
+        // Focus results pane
+        app.focus = Focus::ResultsPane;
+
+        let output = render_to_string(&mut app, TEST_WIDTH, TEST_HEIGHT);
+        assert_snapshot!(output);
+    }
+
+    #[test]
+    fn snapshot_search_with_horizontal_scroll() {
+        // Test that horizontal scrolling works when navigating to matches that are off-screen horizontally
+        // Create JSON with a very long line containing matches far to the right
+        let long_value = format!("{}match_here", " ".repeat(150));
+        let json = format!(r#"{{"short": "value", "very_long_field": "{}"}}"#, long_value);
+        let mut app = test_app(&json);
+        
+        // Execute identity query to show the JSON
+        app.query.execute(".");
+        
+        // Set up viewport dimensions (simulate a narrow terminal)
+        app.results_scroll.viewport_width = 80;
+        app.results_scroll.viewport_height = 20;
+        
+        // Open search and search for "match_here" which is at column ~150
+        app.search.open();
+        app.search.search_textarea_mut().insert_str("match_here");
+        
+        // Update matches based on the result content
+        if let Some(content) = &app.query.last_successful_result_unformatted {
+            app.search.update_matches(content);
+            
+            // Update horizontal bounds based on content
+            let max_line_width = content.lines().map(|l| l.len()).max().unwrap_or(0) as u16;
+            app.results_scroll.update_h_bounds(max_line_width, app.results_scroll.viewport_width);
+        }
+        
+        // Confirm search and navigate to the match (which should trigger horizontal scroll)
+        app.search.confirm();
+        if let Some(line) = app.search.next_match() {
+            // Manually trigger scroll_to_match logic
+            if let Some(current_match) = app.search.current_match() {
+                let target_col = current_match.col;
+                let match_len = current_match.len;
+                let h_offset = app.results_scroll.h_offset;
+                let max_h_offset = app.results_scroll.max_h_offset;
+                let viewport_width = app.results_scroll.viewport_width;
+                
+                // Apply horizontal scroll logic
+                if max_h_offset > 0 && viewport_width > 0 {
+                    let match_end = target_col.saturating_add(match_len);
+                    let visible_h_start = h_offset;
+                    let visible_h_end = h_offset.saturating_add(viewport_width);
+                    
+                    if target_col < visible_h_start || match_end > visible_h_end {
+                        let left_margin: u16 = 10;
+                        let new_h_offset = target_col.saturating_sub(left_margin);
+                        app.results_scroll.h_offset = new_h_offset.min(max_h_offset);
+                    }
+                }
+                
+                // Also handle vertical scroll
+                let target_line = line.min(u16::MAX as u32) as u16;
+                let viewport_height = app.results_scroll.viewport_height;
+                let current_offset = app.results_scroll.offset;
+                let max_offset = app.results_scroll.max_offset;
+                
+                if viewport_height > 0 && max_offset > 0 {
+                    let visible_start = current_offset;
+                    let visible_end = current_offset.saturating_add(viewport_height);
+                    
+                    if target_line < visible_start || target_line >= visible_end {
+                        let half_viewport = viewport_height / 2;
+                        let new_offset = target_line.saturating_sub(half_viewport);
+                        app.results_scroll.offset = new_offset.min(max_offset);
+                    }
+                }
+            }
+        }
+        
+        // Focus results pane
+        app.focus = Focus::ResultsPane;
 
         let output = render_to_string(&mut app, TEST_WIDTH, TEST_HEIGHT);
         assert_snapshot!(output);

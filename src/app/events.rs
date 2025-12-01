@@ -59,7 +59,13 @@ impl App {
 
     /// Handle key press events
     pub fn handle_key_event(&mut self, key: KeyEvent) {
-        // Try global keys first
+        // Handle search keys FIRST when search is visible
+        // This ensures Enter confirms search instead of executing query
+        if crate::search::events::handle_search_key(self, key) {
+            return; // Key was handled by search
+        }
+
+        // Try global keys next
         if global::handle_global_keys(self, key) {
             return; // Key was handled globally
         }

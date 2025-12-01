@@ -240,6 +240,13 @@ pub fn handle_global_keys(app: &mut App, key: KeyEvent) -> bool {
             true
         }
 
+        // Open search with Ctrl+F (works from any pane)
+        // Requirements 1.1: Ctrl+F opens search from any pane
+        KeyCode::Char('f') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+            crate::search::events::open_search(app);
+            true
+        }
+
         _ => false, // Key not handled
     }
 }

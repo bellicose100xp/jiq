@@ -11,6 +11,8 @@ pub struct ScrollState {
     pub h_offset: u16,
     /// Maximum valid horizontal scroll offset
     pub max_h_offset: u16,
+    /// Width of the visible viewport
+    pub viewport_width: u16,
 }
 
 impl ScrollState {
@@ -22,6 +24,7 @@ impl ScrollState {
             viewport_height: 0,
             h_offset: 0,
             max_h_offset: 0,
+            viewport_width: 0,
         }
     }
 
@@ -76,6 +79,7 @@ impl ScrollState {
 
     /// Update horizontal bounds based on content and viewport width
     pub fn update_h_bounds(&mut self, max_line_width: u16, viewport_width: u16) {
+        self.viewport_width = viewport_width;
         self.max_h_offset = max_line_width.saturating_sub(viewport_width);
         self.h_offset = self.h_offset.min(self.max_h_offset);
     }

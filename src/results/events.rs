@@ -10,6 +10,12 @@ use crate::clipboard;
 /// Handle keys when Results pane is focused
 pub fn handle_results_pane_key(app: &mut App, key: KeyEvent) {
     match key.code {
+        // Open search with '/' (only from results pane)
+        // Requirements 1.2: Slash opens search only from results pane
+        KeyCode::Char('/') => {
+            crate::search::events::open_search(app);
+        }
+
         // Toggle help popup
         KeyCode::Char('?') => {
             app.help.visible = !app.help.visible;

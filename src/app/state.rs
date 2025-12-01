@@ -6,6 +6,7 @@ use crate::config::{ClipboardBackend, Config};
 use crate::history::HistoryState;
 use crate::notification::NotificationState;
 use crate::scroll::ScrollState;
+use crate::search::SearchState;
 use crate::stats::StatsState;
 use crate::tooltip::{self, TooltipState};
 
@@ -40,6 +41,7 @@ pub struct App {
     pub tooltip: TooltipState,
     pub stats: StatsState,
     pub debouncer: Debouncer,
+    pub search: SearchState,
 }
 
 impl App {
@@ -65,6 +67,7 @@ impl App {
             tooltip: TooltipState::new(config.tooltip.auto_show),
             stats: StatsState::default(),
             debouncer: Debouncer::new(),
+            search: SearchState::new(),
         }
     }
 
