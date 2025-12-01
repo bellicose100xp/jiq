@@ -5,6 +5,7 @@
 
 pub mod events;
 mod matcher;
+pub mod search_render;
 mod state;
 
 pub use state::{Match, SearchState};

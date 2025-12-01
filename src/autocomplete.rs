@@ -1,6 +1,7 @@
 mod context;
 pub mod insertion;
 pub mod jq_functions;
+pub mod autocomplete_render;
 mod result_analyzer;
 pub mod state;
 

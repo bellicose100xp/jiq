@@ -7,6 +7,7 @@
 mod content;
 mod detector;
 pub mod events;
+pub mod tooltip_render;
 mod state;
 
 pub use content::get_tooltip_content;
