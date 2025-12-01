@@ -6,6 +6,6 @@
 //! - Auto mode (system with OSC 52 fallback)
 
 mod backend;
-pub mod events;
+pub mod clipboard_events;
 mod osc52;
 mod system;

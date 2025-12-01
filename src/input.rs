@@ -1,5 +1,5 @@
-mod state;
+mod input_state;
 pub mod reader;
 pub mod input_render;
 
-pub use state::InputState;
+pub use input_state::InputState;

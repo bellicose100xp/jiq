@@ -1,5 +1,5 @@
 use crate::query::ResultType;
-use crate::autocomplete::state::{JsonFieldType, Suggestion, SuggestionType};
+use crate::autocomplete::autocomplete_state::{JsonFieldType, Suggestion, SuggestionType};
 use serde_json::Value;
 
 /// Analyze query execution results to extract field suggestions

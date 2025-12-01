@@ -10,7 +10,7 @@ use ratatui::{
     Frame,
 };
 
-use super::state::NotificationState;
+use super::notification_state::NotificationState;
 use crate::widgets::popup;
 
 /// Render the notification overlay in the top-right corner of the frame

@@ -6,7 +6,7 @@
 
 use ratatui::crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 
-use super::super::state::{App, Focus, OutputMode};
+use super::super::app_state::{App, Focus, OutputMode};
 
 /// Handle global keys that work regardless of focus
 /// Returns true if key was handled, false otherwise
@@ -117,7 +117,7 @@ pub fn handle_global_keys(app: &mut App, key: KeyEvent) -> bool {
         KeyCode::Char('q') if key.modifiers.contains(KeyModifiers::CONTROL) => {
             // Execute any pending debounced query immediately (bypass debounce)
             if app.debouncer.has_pending() {
-                crate::editor::events::execute_query(app);
+                crate::editor::editor_events::execute_query(app);
                 app.debouncer.mark_executed();
             }
             // Save successful queries to history
@@ -132,7 +132,7 @@ pub fn handle_global_keys(app: &mut App, key: KeyEvent) -> bool {
         KeyCode::Enter if key.modifiers.contains(KeyModifiers::SHIFT) => {
             // Execute any pending debounced query immediately (bypass debounce)
             if app.debouncer.has_pending() {
-                crate::editor::events::execute_query(app);
+                crate::editor::editor_events::execute_query(app);
                 app.debouncer.mark_executed();
             }
             // Save successful queries to history
@@ -147,7 +147,7 @@ pub fn handle_global_keys(app: &mut App, key: KeyEvent) -> bool {
         KeyCode::Enter if key.modifiers.contains(KeyModifiers::ALT) => {
             // Execute any pending debounced query immediately (bypass debounce)
             if app.debouncer.has_pending() {
-                crate::editor::events::execute_query(app);
+                crate::editor::editor_events::execute_query(app);
                 app.debouncer.mark_executed();
             }
             // Save successful queries to history
@@ -162,7 +162,7 @@ pub fn handle_global_keys(app: &mut App, key: KeyEvent) -> bool {
         KeyCode::Enter => {
             // Execute any pending debounced query immediately (bypass debounce)
             if app.debouncer.has_pending() {
-                crate::editor::events::execute_query(app);
+                crate::editor::editor_events::execute_query(app);
                 app.debouncer.mark_executed();
             }
             // Save successful queries to history
@@ -236,14 +236,14 @@ pub fn handle_global_keys(app: &mut App, key: KeyEvent) -> bool {
         // Toggle tooltip with Ctrl+T (T for Tooltip)
         // Requirements 2.1, 2.2, 2.3: Toggle tooltip state on/off
         KeyCode::Char('t') if key.modifiers.contains(KeyModifiers::CONTROL) => {
-            crate::tooltip::events::handle_tooltip_toggle(&mut app.tooltip);
+            crate::tooltip::tooltip_events::handle_tooltip_toggle(&mut app.tooltip);
             true
         }
 
         // Open search with Ctrl+F (works from any pane)
         // Requirements 1.1: Ctrl+F opens search from any pane
         KeyCode::Char('f') if key.modifiers.contains(KeyModifiers::CONTROL) => {
-            crate::search::events::open_search(app);
+            crate::search::search_events::open_search(app);
             true
         }
 
@@ -298,7 +298,7 @@ mod tests {
     // In tests, we need to manually trigger execution since there's no event loop
     fn flush_debounced_query(app: &mut App) {
         if app.debouncer.has_pending() {
-            crate::editor::events::execute_query(app);
+            crate::editor::editor_events::execute_query(app);
             app.debouncer.mark_executed();
         }
     }

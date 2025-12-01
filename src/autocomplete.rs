@@ -3,12 +3,12 @@ pub mod insertion;
 pub mod jq_functions;
 pub mod autocomplete_render;
 mod result_analyzer;
-pub mod state;
+pub mod autocomplete_state;
 
 pub use context::{analyze_context, find_char_before_field_access, get_suggestions, SuggestionContext};
 // JsonFieldType is part of public API for Suggestion struct
 #[allow(unused_imports)]
-pub use state::{AutocompleteState, JsonFieldType, Suggestion, SuggestionType};
+pub use autocomplete_state::{AutocompleteState, JsonFieldType, Suggestion, SuggestionType};
 
 use crate::query::ResultType;
 

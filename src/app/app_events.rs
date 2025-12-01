@@ -7,7 +7,7 @@ use crate::editor::EditorMode;
 use crate::editor;
 use crate::history;
 use crate::results;
-use super::state::{App, Focus};
+use super::app_state::{App, Focus};
 
 mod global;
 
@@ -20,7 +20,7 @@ impl App {
         // Check for pending debounced execution before processing new events
         // This ensures queries are executed after the debounce period (50ms) has elapsed
         if self.debouncer.should_execute() {
-            editor::events::execute_query(self);
+            editor::editor_events::execute_query(self);
             self.debouncer.mark_executed();
         }
 
@@ -48,7 +48,7 @@ impl App {
         self.input.textarea.insert_str(&text);
         
         // Execute query immediately (no debounce for paste operations)
-        editor::events::execute_query(self);
+        editor::editor_events::execute_query(self);
         
         // Update autocomplete suggestions after paste
         self.update_autocomplete();
@@ -61,7 +61,7 @@ impl App {
     pub fn handle_key_event(&mut self, key: KeyEvent) {
         // Handle search keys FIRST when search is visible
         // This ensures Enter confirms search instead of executing query
-        if crate::search::events::handle_search_key(self, key) {
+        if crate::search::search_events::handle_search_key(self, key) {
             return; // Key was handled by search
         }
 
@@ -71,14 +71,14 @@ impl App {
         }
 
         // Handle clipboard Ctrl+Y before mode-specific handling
-        if clipboard::events::handle_clipboard_key(self, key, self.clipboard_backend) {
+        if clipboard::clipboard_events::handle_clipboard_key(self, key, self.clipboard_backend) {
             return; // Key was handled by clipboard
         }
 
         // Not a global key, delegate to focused pane
         match self.focus {
             Focus::InputField => self.handle_input_field_key(key),
-            Focus::ResultsPane => results::events::handle_results_pane_key(self, key),
+            Focus::ResultsPane => results::results_events::handle_results_pane_key(self, key),
         }
     }
 
@@ -86,7 +86,7 @@ impl App {
     fn handle_input_field_key(&mut self, key: KeyEvent) {
         // Handle history popup when visible
         if self.history.is_visible() {
-            history::events::handle_history_popup_key(self, key);
+            history::history_events::handle_history_popup_key(self, key);
             return;
         }
 
@@ -132,7 +132,7 @@ impl App {
                     // At most recent, clear the input
                     self.input.textarea.delete_line_by_head();
                     self.input.textarea.delete_line_by_end();
-                    editor::events::execute_query(self);
+                    editor::editor_events::execute_query(self);
                 }
                 return;
             }
@@ -152,9 +152,9 @@ impl App {
 
         // Handle input based on current mode
         match self.input.editor_mode {
-            EditorMode::Insert => editor::events::handle_insert_mode_key(self, key),
-            EditorMode::Normal => editor::events::handle_normal_mode_key(self, key),
-            EditorMode::Operator(_) => editor::events::handle_operator_mode_key(self, key),
+            EditorMode::Insert => editor::editor_events::handle_insert_mode_key(self, key),
+            EditorMode::Normal => editor::editor_events::handle_normal_mode_key(self, key),
+            EditorMode::Operator(_) => editor::editor_events::handle_operator_mode_key(self, key),
         }
     }
 
@@ -164,7 +164,7 @@ impl App {
         self.input.textarea.delete_line_by_head();
         self.input.textarea.delete_line_by_end();
         self.input.textarea.insert_str(text);
-        editor::events::execute_query(self);
+        editor::editor_events::execute_query(self);
     }
 
     /// Open the history popup with current query as initial search

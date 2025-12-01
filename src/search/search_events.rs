@@ -875,7 +875,7 @@ mod tests {
             // Generate scroll operation type
             scroll_op in 0u8..8,
         ) {
-            use crate::search::state::Match;
+            use crate::search::search_state::Match;
 
             let mut app = test_app(r#"{"name": "test"}"#);
             

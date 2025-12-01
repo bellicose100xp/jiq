@@ -2,7 +2,7 @@
 //!
 //! Handles keyboard events for the tooltip feature.
 
-use super::state::TooltipState;
+use super::tooltip_state::TooltipState;
 
 /// Handle Ctrl+I keypress to toggle tooltip visibility
 ///

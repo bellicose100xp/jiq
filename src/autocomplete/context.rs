@@ -1,7 +1,7 @@
 use crate::query::ResultType;
 use super::jq_functions::filter_builtins;
 use super::result_analyzer::ResultAnalyzer;
-use super::state::Suggestion;
+use super::autocomplete_state::Suggestion;
 
 /// Context information about what's being typed
 #[derive(Debug, Clone, PartialEq, Eq)]

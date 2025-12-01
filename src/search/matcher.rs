@@ -1,4 +1,4 @@
-use super::state::Match;
+use super::search_state::Match;
 
 /// Finds all occurrences of a query in text (case-insensitive)
 pub struct SearchMatcher;

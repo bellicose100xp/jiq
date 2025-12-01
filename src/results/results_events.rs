@@ -13,7 +13,7 @@ pub fn handle_results_pane_key(app: &mut App, key: KeyEvent) {
         // Open search with '/' (only from results pane)
         // Requirements 1.2: Slash opens search only from results pane
         KeyCode::Char('/') => {
-            crate::search::events::open_search(app);
+            crate::search::search_events::open_search(app);
         }
 
         // Toggle help popup
@@ -25,7 +25,7 @@ pub fn handle_results_pane_key(app: &mut App, key: KeyEvent) {
         KeyCode::Char('y') => {
             // yy command - copy result to clipboard
             // Note: Ctrl+Y is handled globally in events.rs before this
-            clipboard::events::handle_yank_key(app, app.clipboard_backend);
+            clipboard::clipboard_events::handle_yank_key(app, app.clipboard_backend);
         }
 
         // Basic line scrolling (1 line)

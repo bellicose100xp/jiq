@@ -4,8 +4,8 @@
 //! about jq query results without full JSON parsing.
 
 mod parser;
-mod state;
+mod stats_state;
 mod types;
 
 // Re-export public types
-pub use state::StatsState;
+pub use stats_state::StatsState;

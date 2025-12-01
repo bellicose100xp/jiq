@@ -5,7 +5,7 @@
 
 use tui_textarea::{CursorMove, TextArea};
 
-use crate::autocomplete::state::Suggestion;
+use crate::autocomplete::autocomplete_state::Suggestion;
 use crate::autocomplete::{analyze_context, find_char_before_field_access, SuggestionContext};
 use crate::query::{CharType, QueryState};
 
@@ -383,7 +383,7 @@ pub fn execute_query_and_update(textarea: &TextArea<'_>, query_state: &mut Query
 mod tests {
     use super::*;
     use crate::autocomplete::jq_functions::JQ_FUNCTION_METADATA;
-    use crate::autocomplete::state::{Suggestion, SuggestionType};
+    use crate::autocomplete::autocomplete_state::{Suggestion, SuggestionType};
     use proptest::prelude::*;
     use tui_textarea::TextArea;
 

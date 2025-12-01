@@ -4,12 +4,12 @@
 //! When enabled (default), a tooltip automatically appears when the cursor
 //! is on a recognized jq function.
 
-mod content;
+mod tooltip_content;
 mod detector;
-pub mod events;
+pub mod tooltip_events;
 pub mod tooltip_render;
-mod state;
+mod tooltip_state;
 
-pub use content::get_tooltip_content;
+pub use tooltip_content::get_tooltip_content;
 pub use detector::detect_function_at_cursor;
-pub use state::TooltipState;
+pub use tooltip_state::TooltipState;

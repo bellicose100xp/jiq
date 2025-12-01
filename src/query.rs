@@ -1,7 +1,7 @@
 pub mod debouncer;
 pub mod executor;
-pub mod state;
+pub mod query_state;
 
 // Re-export public types
 pub use debouncer::Debouncer;
-pub use state::{CharType, QueryState, ResultType};
+pub use query_state::{CharType, QueryState, ResultType};

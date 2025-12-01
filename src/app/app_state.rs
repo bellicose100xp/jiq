@@ -132,7 +132,7 @@ impl App {
 
     /// Insert an autocomplete suggestion at the current cursor position
     /// Delegates to the autocomplete insertion module
-    pub fn insert_autocomplete_suggestion(&mut self, suggestion: &autocomplete::state::Suggestion) {
+    pub fn insert_autocomplete_suggestion(&mut self, suggestion: &autocomplete::autocomplete_state::Suggestion) {
         // Delegate to autocomplete module
         insertion::insert_suggestion(&mut self.input.textarea, &mut self.query, suggestion);
 
@@ -147,7 +147,7 @@ impl App {
 mod tests {
     use super::*;
     use crate::query::ResultType;
-    use crate::autocomplete::state::{Suggestion, SuggestionType};
+    use crate::autocomplete::autocomplete_state::{Suggestion, SuggestionType};
 
     /// Helper to create App with default config for tests
     fn test_app(json: &str) -> App {

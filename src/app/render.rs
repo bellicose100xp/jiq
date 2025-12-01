@@ -4,7 +4,7 @@ use ratatui::{
 };
 
 use crate::notification::render_notification;
-use super::state::App;
+use super::app_state::App;
 
 impl App {
     /// Render the UI
@@ -66,7 +66,7 @@ impl App {
 
 #[cfg(test)]
 mod test_helpers {
-    use crate::app::state::App;
+    use crate::app::app_state::App;
     use ratatui::backend::TestBackend;
     use ratatui::Terminal;
 
@@ -87,7 +87,7 @@ mod test_helpers {
 #[cfg(test)]
 mod snapshot_tests {
     use super::test_helpers::render_to_string;
-    use crate::app::state::{App, Focus};
+    use crate::app::app_state::{App, Focus};
     use crate::config::Config;
     use crate::editor::EditorMode;
     use crate::history::HistoryState;

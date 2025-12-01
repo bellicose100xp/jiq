@@ -1,6 +1,6 @@
-mod events;
+mod app_events;
 mod render;
-mod state;
+mod app_state;
 
 // Re-export public types
-pub use state::{App, Focus, OutputMode};
+pub use app_state::{App, Focus, OutputMode};

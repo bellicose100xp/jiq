@@ -169,7 +169,7 @@ pub fn handle_operator_mode_key(app: &mut App, key: KeyEvent) {
         match operator {
             'y' => {
                 // yy - yank (copy) entire query to clipboard
-                clipboard::events::handle_yank_key(app, app.clipboard_backend);
+                clipboard::clipboard_events::handle_yank_key(app, app.clipboard_backend);
                 app.input.editor_mode = EditorMode::Normal;
             }
             'd' | 'c' => {

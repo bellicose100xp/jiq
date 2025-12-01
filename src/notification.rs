@@ -4,7 +4,7 @@
 //! Any component in the application can use this module to show notifications.
 
 mod notification_render;
-mod state;
+mod notification_state;
 
 pub use notification_render::render_notification;
-pub use state::NotificationState;
+pub use notification_state::NotificationState;

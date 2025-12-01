@@ -1,4 +1,4 @@
-use super::state::{Suggestion, SuggestionType};
+use super::autocomplete_state::{Suggestion, SuggestionType};
 use std::sync::LazyLock;
 
 /// Metadata for a jq built-in function

@@ -2,5 +2,5 @@
 //!
 //! This module handles the results pane display and event handling.
 
-pub mod events;
+pub mod results_events;
 pub mod results_render;
