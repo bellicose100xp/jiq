@@ -82,6 +82,7 @@ pub fn render_notification(frame: &mut Frame, notification: &mut NotificationSta
     frame.render_widget(paragraph, notification_area);
 }
 
+
 #[cfg(test)]
 mod tests {
     use super::*;
