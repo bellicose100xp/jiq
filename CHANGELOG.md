@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.20.1] - 2025-12-01
+
+### Internal
+- Refactored render methods into component-specific modules (`*_render.rs`)
+- Renamed module files to use component-prefixed naming convention
+  - `state.rs` → `*_state.rs`, `events.rs` → `*_events.rs`, `content.rs` → `*_content.rs`
+- Fixed flaky proptest for tooltip field access detection
+
 ## [2.20.0] - 2025-11-30
 
 ### Added
