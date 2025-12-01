@@ -1117,18 +1117,24 @@ mod tests {
             fn prop_tooltip_not_visible_outside_function_context(
                 field_name in "[a-z]{1,8}"
             ) {
+                // Skip field names that happen to also be jq function names
+                // (e.g., "env", "add", "map", "min", "max", "not", "type", etc.)
+                if JQ_FUNCTION_METADATA.iter().any(|f| f.name == field_name) {
+                    return Ok(());
+                }
+
                 // Query with just field access, no function
                 let query = format!(".{}", field_name);
-                
+
                 let json = r#"{"test": true}"#;
                 let mut app = test_app(json);
-                
+
                 // Insert the query
                 app.input.textarea.insert_str(&query);
-                
+
                 // Cursor is at end of query (after field name)
                 app.update_tooltip();
-                
+
                 // When cursor is not in any function context, should_show should be false
                 prop_assert!(
                     !app.tooltip.should_show(),
