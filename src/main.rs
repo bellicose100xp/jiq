@@ -22,6 +22,7 @@ mod notification;
 mod query;
 mod results;
 mod scroll;
+mod search;
 mod stats;
 mod syntax_highlight;
 mod tooltip;

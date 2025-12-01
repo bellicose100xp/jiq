@@ -5,6 +5,7 @@
 - **Real-time query execution** - See results as you type
 - **[EXPERIMENTAL] Context-aware autocomplete** - Intelligent suggestions with JSON type information for fields and functions
 - **Function tooltip** - Quick reference help for jq functions with examples
+- **Search in results** - Find and navigate text in JSON output with highlighting
 - **Query history** - Searchable history of successful queries
 - **Clipboard support** - Copy query or results to clipboard (also supports OSC 52 for remote terminals)
 - **Floating error overlay** - Syntax errors appear in a non-disruptive overlay
@@ -166,6 +167,23 @@ curl https://api.example.com/data | jiq
 | `Ctrl+u` / `PageUp` | Scroll half page up |
 | `g` / `Home` | Jump to top |
 | `G` / `End` | Jump to bottom |
+
+</details>
+
+<details>
+<summary><b>Search in Results</b></summary>
+
+| Key | Action |
+|-----|--------|
+| `Ctrl+F` | Open search (from any pane) |
+| `/` | Open search (from results pane) |
+| `Enter` | Confirm search and jump to next match |
+| `n` / `Enter` | Next match |
+| `N` / `Shift+Enter` | Previous match |
+| `Ctrl+F` / `/` | Re-enter edit mode |
+| `ESC` | Close search |
+
+Note: Search is case-insensitive.
 
 </details>
 
