@@ -3,8 +3,19 @@
 //! This module provides the `StatsState` struct which caches computed statistics
 //! about query results and provides display formatting.
 
+use crate::app::App;
 use crate::stats::parser::StatsParser;
 use crate::stats::types::ResultStats;
+
+/// Update stats based on the last successful result from the App
+///
+/// This is the delegation function called by `App::update_stats()`.
+/// It extracts the last successful unformatted result and computes stats if available.
+pub fn update_stats_from_app(app: &mut App) {
+    if let Some(result) = &app.query.last_successful_result_unformatted {
+        app.stats.compute(result);
+    }
+}
 
 /// State for managing cached result statistics
 ///
@@ -312,5 +323,88 @@ mod tests {
                 "Stats should be updated to reflect second JSON"
             );
         }
+    }
+
+    // =========================================================================
+    // App Integration Tests for Stats
+    // =========================================================================
+    // These tests verify the update_stats_from_app() delegation function
+
+    use crate::config::Config;
+
+    /// Helper to create App with default config for tests
+    fn test_app(json: &str) -> App {
+        App::new(json.to_string(), &Config::default())
+    }
+
+    #[test]
+    fn test_update_stats_from_app_with_object() {
+        let json = r#"{"name": "Alice", "age": 30}"#;
+        let mut app = test_app(json);
+        
+        // Initial query executes identity filter, which sets last_successful_result_unformatted
+        update_stats_from_app(&mut app);
+        
+        assert_eq!(app.stats.display(), Some("Object".to_string()));
+    }
+
+    #[test]
+    fn test_update_stats_from_app_with_array() {
+        let json = r#"[1, 2, 3, 4, 5]"#;
+        let mut app = test_app(json);
+        
+        update_stats_from_app(&mut app);
+        
+        assert_eq!(app.stats.display(), Some("Array [5 numbers]".to_string()));
+    }
+
+    #[test]
+    fn test_update_stats_from_app_no_result() {
+        let json = r#"{"test": true}"#;
+        let mut app = test_app(json);
+        
+        // Clear the last successful result to simulate no result available
+        app.query.last_successful_result_unformatted = None;
+        
+        // Stats should remain unchanged (None)
+        let stats_before = app.stats.display();
+        update_stats_from_app(&mut app);
+        let stats_after = app.stats.display();
+        
+        assert_eq!(stats_before, stats_after);
+    }
+
+    #[test]
+    fn test_update_stats_from_app_preserves_on_error() {
+        let json = r#"[1, 2, 3]"#;
+        let mut app = test_app(json);
+        
+        // First update with valid result
+        update_stats_from_app(&mut app);
+        assert_eq!(app.stats.display(), Some("Array [3 numbers]".to_string()));
+        
+        // Simulate an error by setting result to error but keeping last_successful_result_unformatted
+        app.query.result = Err("syntax error".to_string());
+        // Note: last_successful_result_unformatted is still set from the initial query
+        
+        // Update stats again - should still show the last successful stats
+        update_stats_from_app(&mut app);
+        assert_eq!(app.stats.display(), Some("Array [3 numbers]".to_string()));
+    }
+
+    #[test]
+    fn test_update_stats_from_app_updates_on_new_query() {
+        let json = r#"{"items": [1, 2, 3]}"#;
+        let mut app = test_app(json);
+        
+        // Initial stats for the object
+        update_stats_from_app(&mut app);
+        assert_eq!(app.stats.display(), Some("Object".to_string()));
+        
+        // Execute a new query that returns an array
+        app.query.execute(".items");
+        update_stats_from_app(&mut app);
+        
+        assert_eq!(app.stats.display(), Some("Array [3 numbers]".to_string()));
     }
 }

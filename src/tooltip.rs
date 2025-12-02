@@ -16,3 +16,4 @@ pub use operator_content::get_operator_content;
 pub use detector::detect_function_at_cursor;
 pub use detector::detect_operator_at_cursor;
 pub use tooltip_state::TooltipState;
+pub use tooltip_state::update_tooltip_from_app;
