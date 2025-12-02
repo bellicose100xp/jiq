@@ -1,5 +1,32 @@
 use std::fmt;
 
+use crate::app::App;
+use crate::autocomplete::update_suggestions;
+
+/// Update autocomplete suggestions from App context
+///
+/// This function extracts the necessary data from the App struct and delegates
+/// to the existing `update_suggestions()` function. This pattern allows the App
+/// to delegate feature-specific logic to the autocomplete module.
+///
+/// # Arguments
+/// * `app` - Mutable reference to the App struct
+pub fn update_suggestions_from_app(app: &mut App) {
+    // Clone values to avoid borrow conflicts
+    let query = app.input.query().to_string();
+    let cursor_pos = app.input.textarea.cursor().1; // Column position
+    let result = app.query.last_successful_result_unformatted.clone();
+    let result_type = app.query.base_type_for_suggestions.clone();
+
+    update_suggestions(
+        &mut app.autocomplete,
+        &query,
+        cursor_pos,
+        result.as_deref(),
+        result_type,
+    );
+}
+
 /// Type of suggestion being offered
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SuggestionType {
