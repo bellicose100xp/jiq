@@ -11,6 +11,7 @@ use ratatui::crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use log::debug;
 
 use crate::app::{App, Focus};
+use crate::results::results_events::handle_results_pane_key;
 
 /// Handle search-related key events when search is visible
 /// Returns true if event was consumed, false otherwise
@@ -147,11 +148,12 @@ pub fn handle_search_key(app: &mut App, key: KeyEvent) -> bool {
             true
         }
 
-        // When confirmed, ignore all other keys (strict navigation mode)
+        // When confirmed, delegate navigation keys to results pane handler
         // User must press Ctrl+F or / to re-enter edit mode
         _ if app.search.is_confirmed() => {
             #[cfg(debug_assertions)]
-            debug!("Search: ignoring key {:?} in confirmed mode", key.code);
+            debug!("Search: delegating key {:?} to results pane handler", key.code);
+            handle_results_pane_key(app, key);
             true
         }
 
@@ -695,6 +697,146 @@ mod tests {
     }
 
     // =========================================================================
+    // Navigation Keys When Search Is Confirmed Tests
+    // Feature: search-navigation
+    // =========================================================================
+
+    /// Helper to set up app with confirmed search and scrollable content
+    fn app_with_confirmed_search() -> App {
+        let mut app = test_app(r#"{"name": "test"}"#);
+        
+        // Set up content with 50 lines
+        let content: String = (0..50).map(|i| format!("line {} test\n", i)).collect();
+        app.query.last_successful_result = Some(content.clone());
+        app.query.last_successful_result_unformatted = Some(content.clone());
+        app.query.result = Ok(content.clone());
+        
+        // Set up scroll bounds
+        app.results_scroll.update_bounds(50, 10); // 50 lines, 10 viewport
+        app.results_scroll.update_h_bounds(100, 40); // 100 max width, 40 viewport
+        app.results_scroll.offset = 0;
+        app.results_scroll.h_offset = 0;
+        
+        // Open and confirm search
+        open_search(&mut app);
+        app.search.search_textarea_mut().insert_str("test");
+        app.search.update_matches(&content);
+        handle_search_key(&mut app, key(KeyCode::Enter));
+        
+        assert!(app.search.is_confirmed());
+        app
+    }
+
+    #[test]
+    fn test_j_scrolls_down_when_search_confirmed() {
+        let mut app = app_with_confirmed_search();
+        app.results_scroll.offset = 0;
+        
+        handle_search_key(&mut app, key(KeyCode::Char('j')));
+        
+        assert_eq!(app.results_scroll.offset, 1);
+        assert!(app.search.is_confirmed(), "Search should remain confirmed");
+    }
+
+    #[test]
+    fn test_k_scrolls_up_when_search_confirmed() {
+        let mut app = app_with_confirmed_search();
+        app.results_scroll.offset = 10;
+        
+        handle_search_key(&mut app, key(KeyCode::Char('k')));
+        
+        assert_eq!(app.results_scroll.offset, 9);
+        assert!(app.search.is_confirmed(), "Search should remain confirmed");
+    }
+
+    #[test]
+    fn test_h_scrolls_left_when_search_confirmed() {
+        let mut app = app_with_confirmed_search();
+        app.results_scroll.h_offset = 10;
+        
+        handle_search_key(&mut app, key(KeyCode::Char('h')));
+        
+        assert_eq!(app.results_scroll.h_offset, 9);
+        assert!(app.search.is_confirmed(), "Search should remain confirmed");
+    }
+
+    #[test]
+    fn test_l_scrolls_right_when_search_confirmed() {
+        let mut app = app_with_confirmed_search();
+        app.results_scroll.h_offset = 0;
+        
+        handle_search_key(&mut app, key(KeyCode::Char('l')));
+        
+        assert_eq!(app.results_scroll.h_offset, 1);
+        assert!(app.search.is_confirmed(), "Search should remain confirmed");
+    }
+
+    #[test]
+    fn test_g_jumps_to_top_when_search_confirmed() {
+        let mut app = app_with_confirmed_search();
+        app.results_scroll.offset = 30;
+        
+        handle_search_key(&mut app, key(KeyCode::Char('g')));
+        
+        assert_eq!(app.results_scroll.offset, 0);
+        assert!(app.search.is_confirmed(), "Search should remain confirmed");
+    }
+
+    #[test]
+    fn test_capital_g_jumps_to_bottom_when_search_confirmed() {
+        let mut app = app_with_confirmed_search();
+        app.results_scroll.offset = 0;
+        let max_offset = app.results_scroll.max_offset;
+        
+        handle_search_key(&mut app, key(KeyCode::Char('G')));
+        
+        assert_eq!(app.results_scroll.offset, max_offset);
+        assert!(app.search.is_confirmed(), "Search should remain confirmed");
+    }
+
+    #[test]
+    fn test_ctrl_d_page_down_when_search_confirmed() {
+        let mut app = app_with_confirmed_search();
+        app.results_scroll.offset = 0;
+        
+        handle_search_key(&mut app, key_with_mods(KeyCode::Char('d'), KeyModifiers::CONTROL));
+        
+        // Half page = viewport_height / 2 = 10 / 2 = 5
+        assert_eq!(app.results_scroll.offset, 5);
+        assert!(app.search.is_confirmed(), "Search should remain confirmed");
+    }
+
+    #[test]
+    fn test_ctrl_u_page_up_when_search_confirmed() {
+        let mut app = app_with_confirmed_search();
+        app.results_scroll.offset = 20;
+        
+        handle_search_key(&mut app, key_with_mods(KeyCode::Char('u'), KeyModifiers::CONTROL));
+        
+        // Half page = viewport_height / 2 = 10 / 2 = 5
+        assert_eq!(app.results_scroll.offset, 15);
+        assert!(app.search.is_confirmed(), "Search should remain confirmed");
+    }
+
+    #[test]
+    fn test_navigation_preserves_match_index() {
+        let mut app = app_with_confirmed_search();
+        
+        // Navigate to a specific match first
+        handle_search_key(&mut app, key(KeyCode::Char('n'))); // Go to match 1
+        let match_index_before = app.search.current_index();
+        
+        // Scroll with navigation keys
+        handle_search_key(&mut app, key(KeyCode::Char('j')));
+        handle_search_key(&mut app, key(KeyCode::Char('k')));
+        handle_search_key(&mut app, key(KeyCode::Char('l')));
+        handle_search_key(&mut app, key(KeyCode::Char('h')));
+        
+        // Match index should be unchanged
+        assert_eq!(app.search.current_index(), match_index_before);
+    }
+
+    // =========================================================================
     // Property-Based Tests
     // =========================================================================
 
@@ -855,6 +997,341 @@ mod tests {
             );
         }
     }
+
+    // =========================================================================
+    // Feature: search-navigation Property-Based Tests
+    // =========================================================================
+
+    // Feature: search-navigation, Property 1: Vertical navigation keys scroll results when search is confirmed
+    // *For any* confirmed search state with scrollable content, pressing a vertical navigation key
+    // (j, k, J, K, g, G, Up, Down, Home, End) SHALL change the vertical scroll offset according to
+    // the key's expected behavior (same as when search is not visible).
+    // **Validates: Requirements 1.1, 1.2, 1.3, 1.4, 1.5, 1.6**
+    proptest! {
+        #![proptest_config(ProptestConfig::with_cases(100))]
+
+        #[test]
+        fn prop_vertical_navigation_scrolls_when_search_confirmed(
+            // Generate scroll state parameters
+            viewport_height in 5u16..50,
+            max_offset in 10u16..200,
+            initial_offset_factor in 0.0f64..1.0,
+            // Generate which vertical key to test (0-9 for different keys)
+            key_type in 0u8..10,
+        ) {
+            let mut app = test_app(r#"{"name": "test"}"#);
+            
+            // Set up content with enough lines
+            let content_lines = max_offset as u32 + viewport_height as u32;
+            let content: String = (0..content_lines)
+                .map(|i| format!("line {} test\n", i))
+                .collect();
+            app.query.last_successful_result = Some(content.clone());
+            app.query.last_successful_result_unformatted = Some(content.clone());
+            app.query.result = Ok(content.clone());
+            
+            // Set up scroll bounds
+            app.results_scroll.update_bounds(content_lines, viewport_height);
+            let initial_offset = ((initial_offset_factor * max_offset as f64) as u16).min(max_offset);
+            app.results_scroll.offset = initial_offset;
+            
+            // Open and confirm search
+            open_search(&mut app);
+            app.search.search_textarea_mut().insert_str("test");
+            app.search.update_matches(&content);
+            handle_search_key(&mut app, key(KeyCode::Enter));
+            
+            prop_assert!(app.search.is_confirmed(), "Search should be confirmed");
+            
+            // Record offset before navigation
+            let offset_before = app.results_scroll.offset;
+            
+            // Apply vertical navigation key
+            let test_key = match key_type {
+                0 => key(KeyCode::Char('j')),
+                1 => key(KeyCode::Char('k')),
+                2 => key(KeyCode::Char('J')),
+                3 => key(KeyCode::Char('K')),
+                4 => key(KeyCode::Char('g')),
+                5 => key(KeyCode::Char('G')),
+                6 => key(KeyCode::Up),
+                7 => key(KeyCode::Down),
+                8 => key(KeyCode::Home),
+                9 => key(KeyCode::End),
+                _ => key(KeyCode::Char('j')),
+            };
+            
+            handle_search_key(&mut app, test_key);
+            
+            // Calculate expected offset based on key type
+            let expected_offset = match key_type {
+                0 | 7 => offset_before.saturating_add(1).min(max_offset), // j, Down
+                1 | 6 => offset_before.saturating_sub(1), // k, Up
+                2 => offset_before.saturating_add(10).min(max_offset), // J
+                3 => offset_before.saturating_sub(10), // K
+                4 | 8 => 0, // g, Home
+                5 | 9 => max_offset, // G, End
+                _ => offset_before,
+            };
+            
+            prop_assert_eq!(
+                app.results_scroll.offset, expected_offset,
+                "Vertical navigation key {} should change offset from {} to {}, got {}",
+                key_type, offset_before, expected_offset, app.results_scroll.offset
+            );
+            
+            // Search should remain confirmed
+            prop_assert!(app.search.is_confirmed(), "Search should remain confirmed after navigation");
+        }
+    }
+
+    // Feature: search-navigation, Property 2: Horizontal navigation keys scroll results when search is confirmed
+    // *For any* confirmed search state with horizontally scrollable content, pressing a horizontal
+    // navigation key (h, l, H, L, 0, ^, $, Left, Right) SHALL change the horizontal scroll offset
+    // according to the key's expected behavior (same as when search is not visible).
+    // **Validates: Requirements 2.1, 2.2, 2.3, 2.4, 2.5, 2.6**
+    proptest! {
+        #![proptest_config(ProptestConfig::with_cases(100))]
+
+        #[test]
+        fn prop_horizontal_navigation_scrolls_when_search_confirmed(
+            // Generate scroll state parameters
+            viewport_width in 20u16..80,
+            max_h_offset in 20u16..200,
+            initial_h_offset_factor in 0.0f64..1.0,
+            // Generate which horizontal key to test (0-8 for different keys)
+            key_type in 0u8..9,
+        ) {
+            let mut app = test_app(r#"{"name": "test"}"#);
+            
+            // Set up content with wide lines
+            let line_width = max_h_offset + viewport_width;
+            let content: String = (0..20)
+                .map(|i| format!("line {} test {}\n", i, "x".repeat(line_width as usize)))
+                .collect();
+            app.query.last_successful_result = Some(content.clone());
+            app.query.last_successful_result_unformatted = Some(content.clone());
+            app.query.result = Ok(content.clone());
+            
+            // Set up scroll bounds
+            app.results_scroll.update_bounds(20, 10);
+            app.results_scroll.update_h_bounds(line_width, viewport_width);
+            let initial_h_offset = ((initial_h_offset_factor * max_h_offset as f64) as u16).min(max_h_offset);
+            app.results_scroll.h_offset = initial_h_offset;
+            
+            // Open and confirm search
+            open_search(&mut app);
+            app.search.search_textarea_mut().insert_str("test");
+            app.search.update_matches(&content);
+            handle_search_key(&mut app, key(KeyCode::Enter));
+            
+            prop_assert!(app.search.is_confirmed(), "Search should be confirmed");
+            
+            // Record h_offset before navigation
+            let h_offset_before = app.results_scroll.h_offset;
+            
+            // Apply horizontal navigation key
+            let test_key = match key_type {
+                0 => key(KeyCode::Char('h')),
+                1 => key(KeyCode::Char('l')),
+                2 => key(KeyCode::Char('H')),
+                3 => key(KeyCode::Char('L')),
+                4 => key(KeyCode::Char('0')),
+                5 => key(KeyCode::Char('^')),
+                6 => key(KeyCode::Char('$')),
+                7 => key(KeyCode::Left),
+                8 => key(KeyCode::Right),
+                _ => key(KeyCode::Char('h')),
+            };
+            
+            handle_search_key(&mut app, test_key);
+            
+            // Calculate expected h_offset based on key type
+            let expected_h_offset = match key_type {
+                0 | 7 => h_offset_before.saturating_sub(1), // h, Left
+                1 | 8 => h_offset_before.saturating_add(1).min(max_h_offset), // l, Right
+                2 => h_offset_before.saturating_sub(10), // H
+                3 => h_offset_before.saturating_add(10).min(max_h_offset), // L
+                4 | 5 => 0, // 0, ^
+                6 => max_h_offset, // $
+                _ => h_offset_before,
+            };
+            
+            prop_assert_eq!(
+                app.results_scroll.h_offset, expected_h_offset,
+                "Horizontal navigation key {} should change h_offset from {} to {}, got {}",
+                key_type, h_offset_before, expected_h_offset, app.results_scroll.h_offset
+            );
+            
+            // Search should remain confirmed
+            prop_assert!(app.search.is_confirmed(), "Search should remain confirmed after navigation");
+        }
+    }
+
+    // Feature: search-navigation, Property 3: Page scroll keys scroll results when search is confirmed
+    // *For any* confirmed search state with scrollable content, pressing a page scroll key
+    // (Ctrl+D, Ctrl+U, PageDown, PageUp) SHALL change the vertical scroll offset by half the
+    // viewport height (clamped to bounds).
+    // **Validates: Requirements 3.1, 3.2**
+    proptest! {
+        #![proptest_config(ProptestConfig::with_cases(100))]
+
+        #[test]
+        fn prop_page_scroll_when_search_confirmed(
+            // Generate scroll state parameters
+            viewport_height in 10u16..50,
+            max_offset in 20u16..200,
+            initial_offset_factor in 0.0f64..1.0,
+            // Generate which page scroll key to test (0-3 for different keys)
+            key_type in 0u8..4,
+        ) {
+            let mut app = test_app(r#"{"name": "test"}"#);
+            
+            // Set up content with enough lines
+            let content_lines = max_offset as u32 + viewport_height as u32;
+            let content: String = (0..content_lines)
+                .map(|i| format!("line {} test\n", i))
+                .collect();
+            app.query.last_successful_result = Some(content.clone());
+            app.query.last_successful_result_unformatted = Some(content.clone());
+            app.query.result = Ok(content.clone());
+            
+            // Set up scroll bounds
+            app.results_scroll.update_bounds(content_lines, viewport_height);
+            let initial_offset = ((initial_offset_factor * max_offset as f64) as u16).min(max_offset);
+            app.results_scroll.offset = initial_offset;
+            
+            // Open and confirm search
+            open_search(&mut app);
+            app.search.search_textarea_mut().insert_str("test");
+            app.search.update_matches(&content);
+            handle_search_key(&mut app, key(KeyCode::Enter));
+            
+            prop_assert!(app.search.is_confirmed(), "Search should be confirmed");
+            
+            // Record offset before navigation
+            let offset_before = app.results_scroll.offset;
+            let half_page = viewport_height / 2;
+            
+            // Apply page scroll key
+            let test_key = match key_type {
+                0 => key_with_mods(KeyCode::Char('d'), KeyModifiers::CONTROL), // Ctrl+D
+                1 => key_with_mods(KeyCode::Char('u'), KeyModifiers::CONTROL), // Ctrl+U
+                2 => key(KeyCode::PageDown),
+                3 => key(KeyCode::PageUp),
+                _ => key(KeyCode::PageDown),
+            };
+            
+            handle_search_key(&mut app, test_key);
+            
+            // Calculate expected offset based on key type
+            let expected_offset = match key_type {
+                0 | 2 => offset_before.saturating_add(half_page).min(max_offset), // Ctrl+D, PageDown
+                1 | 3 => offset_before.saturating_sub(half_page), // Ctrl+U, PageUp
+                _ => offset_before,
+            };
+            
+            prop_assert_eq!(
+                app.results_scroll.offset, expected_offset,
+                "Page scroll key {} should change offset from {} to {} (half_page={}), got {}",
+                key_type, offset_before, expected_offset, half_page, app.results_scroll.offset
+            );
+            
+            // Search should remain confirmed
+            prop_assert!(app.search.is_confirmed(), "Search should remain confirmed after navigation");
+        }
+    }
+
+    // Feature: search-navigation, Property 4: Navigation does not affect match index
+    // *For any* confirmed search state with matches, scrolling using navigation keys SHALL NOT
+    // change the current match index.
+    // **Validates: Requirements 4.3**
+    proptest! {
+        #![proptest_config(ProptestConfig::with_cases(100))]
+
+        #[test]
+        fn prop_navigation_preserves_match_index(
+            // Generate scroll state parameters
+            viewport_height in 10u16..50,
+            max_offset in 20u16..200,
+            initial_offset_factor in 0.0f64..1.0,
+            // Generate number of 'n' presses to set initial match index (0-5)
+            n_presses in 0usize..6,
+            // Generate which navigation key to test
+            key_type in 0u8..15,
+        ) {
+            let mut app = test_app(r#"{"name": "test"}"#);
+            
+            // Set up content with matches on multiple lines
+            let content_lines = max_offset as u32 + viewport_height as u32;
+            let content: String = (0..content_lines)
+                .map(|i| format!("line {} test\n", i)) // "test" on every line
+                .collect();
+            app.query.last_successful_result = Some(content.clone());
+            app.query.last_successful_result_unformatted = Some(content.clone());
+            app.query.result = Ok(content.clone());
+            
+            // Set up scroll bounds
+            app.results_scroll.update_bounds(content_lines, viewport_height);
+            app.results_scroll.update_h_bounds(100, 40);
+            let initial_offset = ((initial_offset_factor * max_offset as f64) as u16).min(max_offset);
+            app.results_scroll.offset = initial_offset;
+            app.results_scroll.h_offset = 10;
+            
+            // Open and confirm search
+            open_search(&mut app);
+            app.search.search_textarea_mut().insert_str("test");
+            app.search.update_matches(&content);
+            handle_search_key(&mut app, key(KeyCode::Enter));
+            
+            prop_assert!(app.search.is_confirmed(), "Search should be confirmed");
+            prop_assert!(app.search.matches().len() > 0, "Should have matches");
+            
+            // Navigate to a specific match index
+            for _ in 0..n_presses {
+                handle_search_key(&mut app, key(KeyCode::Char('n')));
+            }
+            
+            // Record match index before navigation
+            let match_index_before = app.search.current_index();
+            
+            // Apply navigation key (not n/N which change match index)
+            let test_key = match key_type {
+                0 => key(KeyCode::Char('j')),
+                1 => key(KeyCode::Char('k')),
+                2 => key(KeyCode::Char('J')),
+                3 => key(KeyCode::Char('K')),
+                4 => key(KeyCode::Char('g')),
+                5 => key(KeyCode::Char('G')),
+                6 => key(KeyCode::Char('h')),
+                7 => key(KeyCode::Char('l')),
+                8 => key(KeyCode::Char('H')),
+                9 => key(KeyCode::Char('L')),
+                10 => key(KeyCode::Char('0')),
+                11 => key(KeyCode::Char('^')),
+                12 => key(KeyCode::Char('$')),
+                13 => key_with_mods(KeyCode::Char('d'), KeyModifiers::CONTROL),
+                14 => key_with_mods(KeyCode::Char('u'), KeyModifiers::CONTROL),
+                _ => key(KeyCode::Char('j')),
+            };
+            
+            handle_search_key(&mut app, test_key);
+            
+            // Match index should be unchanged
+            prop_assert_eq!(
+                app.search.current_index(), match_index_before,
+                "Navigation key {} should not change match index (was {}, now {})",
+                key_type, match_index_before, app.search.current_index()
+            );
+            
+            // Search should remain confirmed
+            prop_assert!(app.search.is_confirmed(), "Search should remain confirmed after navigation");
+        }
+    }
+
+    // =========================================================================
+    // Feature: search-in-results Property-Based Tests (existing)
+    // =========================================================================
 
     // Feature: search-in-results, Property 9: Scroll preserves search state
     // *For any* active search state, scrolling the results pane should not modify
