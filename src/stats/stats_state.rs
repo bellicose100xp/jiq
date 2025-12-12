@@ -330,12 +330,7 @@ mod tests {
     // =========================================================================
     // These tests verify the update_stats_from_app() delegation function
 
-    use crate::config::Config;
-
-    /// Helper to create App with default config for tests
-    fn test_app(json: &str) -> App {
-        App::new(json.to_string(), &Config::default())
-    }
+    use crate::test_utils::test_helpers::test_app;
 
     #[test]
     fn test_update_stats_from_app_with_object() {

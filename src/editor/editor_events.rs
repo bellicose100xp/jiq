@@ -282,36 +282,8 @@ mod tests {
     use super::*;
     use crate::app::Focus;
     use crate::autocomplete::{Suggestion, SuggestionType};
-    use crate::config::Config;
-    use crate::history::HistoryState;
+    use crate::test_utils::test_helpers::{key, key_with_mods, app_with_query};
     use tui_textarea::CursorMove;
-
-    // Test fixture data
-    const TEST_JSON: &str = r#"{"name": "test", "age": 30, "city": "NYC"}"#;
-
-    /// Helper to create App with default config for tests
-    fn test_app(json: &str) -> App {
-        App::new(json.to_string(), &Config::default())
-    }
-
-    // Helper to create a KeyEvent without modifiers
-    fn key(code: KeyCode) -> KeyEvent {
-        KeyEvent::new(code, KeyModifiers::empty())
-    }
-
-    // Helper to create a KeyEvent with specific modifiers
-    fn key_with_mods(code: KeyCode, modifiers: KeyModifiers) -> KeyEvent {
-        KeyEvent::new(code, modifiers)
-    }
-
-    // Helper to set up an app with text in the query field
-    fn app_with_query(query: &str) -> App {
-        let mut app = test_app(TEST_JSON);
-        app.input.textarea.insert_str(query);
-        // Use empty in-memory history for all tests to prevent disk writes
-        app.history = HistoryState::empty();
-        app
-    }
 
     // Helper to move cursor to specific position by text content
     fn move_cursor_to_position(app: &mut App, target_pos: usize) {

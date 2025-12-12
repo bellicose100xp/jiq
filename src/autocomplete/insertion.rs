@@ -235,36 +235,9 @@ pub fn insert_suggestion(
                 // Formula: base + middle + "." + suggestion
                 format!("{}{}.{}", adjusted_base, middle_query, adjusted_suggestion)
             }
-            CharType::PipeOperator => {
+            CharType::PipeOperator | CharType::Semicolon | CharType::Comma | CharType::Colon => {
                 #[cfg(debug_assertions)]
-                debug!("formula: PipeOperator -> base + middle + ' ' + suggestion");
-
-                // Formula: base + middle + " " + suggestion
-                // Trim trailing space from middle to avoid double spaces
-                let trimmed_middle = middle_query.trim_end();
-                format!("{}{} {}", adjusted_base, trimmed_middle, adjusted_suggestion)
-            }
-            CharType::Semicolon => {
-                #[cfg(debug_assertions)]
-                debug!("formula: Semicolon -> base + middle + ' ' + suggestion");
-
-                // Formula: base + middle + " " + suggestion
-                // Trim trailing space from middle to avoid double spaces
-                let trimmed_middle = middle_query.trim_end();
-                format!("{}{} {}", adjusted_base, trimmed_middle, adjusted_suggestion)
-            }
-            CharType::Comma => {
-                #[cfg(debug_assertions)]
-                debug!("formula: Comma -> base + middle + ' ' + suggestion");
-
-                // Formula: base + middle + " " + suggestion
-                // Trim trailing space from middle to avoid double spaces
-                let trimmed_middle = middle_query.trim_end();
-                format!("{}{} {}", adjusted_base, trimmed_middle, adjusted_suggestion)
-            }
-            CharType::Colon => {
-                #[cfg(debug_assertions)]
-                debug!("formula: Colon -> base + middle + ' ' + suggestion");
+                debug!("formula: Separator -> base + middle + ' ' + suggestion");
 
                 // Formula: base + middle + " " + suggestion
                 // Trim trailing space from middle to avoid double spaces
@@ -745,14 +718,8 @@ mod tests {
     // ============================================================================
     // These tests verify the full autocomplete insertion flow through the App struct
 
-    use crate::app::App;
-    use crate::config::Config;
     use crate::query::ResultType;
-
-    /// Helper to create App with default config for tests
-    fn test_app(json: &str) -> App {
-        App::new(json.to_string(), &Config::default())
-    }
+    use crate::test_utils::test_helpers::test_app;
 
     /// Helper to create a test suggestion from text (for backward compatibility with existing tests)
     fn test_suggestion(text: &str) -> Suggestion {

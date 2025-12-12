@@ -140,13 +140,8 @@ pub fn strip_ansi_codes(text: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::config::Config;
+    use crate::test_utils::test_helpers::test_app;
     use proptest::prelude::*;
-
-    /// Helper to create App with default config for tests
-    fn test_app(json: &str) -> App {
-        App::new(json.to_string(), &Config::default())
-    }
 
     // =========================================================================
     // Unit Tests

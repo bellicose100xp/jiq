@@ -4,6 +4,15 @@ use super::jq_functions::filter_builtins;
 use super::result_analyzer::ResultAnalyzer;
 use super::autocomplete_state::Suggestion;
 
+/// Filter suggestions by partial match (case-insensitive)
+fn filter_suggestions_by_partial(suggestions: Vec<Suggestion>, partial: &str) -> Vec<Suggestion> {
+    let partial_lower = partial.to_lowercase();
+    suggestions
+        .into_iter()
+        .filter(|s| s.text.to_lowercase().contains(&partial_lower))
+        .collect()
+}
+
 /// Context information about what's being typed
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[allow(clippy::enum_variant_names)] // Context suffix is intentional for clarity
@@ -76,10 +85,7 @@ pub fn get_suggestions(
             if partial.is_empty() {
                 suggestions
             } else {
-                suggestions
-                    .into_iter()
-                    .filter(|s| s.text.to_lowercase().contains(&partial.to_lowercase()))
-                    .collect()
+                filter_suggestions_by_partial(suggestions, &partial)
             }
         }
         SuggestionContext::FunctionContext => {
@@ -105,10 +111,7 @@ pub fn get_suggestions(
             };
 
             // Filter suggestions by partial match (same as FieldContext)
-            suggestions
-                .into_iter()
-                .filter(|s| s.text.to_lowercase().contains(&partial.to_lowercase()))
-                .collect()
+            filter_suggestions_by_partial(suggestions, &partial)
         }
     }
 }

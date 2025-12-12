@@ -87,19 +87,14 @@ mod test_helpers {
 #[cfg(test)]
 mod snapshot_tests {
     use super::test_helpers::render_to_string;
-    use crate::app::app_state::{App, Focus};
-    use crate::config::Config;
+    use crate::app::app_state::Focus;
     use crate::editor::EditorMode;
     use crate::history::HistoryState;
+    use crate::test_utils::test_helpers::test_app;
     use insta::assert_snapshot;
 
     const TEST_WIDTH: u16 = 80;
     const TEST_HEIGHT: u16 = 24;
-
-    /// Helper to create App with default config for tests
-    fn test_app(json: &str) -> App {
-        App::new(json.to_string(), &Config::default())
-    }
 
     // === Basic UI Layout Tests ===
 

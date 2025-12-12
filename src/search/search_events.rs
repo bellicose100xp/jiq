@@ -300,24 +300,8 @@ fn scroll_to_line(app: &mut App, _line: u32) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::config::Config;
-    use crate::history::HistoryState;
+    use crate::test_utils::test_helpers::{test_app, key, key_with_mods};
     use proptest::prelude::*;
-
-    /// Helper to create App with default config for tests
-    fn test_app(json: &str) -> App {
-        let mut app = App::new(json.to_string(), &Config::default());
-        app.history = HistoryState::empty();
-        app
-    }
-
-    fn key(code: KeyCode) -> KeyEvent {
-        KeyEvent::new(code, KeyModifiers::empty())
-    }
-
-    fn key_with_mods(code: KeyCode, modifiers: KeyModifiers) -> KeyEvent {
-        KeyEvent::new(code, modifiers)
-    }
 
     #[test]
     fn test_open_search_sets_visible_and_focus() {
@@ -1283,7 +1267,7 @@ mod tests {
             handle_search_key(&mut app, key(KeyCode::Enter));
             
             prop_assert!(app.search.is_confirmed(), "Search should be confirmed");
-            prop_assert!(app.search.matches().len() > 0, "Should have matches");
+            prop_assert!(!app.search.matches().is_empty(), "Should have matches");
             
             // Navigate to a specific match index
             for _ in 0..n_presses {

@@ -8,6 +8,21 @@ use ratatui::crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 
 use super::super::app_state::{App, Focus, OutputMode};
 
+/// Accept autocomplete suggestion when visible in input field
+/// Returns true if autocomplete was handled, false otherwise
+fn accept_autocomplete_suggestion(app: &mut App) -> bool {
+    if app.focus == Focus::InputField && app.autocomplete.is_visible() {
+        if let Some(suggestion) = app.autocomplete.selected() {
+            let suggestion_clone = suggestion.clone();
+            app.insert_autocomplete_suggestion(&suggestion_clone);
+            app.debouncer.mark_executed();
+            app.update_tooltip();
+        }
+        return true;
+    }
+    false
+}
+
 /// Handle global keys that work regardless of focus
 /// Returns true if key was handled, false otherwise
 pub fn handle_global_keys(app: &mut App, key: KeyEvent) -> bool {
@@ -162,16 +177,7 @@ pub fn handle_global_keys(app: &mut App, key: KeyEvent) -> bool {
         KeyCode::Enter => {
             // Accept autocomplete suggestion if visible (same behavior as Tab)
             // Requirements: 1.1, 1.2, 1.3, 1.4, 3.1
-            if app.focus == Focus::InputField && app.autocomplete.is_visible() {
-                if let Some(suggestion) = app.autocomplete.selected() {
-                    let suggestion_clone = suggestion.clone();
-                    app.insert_autocomplete_suggestion(&suggestion_clone);
-                    // Mark debouncer as executed since insert_autocomplete_suggestion
-                    // already executes the query immediately
-                    app.debouncer.mark_executed();
-                    // Update tooltip after insertion (cursor may now be inside function parens)
-                    app.update_tooltip();
-                }
+            if accept_autocomplete_suggestion(app) {
                 return true;
             }
 
@@ -194,20 +200,7 @@ pub fn handle_global_keys(app: &mut App, key: KeyEvent) -> bool {
 
         // Accept autocomplete with Tab (only if visible in input field)
         KeyCode::Tab if !key.modifiers.contains(KeyModifiers::CONTROL) => {
-            if app.focus == Focus::InputField && app.autocomplete.is_visible() {
-                if let Some(suggestion) = app.autocomplete.selected() {
-                    let suggestion_clone = suggestion.clone();
-                    app.insert_autocomplete_suggestion(&suggestion_clone);
-                    // Mark debouncer as executed since insert_autocomplete_suggestion
-                    // already executes the query immediately
-                    app.debouncer.mark_executed();
-                    // Update tooltip after insertion (cursor may now be inside function parens)
-                    app.update_tooltip();
-                }
-                true
-            } else {
-                false
-            }
+            accept_autocomplete_suggestion(app)
         }
 
         // Switch focus with Shift+Tab
@@ -271,45 +264,10 @@ pub fn handle_global_keys(app: &mut App, key: KeyEvent) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::config::Config;
     use crate::editor::EditorMode;
     use crate::history::HistoryState;
+    use crate::test_utils::test_helpers::{test_app, key, key_with_mods, app_with_query, TEST_JSON};
     use tui_textarea::CursorMove;
-
-    // Test fixture data
-    const TEST_JSON: &str = r#"{
-        "name": "test",
-        "age": 30,
-        "city": "NYC",
-        "services": [{"name": "svc1", "serviceArn": "arn1"}],
-        "items": [{"tags": [{"name": "tag1"}]}]
-    }"#;
-
-    /// Helper to create App with default config for tests
-    fn test_app(json: &str) -> App {
-        App::new(json.to_string(), &Config::default())
-    }
-
-    // Helper to create a KeyEvent without modifiers
-    fn key(code: KeyCode) -> KeyEvent {
-        KeyEvent::new(code, KeyModifiers::empty())
-    }
-
-    // Helper to create a KeyEvent with specific modifiers
-    fn key_with_mods(code: KeyCode, modifiers: KeyModifiers) -> KeyEvent {
-        KeyEvent::new(code, modifiers)
-    }
-
-    // Helper to set up an app with text in the query field
-    fn app_with_query(query: &str) -> App {
-        let mut app = test_app(TEST_JSON);
-        app.input.textarea.insert_str(query);
-        // Execute the query to set up base state for autosuggestions
-        app.query.execute(query);
-        // Use empty in-memory history for all tests to prevent disk writes
-        app.history = HistoryState::empty();
-        app
-    }
 
     // Helper to execute any pending debounced query
     // In tests, we need to manually trigger execution since there's no event loop

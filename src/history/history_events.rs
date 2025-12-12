@@ -58,38 +58,10 @@ fn replace_query_with(app: &mut App, text: &str) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::app::{App, Focus};
-    use crate::config::Config;
+    use crate::app::Focus;
     use crate::editor::EditorMode;
-    use crate::history::HistoryState;
-    use ratatui::crossterm::event::KeyModifiers;
-
-    // Test fixture data
-    const TEST_JSON: &str = r#"{"name": "test", "age": 30, "city": "NYC"}"#;
-
-    /// Helper to create App with default config for tests
-    fn test_app(json: &str) -> App {
-        App::new(json.to_string(), &Config::default())
-    }
-
-    // Helper to create a KeyEvent without modifiers
-    fn key(code: KeyCode) -> KeyEvent {
-        KeyEvent::new(code, KeyModifiers::empty())
-    }
-
-    // Helper to create a KeyEvent with specific modifiers
-    fn key_with_mods(code: KeyCode, modifiers: KeyModifiers) -> KeyEvent {
-        KeyEvent::new(code, modifiers)
-    }
-
-    // Helper to set up an app with text in the query field
-    fn app_with_query(query: &str) -> App {
-        let mut app = test_app(TEST_JSON);
-        app.input.textarea.insert_str(query);
-        // Use empty in-memory history for all tests to prevent disk writes
-        app.history = HistoryState::empty();
-        app
-    }
+    use crate::test_utils::test_helpers::{key, key_with_mods, app_with_query};
+    use crossterm::event::KeyModifiers;
 
     // ========== History Popup Tests ==========
 

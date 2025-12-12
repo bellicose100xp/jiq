@@ -122,11 +122,7 @@ impl App {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    /// Helper to create App with default config for tests
-    fn test_app(json: &str) -> App {
-        App::new(json.to_string(), &Config::default())
-    }
+    use crate::test_utils::test_helpers::test_app;
 
     #[test]
     fn test_app_initialization() {

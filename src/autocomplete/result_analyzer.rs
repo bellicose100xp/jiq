@@ -8,7 +8,28 @@ use serde_json::Value;
 /// based on the actual query results rather than parsing jq syntax.
 pub struct ResultAnalyzer;
 
+/// Helper to determine if a leading dot is needed
+#[inline]
+fn dot_prefix(needs_leading_dot: bool) -> &'static str {
+    if needs_leading_dot { "." } else { "" }
+}
+
 impl ResultAnalyzer {
+    /// Extract field suggestions from object map
+    fn extract_object_fields(
+        map: &serde_json::Map<String, Value>,
+        prefix: &str,
+        suggestions: &mut Vec<Suggestion>,
+    ) {
+        for (key, val) in map {
+            let field_type = Self::detect_json_type(val);
+            suggestions.push(Suggestion::new_with_type(
+                format!("{}{}", prefix, key),
+                SuggestionType::Field,
+                Some(field_type),
+            ));
+        }
+    }
     /// Main entry point: analyze a query result and extract suggestions
     ///
     /// # Arguments
@@ -84,10 +105,10 @@ impl ResultAnalyzer {
         match result_type {
             ResultType::ArrayOfObjects => {
                 // Suggestions for array containing objects
-                let dot_prefix = if needs_leading_dot { "." } else { "" };
+                let prefix = dot_prefix(needs_leading_dot);
                 let mut suggestions = vec![
                     Suggestion::new_with_type(
-                        format!("{}[]", dot_prefix),
+                        format!("{}[]", prefix),
                         SuggestionType::Pattern,
                         None,
                     )
@@ -99,7 +120,7 @@ impl ResultAnalyzer {
                         for (key, val) in map {
                             let field_type = Self::detect_json_type(val);
                             suggestions.push(Suggestion::new_with_type(
-                                format!("{}[].{}", dot_prefix, key),
+                                format!("{}[].{}", prefix, key),
                                 SuggestionType::Field,
                                 Some(field_type),
                             ));
@@ -110,45 +131,31 @@ impl ResultAnalyzer {
             }
             ResultType::DestructuredObjects => {
                 // Suggestions for destructured objects (from .[])
-                let prefix = if needs_leading_dot { "." } else { "" };
+                let prefix = dot_prefix(needs_leading_dot);
                 let mut suggestions = Vec::new();
 
                 if let Value::Object(map) = value {
-                    for (key, val) in map {
-                        let field_type = Self::detect_json_type(val);
-                        suggestions.push(Suggestion::new_with_type(
-                            format!("{}{}", prefix, key),
-                            SuggestionType::Field,
-                            Some(field_type),
-                        ));
-                    }
+                    Self::extract_object_fields(map, prefix, &mut suggestions);
                 }
 
                 suggestions
             }
             ResultType::Object => {
                 // Suggestions for single object
-                let prefix = if needs_leading_dot { "." } else { "" };
+                let prefix = dot_prefix(needs_leading_dot);
                 let mut suggestions = Vec::new();
 
                 if let Value::Object(map) = value {
-                    for (key, val) in map {
-                        let field_type = Self::detect_json_type(val);
-                        suggestions.push(Suggestion::new_with_type(
-                            format!("{}{}", prefix, key),
-                            SuggestionType::Field,
-                            Some(field_type),
-                        ));
-                    }
+                    Self::extract_object_fields(map, prefix, &mut suggestions);
                 }
 
                 suggestions
             }
             ResultType::Array => {
                 // Array of primitives - just suggest []
-                let dot_prefix = if needs_leading_dot { "." } else { "" };
+                let prefix = dot_prefix(needs_leading_dot);
                 vec![Suggestion::new_with_type(
-                    format!("{}[]", dot_prefix),
+                    format!("{}[]", prefix),
                     SuggestionType::Pattern,
                     None,
                 )]

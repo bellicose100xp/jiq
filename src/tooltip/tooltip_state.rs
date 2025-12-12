@@ -315,13 +315,7 @@ mod tests {
     // ========== Integration Tests for update_tooltip_from_app ==========
     // These tests verify the delegation function works correctly with App state
 
-    use crate::app::App;
-    use crate::config::Config;
-
-    /// Helper to create App with default config for tests
-    fn test_app(json: &str) -> App {
-        App::new(json.to_string(), &Config::default())
-    }
+    use crate::test_utils::test_helpers::test_app;
 
     #[test]
     fn test_update_tooltip_detects_function() {
