@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.20.5] - 2025-12-11
+
+### Added
+- Enter key now accepts autocomplete suggestions (same behavior as Tab)
+  - Pressing Enter when autocomplete popup is visible accepts the selected suggestion
+  - Falls through to existing exit behavior when autocomplete is not visible
+  - Maintains existing modifier key behaviors (Shift+Enter, Alt+Enter for output modes)
+  - Provides Enter/Tab equivalence for improved user experience and workflow flexibility
+
 ## [2.20.4] - 2025-12-10
 
 ### Added
