@@ -47,6 +47,9 @@ impl App {
         // Insert all text at once into the textarea
         self.input.textarea.insert_str(&text);
         
+        // Rebuild brace tracker for autocomplete context detection
+        self.input.brace_tracker.rebuild(self.input.textarea.lines()[0].as_ref());
+        
         // Execute query immediately (no debounce for paste operations)
         editor::editor_events::execute_query(self);
         

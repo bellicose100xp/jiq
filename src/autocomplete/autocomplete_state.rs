@@ -24,6 +24,7 @@ pub fn update_suggestions_from_app(app: &mut App) {
         cursor_pos,
         result.as_deref(),
         result_type,
+        &app.input.brace_tracker,
     );
 }
 

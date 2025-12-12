@@ -230,18 +230,14 @@ pub fn detect_operator_at_cursor(query: &str, cursor_pos: usize) -> Option<&'sta
     let len = chars.len();
 
     // First, try to detect operator at current cursor position
-    if cursor_pos < len {
-        if let Some(op) = detect_operator_at_position(&chars, cursor_pos) {
-            return Some(op);
-        }
+    if cursor_pos < len && let Some(op) = detect_operator_at_position(&chars, cursor_pos) {
+        return Some(op);
     }
 
     // If cursor is after the last character, check if it's immediately after an operator
     // This handles the case when user just typed an operator (cursor is after it)
-    if cursor_pos > 0 {
-        if let Some(op) = detect_operator_at_position(&chars, cursor_pos - 1) {
-            return Some(op);
-        }
+    if cursor_pos > 0 && let Some(op) = detect_operator_at_position(&chars, cursor_pos - 1) {
+        return Some(op);
     }
 
     None

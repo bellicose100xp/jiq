@@ -4,6 +4,7 @@ use ratatui::{
 };
 use tui_textarea::TextArea;
 
+use crate::autocomplete::BraceTracker;
 use crate::editor::EditorMode;
 
 /// Input field state
@@ -11,6 +12,7 @@ pub struct InputState {
     pub textarea: TextArea<'static>,
     pub editor_mode: EditorMode,
     pub scroll_offset: usize, // Track horizontal scroll for syntax overlay
+    pub brace_tracker: BraceTracker, // Track brace nesting for autocomplete context
 }
 
 impl InputState {
@@ -33,6 +35,7 @@ impl InputState {
             textarea,
             editor_mode: EditorMode::default(),
             scroll_offset: 0,
+            brace_tracker: BraceTracker::new(),
         }
     }
 

@@ -176,10 +176,8 @@ pub fn handle_search_key(app: &mut App, key: KeyEvent) -> bool {
             }
             
             // Jump to first match if we have any
-            if app.search.current_match().is_some() {
-                if let Some(m) = app.search.current_match() {
-                    scroll_to_line(app, m.line);
-                }
+            if let Some(m) = app.search.current_match() {
+                scroll_to_line(app, m.line);
             }
             
             true

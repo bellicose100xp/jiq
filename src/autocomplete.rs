@@ -1,9 +1,13 @@
+mod brace_tracker;
 mod context;
 pub mod insertion;
 pub mod jq_functions;
 pub mod autocomplete_render;
 mod result_analyzer;
+mod scan_state;
 pub mod autocomplete_state;
+
+pub use brace_tracker::BraceTracker;
 
 pub use context::{analyze_context, find_char_before_field_access, get_suggestions, SuggestionContext};
 // JsonFieldType is part of public API for Suggestion struct
@@ -29,12 +33,14 @@ pub const MIN_CHARS_FOR_AUTOCOMPLETE: usize = 1;
 /// * `cursor_pos` - The cursor column position
 /// * `result` - Optional unformatted result from last successful query
 /// * `result_type` - Optional type of the result (Object, Array, etc.)
+/// * `brace_tracker` - The brace tracker for context detection
 pub fn update_suggestions(
     autocomplete: &mut AutocompleteState,
     query: &str,
     cursor_pos: usize,
     result: Option<&str>,
     result_type: Option<ResultType>,
+    brace_tracker: &BraceTracker,
 ) {
     // Performance optimization: only show autocomplete for non-empty queries
     if query.trim().len() < MIN_CHARS_FOR_AUTOCOMPLETE {
@@ -43,7 +49,7 @@ pub fn update_suggestions(
     }
 
     // Get suggestions based on unformatted query result (no ANSI codes)
-    let suggestions = get_suggestions(query, cursor_pos, result, result_type);
+    let suggestions = get_suggestions(query, cursor_pos, result, result_type, brace_tracker);
 
     // Update autocomplete state
     autocomplete.update_suggestions(suggestions);

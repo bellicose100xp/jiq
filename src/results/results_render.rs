@@ -370,10 +370,8 @@ fn apply_highlights_to_line(
                 current_text.push(ch);
             }
             _ => {
-                if !current_text.is_empty() {
-                    if let Some(s) = current_style {
-                        result_spans.push(Span::styled(current_text.clone(), s));
-                    }
+                if !current_text.is_empty() && let Some(s) = current_style {
+                    result_spans.push(Span::styled(current_text.clone(), s));
                 }
                 current_text = ch.to_string();
                 current_style = Some(style);
@@ -382,10 +380,8 @@ fn apply_highlights_to_line(
     }
 
     // Don't forget the last span
-    if !current_text.is_empty() {
-        if let Some(s) = current_style {
-            result_spans.push(Span::styled(current_text, s));
-        }
+    if !current_text.is_empty() && let Some(s) = current_style {
+        result_spans.push(Span::styled(current_text, s));
     }
 
     Line::from(result_spans)

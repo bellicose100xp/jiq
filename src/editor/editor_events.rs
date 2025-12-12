@@ -28,6 +28,9 @@ pub fn handle_insert_mode_key(app: &mut App, key: KeyEvent) {
         // Reset scroll when query changes
         app.results_scroll.reset();
         app.error_overlay_visible = false; // Auto-hide error overlay on query change
+
+        // Rebuild brace tracker for autocomplete context detection
+        app.input.brace_tracker.rebuild(app.input.textarea.lines()[0].as_ref());
     }
 
     // Update autocomplete suggestions after any input
@@ -262,6 +265,10 @@ pub fn handle_operator_mode_key(app: &mut App, key: KeyEvent) {
 /// Execute current query and update results
 pub fn execute_query(app: &mut App) {
     let query = app.input.textarea.lines()[0].as_ref();
+    
+    // Rebuild brace tracker for autocomplete context detection (handles Normal mode edits)
+    app.input.brace_tracker.rebuild(query);
+    
     // Use QueryState::execute() which handles non-null result caching
     app.query.execute(query);
 
