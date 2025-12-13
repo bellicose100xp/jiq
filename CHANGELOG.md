@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.21.1] - 2025-12-13
+
+### Added
+- CI workflow with automated testing, code coverage, and linting
+  - GitHub Actions workflow running tests, cargo-tarpaulin coverage, and clippy/rustfmt checks
+  - Codecov integration for coverage tracking and reporting
+  - Coverage badge in README showing current test coverage
+  - Pre-commit hook for automatic code formatting
+
+### Changed
+- Applied rustfmt formatting to entire codebase for consistency
+- CI installs jq 1.8.1 for consistent snapshot test results
+- Tests run serially in CI to avoid jq process race conditions
+
 ## [2.21.0] - 2025-12-12
 
 ### Added
