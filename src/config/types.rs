@@ -61,7 +61,6 @@ mod tests {
     // Feature: config-system, Property 1: Valid backend parsing
     // For any valid clipboard backend value ("auto", "system", or "osc52") in a TOML config file,
     // parsing the config should successfully extract and store that backend preference without errors.
-    // Validates: Requirements 1.2
     proptest! {
         #![proptest_config(ProptestConfig::with_cases(100))]
 
@@ -94,7 +93,6 @@ backend = "{}"
     // Feature: config-system, Property 2: Missing fields use defaults
     // For any TOML config file with missing optional fields, parsing the config should
     // successfully complete and use default values for all missing fields.
-    // Validates: Requirements 2.3
     proptest! {
         #![proptest_config(ProptestConfig::with_cases(100))]
 

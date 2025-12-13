@@ -89,7 +89,6 @@ mod tests {
     // Feature: config-system, Property 3: Invalid backend fallback
     // For any invalid clipboard backend value in a TOML config file, the config system
     // should log a warning and use the default clipboard backend value ("auto").
-    // Validates: Requirements 3.1, 3.2
     proptest! {
         #![proptest_config(ProptestConfig::with_cases(100))]
 
@@ -124,7 +123,6 @@ backend = "{}"
     // Feature: config-system, Property 4: Malformed TOML fallback
     // For any malformed TOML syntax in the config file, the config system should
     // log an error with details and return a config with all default values.
-    // Validates: Requirements 3.3, 3.4
     proptest! {
         #![proptest_config(ProptestConfig::with_cases(100))]
 
@@ -158,7 +156,6 @@ backend = "{}"
     // Feature: config-system, Property 5: Config path consistency
     // For any execution of the config loading function, it should attempt to load
     // from the same standardized path (~/.config/jiq/config.toml).
-    // Validates: Requirements 1.1
     proptest! {
         #![proptest_config(ProptestConfig::with_cases(100))]
 

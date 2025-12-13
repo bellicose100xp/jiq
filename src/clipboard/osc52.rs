@@ -47,7 +47,6 @@ mod tests {
     // Feature: clipboard, Property 1: OSC 52 encoding round-trip
     // *For any* input text string, encoding it with OSC 52 format and then
     // decoding the base64 portion should produce the original text.
-    // Validates: Requirements 3.2
     proptest! {
         #![proptest_config(ProptestConfig::with_cases(100))]
 

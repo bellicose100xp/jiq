@@ -287,7 +287,6 @@ mod tests {
         #![proptest_config(ProptestConfig::with_cases(100))]
 
         /// Feature: clipboard, Property 4: Notification replacement
-        /// Validates: Requirements 4.4
         ///
         /// For any sequence of notification messages, only the most recent
         /// notification should be visible.

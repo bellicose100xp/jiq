@@ -176,13 +176,11 @@ pub fn handle_global_keys(app: &mut App, key: KeyEvent) -> bool {
         }
         KeyCode::Enter => {
             // Accept autocomplete suggestion if visible (same behavior as Tab)
-            // Requirements: 1.1, 1.2, 1.3, 1.4, 3.1
             if accept_autocomplete_suggestion(app) {
                 return true;
             }
 
             // Fall through to existing exit behavior when autocomplete not visible
-            // Requirements: 2.1, 2.2, 2.3
             // Execute any pending debounced query immediately (bypass debounce)
             if app.debouncer.has_pending() {
                 crate::editor::editor_events::execute_query(app);
@@ -1427,7 +1425,6 @@ mod tests {
     #[test]
     fn test_enter_accepts_suggestion_when_autocomplete_visible() {
         // Test Enter accepts suggestion when autocomplete visible
-        // Requirements: 1.1
         let mut app = app_with_query(".na");
         app.input.editor_mode = EditorMode::Insert;
         app.focus = Focus::InputField;
@@ -1450,7 +1447,6 @@ mod tests {
     #[test]
     fn test_enter_closes_autocomplete_popup_after_selection() {
         // Test Enter closes autocomplete popup after selection
-        // Requirements: 1.2
         let mut app = app_with_query(".na");
         app.input.editor_mode = EditorMode::Insert;
         app.focus = Focus::InputField;
@@ -1471,7 +1467,6 @@ mod tests {
     #[test]
     fn test_enter_exits_application_when_autocomplete_not_visible() {
         // Test Enter exits application when autocomplete not visible
-        // Requirements: 2.1
         let mut app = app_with_query(".");
         app.input.editor_mode = EditorMode::Insert;
         app.focus = Focus::InputField;
@@ -1489,7 +1484,6 @@ mod tests {
     #[test]
     fn test_enter_with_shift_modifier_bypasses_autocomplete_check() {
         // Test Enter with Shift modifier bypasses autocomplete check
-        // Requirements: 2.2
         let mut app = app_with_query(".na");
         app.input.editor_mode = EditorMode::Insert;
         app.focus = Focus::InputField;
@@ -1512,7 +1506,6 @@ mod tests {
     #[test]
     fn test_enter_with_alt_modifier_bypasses_autocomplete_check() {
         // Test Enter with Alt modifier bypasses autocomplete check
-        // Requirements: 2.3
         let mut app = app_with_query(".na");
         app.input.editor_mode = EditorMode::Insert;
         app.focus = Focus::InputField;

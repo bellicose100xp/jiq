@@ -599,12 +599,10 @@ mod tests {
     // ========== Regression Tests for Existing Behavior ==========
     // These tests verify that the ObjectKeyContext feature doesn't break
     // existing FieldContext and FunctionContext behavior.
-    // Requirements: 4.1, 4.2, 4.3, 4.4, 4.5
 
     #[test]
     fn test_regression_field_context_at_start() {
         // `.na` at start should return FieldContext (not ObjectKeyContext)
-        // Validates: Requirement 4.1
         let query = ".na";
         let tracker = tracker_for(query);
         let (ctx, partial) = analyze_context(query, &tracker);
@@ -616,7 +614,6 @@ mod tests {
     #[test]
     fn test_regression_field_context_after_pipe() {
         // `.services | .na` should return FieldContext
-        // Validates: Requirement 4.2
         let query = ".services | .na";
         let tracker = tracker_for(query);
         let (ctx, partial) = analyze_context(query, &tracker);
@@ -628,7 +625,6 @@ mod tests {
     #[test]
     fn test_regression_field_context_in_map() {
         // `map(.na` should return FieldContext
-        // Validates: Requirement 4.3
         let query = "map(.na";
         let tracker = tracker_for(query);
         let (ctx, partial) = analyze_context(query, &tracker);
@@ -640,7 +636,6 @@ mod tests {
     #[test]
     fn test_regression_function_context_at_start() {
         // `sel` at start should return FunctionContext
-        // Validates: Requirement 4.4
         let query = "sel";
         let tracker = tracker_for(query);
         let (ctx, partial) = analyze_context(query, &tracker);
@@ -652,7 +647,6 @@ mod tests {
     #[test]
     fn test_regression_function_context_after_pipe() {
         // `.services | sel` should return FunctionContext
-        // Validates: Requirement 4.5
         let query = ".services | sel";
         let tracker = tracker_for(query);
         let (ctx, partial) = analyze_context(query, &tracker);

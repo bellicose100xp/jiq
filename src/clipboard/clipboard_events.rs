@@ -198,7 +198,6 @@ mod tests {
     // Feature: clipboard, Property 2: ANSI stripping preserves non-ANSI content
     // *For any* input text without ANSI escape sequences, stripping ANSI codes
     // should return the identical text.
-    // Validates: Requirements 2.4
     proptest! {
         #![proptest_config(ProptestConfig::with_cases(100))]
 
@@ -218,7 +217,6 @@ mod tests {
     // Feature: clipboard, Property 3: ANSI stripping removes all escape sequences
     // *For any* input text with ANSI escape sequences, the stripped output should
     // contain no escape sequences (no `\x1b` characters).
-    // Validates: Requirements 2.4
     proptest! {
         #![proptest_config(ProptestConfig::with_cases(100))]
 
@@ -260,7 +258,6 @@ mod tests {
 
     // Feature: clipboard, Property 5: Empty content rejection
     // *For any* empty string input, the copy operation should not proceed and return false.
-    // Validates: Requirements 1.4, 2.5
     //
     // This property is tested via unit tests since copy_query/copy_result require
     // a full App instance. The core property is that empty strings are rejected.
