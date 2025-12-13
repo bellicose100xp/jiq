@@ -23,6 +23,12 @@ jobs:
           chmod +x jq
           sudo mv jq /usr/local/bin/jq
           jq --version
+          echo "=== Testing jq functionality ==="
+          echo '{"test":true}' | jq '.'
+          echo "=== Testing invalid query (expect syntax error) ==="
+          echo '{"test":true}' | jq '.invalid[' 2>&1 || true
+          echo "=== Checking library dependencies ==="
+          ldd /usr/local/bin/jq || true
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
@@ -45,6 +51,12 @@ jobs:
           chmod +x jq
           sudo mv jq /usr/local/bin/jq
           jq --version
+          echo "=== Testing jq functionality ==="
+          echo '{"test":true}' | jq '.'
+          echo "=== Testing invalid query (expect syntax error) ==="
+          echo '{"test":true}' | jq '.invalid[' 2>&1 || true
+          echo "=== Checking library dependencies ==="
+          ldd /usr/local/bin/jq || true
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
