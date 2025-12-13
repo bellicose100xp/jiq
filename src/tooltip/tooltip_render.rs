@@ -3,11 +3,11 @@
 //! This module handles rendering of the function tooltip popup.
 
 use ratatui::{
+    Frame,
     layout::Rect,
     style::{Color, Modifier, Style},
     text::{Line, Span, Text},
     widgets::{Block, Borders, Paragraph},
-    Frame,
 };
 
 use crate::app::App;
@@ -112,12 +112,10 @@ pub fn render_popup(app: &App, frame: &mut Frame, input_area: Rect) {
     // Title format: "fn: name" or "operator: op"
     let title_width = title_prefix.len() + 2 + name.len() + dismiss_hint_len + 4; // prefix + ": " + name + dismiss + spacing
 
-    let content_width = description_width
-        .max(max_example_width)
-        .max(title_width);
+    let content_width = description_width.max(max_example_width).max(title_width);
 
-    let popup_width = ((content_width as u16) + TOOLTIP_BORDER_WIDTH)
-        .clamp(TOOLTIP_MIN_WIDTH, TOOLTIP_MAX_WIDTH);
+    let popup_width =
+        ((content_width as u16) + TOOLTIP_BORDER_WIDTH).clamp(TOOLTIP_MIN_WIDTH, TOOLTIP_MAX_WIDTH);
 
     // Calculate tip wrapping - available width for tip text
     let tip_available_width = (popup_width as usize).saturating_sub(6); // borders + padding + emoji
@@ -136,8 +134,8 @@ pub fn render_popup(app: &App, frame: &mut Frame, input_area: Rect) {
         0
     };
     let content_height = 1 + 1 + example_count + tip_height; // description + blank + examples + tip
-    let popup_height = (content_height + TOOLTIP_BORDER_HEIGHT)
-        .clamp(TOOLTIP_MIN_HEIGHT, TOOLTIP_MAX_HEIGHT);
+    let popup_height =
+        (content_height + TOOLTIP_BORDER_HEIGHT).clamp(TOOLTIP_MIN_HEIGHT, TOOLTIP_MAX_HEIGHT);
 
     // Position popup on the right side, above input box
     let frame_area = frame.area();
@@ -183,7 +181,10 @@ pub fn render_popup(app: &App, frame: &mut Frame, input_area: Rect) {
             // Two-column: code (padded) │ description
             let padded_code = format!("{:width$}", code, width = max_code_width);
             lines.push(Line::from(vec![
-                Span::styled(format!("  {}", padded_code), Style::default().fg(Color::Cyan)),
+                Span::styled(
+                    format!("  {}", padded_code),
+                    Style::default().fg(Color::Cyan),
+                ),
                 Span::styled(" │ ", Style::default().fg(Color::DarkGray)),
                 Span::styled(*desc, Style::default().fg(Color::Gray)),
             ]));
@@ -196,7 +197,10 @@ pub fn render_popup(app: &App, frame: &mut Frame, input_area: Rect) {
         // First line with emoji prefix
         lines.push(Line::from(vec![
             Span::styled("💡 ", Style::default()),
-            Span::styled(wrapped_tip_lines[0].clone(), Style::default().fg(Color::Yellow)),
+            Span::styled(
+                wrapped_tip_lines[0].clone(),
+                Style::default().fg(Color::Yellow),
+            ),
         ]));
         // Subsequent lines with spacing to align with first line
         for line in wrapped_tip_lines.iter().skip(1) {
@@ -241,7 +245,6 @@ pub fn render_popup(app: &App, frame: &mut Frame, input_area: Rect) {
 
     frame.render_widget(popup_widget, popup_area);
 }
-
 
 /// Generate the title text for a tooltip
 ///

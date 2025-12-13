@@ -12,7 +12,7 @@ impl StatsParser {
     /// non-whitespace character, avoiding full JSON parsing for performance.
     pub fn parse(result: &str) -> ResultStats {
         let trimmed = result.trim();
-        
+
         if trimmed.is_empty() {
             return ResultStats::Null;
         }
@@ -31,7 +31,10 @@ impl StatsParser {
                 } else {
                     Self::detect_element_type(trimmed)
                 };
-                ResultStats::Array { count, element_type }
+                ResultStats::Array {
+                    count,
+                    element_type,
+                }
             }
             Some('{') => ResultStats::Object,
             Some('"') => ResultStats::String,
@@ -52,18 +55,18 @@ impl StatsParser {
         let mut in_string = false;
         let mut escape_next = false;
         let mut has_content = false;
-        
+
         for ch in result.chars() {
             if escape_next {
                 escape_next = false;
                 continue;
             }
-            
+
             if ch == '\\' && in_string {
                 escape_next = true;
                 continue;
             }
-            
+
             if ch == '"' {
                 in_string = !in_string;
                 if depth == 1 {
@@ -71,11 +74,11 @@ impl StatsParser {
                 }
                 continue;
             }
-            
+
             if in_string {
                 continue;
             }
-            
+
             match ch {
                 '[' | '{' => {
                     if depth == 1 {
@@ -97,13 +100,9 @@ impl StatsParser {
                 _ => {}
             }
         }
-        
+
         // Items = commas + 1 for non-empty arrays, 0 for empty arrays
-        if has_content {
-            comma_count + 1
-        } else {
-            0
-        }
+        if has_content { comma_count + 1 } else { 0 }
     }
 
     /// Detect element type from first few array elements
@@ -297,14 +296,9 @@ impl StatsParser {
             }
         }
 
-        if count > 1 {
-            Some(count)
-        } else {
-            None
-        }
+        if count > 1 { Some(count) } else { None }
     }
 }
-
 
 #[cfg(test)]
 mod tests {
@@ -376,12 +370,11 @@ mod tests {
 
     /// Strategy to generate a JSON array with known element count
     fn arb_json_array_with_count() -> impl Strategy<Value = (String, usize)> {
-        prop::collection::vec(arb_simple_json_value(), 0..20)
-            .prop_map(|elements| {
-                let count = elements.len();
-                let json = format!("[{}]", elements.join(", "));
-                (json, count)
-            })
+        prop::collection::vec(arb_simple_json_value(), 0..20).prop_map(|elements| {
+            let count = elements.len();
+            let json = format!("[{}]", elements.join(", "));
+            (json, count)
+        })
     }
 
     /// Strategy to generate nested JSON arrays
@@ -389,8 +382,9 @@ mod tests {
         prop::collection::vec(
             prop::collection::vec(arb_simple_json_value(), 0..5)
                 .prop_map(|inner| format!("[{}]", inner.join(", "))),
-            0..10
-        ).prop_map(|elements| {
+            0..10,
+        )
+        .prop_map(|elements| {
             let count = elements.len();
             let json = format!("[{}]", elements.join(", "));
             (json, count)
@@ -452,46 +446,94 @@ mod tests {
 
     #[test]
     fn test_detect_objects() {
-        assert_eq!(StatsParser::detect_element_type(r#"[{}]"#), ElementType::Objects);
-        assert_eq!(StatsParser::detect_element_type(r#"[{"a": 1}, {"b": 2}]"#), ElementType::Objects);
+        assert_eq!(
+            StatsParser::detect_element_type(r#"[{}]"#),
+            ElementType::Objects
+        );
+        assert_eq!(
+            StatsParser::detect_element_type(r#"[{"a": 1}, {"b": 2}]"#),
+            ElementType::Objects
+        );
     }
 
     #[test]
     fn test_detect_arrays() {
-        assert_eq!(StatsParser::detect_element_type("[[]]"), ElementType::Arrays);
-        assert_eq!(StatsParser::detect_element_type("[[1], [2, 3]]"), ElementType::Arrays);
+        assert_eq!(
+            StatsParser::detect_element_type("[[]]"),
+            ElementType::Arrays
+        );
+        assert_eq!(
+            StatsParser::detect_element_type("[[1], [2, 3]]"),
+            ElementType::Arrays
+        );
     }
 
     #[test]
     fn test_detect_strings() {
-        assert_eq!(StatsParser::detect_element_type(r#"["a"]"#), ElementType::Strings);
-        assert_eq!(StatsParser::detect_element_type(r#"["hello", "world"]"#), ElementType::Strings);
+        assert_eq!(
+            StatsParser::detect_element_type(r#"["a"]"#),
+            ElementType::Strings
+        );
+        assert_eq!(
+            StatsParser::detect_element_type(r#"["hello", "world"]"#),
+            ElementType::Strings
+        );
     }
 
     #[test]
     fn test_detect_numbers() {
-        assert_eq!(StatsParser::detect_element_type("[1]"), ElementType::Numbers);
-        assert_eq!(StatsParser::detect_element_type("[1, 2, 3]"), ElementType::Numbers);
-        assert_eq!(StatsParser::detect_element_type("[-1, 0, 100]"), ElementType::Numbers);
+        assert_eq!(
+            StatsParser::detect_element_type("[1]"),
+            ElementType::Numbers
+        );
+        assert_eq!(
+            StatsParser::detect_element_type("[1, 2, 3]"),
+            ElementType::Numbers
+        );
+        assert_eq!(
+            StatsParser::detect_element_type("[-1, 0, 100]"),
+            ElementType::Numbers
+        );
     }
 
     #[test]
     fn test_detect_booleans() {
-        assert_eq!(StatsParser::detect_element_type("[true]"), ElementType::Booleans);
-        assert_eq!(StatsParser::detect_element_type("[true, false]"), ElementType::Booleans);
+        assert_eq!(
+            StatsParser::detect_element_type("[true]"),
+            ElementType::Booleans
+        );
+        assert_eq!(
+            StatsParser::detect_element_type("[true, false]"),
+            ElementType::Booleans
+        );
     }
 
     #[test]
     fn test_detect_nulls() {
-        assert_eq!(StatsParser::detect_element_type("[null]"), ElementType::Nulls);
-        assert_eq!(StatsParser::detect_element_type("[null, null]"), ElementType::Nulls);
+        assert_eq!(
+            StatsParser::detect_element_type("[null]"),
+            ElementType::Nulls
+        );
+        assert_eq!(
+            StatsParser::detect_element_type("[null, null]"),
+            ElementType::Nulls
+        );
     }
 
     #[test]
     fn test_detect_mixed() {
-        assert_eq!(StatsParser::detect_element_type("[1, \"a\"]"), ElementType::Mixed);
-        assert_eq!(StatsParser::detect_element_type("[{}, []]"), ElementType::Mixed);
-        assert_eq!(StatsParser::detect_element_type("[true, null]"), ElementType::Mixed);
+        assert_eq!(
+            StatsParser::detect_element_type("[1, \"a\"]"),
+            ElementType::Mixed
+        );
+        assert_eq!(
+            StatsParser::detect_element_type("[{}, []]"),
+            ElementType::Mixed
+        );
+        assert_eq!(
+            StatsParser::detect_element_type("[true, null]"),
+            ElementType::Mixed
+        );
     }
 
     // =========================================================================
@@ -501,17 +543,18 @@ mod tests {
     /// Strategy to generate homogeneous arrays of objects
     fn arb_array_of_objects() -> impl Strategy<Value = String> {
         prop::collection::vec(
-            prop::collection::vec(
-                ("[a-z]{1,5}", arb_simple_json_value()),
-                0..3
-            ).prop_map(|pairs| {
-                let fields: Vec<String> = pairs.iter()
-                    .map(|(k, v)| format!(r#""{}": {}"#, k, v))
-                    .collect();
-                format!("{{{}}}", fields.join(", "))
-            }),
-            1..10
-        ).prop_map(|objects| format!("[{}]", objects.join(", ")))
+            prop::collection::vec(("[a-z]{1,5}", arb_simple_json_value()), 0..3).prop_map(
+                |pairs| {
+                    let fields: Vec<String> = pairs
+                        .iter()
+                        .map(|(k, v)| format!(r#""{}": {}"#, k, v))
+                        .collect();
+                    format!("{{{}}}", fields.join(", "))
+                },
+            ),
+            1..10,
+        )
+        .prop_map(|objects| format!("[{}]", objects.join(", ")))
     }
 
     /// Strategy to generate homogeneous arrays of arrays
@@ -519,32 +562,33 @@ mod tests {
         prop::collection::vec(
             prop::collection::vec((-100i64..100).prop_map(|n| n.to_string()), 0..5)
                 .prop_map(|inner| format!("[{}]", inner.join(", "))),
-            1..10
-        ).prop_map(|arrays| format!("[{}]", arrays.join(", ")))
+            1..10,
+        )
+        .prop_map(|arrays| format!("[{}]", arrays.join(", ")))
     }
 
     /// Strategy to generate homogeneous arrays of strings
     fn arb_array_of_strings() -> impl Strategy<Value = String> {
         prop::collection::vec(
             "[a-zA-Z0-9]{0,10}".prop_map(|s| format!(r#""{}""#, s)),
-            1..10
-        ).prop_map(|strings| format!("[{}]", strings.join(", ")))
+            1..10,
+        )
+        .prop_map(|strings| format!("[{}]", strings.join(", ")))
     }
 
     /// Strategy to generate homogeneous arrays of numbers
     fn arb_array_of_numbers() -> impl Strategy<Value = String> {
-        prop::collection::vec(
-            (-1000i64..1000).prop_map(|n| n.to_string()),
-            1..10
-        ).prop_map(|numbers| format!("[{}]", numbers.join(", ")))
+        prop::collection::vec((-1000i64..1000).prop_map(|n| n.to_string()), 1..10)
+            .prop_map(|numbers| format!("[{}]", numbers.join(", ")))
     }
 
     /// Strategy to generate homogeneous arrays of booleans
     fn arb_array_of_booleans() -> impl Strategy<Value = String> {
         prop::collection::vec(
             prop::bool::ANY.prop_map(|b| if b { "true" } else { "false" }.to_string()),
-            1..10
-        ).prop_map(|bools| format!("[{}]", bools.join(", ")))
+            1..10,
+        )
+        .prop_map(|bools| format!("[{}]", bools.join(", ")))
     }
 
     /// Strategy to generate homogeneous arrays of nulls
@@ -676,8 +720,9 @@ mod tests {
                 Just("false".to_string()),
                 Just("null".to_string()),
             ],
-            2..10  // At least 2 values to be a stream
-        ).prop_map(|values| {
+            2..10, // At least 2 values to be a stream
+        )
+        .prop_map(|values| {
             let count = values.len();
             let stream = values.join("\n");
             (stream, count)
@@ -691,8 +736,10 @@ mod tests {
             prop::collection::vec(
                 ("[a-z]{1,3}", (-100i64..100).prop_map(|n| n.to_string())),
                 0..3
-            ).prop_map(|pairs| {
-                let fields: Vec<String> = pairs.iter()
+            )
+            .prop_map(|pairs| {
+                let fields: Vec<String> = pairs
+                    .iter()
                     .map(|(k, v)| format!(r#""{}": {}"#, k, v))
                     .collect();
                 format!("{{{}}}", fields.join(", "))
@@ -748,7 +795,13 @@ mod tests {
     #[test]
     fn test_parse_array() {
         let result = StatsParser::parse("[1, 2, 3]");
-        assert_eq!(result, ResultStats::Array { count: 3, element_type: ElementType::Numbers });
+        assert_eq!(
+            result,
+            ResultStats::Array {
+                count: 3,
+                element_type: ElementType::Numbers
+            }
+        );
     }
 
     #[test]

@@ -3,7 +3,7 @@
 //! Provides clipboard access via terminal escape sequences,
 //! useful for remote sessions (SSH, tmux).
 
-use base64::{engine::general_purpose::STANDARD, Engine as _};
+use base64::{Engine as _, engine::general_purpose::STANDARD};
 use std::io::{self, Write};
 
 use super::backend::{ClipboardError, ClipboardResult};
@@ -22,9 +22,7 @@ pub fn copy(text: &str) -> ClipboardResult {
         .write_all(sequence.as_bytes())
         .map_err(|_| ClipboardError::WriteError)?;
 
-    io::stdout()
-        .flush()
-        .map_err(|_| ClipboardError::WriteError)
+    io::stdout().flush().map_err(|_| ClipboardError::WriteError)
 }
 
 /// Encode text for OSC 52 (exposed for testing)
@@ -40,7 +38,6 @@ pub fn encode_osc52(text: &str) -> String {
     let encoded = STANDARD.encode(text);
     format!("\x1b]52;c;{}\x07", encoded)
 }
-
 
 #[cfg(test)]
 mod tests {

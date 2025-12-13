@@ -3,11 +3,11 @@
 //! This module handles rendering of the history popup.
 
 use ratatui::{
+    Frame,
     layout::{Constraint, Layout, Rect},
     style::{Color, Modifier, Style},
     text::{Line, Span},
     widgets::{Block, Borders, List, ListItem},
-    Frame,
 };
 
 use crate::app::App;
@@ -39,7 +39,7 @@ pub fn render_popup(app: &mut App, frame: &mut Frame, input_area: Rect) {
 
     // Split into list area and search area
     let layout = Layout::vertical([
-        Constraint::Min(3),                    // History list
+        Constraint::Min(3),                        // History list
         Constraint::Length(HISTORY_SEARCH_HEIGHT), // Search box
     ])
     .split(popup_area);

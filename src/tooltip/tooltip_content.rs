@@ -87,7 +87,9 @@ pub static TOOLTIP_CONTENT: &[TooltipContent] = &[
             "unique_by(.email | ascii_downcase) # case-insensitive",
             "unique_by([.first, .last]) # by multiple fields",
         ],
-        Some("Keeps FIRST occurrence; output is SORTED; use group_by | map(first) to preserve order"),
+        Some(
+            "Keeps FIRST occurrence; output is SORTED; use group_by | map(first) to preserve order",
+        ),
     ),
     TooltipContent::new(
         "min_by",
@@ -190,7 +192,6 @@ pub static TOOLTIP_CONTENT: &[TooltipContent] = &[
         ],
         Some("Shorthand for to_entries | map(...) | from_entries"),
     ),
-
     // ===== Object Functions (with arguments) =====
     TooltipContent::new(
         "has",
@@ -243,7 +244,6 @@ pub static TOOLTIP_CONTENT: &[TooltipContent] = &[
         ],
         Some("Combine with [paths(...)] - more efficient than chaining del()"),
     ),
-
     // ===== String Functions (with arguments) =====
     TooltipContent::new(
         "split",
@@ -370,7 +370,6 @@ pub static TOOLTIP_CONTENT: &[TooltipContent] = &[
         ],
         Some("Use capture groups in replacement with \\(.name) syntax"),
     ),
-
     // ===== Comparison/Search Functions (with arguments) =====
     TooltipContent::new(
         "contains",
@@ -419,7 +418,6 @@ pub static TOOLTIP_CONTENT: &[TooltipContent] = &[
         ],
         Some("Returns empty array if not found"),
     ),
-
     // ===== Date Functions =====
     TooltipContent::new(
         "strftime",
@@ -458,7 +456,6 @@ pub static TOOLTIP_CONTENT: &[TooltipContent] = &[
         ],
         Some("ISO 8601 only; use strftime for custom formats"),
     ),
-
     // ===== Array Functions (no arguments) =====
     TooltipContent::new(
         "keys",
@@ -598,7 +595,6 @@ pub static TOOLTIP_CONTENT: &[TooltipContent] = &[
         ],
         Some("Great for zipping arrays; uses nulls for different lengths"),
     ),
-
     // ===== Object Functions (no arguments) =====
     TooltipContent::new(
         "to_entries",
@@ -636,7 +632,6 @@ pub static TOOLTIP_CONTENT: &[TooltipContent] = &[
         ],
         Some("DEPRECATED in jq 1.7+; use paths(scalars) instead"),
     ),
-
     // ===== Type Functions (no arguments) =====
     TooltipContent::new(
         "type",
@@ -670,9 +665,7 @@ pub static TOOLTIP_CONTENT: &[TooltipContent] = &[
     TooltipContent::new(
         "arrays",
         "Filter to keep only arrays",
-        &[
-            ".[] | arrays            # keep only arrays",
-        ],
+        &[".[] | arrays            # keep only arrays"],
         Some("Cleaner than select(type == \"array\")"),
     ),
     TooltipContent::new(
@@ -696,33 +689,25 @@ pub static TOOLTIP_CONTENT: &[TooltipContent] = &[
     TooltipContent::new(
         "booleans",
         "Filter to keep only booleans",
-        &[
-            ".[] | booleans          # keep only booleans",
-        ],
+        &[".[] | booleans          # keep only booleans"],
         Some("Cleaner than select(type == \"boolean\")"),
     ),
     TooltipContent::new(
         "numbers",
         "Filter to keep only numbers",
-        &[
-            ".[] | numbers           # keep only numbers",
-        ],
+        &[".[] | numbers           # keep only numbers"],
         Some("Cleaner than select(type == \"number\")"),
     ),
     TooltipContent::new(
         "strings",
         "Filter to keep only strings",
-        &[
-            ".[] | strings           # keep only strings",
-        ],
+        &[".[] | strings           # keep only strings"],
         Some("Cleaner than select(type == \"string\")"),
     ),
     TooltipContent::new(
         "nulls",
         "Filter to keep only nulls",
-        &[
-            ".[] | nulls             # keep only nulls",
-        ],
+        &[".[] | nulls             # keep only nulls"],
         Some("Use // to provide default for null values"),
     ),
     TooltipContent::new(
@@ -734,7 +719,6 @@ pub static TOOLTIP_CONTENT: &[TooltipContent] = &[
         ],
         Some("Opposite of iterables; perfect for extracting leaf values"),
     ),
-
     // ===== Math Functions (no arguments) =====
     TooltipContent::new(
         "floor",
@@ -781,7 +765,6 @@ pub static TOOLTIP_CONTENT: &[TooltipContent] = &[
         ],
         Some("Works on numbers only"),
     ),
-
     // ===== Other Functions (no arguments) =====
     TooltipContent::new(
         "now",
@@ -865,7 +848,6 @@ pub static TOOLTIP_CONTENT: &[TooltipContent] = &[
 pub fn get_tooltip_content(function: &str) -> Option<&'static TooltipContent> {
     TOOLTIP_CONTENT.iter().find(|c| c.function == function)
 }
-
 
 #[cfg(test)]
 mod tests {

@@ -50,7 +50,6 @@ pub fn extract_visible_spans(
     result
 }
 
-
 /// Insert cursor into spans at the given position (relative to visible area)
 /// The character at cursor_pos gets reversed style (like vim)
 pub fn insert_cursor_into_spans(
@@ -240,12 +239,11 @@ mod tests {
     }
 }
 
-
 #[cfg(test)]
 mod snapshot_tests {
     use super::*;
-    use ratatui::style::{Color, Style};
     use insta::assert_yaml_snapshot;
+    use ratatui::style::{Color, Style};
 
     // Import serialize_spans helper from parent syntax_highlight module
     use super::super::snapshot_helpers::serialize_spans;

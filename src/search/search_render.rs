@@ -3,11 +3,11 @@
 //! This module handles rendering of the search bar at the bottom of the results pane.
 
 use ratatui::{
+    Frame,
     layout::{Alignment, Rect},
     style::{Color, Style},
     text::{Line, Span},
     widgets::{Block, Borders},
-    Frame,
 };
 
 use crate::app::App;
@@ -31,8 +31,11 @@ pub fn render_bar(app: &mut App, frame: &mut Frame, area: Rect) {
         .borders(Borders::ALL)
         .title(" Search: ")
         .title_top(
-            Line::from(Span::styled(format!(" {} ", match_count), match_count_style))
-                .alignment(Alignment::Right),
+            Line::from(Span::styled(
+                format!(" {} ", match_count),
+                match_count_style,
+            ))
+            .alignment(Alignment::Right),
         )
         .border_style(Style::default().fg(Color::Cyan))
         .style(Style::default().bg(Color::Black));

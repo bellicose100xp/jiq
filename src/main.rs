@@ -1,11 +1,11 @@
 use clap::Parser;
 use color_eyre::Result;
+use ratatui::DefaultTerminal;
 use ratatui::crossterm::event::{DisableBracketedPaste, EnableBracketedPaste};
 use ratatui::crossterm::execute;
 use ratatui::crossterm::terminal::{
-    disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen,
+    EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode,
 };
-use ratatui::DefaultTerminal;
 use std::io::stdout;
 use std::path::PathBuf;
 
@@ -37,7 +37,10 @@ use query::executor::JqExecutor;
 
 /// Interactive JSON query tool
 #[derive(Parser, Debug)]
-#[command(version, about = "Interactive JSON query tool with real-time filtering using jq")]
+#[command(
+    version,
+    about = "Interactive JSON query tool with real-time filtering using jq"
+)]
 struct Args {
     /// Input JSON file (if not provided, reads from stdin)
     input: Option<PathBuf>,

@@ -3,10 +3,10 @@
 //! This module handles rendering of the help popup modal with keyboard shortcuts.
 
 use ratatui::{
+    Frame,
     style::{Color, Modifier, Style},
     text::{Line, Span, Text},
     widgets::{Block, Borders, Paragraph},
-    Frame,
 };
 
 use crate::app::App;
@@ -51,13 +51,20 @@ pub fn render_popup(app: &mut App, frame: &mut Frame) {
             // Category header (bold, cyan)
             lines.push(Line::from(vec![
                 Span::raw("  "),
-                Span::styled(*desc, Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD)),
+                Span::styled(
+                    *desc,
+                    Style::default()
+                        .fg(Color::Cyan)
+                        .add_modifier(Modifier::BOLD),
+                ),
             ]));
         } else {
             // Key-description pair
             let key_span = Span::styled(
                 format!("  {:<15}", key),
-                Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD),
+                Style::default()
+                    .fg(Color::Yellow)
+                    .add_modifier(Modifier::BOLD),
             );
             let desc_span = Span::styled(*desc, Style::default().fg(Color::White));
             lines.push(Line::from(vec![key_span, desc_span]));
@@ -66,19 +73,19 @@ pub fn render_popup(app: &mut App, frame: &mut Frame) {
 
     // Add footer
     lines.push(Line::from(""));
-    lines.push(Line::from(vec![
-        Span::styled(
-            format!("           {}          ", HELP_FOOTER),
-            Style::default().fg(Color::DarkGray),
-        ),
-    ]));
+    lines.push(Line::from(vec![Span::styled(
+        format!("           {}          ", HELP_FOOTER),
+        Style::default().fg(Color::DarkGray),
+    )]));
 
     let help_text = Text::from(lines.clone());
 
     // Update scroll bounds based on content and viewport
     let content_height = lines.len() as u32;
     let visible_height = popup_height.saturating_sub(2); // -2 for borders
-    app.help.scroll.update_bounds(content_height, visible_height);
+    app.help
+        .scroll
+        .update_bounds(content_height, visible_height);
 
     // Create the popup widget with scroll
     let popup = Paragraph::new(help_text)

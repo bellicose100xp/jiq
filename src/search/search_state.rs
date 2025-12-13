@@ -196,8 +196,16 @@ mod tests {
         state.open();
         state.search_textarea_mut().insert_str("test");
         state.matches = vec![
-            Match { line: 0, col: 0, len: 4 },
-            Match { line: 1, col: 5, len: 4 },
+            Match {
+                line: 0,
+                col: 0,
+                len: 4,
+            },
+            Match {
+                line: 1,
+                col: 5,
+                len: 4,
+            },
         ];
         state.current_index = 1;
         state.last_query = "test".to_string();
@@ -221,9 +229,21 @@ mod tests {
     fn test_match_count_display_with_matches() {
         let mut state = SearchState::new();
         state.matches = vec![
-            Match { line: 0, col: 0, len: 4 },
-            Match { line: 1, col: 5, len: 4 },
-            Match { line: 2, col: 10, len: 4 },
+            Match {
+                line: 0,
+                col: 0,
+                len: 4,
+            },
+            Match {
+                line: 1,
+                col: 5,
+                len: 4,
+            },
+            Match {
+                line: 2,
+                col: 10,
+                len: 4,
+            },
         ];
         state.current_index = 0;
         assert_eq!(state.match_count_display(), "(1/3)");
@@ -242,9 +262,21 @@ mod tests {
     fn test_next_match_wraps() {
         let mut state = SearchState::new();
         state.matches = vec![
-            Match { line: 0, col: 0, len: 4 },
-            Match { line: 5, col: 0, len: 4 },
-            Match { line: 10, col: 0, len: 4 },
+            Match {
+                line: 0,
+                col: 0,
+                len: 4,
+            },
+            Match {
+                line: 5,
+                col: 0,
+                len: 4,
+            },
+            Match {
+                line: 10,
+                col: 0,
+                len: 4,
+            },
         ];
         state.current_index = 0;
 
@@ -269,9 +301,21 @@ mod tests {
     fn test_prev_match_wraps() {
         let mut state = SearchState::new();
         state.matches = vec![
-            Match { line: 0, col: 0, len: 4 },
-            Match { line: 5, col: 0, len: 4 },
-            Match { line: 10, col: 0, len: 4 },
+            Match {
+                line: 0,
+                col: 0,
+                len: 4,
+            },
+            Match {
+                line: 5,
+                col: 0,
+                len: 4,
+            },
+            Match {
+                line: 10,
+                col: 0,
+                len: 4,
+            },
         ];
         state.current_index = 0;
 
@@ -292,8 +336,16 @@ mod tests {
         assert!(state.current_match().is_none());
 
         state.matches = vec![
-            Match { line: 0, col: 5, len: 3 },
-            Match { line: 2, col: 10, len: 3 },
+            Match {
+                line: 0,
+                col: 5,
+                len: 3,
+            },
+            Match {
+                line: 2,
+                col: 10,
+                len: 3,
+            },
         ];
         state.current_index = 0;
 
@@ -335,8 +387,16 @@ mod tests {
         let mut state = SearchState::new();
         state.search_textarea_mut().insert_str("test");
         state.matches = vec![
-            Match { line: 0, col: 0, len: 4 },
-            Match { line: 1, col: 0, len: 4 },
+            Match {
+                line: 0,
+                col: 0,
+                len: 4,
+            },
+            Match {
+                line: 1,
+                col: 0,
+                len: 4,
+            },
         ];
         state.current_index = 1;
         state.last_query = "old".to_string();
@@ -354,7 +414,11 @@ mod tests {
         let mut state = SearchState::new();
         state.search_textarea_mut().insert_str("test");
         state.last_query = "test".to_string();
-        state.matches = vec![Match { line: 99, col: 0, len: 4 }];
+        state.matches = vec![Match {
+            line: 99,
+            col: 0,
+            len: 4,
+        }];
         state.current_index = 0;
 
         let content = "test one\ntest two";

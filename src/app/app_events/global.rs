@@ -266,7 +266,9 @@ mod tests {
     use super::*;
     use crate::editor::EditorMode;
     use crate::history::HistoryState;
-    use crate::test_utils::test_helpers::{test_app, key, key_with_mods, app_with_query, TEST_JSON};
+    use crate::test_utils::test_helpers::{
+        TEST_JSON, app_with_query, key, key_with_mods, test_app,
+    };
     use tui_textarea::CursorMove;
 
     // Helper to execute any pending debounced query
@@ -661,7 +663,7 @@ mod tests {
     fn test_query_execution_resets_scroll() {
         let mut app = app_with_query("");
         app.input.editor_mode = EditorMode::Insert;
-        app.results_scroll.offset =50;
+        app.results_scroll.offset = 50;
 
         // Insert text which should trigger query execution
         app.handle_key_event(key(KeyCode::Char('.')));
@@ -950,7 +952,7 @@ mod tests {
 
         // Set up bounds for help content (48 lines + padding, viewport 20)
         app.help.scroll.update_bounds(60, 20);
-        app.help.scroll.offset =0;
+        app.help.scroll.offset = 0;
 
         app.handle_key_event(key(KeyCode::Char('j')));
         assert_eq!(app.help.scroll.offset, 1);
@@ -960,7 +962,7 @@ mod tests {
     fn test_help_popup_scroll_k_scrolls_up() {
         let mut app = app_with_query(".");
         app.help.visible = true;
-        app.help.scroll.offset =5;
+        app.help.scroll.offset = 5;
 
         app.handle_key_event(key(KeyCode::Char('k')));
         assert_eq!(app.help.scroll.offset, 4);
@@ -973,7 +975,7 @@ mod tests {
 
         // Set up bounds for help content
         app.help.scroll.update_bounds(60, 20);
-        app.help.scroll.offset =0;
+        app.help.scroll.offset = 0;
 
         app.handle_key_event(key(KeyCode::Down));
         assert_eq!(app.help.scroll.offset, 1);
@@ -983,7 +985,7 @@ mod tests {
     fn test_help_popup_scroll_up_arrow() {
         let mut app = app_with_query(".");
         app.help.visible = true;
-        app.help.scroll.offset =5;
+        app.help.scroll.offset = 5;
 
         app.handle_key_event(key(KeyCode::Up));
         assert_eq!(app.help.scroll.offset, 4);
@@ -996,7 +998,7 @@ mod tests {
 
         // Set up bounds for help content
         app.help.scroll.update_bounds(60, 20);
-        app.help.scroll.offset =0;
+        app.help.scroll.offset = 0;
 
         app.handle_key_event(key(KeyCode::Char('J')));
         assert_eq!(app.help.scroll.offset, 10);
@@ -1006,7 +1008,7 @@ mod tests {
     fn test_help_popup_scroll_capital_k_scrolls_10() {
         let mut app = app_with_query(".");
         app.help.visible = true;
-        app.help.scroll.offset =15;
+        app.help.scroll.offset = 15;
 
         app.handle_key_event(key(KeyCode::Char('K')));
         assert_eq!(app.help.scroll.offset, 5);
@@ -1019,7 +1021,7 @@ mod tests {
 
         // Set up bounds for help content
         app.help.scroll.update_bounds(60, 20);
-        app.help.scroll.offset =0;
+        app.help.scroll.offset = 0;
 
         app.handle_key_event(key_with_mods(KeyCode::Char('d'), KeyModifiers::CONTROL));
         assert_eq!(app.help.scroll.offset, 10);
@@ -1029,7 +1031,7 @@ mod tests {
     fn test_help_popup_scroll_ctrl_u() {
         let mut app = app_with_query(".");
         app.help.visible = true;
-        app.help.scroll.offset =15;
+        app.help.scroll.offset = 15;
 
         app.handle_key_event(key_with_mods(KeyCode::Char('u'), KeyModifiers::CONTROL));
         assert_eq!(app.help.scroll.offset, 5);
@@ -1039,7 +1041,7 @@ mod tests {
     fn test_help_popup_scroll_g_jumps_to_top() {
         let mut app = app_with_query(".");
         app.help.visible = true;
-        app.help.scroll.offset =20;
+        app.help.scroll.offset = 20;
 
         app.handle_key_event(key(KeyCode::Char('g')));
         assert_eq!(app.help.scroll.offset, 0);
@@ -1052,7 +1054,7 @@ mod tests {
 
         // Set up bounds for help content
         app.help.scroll.update_bounds(60, 20);
-        app.help.scroll.offset =0;
+        app.help.scroll.offset = 0;
 
         app.handle_key_event(key(KeyCode::Char('G')));
         assert_eq!(app.help.scroll.offset, app.help.scroll.max_offset);
@@ -1062,7 +1064,7 @@ mod tests {
     fn test_help_popup_scroll_k_saturates_at_zero() {
         let mut app = app_with_query(".");
         app.help.visible = true;
-        app.help.scroll.offset =0;
+        app.help.scroll.offset = 0;
 
         app.handle_key_event(key(KeyCode::Char('k')));
         assert_eq!(app.help.scroll.offset, 0);
@@ -1072,7 +1074,7 @@ mod tests {
     fn test_help_popup_close_resets_scroll() {
         let mut app = app_with_query(".");
         app.help.visible = true;
-        app.help.scroll.offset =10;
+        app.help.scroll.offset = 10;
 
         app.handle_key_event(key(KeyCode::Esc));
         assert!(!app.help.visible);
@@ -1086,7 +1088,7 @@ mod tests {
 
         // Set up bounds for help content
         app.help.scroll.update_bounds(60, 20);
-        app.help.scroll.offset =0;
+        app.help.scroll.offset = 0;
 
         app.handle_key_event(key(KeyCode::PageDown));
         assert_eq!(app.help.scroll.offset, 10);
@@ -1096,7 +1098,7 @@ mod tests {
     fn test_help_popup_scroll_page_up() {
         let mut app = app_with_query(".");
         app.help.visible = true;
-        app.help.scroll.offset =15;
+        app.help.scroll.offset = 15;
 
         app.handle_key_event(key(KeyCode::PageUp));
         assert_eq!(app.help.scroll.offset, 5);
@@ -1106,7 +1108,7 @@ mod tests {
     fn test_help_popup_scroll_home_jumps_to_top() {
         let mut app = app_with_query(".");
         app.help.visible = true;
-        app.help.scroll.offset =20;
+        app.help.scroll.offset = 20;
 
         app.handle_key_event(key(KeyCode::Home));
         assert_eq!(app.help.scroll.offset, 0);
@@ -1119,7 +1121,7 @@ mod tests {
 
         // Set up bounds for help content
         app.help.scroll.update_bounds(60, 20);
-        app.help.scroll.offset =0;
+        app.help.scroll.offset = 0;
 
         app.handle_key_event(key(KeyCode::End));
         assert_eq!(app.help.scroll.offset, app.help.scroll.max_offset);
@@ -1136,9 +1138,10 @@ mod tests {
         app.input.editor_mode = EditorMode::Insert;
         app.focus = Focus::ResultsPane; // Focus on RESULTS, not input
 
-        let suggestions = vec![
-            crate::autocomplete::Suggestion::new(".name", crate::autocomplete::SuggestionType::Field),
-        ];
+        let suggestions = vec![crate::autocomplete::Suggestion::new(
+            ".name",
+            crate::autocomplete::SuggestionType::Field,
+        )];
         app.autocomplete.update_suggestions(suggestions);
         assert!(app.autocomplete.is_visible());
 
@@ -1201,15 +1204,22 @@ mod tests {
         // Validate base state
         // .na returns null, so base_query stays at "." (from App::new())
         use crate::query::ResultType;
-        assert_eq!(app.query.base_query_for_suggestions, Some(".".to_string()),
-                   "base_query should remain '.' since .na returns null");
-        assert_eq!(app.query.base_type_for_suggestions, Some(ResultType::Object),
-                   "base_type should be Object (root object)");
+        assert_eq!(
+            app.query.base_query_for_suggestions,
+            Some(".".to_string()),
+            "base_query should remain '.' since .na returns null"
+        );
+        assert_eq!(
+            app.query.base_type_for_suggestions,
+            Some(ResultType::Object),
+            "base_type should be Object (root object)"
+        );
 
         // Suggestion should be "name" (no leading dot) since after Dot (CharType::Dot)
-        let suggestions = vec![
-            crate::autocomplete::Suggestion::new("name", crate::autocomplete::SuggestionType::Field),
-        ];
+        let suggestions = vec![crate::autocomplete::Suggestion::new(
+            "name",
+            crate::autocomplete::SuggestionType::Field,
+        )];
         app.autocomplete.update_suggestions(suggestions);
 
         app.handle_key_event(key(KeyCode::Tab));
@@ -1228,17 +1238,24 @@ mod tests {
 
         // Validate base state was set up by app_with_query
         use crate::query::ResultType;
-        assert_eq!(app.query.base_query_for_suggestions, Some(".services".to_string()),
-                   "base_query should be '.services'");
-        assert_eq!(app.query.base_type_for_suggestions, Some(ResultType::ArrayOfObjects),
-                   "base_type should be ArrayOfObjects");
+        assert_eq!(
+            app.query.base_query_for_suggestions,
+            Some(".services".to_string()),
+            "base_query should be '.services'"
+        );
+        assert_eq!(
+            app.query.base_type_for_suggestions,
+            Some(ResultType::ArrayOfObjects),
+            "base_type should be ArrayOfObjects"
+        );
 
         // Verify cursor is at end
         assert_eq!(app.input.textarea.cursor().1, 9); // After ".services"
 
-        let suggestions = vec![
-            crate::autocomplete::Suggestion::new("[].name", crate::autocomplete::SuggestionType::Field),
-        ];
+        let suggestions = vec![crate::autocomplete::Suggestion::new(
+            "[].name",
+            crate::autocomplete::SuggestionType::Field,
+        )];
         app.autocomplete.update_suggestions(suggestions);
 
         app.handle_key_event(key(KeyCode::Tab));
@@ -1258,15 +1275,22 @@ mod tests {
 
         // Validate base state
         use crate::query::ResultType;
-        assert_eq!(app.query.base_query_for_suggestions, Some(".services".to_string()));
-        assert_eq!(app.query.base_type_for_suggestions, Some(ResultType::ArrayOfObjects));
+        assert_eq!(
+            app.query.base_query_for_suggestions,
+            Some(".services".to_string())
+        );
+        assert_eq!(
+            app.query.base_type_for_suggestions,
+            Some(ResultType::ArrayOfObjects)
+        );
 
         // Now add the partial to textarea
         app.input.textarea.insert_str(".s");
 
-        let suggestions = vec![
-            crate::autocomplete::Suggestion::new("[].serviceArn", crate::autocomplete::SuggestionType::Field),
-        ];
+        let suggestions = vec![crate::autocomplete::Suggestion::new(
+            "[].serviceArn",
+            crate::autocomplete::SuggestionType::Field,
+        )];
         app.autocomplete.update_suggestions(suggestions);
 
         app.handle_key_event(key(KeyCode::Tab));
@@ -1285,18 +1309,25 @@ mod tests {
 
         // Validate base state
         use crate::query::ResultType;
-        assert_eq!(app.query.base_query_for_suggestions, Some(".items[].tags".to_string()),
-                   "base_query should be '.items[].tags'");
-        assert_eq!(app.query.base_type_for_suggestions, Some(ResultType::ArrayOfObjects),
-                   "base_type should be ArrayOfObjects");
+        assert_eq!(
+            app.query.base_query_for_suggestions,
+            Some(".items[].tags".to_string()),
+            "base_query should be '.items[].tags'"
+        );
+        assert_eq!(
+            app.query.base_type_for_suggestions,
+            Some(ResultType::ArrayOfObjects),
+            "base_type should be ArrayOfObjects"
+        );
 
         // User types "." to trigger autocomplete
         app.input.textarea.insert_char('.');
 
         // Suggestion is "[].name" (no leading dot since after NoOp 's')
-        let suggestions = vec![
-            crate::autocomplete::Suggestion::new("[].name", crate::autocomplete::SuggestionType::Field),
-        ];
+        let suggestions = vec![crate::autocomplete::Suggestion::new(
+            "[].name",
+            crate::autocomplete::SuggestionType::Field,
+        )];
         app.autocomplete.update_suggestions(suggestions);
 
         app.handle_key_event(key(KeyCode::Tab));
@@ -1401,9 +1432,10 @@ mod tests {
         app.input.editor_mode = EditorMode::Insert;
         app.focus = Focus::InputField;
 
-        let suggestions = vec![
-            crate::autocomplete::Suggestion::new("name", crate::autocomplete::SuggestionType::Field),
-        ];
+        let suggestions = vec![crate::autocomplete::Suggestion::new(
+            "name",
+            crate::autocomplete::SuggestionType::Field,
+        )];
         app.autocomplete.update_suggestions(suggestions);
         assert!(app.autocomplete.is_visible());
 
@@ -1423,9 +1455,10 @@ mod tests {
         app.input.editor_mode = EditorMode::Insert;
         app.focus = Focus::InputField;
 
-        let suggestions = vec![
-            crate::autocomplete::Suggestion::new("name", crate::autocomplete::SuggestionType::Field),
-        ];
+        let suggestions = vec![crate::autocomplete::Suggestion::new(
+            "name",
+            crate::autocomplete::SuggestionType::Field,
+        )];
         app.autocomplete.update_suggestions(suggestions);
         assert!(app.autocomplete.is_visible());
 
@@ -1461,9 +1494,10 @@ mod tests {
         app.input.editor_mode = EditorMode::Insert;
         app.focus = Focus::InputField;
 
-        let suggestions = vec![
-            crate::autocomplete::Suggestion::new("name", crate::autocomplete::SuggestionType::Field),
-        ];
+        let suggestions = vec![crate::autocomplete::Suggestion::new(
+            "name",
+            crate::autocomplete::SuggestionType::Field,
+        )];
         app.autocomplete.update_suggestions(suggestions);
         assert!(app.autocomplete.is_visible());
 
@@ -1483,9 +1517,10 @@ mod tests {
         app.input.editor_mode = EditorMode::Insert;
         app.focus = Focus::InputField;
 
-        let suggestions = vec![
-            crate::autocomplete::Suggestion::new("name", crate::autocomplete::SuggestionType::Field),
-        ];
+        let suggestions = vec![crate::autocomplete::Suggestion::new(
+            "name",
+            crate::autocomplete::SuggestionType::Field,
+        )];
         app.autocomplete.update_suggestions(suggestions);
         assert!(app.autocomplete.is_visible());
 

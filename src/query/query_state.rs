@@ -25,19 +25,19 @@ pub enum ResultType {
 /// Type of character that precedes the trigger character
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum CharType {
-    PipeOperator,    // |
-    Semicolon,       // ;
-    Comma,           // ,
-    Colon,           // :
-    OpenParen,       // (
-    OpenBracket,     // [
-    OpenBrace,       // {
-    CloseBracket,    // ]
-    CloseBrace,      // }
-    CloseParen,      // )
-    QuestionMark,    // ?
-    Dot,             // .
-    NoOp,            // Regular identifier character
+    PipeOperator, // |
+    Semicolon,    // ;
+    Comma,        // ,
+    Colon,        // :
+    OpenParen,    // (
+    OpenBracket,  // [
+    OpenBrace,    // {
+    CloseBracket, // ]
+    CloseBrace,   // }
+    CloseParen,   // )
+    QuestionMark, // ?
+    Dot,          // .
+    NoOp,         // Regular identifier character
 }
 
 /// Query execution state
@@ -52,7 +52,6 @@ pub struct QueryState {
     /// Type of the last successful result (for type-aware suggestions)
     pub base_type_for_suggestions: Option<ResultType>,
 }
-
 
 impl QueryState {
     /// Create a new QueryState with the given JSON input
@@ -241,12 +240,11 @@ impl QueryState {
     pub fn line_count(&self) -> u32 {
         match &self.result {
             Ok(result) => result.lines().count() as u32,
-            Err(_) => {
-                self.last_successful_result
-                    .as_ref()
-                    .map(|r| r.lines().count() as u32)
-                    .unwrap_or(0)
-            }
+            Err(_) => self
+                .last_successful_result
+                .as_ref()
+                .map(|r| r.lines().count() as u32)
+                .unwrap_or(0),
         }
     }
 
@@ -264,7 +262,6 @@ impl QueryState {
             .min(u16::MAX as usize) as u16
     }
 }
-
 
 #[cfg(test)]
 mod tests {
@@ -363,7 +360,10 @@ mod tests {
 
         // Both caches should NOT be updated - should still have the root object
         assert_eq!(state.last_successful_result, initial_cache);
-        assert_eq!(state.last_successful_result_unformatted, initial_unformatted);
+        assert_eq!(
+            state.last_successful_result_unformatted,
+            initial_unformatted
+        );
 
         // Execute a valid query that returns data
         state.execute(".name");
@@ -372,8 +372,17 @@ mod tests {
 
         // Both caches should now be updated
         assert_ne!(state.last_successful_result, initial_cache);
-        assert_ne!(state.last_successful_result_unformatted, initial_unformatted);
-        assert!(state.last_successful_result.as_ref().unwrap().contains("test"));
+        assert_ne!(
+            state.last_successful_result_unformatted,
+            initial_unformatted
+        );
+        assert!(
+            state
+                .last_successful_result
+                .as_ref()
+                .unwrap()
+                .contains("test")
+        );
 
         // Unformatted should not have ANSI codes
         let unformatted = state.last_successful_result_unformatted.as_ref().unwrap();
@@ -474,7 +483,10 @@ mod tests {
     #[test]
     fn test_detect_array_of_objects() {
         let result = r#"[{"id": 1, "name": "a"}, {"id": 2, "name": "b"}]"#;
-        assert_eq!(QueryState::detect_result_type(result), ResultType::ArrayOfObjects);
+        assert_eq!(
+            QueryState::detect_result_type(result),
+            ResultType::ArrayOfObjects
+        );
     }
 
     #[test]
@@ -501,7 +513,10 @@ mod tests {
         let result = r#"{"id": 1, "name": "a"}
 {"id": 2, "name": "b"}
 {"id": 3, "name": "c"}"#;
-        assert_eq!(QueryState::detect_result_type(result), ResultType::DestructuredObjects);
+        assert_eq!(
+            QueryState::detect_result_type(result),
+            ResultType::DestructuredObjects
+        );
     }
 
     #[test]
@@ -515,7 +530,10 @@ mod tests {
   "id": 2,
   "name": "b"
 }"#;
-        assert_eq!(QueryState::detect_result_type(result), ResultType::DestructuredObjects);
+        assert_eq!(
+            QueryState::detect_result_type(result),
+            ResultType::DestructuredObjects
+        );
     }
 
     #[test]
@@ -669,7 +687,10 @@ mod tests {
     #[test]
     fn test_normalize_strips_pipe_with_identity() {
         // ".services | ." should strip " | ."
-        assert_eq!(QueryState::normalize_base_query(".services | ."), ".services");
+        assert_eq!(
+            QueryState::normalize_base_query(".services | ."),
+            ".services"
+        );
         assert_eq!(QueryState::normalize_base_query(".items[] | ."), ".items[]");
     }
 
@@ -684,8 +705,14 @@ mod tests {
     fn test_normalize_strips_trailing_dot() {
         // Trailing dot (incomplete field access)
         assert_eq!(QueryState::normalize_base_query(".services."), ".services");
-        assert_eq!(QueryState::normalize_base_query(".services[]."), ".services[]");
-        assert_eq!(QueryState::normalize_base_query(".user.profile."), ".user.profile");
+        assert_eq!(
+            QueryState::normalize_base_query(".services[]."),
+            ".services[]"
+        );
+        assert_eq!(
+            QueryState::normalize_base_query(".user.profile."),
+            ".user.profile"
+        );
     }
 
     #[test]
@@ -706,7 +733,10 @@ mod tests {
     fn test_normalize_preserves_complete_queries() {
         // Complete queries should not be modified
         assert_eq!(QueryState::normalize_base_query(".services"), ".services");
-        assert_eq!(QueryState::normalize_base_query(".services[]"), ".services[]");
+        assert_eq!(
+            QueryState::normalize_base_query(".services[]"),
+            ".services[]"
+        );
         assert_eq!(QueryState::normalize_base_query(".user.name"), ".user.name");
     }
 
@@ -714,6 +744,9 @@ mod tests {
     fn test_normalize_handles_complex_patterns() {
         // Complex incomplete patterns
         assert_eq!(QueryState::normalize_base_query(".a | .b | ."), ".a | .b");
-        assert_eq!(QueryState::normalize_base_query(".services[].config | ."), ".services[].config");
+        assert_eq!(
+            QueryState::normalize_base_query(".services[].config | ."),
+            ".services[].config"
+        );
     }
 }

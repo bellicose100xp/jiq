@@ -61,7 +61,6 @@ impl InputState {
             new_scroll = cursor_col + 1 - viewport_width;
         }
 
-
         // Phase 2: reduce scroll if text is shorter than visible area
         // (handles deletion case - scroll left to fill available space)
         if text_length < new_scroll + viewport_width {
@@ -123,7 +122,6 @@ mod tests {
         );
     }
 
-
     /// Helper: Simulate the actual visible text that would be rendered
     /// Returns the text portion that should be visible based on scroll_offset
     fn get_visible_text(state: &InputState, viewport_width: usize) -> String {
@@ -179,7 +177,6 @@ mod tests {
         state.scroll_offset = 10;
         state.calculate_scroll_offset(viewport_width);
         assert_eq!(state.scroll_offset, 10); // Cursor visible, no change
-
 
         // Delete 4 chars forward (x key in vim deletes forward)
         for _ in 0..4 {
@@ -237,7 +234,9 @@ mod tests {
 
             // Move to target position
             for _ in 0..target_pos {
-                state.textarea.move_cursor(tui_textarea::CursorMove::Forward);
+                state
+                    .textarea
+                    .move_cursor(tui_textarea::CursorMove::Forward);
             }
 
             let cursor_col = state.textarea.cursor().1;
@@ -254,7 +253,6 @@ mod tests {
             );
         }
     }
-
 
     #[test]
     fn test_scroll_offset_unicode_chars() {
@@ -330,7 +328,6 @@ mod tests {
         assert_eq!(state.textarea.cursor().1, 10);
         assert_eq!(state.scroll_offset, 1);
     }
-
 
     // ========== Synchronization verification tests ==========
     // These tests verify that scroll_offset stays synchronized with cursor position
@@ -418,15 +415,12 @@ mod tests {
         }
     }
 
-
     #[test]
     fn test_sync_visible_text_contains_cursor() {
         let mut state = InputState::new();
         let viewport_width = 10;
 
-        state
-            .textarea
-            .insert_str("0123456789ABCDEFGHIJKLMNOP");
+        state.textarea.insert_str("0123456789ABCDEFGHIJKLMNOP");
         state.calculate_scroll_offset(viewport_width);
 
         // Move to various positions and verify visible text is correct
@@ -510,7 +504,6 @@ mod tests {
             );
         }
     }
-
 
     #[test]
     fn test_sync_deletion_middle_maintains_visibility() {

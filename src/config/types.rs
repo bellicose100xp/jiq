@@ -45,15 +45,13 @@ impl Default for TooltipConfig {
 }
 
 /// Root configuration structure
-#[derive(Debug, Clone, Deserialize)]
-#[derive(Default)]
+#[derive(Debug, Clone, Deserialize, Default)]
 pub struct Config {
     #[serde(default)]
     pub clipboard: ClipboardConfig,
     #[serde(default)]
     pub tooltip: TooltipConfig,
 }
-
 
 #[cfg(test)]
 mod tests {
@@ -75,12 +73,12 @@ backend = "{}"
 "#, backend);
 
             let config: Result<Config, _> = toml::from_str(&toml_content);
-            
+
             // Should parse successfully
             prop_assert!(config.is_ok(), "Failed to parse valid backend: {}", backend);
-            
+
             let config = config.unwrap();
-            
+
             // Should match the expected backend
             let expected = match backend {
                 "auto" => ClipboardBackend::Auto,
@@ -88,7 +86,7 @@ backend = "{}"
                 "osc52" => ClipboardBackend::Osc52,
                 _ => unreachable!(),
             };
-            
+
             prop_assert_eq!(config.clipboard.backend, expected);
         }
     }
@@ -120,12 +118,12 @@ backend = "system"
             };
 
             let config: Result<Config, _> = toml::from_str(&toml_content);
-            
+
             // Should always parse successfully
             prop_assert!(config.is_ok(), "Failed to parse config with missing fields");
-            
+
             let config = config.unwrap();
-            
+
             // When fields are missing, should use defaults
             if !include_clipboard_section || !include_backend_field {
                 prop_assert_eq!(

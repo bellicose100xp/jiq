@@ -3,11 +3,11 @@
 //! This module handles rendering of the query input field.
 
 use ratatui::{
+    Frame,
     layout::{Alignment, Rect},
     style::{Color, Style},
     text::{Line, Span},
     widgets::{Block, Borders, Paragraph},
-    Frame,
 };
 
 use crate::app::{App, Focus};
@@ -23,9 +23,9 @@ pub fn render_field(app: &mut App, frame: &mut Frame, area: Rect) {
 
     // Choose color based on mode
     let mode_color = match app.input.editor_mode {
-        EditorMode::Insert => Color::Cyan,        // Cyan for Insert
-        EditorMode::Normal => Color::Yellow,      // Yellow for Normal
-        EditorMode::Operator(_) => Color::Green,  // Green for Operator
+        EditorMode::Insert => Color::Cyan,       // Cyan for Insert
+        EditorMode::Normal => Color::Yellow,     // Yellow for Normal
+        EditorMode::Operator(_) => Color::Green, // Green for Operator
     };
 
     // Set border color - mode color when focused, gray when unfocused
@@ -101,11 +101,8 @@ pub fn render_field(app: &mut App, frame: &mut Frame, area: Rect) {
         let highlighted_spans = JqHighlighter::highlight(query);
 
         // Extract visible portion based on scroll offset
-        let visible_spans = extract_visible_spans(
-            &highlighted_spans,
-            scroll_offset,
-            viewport_width,
-        );
+        let visible_spans =
+            extract_visible_spans(&highlighted_spans, scroll_offset, viewport_width);
 
         // Insert cursor at the correct position (relative to visible area)
         let cursor_in_viewport = cursor_col.saturating_sub(scroll_offset);

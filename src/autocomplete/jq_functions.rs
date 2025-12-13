@@ -35,66 +35,125 @@ impl JqFunction {
 /// This list contains the authoritative metadata for each function
 pub static JQ_FUNCTION_METADATA: &[JqFunction] = &[
     // ===== Functions requiring arguments (needs_parens = true) =====
-    
+
     // Array/filter functions with arguments
     JqFunction::new("map", "map(expr)", "Apply expression to each element", true),
-    JqFunction::new("select", "select(expr)", "Filter elements by condition", true),
+    JqFunction::new(
+        "select",
+        "select(expr)",
+        "Filter elements by condition",
+        true,
+    ),
     JqFunction::new("sort_by", "sort_by(expr)", "Sort array by expression", true),
-    JqFunction::new("group_by", "group_by(expr)", "Group array elements by expression", true),
-    JqFunction::new("unique_by", "unique_by(expr)", "Remove duplicates by expression", true),
+    JqFunction::new(
+        "group_by",
+        "group_by(expr)",
+        "Group array elements by expression",
+        true,
+    ),
+    JqFunction::new(
+        "unique_by",
+        "unique_by(expr)",
+        "Remove duplicates by expression",
+        true,
+    ),
     JqFunction::new("min_by", "min_by(expr)", "Minimum by expression", true),
     JqFunction::new("max_by", "max_by(expr)", "Maximum by expression", true),
     JqFunction::new("limit", "limit(num; expr)", "Limit output count", true),
     JqFunction::new("nth", "nth(num)", "Nth element", true),
     JqFunction::new("range", "range(num)", "Generate range", true),
-    JqFunction::new("until", "until(cond; update)", "Repeat until condition", true),
-    JqFunction::new("while", "while(cond; update)", "Repeat while condition", true),
+    JqFunction::new(
+        "until",
+        "until(cond; update)",
+        "Repeat until condition",
+        true,
+    ),
+    JqFunction::new(
+        "while",
+        "while(cond; update)",
+        "Repeat while condition",
+        true,
+    ),
     JqFunction::new("recurse", "recurse(expr)", "Apply recursively", true),
-    JqFunction::new("walk", "walk(expr)", "Apply to all values recursively", true),
-    JqFunction::new("with_entries", "with_entries(expr)", "Transform object entries", true),
-    
+    JqFunction::new(
+        "walk",
+        "walk(expr)",
+        "Apply to all values recursively",
+        true,
+    ),
+    JqFunction::new(
+        "with_entries",
+        "with_entries(expr)",
+        "Transform object entries",
+        true,
+    ),
     // Object functions with arguments
     JqFunction::new("has", "has(key)", "Check if key exists", true),
     JqFunction::new("del", "del(path)", "Delete key/path", true),
     JqFunction::new("getpath", "getpath(path)", "Get value at path", true),
     JqFunction::new("setpath", "setpath(path; val)", "Set value at path", true),
     JqFunction::new("delpaths", "delpaths(paths)", "Delete multiple paths", true),
-    
     // String functions with arguments
     JqFunction::new("split", "split(str)", "Split string by delimiter", true),
     JqFunction::new("join", "join(str)", "Join array with delimiter", true),
     JqFunction::new("ltrimstr", "ltrimstr(str)", "Remove prefix string", true),
     JqFunction::new("rtrimstr", "rtrimstr(str)", "Remove suffix string", true),
-    JqFunction::new("startswith", "startswith(str)", "Check if starts with value", true),
-    JqFunction::new("endswith", "endswith(str)", "Check if ends with value", true),
+    JqFunction::new(
+        "startswith",
+        "startswith(str)",
+        "Check if starts with value",
+        true,
+    ),
+    JqFunction::new(
+        "endswith",
+        "endswith(str)",
+        "Check if ends with value",
+        true,
+    ),
     JqFunction::new("test", "test(regex)", "Test regex match", true),
     JqFunction::new("match", "match(regex)", "Match regex", true),
     JqFunction::new("capture", "capture(regex)", "Capture regex groups", true),
     JqFunction::new("scan", "scan(regex)", "Scan for all regex matches", true),
     JqFunction::new("splits", "splits(regex)", "Split by regex", true),
     JqFunction::new("sub", "sub(regex; str)", "Replace first regex match", true),
-    JqFunction::new("gsub", "gsub(regex; str)", "Replace all regex matches", true),
-    
+    JqFunction::new(
+        "gsub",
+        "gsub(regex; str)",
+        "Replace all regex matches",
+        true,
+    ),
     // Comparison/search functions with arguments
     JqFunction::new("contains", "contains(val)", "Check if contains value", true),
-    JqFunction::new("inside", "inside(val)", "Check if element is inside array", true),
+    JqFunction::new(
+        "inside",
+        "inside(val)",
+        "Check if element is inside array",
+        true,
+    ),
     JqFunction::new("index", "index(val)", "Find first index of value", true),
     JqFunction::new("rindex", "rindex(val)", "Find last index of value", true),
     JqFunction::new("indices", "indices(val)", "Find all indices of value", true),
-    
     // Date functions with arguments
     JqFunction::new("strftime", "strftime(fmt)", "Format timestamp", true),
     JqFunction::new("strptime", "strptime(fmt)", "Parse timestamp", true),
-    
     // Date functions without arguments (ISO 8601 only)
-    JqFunction::new("fromdate", "fromdate", "Parse ISO 8601 date to timestamp", false),
+    JqFunction::new(
+        "fromdate",
+        "fromdate",
+        "Parse ISO 8601 date to timestamp",
+        false,
+    ),
     JqFunction::new("todate", "todate", "Format timestamp as ISO 8601", false),
-    
     // ===== Functions not requiring arguments (needs_parens = false) =====
-    
+
     // Array functions without arguments
     JqFunction::new("keys", "keys", "Get object keys or array indices", false),
-    JqFunction::new("keys_unsorted", "keys_unsorted", "Get object keys (unsorted)", false),
+    JqFunction::new(
+        "keys_unsorted",
+        "keys_unsorted",
+        "Get object keys (unsorted)",
+        false,
+    ),
     JqFunction::new("values", "values", "Get all values", false),
     JqFunction::new("sort", "sort", "Sort array", false),
     JqFunction::new("reverse", "reverse", "Reverse array", false),
@@ -107,13 +166,21 @@ pub static JQ_FUNCTION_METADATA: &[JqFunction] = &[
     JqFunction::new("min", "min", "Minimum value", false),
     JqFunction::new("max", "max", "Maximum value", false),
     JqFunction::new("transpose", "transpose", "Transpose matrix", false),
-    
     // Object functions without arguments
-    JqFunction::new("to_entries", "to_entries", "Convert object to key-value pairs", false),
-    JqFunction::new("from_entries", "from_entries", "Convert key-value pairs to object", false),
+    JqFunction::new(
+        "to_entries",
+        "to_entries",
+        "Convert object to key-value pairs",
+        false,
+    ),
+    JqFunction::new(
+        "from_entries",
+        "from_entries",
+        "Convert key-value pairs to object",
+        false,
+    ),
     JqFunction::new("paths", "paths", "Get all paths (leaf paths)", false),
     JqFunction::new("leaf_paths", "leaf_paths", "Get all leaf paths", false),
-    
     // Type functions without arguments
     JqFunction::new("type", "type", "Get value type", false),
     JqFunction::new("tostring", "tostring", "Convert to string", false),
@@ -126,21 +193,29 @@ pub static JQ_FUNCTION_METADATA: &[JqFunction] = &[
     JqFunction::new("strings", "strings", "Select strings", false),
     JqFunction::new("nulls", "nulls", "Select nulls", false),
     JqFunction::new("scalars", "scalars", "Select non-iterable values", false),
-    
     // Math functions without arguments
     JqFunction::new("floor", "floor", "Round down", false),
     JqFunction::new("ceil", "ceil", "Round up", false),
     JqFunction::new("round", "round", "Round to nearest", false),
     JqFunction::new("sqrt", "sqrt", "Square root", false),
     JqFunction::new("abs", "abs", "Absolute value", false),
-    
     // Other functions without arguments
     JqFunction::new("now", "now", "Current Unix timestamp", false),
     JqFunction::new("empty", "empty", "Produce no output", false),
     JqFunction::new("error", "error", "Raise error", false),
     JqFunction::new("not", "not", "Logical NOT", false),
-    JqFunction::new("ascii_downcase", "ascii_downcase", "Convert to lowercase", false),
-    JqFunction::new("ascii_upcase", "ascii_upcase", "Convert to uppercase", false),
+    JqFunction::new(
+        "ascii_downcase",
+        "ascii_downcase",
+        "Convert to lowercase",
+        false,
+    ),
+    JqFunction::new(
+        "ascii_upcase",
+        "ascii_upcase",
+        "Convert to uppercase",
+        false,
+    ),
     JqFunction::new("env", "env", "Access environment variables", false),
 ];
 
@@ -201,8 +276,7 @@ static JQ_BUILTINS: LazyLock<Vec<Suggestion>> = LazyLock::new(|| {
 
     // Conditional/logic keywords
     builtins.extend(vec![
-        Suggestion::new("if", SuggestionType::Function)
-            .with_description("Conditional expression"),
+        Suggestion::new("if", SuggestionType::Function).with_description("Conditional expression"),
         Suggestion::new("then", SuggestionType::Function).with_description("Then clause"),
         Suggestion::new("else", SuggestionType::Function).with_description("Else clause"),
         Suggestion::new("elif", SuggestionType::Function).with_description("Else-if clause"),
@@ -213,28 +287,21 @@ static JQ_BUILTINS: LazyLock<Vec<Suggestion>> = LazyLock::new(|| {
     builtins.extend(vec![
         Suggestion::new("in", SuggestionType::Function)
             .with_description("Check if value is in object"),
-        Suggestion::new("as", SuggestionType::Function)
-            .with_description("Bind variable"),
+        Suggestion::new("as", SuggestionType::Function).with_description("Bind variable"),
         Suggestion::new("repeat", SuggestionType::Function)
             .with_description("Repeat expression infinitely"),
-        Suggestion::new("$ENV", SuggestionType::Function)
-            .with_description("Environment object"),
+        Suggestion::new("$ENV", SuggestionType::Function).with_description("Environment object"),
     ]);
 
     // Assignment/update operators
     builtins.extend(vec![
-        Suggestion::new("|=", SuggestionType::Operator)
-            .with_description("Update assignment"),
-        Suggestion::new("+=", SuggestionType::Operator)
-            .with_description("Addition assignment"),
-        Suggestion::new("-=", SuggestionType::Operator)
-            .with_description("Subtraction assignment"),
+        Suggestion::new("|=", SuggestionType::Operator).with_description("Update assignment"),
+        Suggestion::new("+=", SuggestionType::Operator).with_description("Addition assignment"),
+        Suggestion::new("-=", SuggestionType::Operator).with_description("Subtraction assignment"),
         Suggestion::new("*=", SuggestionType::Operator)
             .with_description("Multiplication assignment"),
-        Suggestion::new("/=", SuggestionType::Operator)
-            .with_description("Division assignment"),
-        Suggestion::new("//=", SuggestionType::Operator)
-            .with_description("Alternative assignment"),
+        Suggestion::new("/=", SuggestionType::Operator).with_description("Division assignment"),
+        Suggestion::new("//=", SuggestionType::Operator).with_description("Alternative assignment"),
     ]);
 
     builtins
@@ -303,19 +370,56 @@ mod tests {
     #[test]
     fn test_metadata_list_not_empty() {
         let metadata = get_all_function_metadata();
-        assert!(!metadata.is_empty(), "JQ_FUNCTION_METADATA should not be empty");
+        assert!(
+            !metadata.is_empty(),
+            "JQ_FUNCTION_METADATA should not be empty"
+        );
     }
 
     #[test]
     fn test_functions_requiring_args_have_needs_parens_true() {
         // Verify specific functions from requirements 3.2 have needs_parens = true
         let functions_requiring_args = [
-            "map", "select", "sort_by", "group_by", "unique_by", "min_by", "max_by",
-            "has", "contains", "test", "match", "split", "join", "sub", "gsub",
-            "with_entries", "recurse", "walk", "until", "while", "limit", "nth", "range",
-            "getpath", "setpath", "delpaths", "del", "ltrimstr", "rtrimstr",
-            "startswith", "endswith", "inside", "index", "rindex", "indices",
-            "capture", "scan", "splits", "strftime", "strptime",
+            "map",
+            "select",
+            "sort_by",
+            "group_by",
+            "unique_by",
+            "min_by",
+            "max_by",
+            "has",
+            "contains",
+            "test",
+            "match",
+            "split",
+            "join",
+            "sub",
+            "gsub",
+            "with_entries",
+            "recurse",
+            "walk",
+            "until",
+            "while",
+            "limit",
+            "nth",
+            "range",
+            "getpath",
+            "setpath",
+            "delpaths",
+            "del",
+            "ltrimstr",
+            "rtrimstr",
+            "startswith",
+            "endswith",
+            "inside",
+            "index",
+            "rindex",
+            "indices",
+            "capture",
+            "scan",
+            "splits",
+            "strftime",
+            "strptime",
         ];
 
         for name in functions_requiring_args {
@@ -337,12 +441,49 @@ mod tests {
     fn test_functions_not_requiring_args_have_needs_parens_false() {
         // Verify specific functions from requirements 3.3 have needs_parens = false
         let functions_not_requiring_args = [
-            "keys", "keys_unsorted", "values", "sort", "reverse", "unique", "flatten",
-            "add", "length", "first", "last", "min", "max", "type", "tostring", "tonumber",
-            "floor", "ceil", "round", "sqrt", "abs", "now", "empty", "error", "not",
-            "ascii_downcase", "ascii_upcase", "arrays", "objects", "iterables", "booleans",
-            "numbers", "strings", "nulls", "scalars", "to_entries", "from_entries",
-            "paths", "leaf_paths", "transpose", "env", "fromdate", "todate",
+            "keys",
+            "keys_unsorted",
+            "values",
+            "sort",
+            "reverse",
+            "unique",
+            "flatten",
+            "add",
+            "length",
+            "first",
+            "last",
+            "min",
+            "max",
+            "type",
+            "tostring",
+            "tonumber",
+            "floor",
+            "ceil",
+            "round",
+            "sqrt",
+            "abs",
+            "now",
+            "empty",
+            "error",
+            "not",
+            "ascii_downcase",
+            "ascii_upcase",
+            "arrays",
+            "objects",
+            "iterables",
+            "booleans",
+            "numbers",
+            "strings",
+            "nulls",
+            "scalars",
+            "to_entries",
+            "from_entries",
+            "paths",
+            "leaf_paths",
+            "transpose",
+            "env",
+            "fromdate",
+            "todate",
         ];
 
         for name in functions_not_requiring_args {

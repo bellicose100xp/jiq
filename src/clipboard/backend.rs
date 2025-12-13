@@ -60,9 +60,7 @@ mod tests {
         // System clipboard may or may not be available depending on environment
         let result = copy_to_clipboard("test", ClipboardBackend::System);
         // We just verify it returns a valid result type
-        assert!(
-            result.is_ok() || matches!(result, Err(ClipboardError::SystemUnavailable))
-        );
+        assert!(result.is_ok() || matches!(result, Err(ClipboardError::SystemUnavailable)));
     }
 
     #[test]

@@ -3,7 +3,7 @@
 //! Provides reusable functions for positioning and rendering popup windows
 //! like autocomplete suggestions, history, help, and error overlays.
 
-use ratatui::{layout::Rect, widgets::Clear, Frame};
+use ratatui::{Frame, layout::Rect, widgets::Clear};
 
 /// Calculate a centered popup rectangle within the given frame area
 ///

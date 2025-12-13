@@ -1,18 +1,22 @@
+pub mod autocomplete_render;
+pub mod autocomplete_state;
 mod brace_tracker;
 mod context;
 pub mod insertion;
 pub mod jq_functions;
-pub mod autocomplete_render;
 mod result_analyzer;
 mod scan_state;
-pub mod autocomplete_state;
 
 pub use brace_tracker::BraceTracker;
 
-pub use context::{analyze_context, find_char_before_field_access, get_suggestions, SuggestionContext};
+pub use context::{
+    SuggestionContext, analyze_context, find_char_before_field_access, get_suggestions,
+};
 // JsonFieldType is part of public API for Suggestion struct
 #[allow(unused_imports)]
-pub use autocomplete_state::{AutocompleteState, JsonFieldType, Suggestion, SuggestionType, update_suggestions_from_app};
+pub use autocomplete_state::{
+    AutocompleteState, JsonFieldType, Suggestion, SuggestionType, update_suggestions_from_app,
+};
 pub use insertion::insert_suggestion_from_app;
 
 use crate::query::ResultType;
