@@ -1,5 +1,7 @@
 # jiq — Interactive JSON query tool with real-time output
 
+[![codecov](https://codecov.io/github/bellicose100xp/jiq/graph/badge.svg?token=2NOB7SCD6R)](https://codecov.io/github/bellicose100xp/jiq)
+
 ## Features
 
 - **Real-time query execution** - See results as you type
