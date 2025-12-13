@@ -2,12 +2,12 @@ use ratatui::crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind, Ke
 use std::io;
 use std::time::Duration;
 
+use super::app_state::{App, Focus};
 use crate::clipboard;
-use crate::editor::EditorMode;
 use crate::editor;
+use crate::editor::EditorMode;
 use crate::history;
 use crate::results;
-use super::app_state::{App, Focus};
 
 mod global;
 
@@ -46,16 +46,18 @@ impl App {
     fn handle_paste_event(&mut self, text: String) {
         // Insert all text at once into the textarea
         self.input.textarea.insert_str(&text);
-        
+
         // Rebuild brace tracker for autocomplete context detection
-        self.input.brace_tracker.rebuild(self.input.textarea.lines()[0].as_ref());
-        
+        self.input
+            .brace_tracker
+            .rebuild(self.input.textarea.lines()[0].as_ref());
+
         // Execute query immediately (no debounce for paste operations)
         editor::editor_events::execute_query(self);
-        
+
         // Update autocomplete suggestions after paste
         self.update_autocomplete();
-        
+
         // Update tooltip based on new cursor position
         self.update_tooltip();
     }
@@ -161,7 +163,6 @@ impl App {
         }
     }
 
-
     /// Replace the current query with the given text
     fn replace_query_with(&mut self, text: &str) {
         self.input.textarea.delete_line_by_head();
@@ -186,7 +187,6 @@ impl App {
         self.history.open(initial_query);
         self.autocomplete.hide();
     }
-
 }
 
 #[cfg(test)]
@@ -201,20 +201,20 @@ mod tests {
     #[test]
     fn test_paste_event_inserts_text() {
         let mut app = test_app(r#"{"name": "test"}"#);
-        
+
         // Simulate paste event
         app.handle_paste_event(".name".to_string());
-        
+
         assert_eq!(app.query(), ".name");
     }
 
     #[test]
     fn test_paste_event_executes_query() {
         let mut app = test_app(r#"{"name": "Alice"}"#);
-        
+
         // Simulate paste event
         app.handle_paste_event(".name".to_string());
-        
+
         // Query should have been executed
         assert!(app.query.result.is_ok());
         let result = app.query.result.as_ref().unwrap();
@@ -224,23 +224,23 @@ mod tests {
     #[test]
     fn test_paste_event_appends_to_existing_text() {
         let mut app = test_app(r#"{"user": {"name": "Bob"}}"#);
-        
+
         // First, type some text
         app.input.textarea.insert_str(".user");
-        
+
         // Then paste more text
         app.handle_paste_event(".name".to_string());
-        
+
         assert_eq!(app.query(), ".user.name");
     }
 
     #[test]
     fn test_paste_event_with_empty_string() {
         let mut app = test_app(r#"{"name": "test"}"#);
-        
+
         // Paste empty string
         app.handle_paste_event(String::new());
-        
+
         // Query should remain empty
         assert_eq!(app.query(), "");
     }
@@ -248,10 +248,10 @@ mod tests {
     #[test]
     fn test_paste_event_with_multiline_text() {
         let mut app = test_app(r#"{"name": "test"}"#);
-        
+
         // Paste multiline text (jq queries are single-line, but paste should handle it)
         app.handle_paste_event(".name\n| length".to_string());
-        
+
         // The textarea handles this - verify text was inserted
         assert!(app.query().contains(".name"));
     }
@@ -274,10 +274,10 @@ mod tests {
             text in "[a-zA-Z0-9._\\[\\]|? ]{0,50}"
         ) {
             let mut app = test_app(r#"{"test": true}"#);
-            
+
             // Paste the text
             app.handle_paste_event(text.clone());
-            
+
             // The query should contain exactly the pasted text
             prop_assert_eq!(
                 app.query(), &text,
@@ -292,13 +292,13 @@ mod tests {
             pasted in "[a-zA-Z0-9.]{0,20}",
         ) {
             let mut app = test_app(r#"{"test": true}"#);
-            
+
             // First insert the prefix
             app.input.textarea.insert_str(&prefix);
-            
+
             // Then paste additional text
             app.handle_paste_event(pasted.clone());
-            
+
             // The query should be prefix + pasted
             let expected = format!("{}{}", prefix, pasted);
             prop_assert_eq!(
@@ -314,17 +314,17 @@ mod tests {
         ) {
             let json = r#"{"name": "test", "value": 42}"#;
             let mut app = test_app(json);
-            
+
             // Paste a query
             app.handle_paste_event(query.clone());
-            
+
             // Query should have been executed (result should be set)
             // We can't easily verify "exactly once" but we can verify it was executed
             prop_assert!(
                 app.query.result.is_ok() || app.query.result.is_err(),
                 "Query should have been executed after paste"
             );
-            
+
             // The query text should match what was pasted
             prop_assert_eq!(
                 app.query(), &query,
@@ -333,4 +333,3 @@ mod tests {
         }
     }
 }
-

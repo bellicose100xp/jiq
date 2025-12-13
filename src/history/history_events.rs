@@ -54,13 +54,12 @@ fn replace_query_with(app: &mut App, text: &str) {
     app.error_overlay_visible = false;
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::app::Focus;
     use crate::editor::EditorMode;
-    use crate::test_utils::test_helpers::{key, key_with_mods, app_with_query};
+    use crate::test_utils::test_helpers::{app_with_query, key, key_with_mods};
     use crossterm::event::KeyModifiers;
 
     // ========== History Popup Tests ==========
@@ -226,7 +225,9 @@ mod tests {
         app.history.add_entry_in_memory(".history_item");
 
         // Move cursor to start
-        app.input.textarea.move_cursor(tui_textarea::CursorMove::Head);
+        app.input
+            .textarea
+            .move_cursor(tui_textarea::CursorMove::Head);
         assert_eq!(app.input.textarea.cursor().1, 0);
 
         // Press Up arrow

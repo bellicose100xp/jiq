@@ -3,11 +3,11 @@
 //! Provides functions for rendering notification overlays in the UI.
 
 use ratatui::{
+    Frame,
     layout::Rect,
     style::Style,
     text::{Line, Span},
     widgets::{Block, Borders, Paragraph},
-    Frame,
 };
 
 use super::notification_state::NotificationState;
@@ -46,9 +46,7 @@ pub fn render_notification(frame: &mut Frame, notification: &mut NotificationSta
     // Position in top-right corner with small margin
     let frame_area = frame.area();
     let margin = 2;
-    let notification_x = frame_area
-        .width
-        .saturating_sub(notification_width + margin);
+    let notification_x = frame_area.width.saturating_sub(notification_width + margin);
     let notification_y = margin;
 
     let notification_area = Rect {
@@ -82,13 +80,12 @@ pub fn render_notification(frame: &mut Frame, notification: &mut NotificationSta
     frame.render_widget(paragraph, notification_area);
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::*;
     use insta::assert_snapshot;
-    use ratatui::backend::TestBackend;
     use ratatui::Terminal;
+    use ratatui::backend::TestBackend;
 
     /// Create a test terminal with specified dimensions
     fn create_test_terminal(width: u16, height: u16) -> Terminal<TestBackend> {

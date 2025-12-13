@@ -1,8 +1,8 @@
-use crate::query::ResultType;
+use super::autocomplete_state::Suggestion;
 use super::brace_tracker::BraceTracker;
 use super::jq_functions::filter_builtins;
 use super::result_analyzer::ResultAnalyzer;
-use super::autocomplete_state::Suggestion;
+use crate::query::ResultType;
 
 /// Filter suggestions by partial match (case-insensitive)
 fn filter_suggestions_by_partial(suggestions: Vec<Suggestion>, partial: &str) -> Vec<Suggestion> {
@@ -55,12 +55,17 @@ pub fn get_suggestions(
             } else {
                 before_cursor.len().saturating_sub(partial.len() + 1)
             };
-            let has_immediate_dot = dot_pos < before_cursor.len() 
-                && before_cursor.chars().nth(dot_pos) == Some('.');
-            
+            let has_immediate_dot =
+                dot_pos < before_cursor.len() && before_cursor.chars().nth(dot_pos) == Some('.');
+
             // Check if there's whitespace between char_before and the dot
             let has_whitespace_before_dot = if dot_pos > 0 && has_immediate_dot {
-                before_cursor[..dot_pos].chars().rev().take_while(|c| c.is_whitespace()).count() > 0
+                before_cursor[..dot_pos]
+                    .chars()
+                    .rev()
+                    .take_while(|c| c.is_whitespace())
+                    .count()
+                    > 0
             } else {
                 false
             };
@@ -71,7 +76,14 @@ pub fn get_suggestions(
             // 3. After whitespace + dot (like "then .field") - new path after keyword
             let needs_leading_dot = matches!(
                 char_before_dot,
-                Some('|') | Some(';') | Some(',') | Some(':') | Some('(') | Some('[') | Some('{') | None
+                Some('|')
+                    | Some(';')
+                    | Some(',')
+                    | Some(':')
+                    | Some('(')
+                    | Some('[')
+                    | Some('{')
+                    | None
             ) || has_whitespace_before_dot;
 
             // Generate type-aware suggestions (no mutation needed!)
@@ -117,7 +129,10 @@ pub fn get_suggestions(
 }
 
 /// Analyze the text before cursor to determine context and partial word
-pub fn analyze_context(before_cursor: &str, brace_tracker: &BraceTracker) -> (SuggestionContext, String) {
+pub fn analyze_context(
+    before_cursor: &str,
+    brace_tracker: &BraceTracker,
+) -> (SuggestionContext, String) {
     if before_cursor.is_empty() {
         return (SuggestionContext::FunctionContext, String::new());
     }
@@ -245,18 +260,7 @@ pub fn find_char_before_field_access(before_cursor: &str, partial: &str) -> Opti
 fn is_delimiter(ch: char) -> bool {
     matches!(
         ch,
-        '|' | ';'
-            | '('
-            | ')'
-            | '['
-            | ']'
-            | '{'
-            | '}'
-            | ','
-            | ' '
-            | '\t'
-            | '\n'
-            | '\r'
+        '|' | ';' | '(' | ')' | '[' | ']' | '{' | '}' | ',' | ' ' | '\t' | '\n' | '\r'
     )
 }
 
@@ -350,9 +354,15 @@ mod tests {
     #[test]
     fn test_char_before_field_after_pipe() {
         // `.services | .` - should find '|'
-        assert_eq!(find_char_before_field_access(".services | .", ""), Some('|'));
+        assert_eq!(
+            find_char_before_field_access(".services | .", ""),
+            Some('|')
+        );
         // `.services | .ser` - should find '|' (go back past partial)
-        assert_eq!(find_char_before_field_access(".services | .ser", "ser"), Some('|'));
+        assert_eq!(
+            find_char_before_field_access(".services | .ser", "ser"),
+            Some('|')
+        );
     }
 
     #[test]
@@ -360,7 +370,10 @@ mod tests {
         // `.services.` - should find 's' (last char of identifier)
         assert_eq!(find_char_before_field_access(".services.", ""), Some('s'));
         // `.services.na` - should find 's' (go back past partial and dot)
-        assert_eq!(find_char_before_field_access(".services.na", "na"), Some('s'));
+        assert_eq!(
+            find_char_before_field_access(".services.na", "na"),
+            Some('s')
+        );
     }
 
     #[test]
@@ -368,7 +381,10 @@ mod tests {
         // `.services[].` - should find ']'
         assert_eq!(find_char_before_field_access(".services[].", ""), Some(']'));
         // `.services[0].` - should find ']'
-        assert_eq!(find_char_before_field_access(".services[0].", ""), Some(']'));
+        assert_eq!(
+            find_char_before_field_access(".services[0].", ""),
+            Some(']')
+        );
     }
 
     #[test]
@@ -376,7 +392,10 @@ mod tests {
         // `.services?.` - should find '?'
         assert_eq!(find_char_before_field_access(".services?.", ""), Some('?'));
         // `.services?.na` - should find '?'
-        assert_eq!(find_char_before_field_access(".services?.na", "na"), Some('?'));
+        assert_eq!(
+            find_char_before_field_access(".services?.na", "na"),
+            Some('?')
+        );
     }
 
     #[test]
@@ -396,7 +415,10 @@ mod tests {
         // `map(.` - should find '('
         assert_eq!(find_char_before_field_access("map(.", ""), Some('('));
         // `select(.active).` - should find ')'
-        assert_eq!(find_char_before_field_access("select(.active).", ""), Some(')'));
+        assert_eq!(
+            find_char_before_field_access("select(.active).", ""),
+            Some(')')
+        );
     }
 
     #[test]
@@ -743,10 +765,10 @@ mod tests {
             // Build a query that ends with an array or paren context followed by a partial
             // Examples: "[na", "select(na", ".items | [na", "map(na"
             let query = format!("{}{}{}", prefix, brace_type, partial);
-            
+
             let tracker = tracker_for(&query);
             let (ctx, _) = analyze_context(&query, &tracker);
-            
+
             // Should never be ObjectKeyContext when inside array or paren
             prop_assert_ne!(
                 ctx,
@@ -773,10 +795,10 @@ mod tests {
             // Build a query with comma inside array or paren
             // Examples: "[1, na", "select(.a, na", ".items | [.x, na"
             let query = format!("{}{}{}, {}", prefix, brace_type, inner, partial);
-            
+
             let tracker = tracker_for(&query);
             let (ctx, _) = analyze_context(&query, &tracker);
-            
+
             // Should never be ObjectKeyContext when comma is inside array or paren
             prop_assert_ne!(
                 ctx,
@@ -801,7 +823,7 @@ mod tests {
             let query = format!(".{}", partial);
             let tracker = tracker_for(&query);
             let (ctx, returned_partial) = analyze_context(&query, &tracker);
-            
+
             // Should always be FieldContext, never ObjectKeyContext
             prop_assert_eq!(
                 ctx,
@@ -810,7 +832,7 @@ mod tests {
                 query,
                 ctx
             );
-            
+
             // The partial should match what we typed
             prop_assert!(
                 returned_partial == partial,
@@ -835,7 +857,7 @@ mod tests {
             let query = format!(".{} | .{}", field1, partial);
             let tracker = tracker_for(&query);
             let (ctx, returned_partial) = analyze_context(&query, &tracker);
-            
+
             // Should always be FieldContext
             prop_assert_eq!(
                 ctx,
@@ -844,7 +866,7 @@ mod tests {
                 query,
                 ctx
             );
-            
+
             // The partial should match what we typed after the last dot
             prop_assert!(
                 returned_partial == partial,
@@ -869,7 +891,7 @@ mod tests {
             let query = format!("{}(.{}", func, partial);
             let tracker = tracker_for(&query);
             let (ctx, returned_partial) = analyze_context(&query, &tracker);
-            
+
             // Should always be FieldContext
             prop_assert_eq!(
                 ctx,
@@ -878,7 +900,7 @@ mod tests {
                 query,
                 ctx
             );
-            
+
             // The partial should match what we typed after the dot
             prop_assert!(
                 returned_partial == partial,
@@ -902,7 +924,7 @@ mod tests {
             let query = partial.clone();
             let tracker = tracker_for(&query);
             let (ctx, returned_partial) = analyze_context(&query, &tracker);
-            
+
             // Should always be FunctionContext
             prop_assert_eq!(
                 ctx,
@@ -911,7 +933,7 @@ mod tests {
                 query,
                 ctx
             );
-            
+
             // The partial should match what we typed
             prop_assert!(
                 returned_partial == partial,
@@ -936,7 +958,7 @@ mod tests {
             let query = format!(".{} | {}", field, partial);
             let tracker = tracker_for(&query);
             let (ctx, returned_partial) = analyze_context(&query, &tracker);
-            
+
             // Should always be FunctionContext
             prop_assert_eq!(
                 ctx,
@@ -945,7 +967,7 @@ mod tests {
                 query,
                 ctx
             );
-            
+
             // The partial should match what we typed after the pipe
             prop_assert!(
                 returned_partial == partial,

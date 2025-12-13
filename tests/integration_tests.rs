@@ -24,10 +24,7 @@ fn test_cli_with_invalid_json_file() {
 
 #[test]
 fn test_cli_with_nonexistent_file() {
-    cargo_bin_cmd!()
-        .arg("nonexistent.json")
-        .assert()
-        .failure();
+    cargo_bin_cmd!().arg("nonexistent.json").assert().failure();
 }
 
 #[test]

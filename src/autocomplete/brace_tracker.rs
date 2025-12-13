@@ -273,7 +273,7 @@ mod tests {
         tracker.rebuild("map({na");
         // Position 5 is inside the object (after '{' at position 4)
         assert!(tracker.is_in_object(5));
-        
+
         // Test complete query - all braces closed
         tracker.rebuild("map({name: .name})");
         // After everything closes, no context

@@ -117,7 +117,11 @@ impl HistoryState {
     /// Returns the current search query (used for testing).
     #[cfg(test)]
     pub fn search_query(&self) -> &str {
-        self.search_textarea.lines().first().map(|s| s.as_str()).unwrap_or("")
+        self.search_textarea
+            .lines()
+            .first()
+            .map(|s| s.as_str())
+            .unwrap_or("")
     }
 
     /// Returns a mutable reference to the search TextArea for input handling.
@@ -179,12 +183,15 @@ impl HistoryState {
     /// Note: This allocates a small Vec (~15 items) to enable reversing.
     /// For MAX_VISIBLE_HISTORY=15, this is ~240 bytes - acceptable for render frequency.
     pub fn visible_entries(&self) -> impl Iterator<Item = (usize, &str)> {
-        let entries: Vec<(usize, &str)> = self.filtered_indices
+        let entries: Vec<(usize, &str)> = self
+            .filtered_indices
             .iter()
             .take(MAX_VISIBLE_HISTORY)
             .enumerate()
             .filter_map(|(original_idx, &entry_idx)| {
-                self.entries.get(entry_idx).map(|e| (original_idx, e.as_str()))
+                self.entries
+                    .get(entry_idx)
+                    .map(|e| (original_idx, e.as_str()))
             })
             .collect();
 
@@ -203,7 +210,9 @@ impl HistoryState {
         }
 
         // Only persist to disk if enabled (disabled for tests)
-        if self.persist_to_disk && let Err(e) = storage::add_entry(query) {
+        if self.persist_to_disk
+            && let Err(e) = storage::add_entry(query)
+        {
             eprintln!("Warning: Failed to save query history to disk: {}", e);
             eprintln!("History will work for this session only.");
             // Continue with in-memory update despite save failure
@@ -217,7 +226,12 @@ impl HistoryState {
 
     /// Updates the filtered indices based on the current search query.
     fn update_filter(&mut self) {
-        let query = self.search_textarea.lines().first().map(|s| s.as_str()).unwrap_or("");
+        let query = self
+            .search_textarea
+            .lines()
+            .first()
+            .map(|s| s.as_str())
+            .unwrap_or("");
         self.filtered_indices = self.matcher.filter(query, &self.entries);
     }
 

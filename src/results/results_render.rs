@@ -4,11 +4,11 @@
 
 use ansi_to_tui::IntoText;
 use ratatui::{
+    Frame,
     layout::{Constraint, Layout, Rect},
     style::{Color, Modifier, Style},
     text::{Line, Span, Text},
     widgets::{Block, Borders, Paragraph},
-    Frame,
 };
 
 use crate::app::App;
@@ -23,7 +23,6 @@ const MATCH_HIGHLIGHT_FG: Color = Color::White;
 // Current match: bright orange for clear visibility
 const CURRENT_MATCH_HIGHLIGHT_BG: Color = Color::Rgb(255, 165, 0); // Orange
 const CURRENT_MATCH_HIGHLIGHT_FG: Color = Color::Black;
-
 
 /// Render the results pane (top)
 pub fn render_pane(app: &mut App, frame: &mut Frame, area: Rect) {
@@ -53,9 +52,10 @@ pub fn render_pane(app: &mut App, frame: &mut Frame, area: Rect) {
         // Error state: show warning icon + stats from last successful result
         let stats_info = app.stats.display().unwrap_or_default();
         if stats_info.is_empty() {
-            Line::from(vec![
-                Span::styled(" ⚠ Syntax Error ", Style::default().fg(Color::Yellow)),
-            ])
+            Line::from(vec![Span::styled(
+                " ⚠ Syntax Error ",
+                Style::default().fg(Color::Yellow),
+            )])
         } else {
             Line::from(vec![
                 Span::styled(" ⚠ Syntax Error ", Style::default().fg(Color::Yellow)),
@@ -75,14 +75,14 @@ pub fn render_pane(app: &mut App, frame: &mut Frame, area: Rect) {
         ))
     };
 
-
     match &app.query.result {
         Ok(result) => {
             // Update scroll bounds based on content and viewport
             let viewport_height = results_area.height.saturating_sub(2);
             let viewport_width = results_area.width.saturating_sub(2);
             let line_count = app.results_line_count_u32();
-            app.results_scroll.update_bounds(line_count, viewport_height);
+            app.results_scroll
+                .update_bounds(line_count, viewport_height);
             app.results_scroll
                 .update_h_bounds(app.query.max_line_width(), viewport_width);
 
@@ -136,7 +136,8 @@ pub fn render_pane(app: &mut App, frame: &mut Frame, area: Rect) {
             let viewport_height = results_area.height.saturating_sub(2);
             let viewport_width = results_area.width.saturating_sub(2);
             let line_count = app.results_line_count_u32();
-            app.results_scroll.update_bounds(line_count, viewport_height);
+            app.results_scroll
+                .update_bounds(line_count, viewport_height);
             app.results_scroll
                 .update_h_bounds(app.query.max_line_width(), viewport_width);
 
@@ -193,7 +194,6 @@ pub fn render_pane(app: &mut App, frame: &mut Frame, area: Rect) {
     }
 }
 
-
 /// Render the error overlay (floating at the bottom of results pane)
 pub fn render_error_overlay(app: &App, frame: &mut Frame, results_area: Rect) {
     // Only render if there's an error
@@ -211,7 +211,11 @@ pub fn render_error_overlay(app: &App, frame: &mut Frame, results_area: Rect) {
         };
 
         // Calculate overlay height (content lines + borders)
-        let content_lines = if truncated { max_content_lines + 1 } else { error_lines.len() };
+        let content_lines = if truncated {
+            max_content_lines + 1
+        } else {
+            error_lines.len()
+        };
         let overlay_height = (content_lines as u16 + 2).clamp(3, 7); // Min 3, max 7
 
         // Position overlay at bottom of results pane, with 1 line gap from bottom border
@@ -243,7 +247,6 @@ pub fn render_error_overlay(app: &App, frame: &mut Frame, results_area: Rect) {
         frame.render_widget(error_widget, overlay_area);
     }
 }
-
 
 /// Apply search match highlighting to a Text object
 ///
@@ -317,7 +320,6 @@ fn apply_search_highlights(
     Text::from(highlighted_lines)
 }
 
-
 /// Apply search highlights to a single line
 fn apply_highlights_to_line(
     line: Line<'_>,
@@ -326,7 +328,7 @@ fn apply_highlights_to_line(
 ) -> Line<'static> {
     // First, flatten all spans into a single string with style info
     let mut char_styles: Vec<(char, Style)> = Vec::new();
-    
+
     for span in &line.spans {
         for ch in span.content.chars() {
             char_styles.push((ch, span.style));
@@ -337,7 +339,7 @@ fn apply_highlights_to_line(
     for (match_idx, m) in matches {
         let col_start = m.col as usize;
         let col_end = col_start + m.len as usize;
-        
+
         // Determine highlight style based on whether this is the current match
         let highlight_style = if *match_idx == current_match_index {
             Style::default()
@@ -370,7 +372,9 @@ fn apply_highlights_to_line(
                 current_text.push(ch);
             }
             _ => {
-                if !current_text.is_empty() && let Some(s) = current_style {
+                if !current_text.is_empty()
+                    && let Some(s) = current_style
+                {
                     result_spans.push(Span::styled(current_text.clone(), s));
                 }
                 current_text = ch.to_string();
@@ -380,7 +384,9 @@ fn apply_highlights_to_line(
     }
 
     // Don't forget the last span
-    if !current_text.is_empty() && let Some(s) = current_style {
+    if !current_text.is_empty()
+        && let Some(s) = current_style
+    {
         result_spans.push(Span::styled(current_text, s));
     }
 

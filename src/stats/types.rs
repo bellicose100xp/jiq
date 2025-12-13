@@ -42,7 +42,10 @@ impl fmt::Display for ElementType {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ResultStats {
     /// Array with count and element type
-    Array { count: usize, element_type: ElementType },
+    Array {
+        count: usize,
+        element_type: ElementType,
+    },
     /// Object (no key count - users care more about which keys exist)
     Object,
     /// String value
@@ -60,12 +63,13 @@ pub enum ResultStats {
 impl fmt::Display for ResultStats {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            ResultStats::Array { count, element_type } => {
-                match element_type {
-                    ElementType::Empty => write!(f, "Array [0]"),
-                    _ => write!(f, "Array [{} {}]", count, element_type),
-                }
-            }
+            ResultStats::Array {
+                count,
+                element_type,
+            } => match element_type {
+                ElementType::Empty => write!(f, "Array [0]"),
+                _ => write!(f, "Array [{} {}]", count, element_type),
+            },
             ResultStats::Object => write!(f, "Object"),
             ResultStats::String => write!(f, "String"),
             ResultStats::Number => write!(f, "Number"),
@@ -95,28 +99,52 @@ mod tests {
 
     #[test]
     fn test_result_stats_array_display() {
-        let stats = ResultStats::Array { count: 42, element_type: ElementType::Objects };
+        let stats = ResultStats::Array {
+            count: 42,
+            element_type: ElementType::Objects,
+        };
         assert_eq!(stats.to_string(), "Array [42 objects]");
 
-        let stats = ResultStats::Array { count: 10, element_type: ElementType::Arrays };
+        let stats = ResultStats::Array {
+            count: 10,
+            element_type: ElementType::Arrays,
+        };
         assert_eq!(stats.to_string(), "Array [10 arrays]");
 
-        let stats = ResultStats::Array { count: 5, element_type: ElementType::Strings };
+        let stats = ResultStats::Array {
+            count: 5,
+            element_type: ElementType::Strings,
+        };
         assert_eq!(stats.to_string(), "Array [5 strings]");
 
-        let stats = ResultStats::Array { count: 100, element_type: ElementType::Numbers };
+        let stats = ResultStats::Array {
+            count: 100,
+            element_type: ElementType::Numbers,
+        };
         assert_eq!(stats.to_string(), "Array [100 numbers]");
 
-        let stats = ResultStats::Array { count: 3, element_type: ElementType::Booleans };
+        let stats = ResultStats::Array {
+            count: 3,
+            element_type: ElementType::Booleans,
+        };
         assert_eq!(stats.to_string(), "Array [3 booleans]");
 
-        let stats = ResultStats::Array { count: 2, element_type: ElementType::Nulls };
+        let stats = ResultStats::Array {
+            count: 2,
+            element_type: ElementType::Nulls,
+        };
         assert_eq!(stats.to_string(), "Array [2 nulls]");
 
-        let stats = ResultStats::Array { count: 50, element_type: ElementType::Mixed };
+        let stats = ResultStats::Array {
+            count: 50,
+            element_type: ElementType::Mixed,
+        };
         assert_eq!(stats.to_string(), "Array [50 mixed]");
 
-        let stats = ResultStats::Array { count: 0, element_type: ElementType::Empty };
+        let stats = ResultStats::Array {
+            count: 0,
+            element_type: ElementType::Empty,
+        };
         assert_eq!(stats.to_string(), "Array [0]");
     }
 
@@ -157,8 +185,12 @@ mod tests {
     fn arb_result_stats() -> impl Strategy<Value = ResultStats> {
         prop_oneof![
             // Array with arbitrary count and element type
-            (0usize..10000, arb_element_type())
-                .prop_map(|(count, element_type)| ResultStats::Array { count, element_type }),
+            (0usize..10000, arb_element_type()).prop_map(|(count, element_type)| {
+                ResultStats::Array {
+                    count,
+                    element_type,
+                }
+            }),
             // Scalar types
             Just(ResultStats::Object),
             Just(ResultStats::String),

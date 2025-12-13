@@ -1,7 +1,7 @@
 use std::fmt;
 
-use fuzzy_matcher::skim::SkimMatcherV2;
 use fuzzy_matcher::FuzzyMatcher;
+use fuzzy_matcher::skim::SkimMatcherV2;
 
 /// A fuzzy matcher using the Skim algorithm (fzf-style matching).
 pub struct HistoryMatcher {
@@ -64,7 +64,6 @@ impl HistoryMatcher {
 
         scored.into_iter().map(|(idx, _)| idx).collect()
     }
-
 }
 
 #[cfg(test)]
@@ -74,11 +73,7 @@ mod tests {
     #[test]
     fn test_empty_query_returns_all_indices() {
         let matcher = HistoryMatcher::new();
-        let entries = vec![
-            ".foo".to_string(),
-            ".bar".to_string(),
-            ".baz".to_string(),
-        ];
+        let entries = vec![".foo".to_string(), ".bar".to_string(), ".baz".to_string()];
 
         let result = matcher.filter("", &entries);
         assert_eq!(result, vec![0, 1, 2]);
@@ -148,5 +143,4 @@ mod tests {
         let result = matcher.filter("headquarters", &entries);
         assert_eq!(result.len(), 2); // First two entries
     }
-
 }

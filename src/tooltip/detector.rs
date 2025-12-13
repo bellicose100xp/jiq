@@ -230,13 +230,17 @@ pub fn detect_operator_at_cursor(query: &str, cursor_pos: usize) -> Option<&'sta
     let len = chars.len();
 
     // First, try to detect operator at current cursor position
-    if cursor_pos < len && let Some(op) = detect_operator_at_position(&chars, cursor_pos) {
+    if cursor_pos < len
+        && let Some(op) = detect_operator_at_position(&chars, cursor_pos)
+    {
         return Some(op);
     }
 
     // If cursor is after the last character, check if it's immediately after an operator
     // This handles the case when user just typed an operator (cursor is after it)
-    if cursor_pos > 0 && let Some(op) = detect_operator_at_position(&chars, cursor_pos - 1) {
+    if cursor_pos > 0
+        && let Some(op) = detect_operator_at_position(&chars, cursor_pos - 1)
+    {
         return Some(op);
     }
 
@@ -290,9 +294,7 @@ fn check_triple_slash_equals(chars: &[char], cursor_pos: usize) -> Option<&'stat
     match current {
         '/' => {
             // Check if this is the first / of //=
-            if cursor_pos + 2 < len
-                && chars[cursor_pos + 1] == '/'
-                && chars[cursor_pos + 2] == '='
+            if cursor_pos + 2 < len && chars[cursor_pos + 1] == '/' && chars[cursor_pos + 2] == '='
             {
                 return Some("//=");
             }
@@ -436,7 +438,10 @@ mod tests {
     #[test]
     fn test_detect_function_underscore_names() {
         assert_eq!(detect_function_at_cursor("sort_by(.x)", 3), Some("sort_by"));
-        assert_eq!(detect_function_at_cursor("to_entries", 5), Some("to_entries"));
+        assert_eq!(
+            detect_function_at_cursor("to_entries", 5),
+            Some("to_entries")
+        );
     }
 
     // Tests for cursor inside function parentheses (Phase 2)
@@ -538,9 +543,15 @@ mod tests {
     #[test]
     fn test_detect_operator_double_slash() {
         // Cursor on first /
-        assert_eq!(detect_operator_at_cursor(".x // \"default\"", 3), Some("//"));
+        assert_eq!(
+            detect_operator_at_cursor(".x // \"default\"", 3),
+            Some("//")
+        );
         // Cursor on second /
-        assert_eq!(detect_operator_at_cursor(".x // \"default\"", 4), Some("//"));
+        assert_eq!(
+            detect_operator_at_cursor(".x // \"default\"", 4),
+            Some("//")
+        );
     }
 
     #[test]

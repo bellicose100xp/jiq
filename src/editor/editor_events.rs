@@ -6,9 +6,9 @@
 use ratatui::crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use tui_textarea::CursorMove;
 
+use crate::app::App;
 use crate::clipboard;
 use crate::editor::EditorMode;
-use crate::app::App;
 
 /// Handle keys in Insert mode
 pub fn handle_insert_mode_key(app: &mut App, key: KeyEvent) {
@@ -30,12 +30,14 @@ pub fn handle_insert_mode_key(app: &mut App, key: KeyEvent) {
         app.error_overlay_visible = false; // Auto-hide error overlay on query change
 
         // Rebuild brace tracker for autocomplete context detection
-        app.input.brace_tracker.rebuild(app.input.textarea.lines()[0].as_ref());
+        app.input
+            .brace_tracker
+            .rebuild(app.input.textarea.lines()[0].as_ref());
     }
 
     // Update autocomplete suggestions after any input
     app.update_autocomplete();
-    
+
     // Update tooltip based on cursor position
     app.update_tooltip();
 }
@@ -154,11 +156,10 @@ pub fn handle_normal_mode_key(app: &mut App, key: KeyEvent) {
             // Other VIM commands not yet implemented
         }
     }
-    
+
     // Update tooltip based on cursor position after any cursor movement
     app.update_tooltip();
 }
-
 
 /// Handle keys in Operator mode (waiting for motion after d/c)
 pub fn handle_operator_mode_key(app: &mut App, key: KeyEvent) {
@@ -257,7 +258,7 @@ pub fn handle_operator_mode_key(app: &mut App, key: KeyEvent) {
         app.input.textarea.cancel_selection();
         app.input.editor_mode = EditorMode::Normal;
     }
-    
+
     // Update tooltip based on cursor position after any operation
     app.update_tooltip();
 }
@@ -265,10 +266,10 @@ pub fn handle_operator_mode_key(app: &mut App, key: KeyEvent) {
 /// Execute current query and update results
 pub fn execute_query(app: &mut App) {
     let query = app.input.textarea.lines()[0].as_ref();
-    
+
     // Rebuild brace tracker for autocomplete context detection (handles Normal mode edits)
     app.input.brace_tracker.rebuild(query);
-    
+
     // Use QueryState::execute() which handles non-null result caching
     app.query.execute(query);
 
@@ -276,13 +277,12 @@ pub fn execute_query(app: &mut App) {
     app.error_overlay_visible = false; // Auto-hide error overlay on query change
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::app::Focus;
     use crate::autocomplete::{Suggestion, SuggestionType};
-    use crate::test_utils::test_helpers::{key, key_with_mods, app_with_query};
+    use crate::test_utils::test_helpers::{app_with_query, key, key_with_mods};
     use tui_textarea::CursorMove;
 
     // Helper to move cursor to specific position by text content
@@ -292,7 +292,6 @@ mod tests {
             app.input.textarea.move_cursor(CursorMove::Forward);
         }
     }
-
 
     #[test]
     fn test_operator_dw_deletes_word_from_start() {
@@ -324,7 +323,6 @@ mod tests {
         assert!(app.query().len() < ".name.first".len());
         assert!(app.query().starts_with(".name"));
     }
-
 
     #[test]
     fn test_operator_db_deletes_word_backward() {
@@ -492,7 +490,6 @@ mod tests {
         assert_eq!(app.input.editor_mode, EditorMode::Normal);
     }
 
-
     // ========== Mode Transition Tests ==========
 
     #[test]
@@ -654,7 +651,6 @@ mod tests {
         assert_eq!(app.query(), ".name");
     }
 
-
     // ========== VIM Navigation Tests ==========
 
     #[test]
@@ -760,9 +756,7 @@ mod tests {
         app.input.editor_mode = EditorMode::Insert;
 
         // Manually set autocomplete as visible with suggestions
-        let suggestions = vec![
-            Suggestion::new(".name", SuggestionType::Field),
-        ];
+        let suggestions = vec![Suggestion::new(".name", SuggestionType::Field)];
         app.autocomplete.update_suggestions(suggestions);
         assert!(app.autocomplete.is_visible());
 
@@ -821,7 +815,6 @@ mod tests {
         assert_eq!(app.autocomplete.selected().unwrap().text, ".name");
     }
 
-
     #[test]
     fn test_tab_accepts_autocomplete_suggestion() {
         // Test accepting field suggestion at root level
@@ -832,15 +825,19 @@ mod tests {
         // Validate base state
         // .na returns null, so base_query stays at "." (from App::new())
         use crate::query::ResultType;
-        assert_eq!(app.query.base_query_for_suggestions, Some(".".to_string()),
-                   "base_query should remain '.' since .na returns null");
-        assert_eq!(app.query.base_type_for_suggestions, Some(ResultType::Object),
-                   "base_type should be Object (root object)");
+        assert_eq!(
+            app.query.base_query_for_suggestions,
+            Some(".".to_string()),
+            "base_query should remain '.' since .na returns null"
+        );
+        assert_eq!(
+            app.query.base_type_for_suggestions,
+            Some(ResultType::Object),
+            "base_type should be Object (root object)"
+        );
 
         // Suggestion should be "name" (no leading dot) since after Dot (CharType::Dot)
-        let suggestions = vec![
-            Suggestion::new("name", SuggestionType::Field),
-        ];
+        let suggestions = vec![Suggestion::new("name", SuggestionType::Field)];
         app.autocomplete.update_suggestions(suggestions);
 
         app.handle_key_event(key(KeyCode::Tab));
@@ -852,7 +849,7 @@ mod tests {
 
     #[test]
     fn test_tab_without_autocomplete_stays_in_consistent_state() {
-        let mut app = app_with_query("x");  // Use a query that won't trigger autocomplete
+        let mut app = app_with_query("x"); // Use a query that won't trigger autocomplete
         app.input.editor_mode = EditorMode::Insert;
         app.focus = Focus::InputField;
 
@@ -874,9 +871,7 @@ mod tests {
         app.input.editor_mode = EditorMode::Normal;
         app.focus = Focus::InputField;
 
-        let suggestions = vec![
-            Suggestion::new(".name", SuggestionType::Field),
-        ];
+        let suggestions = vec![Suggestion::new(".name", SuggestionType::Field)];
         app.autocomplete.update_suggestions(suggestions);
 
         // Down arrow in Normal mode should NOT navigate autocomplete (it's not handled)

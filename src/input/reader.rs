@@ -1,8 +1,8 @@
+use crate::error::JiqError;
+use serde_json::Value;
 use std::fs::File;
 use std::io::{self, Read};
 use std::path::Path;
-use serde_json::Value;
-use crate::error::JiqError;
 
 /// Read JSON from stdin or a file
 pub struct InputReader;

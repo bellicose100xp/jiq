@@ -1,5 +1,5 @@
-use crate::query::ResultType;
 use crate::autocomplete::autocomplete_state::{JsonFieldType, Suggestion, SuggestionType};
+use crate::query::ResultType;
 use serde_json::Value;
 
 /// Analyze query execution results to extract field suggestions
@@ -106,26 +106,25 @@ impl ResultAnalyzer {
             ResultType::ArrayOfObjects => {
                 // Suggestions for array containing objects
                 let prefix = dot_prefix(needs_leading_dot);
-                let mut suggestions = vec![
-                    Suggestion::new_with_type(
-                        format!("{}[]", prefix),
-                        SuggestionType::Pattern,
-                        None,
-                    )
-                ];
+                let mut suggestions = vec![Suggestion::new_with_type(
+                    format!("{}[]", prefix),
+                    SuggestionType::Pattern,
+                    None,
+                )];
 
                 // Add field suggestions from first object
                 if let Value::Array(arr) = value
-                    && let Some(Value::Object(map)) = arr.first() {
-                        for (key, val) in map {
-                            let field_type = Self::detect_json_type(val);
-                            suggestions.push(Suggestion::new_with_type(
-                                format!("{}[].{}", prefix, key),
-                                SuggestionType::Field,
-                                Some(field_type),
-                            ));
-                        }
+                    && let Some(Value::Object(map)) = arr.first()
+                {
+                    for (key, val) in map {
+                        let field_type = Self::detect_json_type(val);
+                        suggestions.push(Suggestion::new_with_type(
+                            format!("{}[].{}", prefix, key),
+                            SuggestionType::Field,
+                            Some(field_type),
+                        ));
                     }
+                }
 
                 suggestions
             }
@@ -294,7 +293,8 @@ mod tests {
         let result = r#"{"name": "Alice", "age": 30}
 {"name": "Bob", "age": 25}
 {"name": "Charlie", "age": 35}"#;
-        let suggestions = ResultAnalyzer::analyze_result(result, ResultType::DestructuredObjects, false);
+        let suggestions =
+            ResultAnalyzer::analyze_result(result, ResultType::DestructuredObjects, false);
 
         // Should parse first object only, no leading dot
         assert_eq!(suggestions.len(), 2);
@@ -307,7 +307,8 @@ mod tests {
         // Destructured objects after operator (with leading dot)
         let result = r#"{"clusterArn": "arn1", "name": "svc1"}
 {"clusterArn": "arn2", "name": "svc2"}"#;
-        let suggestions = ResultAnalyzer::analyze_result(result, ResultType::DestructuredObjects, true);
+        let suggestions =
+            ResultAnalyzer::analyze_result(result, ResultType::DestructuredObjects, true);
 
         // Should parse first object with leading dot
         assert_eq!(suggestions.len(), 2);
@@ -326,7 +327,8 @@ mod tests {
   "clusterArn": "arn2",
   "name": "svc2"
 }"#;
-        let suggestions = ResultAnalyzer::analyze_result(result, ResultType::DestructuredObjects, false);
+        let suggestions =
+            ResultAnalyzer::analyze_result(result, ResultType::DestructuredObjects, false);
 
         // Should parse first object, no leading dot
         assert_eq!(suggestions.len(), 2);
@@ -355,7 +357,8 @@ mod tests {
 
 {"key2": "val2"}
 "#;
-        let suggestions = ResultAnalyzer::analyze_result(result, ResultType::DestructuredObjects, true);
+        let suggestions =
+            ResultAnalyzer::analyze_result(result, ResultType::DestructuredObjects, true);
 
         // Should skip empty lines and parse first object with leading dot
         assert_eq!(suggestions.len(), 1);
@@ -399,9 +402,18 @@ mod tests {
     #[test]
     fn test_primitive_results() {
         // Primitives have no field suggestions
-        assert_eq!(ResultAnalyzer::analyze_result("42", ResultType::Number, true).len(), 0);
-        assert_eq!(ResultAnalyzer::analyze_result(r#""hello""#, ResultType::String, true).len(), 0);
-        assert_eq!(ResultAnalyzer::analyze_result("true", ResultType::Boolean, true).len(), 0);
+        assert_eq!(
+            ResultAnalyzer::analyze_result("42", ResultType::Number, true).len(),
+            0
+        );
+        assert_eq!(
+            ResultAnalyzer::analyze_result(r#""hello""#, ResultType::String, true).len(),
+            0
+        );
+        assert_eq!(
+            ResultAnalyzer::analyze_result("true", ResultType::Boolean, true).len(),
+            0
+        );
     }
 
     #[test]
@@ -433,7 +445,12 @@ mod tests {
             if i > 0 {
                 result.push(',');
             }
-            result.push_str(&format!(r#"{{"id": {}, "name": "item{}", "value": {}}}"#, i, i, i * 2));
+            result.push_str(&format!(
+                r#"{{"id": {}, "name": "item{}", "value": {}}}"#,
+                i,
+                i,
+                i * 2
+            ));
         }
         result.push(']');
 
@@ -487,7 +504,8 @@ mod tests {
         // After .services[]. → destructured objects, no prefix
         let result = r#"{"serviceArn": "arn1", "config": {}}
 {"serviceArn": "arn2", "config": {}}"#;
-        let suggestions = ResultAnalyzer::analyze_result(result, ResultType::DestructuredObjects, false);
+        let suggestions =
+            ResultAnalyzer::analyze_result(result, ResultType::DestructuredObjects, false);
 
         // Should suggest fields without any prefix
         assert!(suggestions.iter().any(|s| s.text == "serviceArn"));
@@ -501,7 +519,8 @@ mod tests {
         // After .services[] | . → destructured objects, needs leading dot
         let result = r#"{"serviceArn": "arn1"}
 {"serviceArn": "arn2"}"#;
-        let suggestions = ResultAnalyzer::analyze_result(result, ResultType::DestructuredObjects, true);
+        let suggestions =
+            ResultAnalyzer::analyze_result(result, ResultType::DestructuredObjects, true);
 
         // Should suggest fields WITH leading dot
         assert!(suggestions.iter().any(|s| s.text == ".serviceArn"));
@@ -602,7 +621,10 @@ mod tests {
         assert!(matches!(num_field.field_type, Some(JsonFieldType::Number)));
 
         let bool_field = suggestions.iter().find(|s| s.text == ".bool").unwrap();
-        assert!(matches!(bool_field.field_type, Some(JsonFieldType::Boolean)));
+        assert!(matches!(
+            bool_field.field_type,
+            Some(JsonFieldType::Boolean)
+        ));
 
         let null_field = suggestions.iter().find(|s| s.text == ".null").unwrap();
         assert!(matches!(null_field.field_type, Some(JsonFieldType::Null)));
@@ -611,6 +633,9 @@ mod tests {
         assert!(matches!(obj_field.field_type, Some(JsonFieldType::Object)));
 
         let arr_field = suggestions.iter().find(|s| s.text == ".arr").unwrap();
-        assert!(matches!(arr_field.field_type, Some(JsonFieldType::ArrayOf(_))));
+        assert!(matches!(
+            arr_field.field_type,
+            Some(JsonFieldType::ArrayOf(_))
+        ));
     }
 }

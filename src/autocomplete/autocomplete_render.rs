@@ -3,11 +3,11 @@
 //! This module handles rendering of the autocomplete suggestions popup.
 
 use ratatui::{
+    Frame,
     layout::Rect,
     style::{Color, Modifier, Style},
     text::{Line, Span},
     widgets::{Block, Borders, List, ListItem},
-    Frame,
 };
 
 use crate::app::App;
@@ -40,9 +40,11 @@ pub fn render_popup(app: &App, frame: &mut Frame, input_area: Rect) {
         .map(|s| {
             // Get display text: signature for functions, text for others
             let display_text_len = match s.suggestion_type {
-                SuggestionType::Function => {
-                    s.signature.as_ref().map(|sig| sig.len()).unwrap_or(s.text.len())
-                }
+                SuggestionType::Function => s
+                    .signature
+                    .as_ref()
+                    .map(|sig| sig.len())
+                    .unwrap_or(s.text.len()),
                 _ => s.text.len(),
             };
 
@@ -69,7 +71,8 @@ pub fn render_popup(app: &App, frame: &mut Frame, input_area: Rect) {
     let popup_width = (max_text_width as u16) + POPUP_PADDING;
 
     // Position popup just above the input field
-    let popup_area = popup::popup_above_anchor(input_area, popup_width, popup_height, POPUP_OFFSET_X);
+    let popup_area =
+        popup::popup_above_anchor(input_area, popup_width, popup_height, POPUP_OFFSET_X);
 
     // Calculate max display text width for alignment
     // Use signature for functions if available, otherwise use text
@@ -77,9 +80,11 @@ pub fn render_popup(app: &App, frame: &mut Frame, input_area: Rect) {
         .iter()
         .take(MAX_VISIBLE_SUGGESTIONS)
         .map(|s| match s.suggestion_type {
-            SuggestionType::Function => {
-                s.signature.as_ref().map(|sig| sig.len()).unwrap_or(s.text.len())
-            }
+            SuggestionType::Function => s
+                .signature
+                .as_ref()
+                .map(|sig| sig.len())
+                .unwrap_or(s.text.len()),
             _ => s.text.len(),
         })
         .max()
@@ -133,24 +138,18 @@ pub fn render_popup(app: &App, frame: &mut Frame, input_area: Rect) {
                     ),
                     Span::styled(
                         format!(" {}", type_label),
-                        Style::default()
-                            .fg(Color::Black)
-                            .bg(Color::Cyan),
+                        Style::default().fg(Color::Black).bg(Color::Cyan),
                     ),
                 ])
             } else {
                 Line::from(vec![
                     Span::styled(
                         format!("  {} {}", display_text, padding),
-                        Style::default()
-                            .fg(Color::White)
-                            .bg(Color::Black),
+                        Style::default().fg(Color::White).bg(Color::Black),
                     ),
                     Span::styled(
                         format!(" {}", type_label),
-                        Style::default()
-                            .fg(type_color)
-                            .bg(Color::Black),
+                        Style::default().fg(type_color).bg(Color::Black),
                     ),
                 ])
             };

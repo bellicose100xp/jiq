@@ -13,8 +13,7 @@ use super::backend::{ClipboardError, ClipboardResult};
 /// to the provided text. It handles cases where the clipboard is unavailable
 /// (e.g., in headless environments or when no display server is running).
 pub fn copy(text: &str) -> ClipboardResult {
-    let mut clipboard =
-        Clipboard::new().map_err(|_| ClipboardError::SystemUnavailable)?;
+    let mut clipboard = Clipboard::new().map_err(|_| ClipboardError::SystemUnavailable)?;
 
     clipboard
         .set_text(text)

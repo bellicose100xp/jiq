@@ -1,19 +1,19 @@
 use ratatui::{
-    layout::{Constraint, Layout},
     Frame,
+    layout::{Constraint, Layout},
 };
 
-use crate::notification::render_notification;
 use super::app_state::App;
+use crate::notification::render_notification;
 
 impl App {
     /// Render the UI
     pub fn render(&mut self, frame: &mut Frame) {
         // Split the terminal into three areas: results, input, and help
         let layout = Layout::vertical([
-            Constraint::Min(3),      // Results pane takes most of the space
-            Constraint::Length(3),   // Input field is fixed 3 lines
-            Constraint::Length(1),   // Help line at bottom
+            Constraint::Min(3),    // Results pane takes most of the space
+            Constraint::Length(3), // Input field is fixed 3 lines
+            Constraint::Length(1), // Help line at bottom
         ])
         .split(frame.area());
 
@@ -61,14 +61,13 @@ impl App {
         // Render notification overlay (if active) - render last to overlay everything
         render_notification(frame, &mut self.notification);
     }
-
 }
 
 #[cfg(test)]
 mod test_helpers {
     use crate::app::app_state::App;
-    use ratatui::backend::TestBackend;
     use ratatui::Terminal;
+    use ratatui::backend::TestBackend;
 
     /// Create a test terminal with specified dimensions
     pub fn create_test_terminal(width: u16, height: u16) -> Terminal<TestBackend> {
@@ -303,16 +302,16 @@ mod snapshot_tests {
     fn snapshot_results_pane_with_syntax_error_unfocused() {
         let json = r#"{"name": "Alice", "age": 30}"#;
         let mut app = test_app(json);
-        
+
         // Execute a successful query first to populate last_successful_result
         app.input.textarea.insert_str(".name");
         app.query.execute(".name");
-        
+
         // Now create an error state
         app.input.textarea.delete_line_by_head();
         app.input.textarea.insert_str(".invalid[");
         app.query.execute(".invalid[");
-        
+
         // Ensure results pane is unfocused
         app.focus = Focus::InputField;
 
@@ -324,16 +323,16 @@ mod snapshot_tests {
     fn snapshot_results_pane_with_syntax_error_focused() {
         let json = r#"{"name": "Alice", "age": 30}"#;
         let mut app = test_app(json);
-        
+
         // Execute a successful query first to populate last_successful_result
         app.input.textarea.insert_str(".name");
         app.query.execute(".name");
-        
+
         // Now create an error state
         app.input.textarea.delete_line_by_head();
         app.input.textarea.insert_str(".invalid[");
         app.query.execute(".invalid[");
-        
+
         // Focus the results pane to verify cyan border with yellow title
         app.focus = Focus::ResultsPane;
 
@@ -345,11 +344,11 @@ mod snapshot_tests {
     fn snapshot_results_pane_with_success_unfocused() {
         let json = r#"{"name": "Alice", "age": 30}"#;
         let mut app = test_app(json);
-        
+
         // Execute a successful query
         app.input.textarea.insert_str(".name");
         app.query.execute(".name");
-        
+
         // Ensure results pane is unfocused
         app.focus = Focus::InputField;
 
@@ -361,11 +360,11 @@ mod snapshot_tests {
     fn snapshot_results_pane_with_success_focused() {
         let json = r#"{"name": "Alice", "age": 30}"#;
         let mut app = test_app(json);
-        
+
         // Execute a successful query
         app.input.textarea.insert_str(".name");
         app.query.execute(".name");
-        
+
         // Focus the results pane to verify cyan border and title
         app.focus = Focus::ResultsPane;
 
@@ -381,7 +380,7 @@ mod snapshot_tests {
 
         let json = r#"{"name": "Alice", "age": 30}"#;
         let mut app = test_app(json);
-        
+
         // Set up autocomplete with function suggestions that have signatures
         let suggestions = vec![
             Suggestion::new("select", SuggestionType::Function)
@@ -408,7 +407,7 @@ mod snapshot_tests {
 
         let json = r#"{"name": "Alice", "age": 30}"#;
         let mut app = test_app(json);
-        
+
         // Set up autocomplete with function suggestions
         let suggestions = vec![
             Suggestion::new("map", SuggestionType::Function)
@@ -424,7 +423,7 @@ mod snapshot_tests {
                 .with_needs_parens(true),
         ];
         app.autocomplete.update_suggestions(suggestions);
-        
+
         // Select the second item (max)
         app.autocomplete.select_next();
 
@@ -434,11 +433,11 @@ mod snapshot_tests {
 
     #[test]
     fn snapshot_autocomplete_popup_mixed_types() {
-        use crate::autocomplete::{Suggestion, SuggestionType, JsonFieldType};
+        use crate::autocomplete::{JsonFieldType, Suggestion, SuggestionType};
 
         let json = r#"{"name": "Alice", "age": 30}"#;
         let mut app = test_app(json);
-        
+
         // Set up autocomplete with mixed suggestion types
         let suggestions = vec![
             Suggestion::new("keys", SuggestionType::Function)
@@ -465,7 +464,7 @@ mod snapshot_tests {
     fn snapshot_tooltip_popup_with_all_fields() {
         let json = r#"{"name": "Alice", "age": 30}"#;
         let mut app = test_app(json);
-        
+
         // Enable tooltip and set current function to one with a tip
         app.tooltip.enabled = true;
         app.tooltip.set_current_function(Some("select".to_string()));
@@ -478,7 +477,7 @@ mod snapshot_tests {
     fn snapshot_tooltip_popup_without_tip() {
         let json = r#"{"name": "Alice", "age": 30}"#;
         let mut app = test_app(json);
-        
+
         // Enable tooltip and set current function to one without a tip
         app.tooltip.enabled = true;
         app.tooltip.set_current_function(Some("del".to_string()));
@@ -492,7 +491,7 @@ mod snapshot_tests {
         // Test tooltip positioning on right side with wider terminal
         let json = r#"{"name": "Alice", "age": 30}"#;
         let mut app = test_app(json);
-        
+
         app.tooltip.enabled = true;
         app.tooltip.set_current_function(Some("map".to_string()));
 
@@ -504,10 +503,11 @@ mod snapshot_tests {
     fn snapshot_tooltip_dismiss_hint() {
         let json = r#"{"name": "Alice", "age": 30}"#;
         let mut app = test_app(json);
-        
+
         // Enable tooltip to show dismiss hint on border
         app.tooltip.enabled = true;
-        app.tooltip.set_current_function(Some("sort_by".to_string()));
+        app.tooltip
+            .set_current_function(Some("sort_by".to_string()));
 
         let output = render_to_string(&mut app, TOOLTIP_TEST_WIDTH, TOOLTIP_TEST_HEIGHT);
         assert_snapshot!(output);
@@ -518,7 +518,7 @@ mod snapshot_tests {
         // Test operator tooltip for // (alternative operator)
         let json = r#"{"name": "Alice", "age": 30}"#;
         let mut app = test_app(json);
-        
+
         // Enable tooltip and set current operator
         app.tooltip.enabled = true;
         app.tooltip.set_current_operator(Some("//".to_string()));
@@ -532,7 +532,7 @@ mod snapshot_tests {
         // Test operator tooltip for |= (update operator)
         let json = r#"{"name": "Alice", "age": 30}"#;
         let mut app = test_app(json);
-        
+
         // Enable tooltip and set current operator
         app.tooltip.enabled = true;
         app.tooltip.set_current_operator(Some("|=".to_string()));
@@ -548,7 +548,7 @@ mod snapshot_tests {
         // When tooltip is disabled AND cursor is on a function, show hint on input border
         let json = r#"{"name": "Alice", "age": 30}"#;
         let mut app = test_app(json);
-        
+
         // Disable tooltip and set current function
         app.tooltip.enabled = false;
         app.tooltip.set_current_function(Some("select".to_string()));
@@ -562,7 +562,7 @@ mod snapshot_tests {
         // When tooltip is enabled, no hint on input border (hint is on tooltip instead)
         let json = r#"{"name": "Alice", "age": 30}"#;
         let mut app = test_app(json);
-        
+
         // Enable tooltip with a function
         app.tooltip.enabled = true;
         app.tooltip.set_current_function(Some("select".to_string()));
@@ -576,7 +576,7 @@ mod snapshot_tests {
         // When tooltip is disabled AND not on a function, no hint
         let json = r#"{"name": "Alice", "age": 30}"#;
         let mut app = test_app(json);
-        
+
         // Disable tooltip with no function detected
         app.tooltip.enabled = false;
         app.tooltip.set_current_function(None);
@@ -595,7 +595,7 @@ mod snapshot_tests {
         // Autocomplete on left, tooltip on right, autocomplete renders on top
         let json = r#"{"name": "Alice", "age": 30}"#;
         let mut app = test_app(json);
-        
+
         // Set up autocomplete with suggestions (appears on left)
         let suggestions = vec![
             Suggestion::new("select", SuggestionType::Function)
@@ -611,7 +611,7 @@ mod snapshot_tests {
                 .with_needs_parens(true),
         ];
         app.autocomplete.update_suggestions(suggestions);
-        
+
         // Enable tooltip with a function (appears on right)
         app.tooltip.enabled = true;
         app.tooltip.set_current_function(Some("map".to_string()));
@@ -628,10 +628,10 @@ mod snapshot_tests {
         // Test stats bar with array result when results pane is focused
         let json = r#"[{"id": 1}, {"id": 2}, {"id": 3}]"#;
         let mut app = test_app(json);
-        
+
         // Execute identity query to show the array
         app.query.execute(".");
-        
+
         // Focus the results pane to verify cyan stats color
         app.focus = Focus::ResultsPane;
 
@@ -644,10 +644,10 @@ mod snapshot_tests {
         // Test stats bar with object result when results pane is unfocused
         let json = r#"{"name": "Alice", "age": 30}"#;
         let mut app = test_app(json);
-        
+
         // Execute identity query to show the object
         app.query.execute(".");
-        
+
         // Ensure results pane is unfocused to verify gray stats color
         app.focus = Focus::InputField;
 
@@ -660,14 +660,14 @@ mod snapshot_tests {
         // Test that stats bar shows last successful stats during error state
         let json = r#"[1, 2, 3, 4, 5]"#;
         let mut app = test_app(json);
-        
+
         // Execute a successful query first to populate stats
         app.query.execute(".");
-        
+
         // Now create an error state
         app.input.textarea.insert_str(".invalid[");
         app.query.execute(".invalid[");
-        
+
         // Stats should still show "Array [5 numbers]" from last successful result
         app.focus = Focus::InputField;
 
@@ -682,19 +682,19 @@ mod snapshot_tests {
         // Test UI with search bar open
         let json = r#"{"name": "Alice", "email": "alice@example.com", "role": "admin"}"#;
         let mut app = test_app(json);
-        
+
         // Execute identity query to show the JSON
         app.query.execute(".");
-        
+
         // Open search and type a query
         app.search.open();
         app.search.search_textarea_mut().insert_str("alice");
-        
+
         // Update matches based on the result content (use unformatted for correct positions)
         if let Some(content) = &app.query.last_successful_result_unformatted {
             app.search.update_matches(content);
         }
-        
+
         // Focus results pane (where search bar appears)
         app.focus = Focus::ResultsPane;
 
@@ -707,19 +707,19 @@ mod snapshot_tests {
         // Test search bar showing match count "(current/total)"
         let json = r#"[{"name": "alice"}, {"name": "bob"}, {"name": "alice"}]"#;
         let mut app = test_app(json);
-        
+
         // Execute identity query
         app.query.execute(".");
-        
+
         // Open search and type a query that has multiple matches
         app.search.open();
         app.search.search_textarea_mut().insert_str("alice");
-        
+
         // Update matches (use unformatted for correct positions)
         if let Some(content) = &app.query.last_successful_result_unformatted {
             app.search.update_matches(content);
         }
-        
+
         app.focus = Focus::ResultsPane;
 
         let output = render_to_string(&mut app, TEST_WIDTH, TEST_HEIGHT);
@@ -731,19 +731,19 @@ mod snapshot_tests {
         // Test search bar showing "(0/0)" when no matches found
         let json = r#"{"name": "Alice", "age": 30}"#;
         let mut app = test_app(json);
-        
+
         // Execute identity query
         app.query.execute(".");
-        
+
         // Open search and type a query that has no matches
         app.search.open();
         app.search.search_textarea_mut().insert_str("xyz");
-        
+
         // Update matches (should find none, use unformatted for correct positions)
         if let Some(content) = &app.query.last_successful_result_unformatted {
             app.search.update_matches(content);
         }
-        
+
         app.focus = Focus::ResultsPane;
 
         let output = render_to_string(&mut app, TEST_WIDTH, TEST_HEIGHT);
@@ -754,26 +754,27 @@ mod snapshot_tests {
     fn snapshot_search_with_highlighted_matches() {
         // Test UI showing highlighted matches with different styles
         // Current match should have orange background (bold), other matches yellow background
-        let json = r#"[{"name": "alice", "email": "alice@test.com"}, {"name": "bob"}, {"name": "alice"}]"#;
+        let json =
+            r#"[{"name": "alice", "email": "alice@test.com"}, {"name": "bob"}, {"name": "alice"}]"#;
         let mut app = test_app(json);
-        
+
         // Execute identity query to show the JSON
         app.query.execute(".");
-        
+
         // Open search and type a query that has multiple matches
         app.search.open();
         app.search.search_textarea_mut().insert_str("alice");
-        
+
         // Update matches based on the result content (use unformatted for correct positions)
         if let Some(content) = &app.query.last_successful_result_unformatted {
             app.search.update_matches(content);
         }
-        
+
         // Navigate to second match to show different highlight styles
         // First match (index 0) will be other match style (yellow)
         // Second match (index 1) will be current match style (orange, bold)
         app.search.next_match();
-        
+
         // Focus results pane
         app.focus = Focus::ResultsPane;
 
@@ -786,29 +787,33 @@ mod snapshot_tests {
         // Test that horizontal scrolling works when navigating to matches that are off-screen horizontally
         // Create JSON with a very long line containing matches far to the right
         let long_value = format!("{}match_here", " ".repeat(150));
-        let json = format!(r#"{{"short": "value", "very_long_field": "{}"}}"#, long_value);
+        let json = format!(
+            r#"{{"short": "value", "very_long_field": "{}"}}"#,
+            long_value
+        );
         let mut app = test_app(&json);
-        
+
         // Execute identity query to show the JSON
         app.query.execute(".");
-        
+
         // Set up viewport dimensions (simulate a narrow terminal)
         app.results_scroll.viewport_width = 80;
         app.results_scroll.viewport_height = 20;
-        
+
         // Open search and search for "match_here" which is at column ~150
         app.search.open();
         app.search.search_textarea_mut().insert_str("match_here");
-        
+
         // Update matches based on the result content
         if let Some(content) = &app.query.last_successful_result_unformatted {
             app.search.update_matches(content);
-            
+
             // Update horizontal bounds based on content
             let max_line_width = content.lines().map(|l| l.len()).max().unwrap_or(0) as u16;
-            app.results_scroll.update_h_bounds(max_line_width, app.results_scroll.viewport_width);
+            app.results_scroll
+                .update_h_bounds(max_line_width, app.results_scroll.viewport_width);
         }
-        
+
         // Confirm search and navigate to the match (which should trigger horizontal scroll)
         app.search.confirm();
         if let Some(line) = app.search.next_match() {
@@ -819,30 +824,30 @@ mod snapshot_tests {
                 let h_offset = app.results_scroll.h_offset;
                 let max_h_offset = app.results_scroll.max_h_offset;
                 let viewport_width = app.results_scroll.viewport_width;
-                
+
                 // Apply horizontal scroll logic
                 if max_h_offset > 0 && viewport_width > 0 {
                     let match_end = target_col.saturating_add(match_len);
                     let visible_h_start = h_offset;
                     let visible_h_end = h_offset.saturating_add(viewport_width);
-                    
+
                     if target_col < visible_h_start || match_end > visible_h_end {
                         let left_margin: u16 = 10;
                         let new_h_offset = target_col.saturating_sub(left_margin);
                         app.results_scroll.h_offset = new_h_offset.min(max_h_offset);
                     }
                 }
-                
+
                 // Also handle vertical scroll
                 let target_line = line.min(u16::MAX as u32) as u16;
                 let viewport_height = app.results_scroll.viewport_height;
                 let current_offset = app.results_scroll.offset;
                 let max_offset = app.results_scroll.max_offset;
-                
+
                 if viewport_height > 0 && max_offset > 0 {
                     let visible_start = current_offset;
                     let visible_end = current_offset.saturating_add(viewport_height);
-                    
+
                     if target_line < visible_start || target_line >= visible_end {
                         let half_viewport = viewport_height / 2;
                         let new_offset = target_line.saturating_sub(half_viewport);
@@ -851,7 +856,7 @@ mod snapshot_tests {
                 }
             }
         }
-        
+
         // Focus results pane
         app.focus = Focus::ResultsPane;
 
@@ -859,4 +864,3 @@ mod snapshot_tests {
         assert_snapshot!(output);
     }
 }
-

@@ -7,7 +7,7 @@ use tui_textarea::{CursorMove, TextArea};
 
 use crate::app::App;
 use crate::autocomplete::autocomplete_state::Suggestion;
-use crate::autocomplete::{analyze_context, find_char_before_field_access, SuggestionContext};
+use crate::autocomplete::{SuggestionContext, analyze_context, find_char_before_field_access};
 use crate::query::{CharType, QueryState};
 
 #[cfg(debug_assertions)]
@@ -80,14 +80,14 @@ pub fn insert_suggestion(
     if context == SuggestionContext::FunctionContext {
         // Simple replacement: remove the partial and insert the suggestion
         let replacement_start = cursor_pos.saturating_sub(partial.len());
-        
+
         // Append opening parenthesis if the function requires arguments
         let insert_text = if suggestion.needs_parens {
             format!("{}(", suggestion_text)
         } else {
             suggestion_text.to_string()
         };
-        
+
         let new_query = format!(
             "{}{}{}",
             &query[..replacement_start],
@@ -120,7 +120,7 @@ pub fn insert_suggestion(
     if context == SuggestionContext::ObjectKeyContext {
         // Simple replacement: remove the partial and insert the suggestion
         let replacement_start = cursor_pos.saturating_sub(partial.len());
-        
+
         let new_query = format!(
             "{}{}{}",
             &query[..replacement_start],
@@ -242,11 +242,16 @@ pub fn insert_suggestion(
                 // Formula: base + middle + " " + suggestion
                 // Trim trailing space from middle to avoid double spaces
                 let trimmed_middle = middle_query.trim_end();
-                format!("{}{} {}", adjusted_base, trimmed_middle, adjusted_suggestion)
+                format!(
+                    "{}{} {}",
+                    adjusted_base, trimmed_middle, adjusted_suggestion
+                )
             }
             CharType::OpenParen => {
                 #[cfg(debug_assertions)]
-                debug!("formula: OpenParen -> base + middle + suggestion (paren already in middle)");
+                debug!(
+                    "formula: OpenParen -> base + middle + suggestion (paren already in middle)"
+                );
 
                 // Formula: base + middle + suggestion
                 // The ( is already in middle_query, don't add it again
@@ -360,7 +365,11 @@ pub fn extract_middle_query(
     #[cfg(debug_assertions)]
     debug!(
         "extract_middle_query: current_query='{}' before_cursor='{}' partial='{}' trigger_pos={} base_len={}",
-        current_query, before_cursor, partial, trigger_pos_in_before_cursor, base_query.len()
+        current_query,
+        before_cursor,
+        partial,
+        trigger_pos_in_before_cursor,
+        base_query.len()
     );
 
     // Middle is everything from end of base to (but not including) trigger
@@ -409,12 +418,11 @@ pub fn execute_query_and_update(textarea: &TextArea<'_>, query_state: &mut Query
     query_state.execute(&query_text);
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::autocomplete::jq_functions::JQ_FUNCTION_METADATA;
     use crate::autocomplete::autocomplete_state::{Suggestion, SuggestionType};
+    use crate::autocomplete::jq_functions::JQ_FUNCTION_METADATA;
     use proptest::prelude::*;
     use tui_textarea::TextArea;
 
@@ -423,7 +431,8 @@ mod tests {
     // ============================================================================
 
     // Helper function to get functions requiring arguments
-    fn get_functions_requiring_args() -> Vec<&'static crate::autocomplete::jq_functions::JqFunction> {
+    fn get_functions_requiring_args() -> Vec<&'static crate::autocomplete::jq_functions::JqFunction>
+    {
         JQ_FUNCTION_METADATA
             .iter()
             .filter(|f| f.needs_parens)
@@ -431,7 +440,8 @@ mod tests {
     }
 
     // Helper function to get functions not requiring arguments
-    fn get_functions_not_requiring_args() -> Vec<&'static crate::autocomplete::jq_functions::JqFunction> {
+    fn get_functions_not_requiring_args()
+    -> Vec<&'static crate::autocomplete::jq_functions::JqFunction> {
         JQ_FUNCTION_METADATA
             .iter()
             .filter(|f| !f.needs_parens)
@@ -462,7 +472,7 @@ mod tests {
             }
 
             let func = funcs[index % funcs.len()];
-            
+
             // Create a suggestion with needs_parens = true
             let suggestion = Suggestion::new(func.name, SuggestionType::Function)
                 .with_needs_parens(true)
@@ -479,7 +489,7 @@ mod tests {
             // Verify the result ends with function name followed by (
             let result = textarea.lines()[0].clone();
             let expected_suffix = format!("{}(", func.name);
-            
+
             prop_assert!(
                 result.ends_with(&expected_suffix),
                 "Function '{}' with needs_parens=true should result in '{}' but got '{}'",
@@ -506,7 +516,7 @@ mod tests {
             }
 
             let func = funcs[index % funcs.len()];
-            
+
             // Create a suggestion with needs_parens = false
             let suggestion = Suggestion::new(func.name, SuggestionType::Function)
                 .with_needs_parens(false)
@@ -521,7 +531,7 @@ mod tests {
 
             // Verify the result ends with function name (no parenthesis)
             let result = textarea.lines()[0].clone();
-            
+
             prop_assert!(
                 result.ends_with(func.name),
                 "Function '{}' with needs_parens=false should end with '{}' but got '{}'",
@@ -555,7 +565,7 @@ mod tests {
             }
 
             let func = funcs[index % funcs.len()];
-            
+
             // Create a suggestion with needs_parens = true
             let suggestion = Suggestion::new(func.name, SuggestionType::Function)
                 .with_needs_parens(true)
@@ -572,7 +582,7 @@ mod tests {
             let result = textarea.lines()[0].clone();
             let cursor_col = textarea.cursor().1;
             let expected_cursor_pos = result.len();
-            
+
             prop_assert_eq!(
                 cursor_col,
                 expected_cursor_pos,
@@ -662,7 +672,10 @@ mod tests {
     fn test_extract_middle_query_after_pipe() {
         // After pipe with identity - preserves trailing space
         let result = extract_middle_query(".services | .ca", ".services", ".services | .ca", "ca");
-        assert_eq!(result, " | ", "Middle: pipe with trailing space (before dot)");
+        assert_eq!(
+            result, " | ",
+            "Middle: pipe with trailing space (before dot)"
+        );
     }
 
     #[test]
@@ -737,10 +750,16 @@ mod tests {
         app.query.execute(".services");
 
         // Validate cached state after ".services"
-        assert_eq!(app.query.base_query_for_suggestions, Some(".services".to_string()),
-                   "base_query should be '.services'");
-        assert_eq!(app.query.base_type_for_suggestions, Some(ResultType::ArrayOfObjects),
-                   "base_type should be ArrayOfObjects");
+        assert_eq!(
+            app.query.base_query_for_suggestions,
+            Some(".services".to_string()),
+            "base_query should be '.services'"
+        );
+        assert_eq!(
+            app.query.base_type_for_suggestions,
+            Some(ResultType::ArrayOfObjects),
+            "base_type should be ArrayOfObjects"
+        );
 
         // Step 2: Accept autocomplete suggestion "[].name" (no leading dot since after NoOp)
         insert_suggestion_from_app(&mut app, &test_suggestion("[].name"));
@@ -756,7 +775,10 @@ mod tests {
 
         // Verify it does NOT just return nulls or single value
         let line_count = result.lines().count();
-        assert!(line_count >= 3, "Should return at least 3 lines for 3 array elements");
+        assert!(
+            line_count >= 3,
+            "Should return at least 3 lines for 3 array elements"
+        );
     }
 
     #[test]
@@ -771,8 +793,14 @@ mod tests {
         app.query.execute(".user");
 
         // Validate cached state
-        assert_eq!(app.query.base_query_for_suggestions, Some(".user".to_string()));
-        assert_eq!(app.query.base_type_for_suggestions, Some(ResultType::Object));
+        assert_eq!(
+            app.query.base_query_for_suggestions,
+            Some(".user".to_string())
+        );
+        assert_eq!(
+            app.query.base_type_for_suggestions,
+            Some(ResultType::Object)
+        );
 
         // Step 2: Type ".na" (partial field access)
         app.input.textarea.insert_str(".na");
@@ -783,7 +811,7 @@ mod tests {
         // Should produce: .user.name
         // NOT: .username (missing dot)
         assert_eq!(app.input.query(), ".user.name");
-        
+
         // Verify execution
         let result = app.query.result.as_ref().unwrap();
         assert!(result.contains("Alice"));
@@ -800,8 +828,14 @@ mod tests {
         app.query.execute(".services");
 
         // Validate cached state
-        assert_eq!(app.query.base_query_for_suggestions, Some(".services".to_string()));
-        assert_eq!(app.query.base_type_for_suggestions, Some(ResultType::ArrayOfObjects));
+        assert_eq!(
+            app.query.base_query_for_suggestions,
+            Some(".services".to_string())
+        );
+        assert_eq!(
+            app.query.base_type_for_suggestions,
+            Some(ResultType::ArrayOfObjects)
+        );
 
         // Step 2: Type ".s" (partial)
         app.input.textarea.insert_char('.');
@@ -822,7 +856,10 @@ mod tests {
 
         // Should NOT have nulls (would indicate query failed to iterate array)
         let null_count = result.matches("null").count();
-        assert_eq!(null_count, 0, "Should not have any null values - query should iterate all array elements");
+        assert_eq!(
+            null_count, 0,
+            "Should not have any null values - query should iterate all array elements"
+        );
     }
 
     #[test]
@@ -836,10 +873,16 @@ mod tests {
         app.query.execute(".services");
 
         // Validate cached state
-        assert_eq!(app.query.base_query_for_suggestions, Some(".services".to_string()),
-                   "base_query should be '.services'");
-        assert_eq!(app.query.base_type_for_suggestions, Some(ResultType::ArrayOfObjects),
-                   "base_type should be ArrayOfObjects");
+        assert_eq!(
+            app.query.base_query_for_suggestions,
+            Some(".services".to_string()),
+            "base_query should be '.services'"
+        );
+        assert_eq!(
+            app.query.base_type_for_suggestions,
+            Some(ResultType::ArrayOfObjects),
+            "base_type should be ArrayOfObjects"
+        );
 
         // Step 2: Type a dot (syntax error, doesn't update base)
         app.input.textarea.insert_char('.');
@@ -864,13 +907,21 @@ mod tests {
         let mut app = test_app(json);
 
         // Step 1: Execute base query to cache state
-        app.input.textarea.insert_str(".services[].capacityProviderStrategy[]");
+        app.input
+            .textarea
+            .insert_str(".services[].capacityProviderStrategy[]");
         app.query.execute(".services[].capacityProviderStrategy[]");
 
         // Validate cached state
-        assert_eq!(app.query.base_query_for_suggestions, Some(".services[].capacityProviderStrategy[]".to_string()));
+        assert_eq!(
+            app.query.base_query_for_suggestions,
+            Some(".services[].capacityProviderStrategy[]".to_string())
+        );
         // With only 1 service, this returns a single object, not destructured
-        assert_eq!(app.query.base_type_for_suggestions, Some(ResultType::Object));
+        assert_eq!(
+            app.query.base_type_for_suggestions,
+            Some(ResultType::Object)
+        );
 
         // Step 2: Type trailing dot
         app.input.textarea.insert_char('.');
@@ -880,7 +931,10 @@ mod tests {
         insert_suggestion_from_app(&mut app, &test_suggestion("base"));
 
         // Should produce .services[].capacityProviderStrategy[].base
-        assert_eq!(app.input.query(), ".services[].capacityProviderStrategy[].base");
+        assert_eq!(
+            app.input.query(),
+            ".services[].capacityProviderStrategy[].base"
+        );
 
         // Verify the query executes and returns the base values
         let result = app.query.result.as_ref().unwrap();
@@ -898,8 +952,14 @@ mod tests {
         app.query.execute(".services");
 
         // Validate cached state
-        assert_eq!(app.query.base_query_for_suggestions, Some(".services".to_string()));
-        assert_eq!(app.query.base_type_for_suggestions, Some(ResultType::ArrayOfObjects));
+        assert_eq!(
+            app.query.base_query_for_suggestions,
+            Some(".services".to_string())
+        );
+        assert_eq!(
+            app.query.base_type_for_suggestions,
+            Some(ResultType::ArrayOfObjects)
+        );
 
         // Step 2: Type " | ."
         app.input.textarea.insert_str(" | .");
@@ -933,9 +993,15 @@ mod tests {
         assert_eq!(app.input.query(), ".services");
 
         // Step 3: Verify base is now cached after successful execution
-        assert_eq!(app.query.base_query_for_suggestions, Some(".services".to_string()),
-                   "base should be '.services' after insertion executed it");
-        assert_eq!(app.query.base_type_for_suggestions, Some(ResultType::ArrayOfObjects));
+        assert_eq!(
+            app.query.base_query_for_suggestions,
+            Some(".services".to_string()),
+            "base should be '.services' after insertion executed it"
+        );
+        assert_eq!(
+            app.query.base_type_for_suggestions,
+            Some(ResultType::ArrayOfObjects)
+        );
 
         // Step 4: Type " | ."
         app.input.textarea.insert_str(" | .");
@@ -945,7 +1011,10 @@ mod tests {
 
         // Should produce: .services | .[].capacityProviderStrategy
         // NOT: .services | . | .[].capacityProviderStrategy
-        assert_eq!(app.input.query(), ".services | .[].capacityProviderStrategy");
+        assert_eq!(
+            app.input.query(),
+            ".services | .[].capacityProviderStrategy"
+        );
     }
 
     #[test]
@@ -958,7 +1027,10 @@ mod tests {
         app.input.textarea.insert_str(".services");
         app.query.execute(".services");
 
-        assert_eq!(app.query.base_query_for_suggestions, Some(".services".to_string()));
+        assert_eq!(
+            app.query.base_query_for_suggestions,
+            Some(".services".to_string())
+        );
 
         // Step 2: Type space (executes ".services ")
         app.input.textarea.insert_char(' ');
@@ -986,7 +1058,9 @@ mod tests {
         let mut app = test_app(json);
 
         // Step 1: Type the full path up to the last array
-        app.input.textarea.insert_str(".services[].capacityProviderStrategy[]");
+        app.input
+            .textarea
+            .insert_str(".services[].capacityProviderStrategy[]");
         app.query.execute(".services[].capacityProviderStrategy[]");
         app.update_autocomplete();
 
@@ -1005,7 +1079,8 @@ mod tests {
         // Step 3: Type a partial "b" - query returns multiple nulls
         app.input.textarea.insert_char('b');
         // Query is now ".services[].capacityProviderStrategy[].b" which returns multiple nulls
-        app.query.execute(".services[].capacityProviderStrategy[].b");
+        app.query
+            .execute(".services[].capacityProviderStrategy[].b");
 
         // CRITICAL: Cache should STILL not be cleared (multiple nulls shouldn't overwrite)
         assert_eq!(app.query.last_successful_result_unformatted, cached);
@@ -1015,11 +1090,16 @@ mod tests {
 
         // Should have suggestions for the cached object fields
         let suggestions = app.autocomplete.suggestions();
-        assert!(!suggestions.is_empty(), "Suggestions should persist when typing partial that returns null");
+        assert!(
+            !suggestions.is_empty(),
+            "Suggestions should persist when typing partial that returns null"
+        );
 
         // Should have "base" suggestion (filtered by partial "b")
-        assert!(suggestions.iter().any(|s| s.text.contains("base")),
-                "Should suggest 'base' field when filtering by 'b'");
+        assert!(
+            suggestions.iter().any(|s| s.text.contains("base")),
+            "Should suggest 'base' field when filtering by 'b'"
+        );
     }
 
     #[test]
@@ -1049,7 +1129,9 @@ mod tests {
         let mut app = test_app(json);
 
         // Step 1: Execute query with optional chaining up to the array
-        app.input.textarea.insert_str(".services[].capacityProviderStrategy[]?");
+        app.input
+            .textarea
+            .insert_str(".services[].capacityProviderStrategy[]?");
         app.query.execute(".services[].capacityProviderStrategy[]?");
 
         // This should return the object with base, weight, capacityProvider fields
@@ -1059,29 +1141,41 @@ mod tests {
 
         // Step 2: Type a dot
         app.input.textarea.insert_char('.');
-        app.query.execute(".services[].capacityProviderStrategy[]?.");
+        app.query
+            .execute(".services[].capacityProviderStrategy[]?.");
         // Syntax error - cache should remain
-        assert_eq!(app.query.last_successful_result_unformatted, cached_before_partial);
+        assert_eq!(
+            app.query.last_successful_result_unformatted,
+            cached_before_partial
+        );
 
         // Step 3: Type partial "b"
         app.input.textarea.insert_char('b');
-        app.query.execute(".services[].capacityProviderStrategy[]?.b");
+        app.query
+            .execute(".services[].capacityProviderStrategy[]?.b");
 
         // This returns single "null" (not multiple) due to optional chaining
         // Cache should NOT be updated
-        assert_eq!(app.query.last_successful_result_unformatted, cached_before_partial,
-                   "Cache should not be overwritten by null result from partial field");
+        assert_eq!(
+            app.query.last_successful_result_unformatted, cached_before_partial,
+            "Cache should not be overwritten by null result from partial field"
+        );
 
         // Step 4: Update autocomplete
         app.update_autocomplete();
 
         // Should have suggestions based on the cached object
         let suggestions = app.autocomplete.suggestions();
-        assert!(!suggestions.is_empty(), "Suggestions should persist when typing partial after []?");
+        assert!(
+            !suggestions.is_empty(),
+            "Suggestions should persist when typing partial after []?"
+        );
 
         // Should suggest "base" (filtered by partial "b")
-        assert!(suggestions.iter().any(|s| s.text.contains("base")),
-                "Should suggest 'base' field when filtering by 'b' after []?");
+        assert!(
+            suggestions.iter().any(|s| s.text.contains("base")),
+            "Should suggest 'base' field when filtering by 'b' after []?"
+        );
     }
 
     #[test]
@@ -1091,8 +1185,11 @@ mod tests {
         let mut app = test_app(json);
 
         // Step 1: Type the beginning of an if statement
-        app.input.textarea.insert_str(".services | if has(\"capacityProviderStrategy\")");
-        app.query.execute(".services | if has(\"capacityProviderStrategy\")");
+        app.input
+            .textarea
+            .insert_str(".services | if has(\"capacityProviderStrategy\")");
+        app.query
+            .execute(".services | if has(\"capacityProviderStrategy\")");
 
         // Step 2: Type partial "the" to trigger autocomplete for "then"
         app.input.textarea.insert_str(" the");
@@ -1103,10 +1200,16 @@ mod tests {
 
         // Should produce: .services | if has("capacityProviderStrategy") then
         // NOT: .services | if has("capacityProviderStrategy") .then
-        assert_eq!(app.input.query(), ".services | if has(\"capacityProviderStrategy\") then");
-        
+        assert_eq!(
+            app.input.query(),
+            ".services | if has(\"capacityProviderStrategy\") then"
+        );
+
         // Verify no extra dot was added
-        assert!(!app.input.query().contains(" .then"), "Should not have dot before 'then' keyword");
+        assert!(
+            !app.input.query().contains(" .then"),
+            "Should not have dot before 'then' keyword"
+        );
     }
 
     #[test]
@@ -1116,15 +1219,20 @@ mod tests {
         let mut app = test_app(json);
 
         // Type an if-then statement
-        app.input.textarea.insert_str("if .value > 10 then \"high\" el");
-        
+        app.input
+            .textarea
+            .insert_str("if .value > 10 then \"high\" el");
+
         // Accept "else" from autocomplete
         insert_suggestion_from_app(&mut app, &test_suggestion("else"));
 
         // Should produce: if .value > 10 then "high" else
         // NOT: if .value > 10 then "high" .else
         assert_eq!(app.input.query(), "if .value > 10 then \"high\" else");
-        assert!(!app.input.query().contains(".else"), "Should not have dot before 'else' keyword");
+        assert!(
+            !app.input.query().contains(".else"),
+            "Should not have dot before 'else' keyword"
+        );
     }
 
     #[test]
@@ -1134,15 +1242,23 @@ mod tests {
         let mut app = test_app(json);
 
         // Type a complete if-then-else statement
-        app.input.textarea.insert_str("if .value > 10 then \"high\" else \"low\" en");
-        
+        app.input
+            .textarea
+            .insert_str("if .value > 10 then \"high\" else \"low\" en");
+
         // Accept "end" from autocomplete
         insert_suggestion_from_app(&mut app, &test_suggestion("end"));
 
         // Should produce: if .value > 10 then "high" else "low" end
         // NOT: if .value > 10 then "high" else "low" .end
-        assert_eq!(app.input.query(), "if .value > 10 then \"high\" else \"low\" end");
-        assert!(!app.input.query().contains(".end"), "Should not have dot before 'end' keyword");
+        assert_eq!(
+            app.input.query(),
+            "if .value > 10 then \"high\" else \"low\" end"
+        );
+        assert!(
+            !app.input.query().contains(".end"),
+            "Should not have dot before 'end' keyword"
+        );
     }
 
     #[test]
@@ -1157,7 +1273,9 @@ mod tests {
         app.query.execute(".services[]");
 
         // Step 2: Type if-then with field access
-        app.input.textarea.insert_str(" | if has(\"capacityProviderStrategy\") then .ca");
+        app.input
+            .textarea
+            .insert_str(" | if has(\"capacityProviderStrategy\") then .ca");
 
         // Step 3: Accept field suggestion (with leading dot as it would come from get_suggestions)
         insert_suggestion_from_app(&mut app, &test_suggestion(".capacityProviderStrategy"));
@@ -1168,12 +1286,16 @@ mod tests {
             app.input.query(),
             ".services[] | if has(\"capacityProviderStrategy\") then .capacityProviderStrategy"
         );
-        
+
         // Verify there's a space before the field name
-        assert!(app.input.query().contains("then .capacityProviderStrategy"), 
-                "Should have space between 'then' and field name");
-        assert!(!app.input.query().contains("thencapacityProviderStrategy"), 
-                "Should NOT concatenate 'then' with field name");
+        assert!(
+            app.input.query().contains("then .capacityProviderStrategy"),
+            "Should have space between 'then' and field name"
+        );
+        assert!(
+            !app.input.query().contains("thencapacityProviderStrategy"),
+            "Should NOT concatenate 'then' with field name"
+        );
     }
 
     #[test]
@@ -1187,16 +1309,22 @@ mod tests {
         app.query.execute(".services[]");
 
         // Type if-then-else with field access
-        app.input.textarea.insert_str(" | if has(\"name\") then .name else .na");
+        app.input
+            .textarea
+            .insert_str(" | if has(\"name\") then .name else .na");
 
         // Accept field suggestion (with leading dot as it would come from get_suggestions)
         insert_suggestion_from_app(&mut app, &test_suggestion(".name"));
 
         // Should have space between "else" and field
-        assert!(app.input.query().contains("else .name"), 
-                "Should have space between 'else' and field name");
-        assert!(!app.input.query().contains("elsename"), 
-                "Should NOT concatenate 'else' with field name");
+        assert!(
+            app.input.query().contains("else .name"),
+            "Should have space between 'else' and field name"
+        );
+        assert!(
+            !app.input.query().contains("elsename"),
+            "Should NOT concatenate 'else' with field name"
+        );
     }
 
     #[test]
@@ -1206,10 +1334,13 @@ mod tests {
         let mut app = test_app(json);
 
         // User types complex query with if/then
-        app.input.textarea.insert_str(".services | if has(\"capacityProviderStrategy\") then .ca");
+        app.input
+            .textarea
+            .insert_str(".services | if has(\"capacityProviderStrategy\") then .ca");
 
         // Execute to cache state (this will likely error due to incomplete query)
-        app.query.execute(".services | if has(\"capacityProviderStrategy\") then .ca");
+        app.query
+            .execute(".services | if has(\"capacityProviderStrategy\") then .ca");
 
         // The issue: when Tab is pressed, entire query gets replaced with base + suggestion
         // Expected: only ".ca" should be replaced
@@ -1226,10 +1357,16 @@ mod tests {
         let mut app = test_app(json);
 
         // Validate initial state
-        assert_eq!(app.query.base_query_for_suggestions, Some(".".to_string()),
-                   "base_query should be '.' initially");
-        assert_eq!(app.query.base_type_for_suggestions, Some(ResultType::Object),
-                   "base_type should be Object");
+        assert_eq!(
+            app.query.base_query_for_suggestions,
+            Some(".".to_string()),
+            "base_query should be '.' initially"
+        );
+        assert_eq!(
+            app.query.base_type_for_suggestions,
+            Some(ResultType::Object),
+            "base_type should be Object"
+        );
 
         // User types "."
         app.input.textarea.insert_str(".");
@@ -1253,10 +1390,16 @@ mod tests {
 
         // Initial state: "." was executed during App::new()
         // Validate initial state
-        assert_eq!(app.query.base_query_for_suggestions, Some(".".to_string()),
-                   "base_query should be '.' initially");
-        assert_eq!(app.query.base_type_for_suggestions, Some(ResultType::Object),
-                   "base_type should be Object for root");
+        assert_eq!(
+            app.query.base_query_for_suggestions,
+            Some(".".to_string()),
+            "base_query should be '.' initially"
+        );
+        assert_eq!(
+            app.query.base_type_for_suggestions,
+            Some(ResultType::Object),
+            "base_type should be Object for root"
+        );
 
         // Simulate: user typed ".na" and cursor is at end
         app.input.textarea.insert_str(".na");
@@ -1287,10 +1430,16 @@ mod tests {
         app.query.execute(".services");
 
         // Validate cached state
-        assert_eq!(app.query.base_query_for_suggestions, Some(".services".to_string()),
-                   "base_query should be '.services'");
-        assert_eq!(app.query.base_type_for_suggestions, Some(ResultType::ArrayOfObjects),
-                   "base_type should be ArrayOfObjects");
+        assert_eq!(
+            app.query.base_query_for_suggestions,
+            Some(".services".to_string()),
+            "base_query should be '.services'"
+        );
+        assert_eq!(
+            app.query.base_type_for_suggestions,
+            Some(ResultType::ArrayOfObjects),
+            "base_type should be ArrayOfObjects"
+        );
 
         // Step 2: Type ".s" (partial)
         app.input.textarea.insert_str(".s");
@@ -1313,12 +1462,17 @@ mod tests {
 
         // Count non-null values
         let lines: Vec<&str> = result.lines().collect();
-        let non_null_lines: Vec<&str> = lines.iter()
+        let non_null_lines: Vec<&str> = lines
+            .iter()
             .filter(|line| !line.trim().contains("null"))
             .copied()
             .collect();
 
-        assert!(non_null_lines.len() >= 5, "Should have at least 5 non-null results, got {}", non_null_lines.len());
+        assert!(
+            non_null_lines.len() >= 5,
+            "Should have at least 5 non-null results, got {}",
+            non_null_lines.len()
+        );
     }
 
     // ============================================================================
@@ -1341,12 +1495,18 @@ mod tests {
 
         // Verify the result
         let result = textarea.lines()[0].clone();
-        assert_eq!(result, "{name", 
-            "ObjectKeyContext insertion should replace 'na' with 'name'. Got: '{}'", result);
+        assert_eq!(
+            result, "{name",
+            "ObjectKeyContext insertion should replace 'na' with 'name'. Got: '{}'",
+            result
+        );
 
         // Verify cursor position is at the end
         let cursor_col = textarea.cursor().1;
-        assert_eq!(cursor_col, 5, "Cursor should be at position 5 (end of '{{name')");
+        assert_eq!(
+            cursor_col, 5,
+            "Cursor should be at position 5 (end of '{{name')"
+        );
     }
 
     #[test]
@@ -1364,12 +1524,18 @@ mod tests {
 
         // Verify the result
         let result = textarea.lines()[0].clone();
-        assert_eq!(result, "{name: .name, age", 
-            "ObjectKeyContext insertion should replace 'ag' with 'age'. Got: '{}'", result);
+        assert_eq!(
+            result, "{name: .name, age",
+            "ObjectKeyContext insertion should replace 'ag' with 'age'. Got: '{}'",
+            result
+        );
 
         // Verify cursor position is at the end
         let cursor_col = textarea.cursor().1;
-        assert_eq!(cursor_col, 17, "Cursor should be at position 17 (end of '{{name: .name, age')");
+        assert_eq!(
+            cursor_col, 17,
+            "Cursor should be at position 17 (end of '{{name: .name, age')"
+        );
     }
 
     #[test]
@@ -1397,8 +1563,11 @@ mod tests {
         insert_suggestion(&mut textarea, &mut query_state, &suggestion);
 
         let result = textarea.lines()[0].clone();
-        assert_eq!(result, "{outer: {inner",
-            "ObjectKeyContext insertion in nested object should work. Got: '{}'", result);
+        assert_eq!(
+            result, "{outer: {inner",
+            "ObjectKeyContext insertion in nested object should work. Got: '{}'",
+            result
+        );
     }
 
     #[test]
@@ -1412,8 +1581,11 @@ mod tests {
         insert_suggestion(&mut textarea, &mut query_state, &suggestion);
 
         let result = textarea.lines()[0].clone();
-        assert_eq!(result, "{services",
-            "ObjectKeyContext insertion with longer partial should work. Got: '{}'", result);
+        assert_eq!(
+            result, "{services",
+            "ObjectKeyContext insertion with longer partial should work. Got: '{}'",
+            result
+        );
     }
 
     #[test]
@@ -1427,7 +1599,10 @@ mod tests {
         insert_suggestion(&mut textarea, &mut query_state, &suggestion);
 
         let result = textarea.lines()[0].clone();
-        assert_eq!(result, "{name",
-            "ObjectKeyContext insertion with single char partial should work. Got: '{}'", result);
+        assert_eq!(
+            result, "{name",
+            "ObjectKeyContext insertion with single char partial should work. Got: '{}'",
+            result
+        );
     }
 }

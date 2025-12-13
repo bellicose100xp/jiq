@@ -47,7 +47,9 @@ impl JqHighlighter {
             }
 
             // Numbers
-            if chars[i].is_ascii_digit() || (chars[i] == '-' && i + 1 < chars.len() && chars[i + 1].is_ascii_digit()) {
+            if chars[i].is_ascii_digit()
+                || (chars[i] == '-' && i + 1 < chars.len() && chars[i + 1].is_ascii_digit())
+            {
                 let start = i;
                 if chars[i] == '-' {
                     i += 1;
@@ -76,10 +78,7 @@ impl JqHighlighter {
                     }
                 }
 
-                spans.push(Span::styled(
-                    op,
-                    Style::default().fg(Color::Magenta),
-                ));
+                spans.push(Span::styled(op, Style::default().fg(Color::Magenta)));
                 continue;
             }
 
@@ -90,7 +89,12 @@ impl JqHighlighter {
                 // Check if this is a field accessor (starts with .)
                 let starts_with_dot = chars[i] == '.';
 
-                while i < chars.len() && (chars[i].is_alphanumeric() || chars[i] == '_' || chars[i] == '.' || chars[i] == '$') {
+                while i < chars.len()
+                    && (chars[i].is_alphanumeric()
+                        || chars[i] == '_'
+                        || chars[i] == '.'
+                        || chars[i] == '$')
+                {
                     i += 1;
                 }
 
@@ -108,21 +112,12 @@ impl JqHighlighter {
 
                 // Check if it's a keyword
                 if is_keyword(&word) {
-                    spans.push(Span::styled(
-                        word,
-                        Style::default().fg(Color::Yellow),
-                    ));
+                    spans.push(Span::styled(word, Style::default().fg(Color::Yellow)));
                 } else if is_builtin_function(&word) {
-                    spans.push(Span::styled(
-                        word,
-                        Style::default().fg(Color::Blue),
-                    ));
+                    spans.push(Span::styled(word, Style::default().fg(Color::Blue)));
                 } else if is_object_field {
                     // Field name in object constructor {name: value}
-                    spans.push(Span::styled(
-                        word,
-                        Style::default().fg(Color::Cyan),
-                    ));
+                    spans.push(Span::styled(word, Style::default().fg(Color::Cyan)));
                 } else {
                     // Field accessors (.name) and regular identifiers - default color
                     spans.push(Span::raw(word));
@@ -143,29 +138,58 @@ impl JqHighlighter {
 fn is_operator(ch: char) -> bool {
     matches!(
         ch,
-        '|' | '=' | '!' | '<' | '>' | '+' | '-' | '*' | '/' | '%' |
-        '(' | ')' | '[' | ']' | '{' | '}' | ',' | ';' | ':' | '?' | '@'
+        '|' | '='
+            | '!'
+            | '<'
+            | '>'
+            | '+'
+            | '-'
+            | '*'
+            | '/'
+            | '%'
+            | '('
+            | ')'
+            | '['
+            | ']'
+            | '{'
+            | '}'
+            | ','
+            | ';'
+            | ':'
+            | '?'
+            | '@'
     )
 }
 
 /// Check if a two-character string is a multi-character operator
 fn is_two_char_operator(op: &str) -> bool {
-    matches!(
-        op,
-        "==" | "!=" | "<=" | ">=" | "//"
-    )
+    matches!(op, "==" | "!=" | "<=" | ">=" | "//")
 }
 
 /// Check if a word is a jq keyword
 fn is_keyword(word: &str) -> bool {
     matches!(
         word,
-        "if" | "then" | "else" | "elif" | "end" |
-        "and" | "or" | "not" |
-        "as" | "def" | "reduce" | "foreach" |
-        "try" | "catch" |
-        "import" | "include" | "module" |
-        "empty" | "null" | "true" | "false"
+        "if" | "then"
+            | "else"
+            | "elif"
+            | "end"
+            | "and"
+            | "or"
+            | "not"
+            | "as"
+            | "def"
+            | "reduce"
+            | "foreach"
+            | "try"
+            | "catch"
+            | "import"
+            | "include"
+            | "module"
+            | "empty"
+            | "null"
+            | "true"
+            | "false"
     )
 }
 
@@ -505,7 +529,11 @@ mod tests {
         let spans = JqHighlighter::highlight(r#""if then else""#);
         assert_eq!(spans.len(), 1, "String should be a single span");
         assert_eq!(spans[0].content, r#""if then else""#);
-        assert_eq!(spans[0].style.fg, Some(Color::Green), "Entire string should be green, keywords not highlighted");
+        assert_eq!(
+            spans[0].style.fg,
+            Some(Color::Green),
+            "Entire string should be green, keywords not highlighted"
+        );
     }
 
     #[test]
@@ -515,12 +543,20 @@ mod tests {
         // Find the string span
         let string_span = spans.iter().find(|s| s.content == r#""if""#);
         assert!(string_span.is_some(), "String should be present");
-        assert_eq!(string_span.unwrap().style.fg, Some(Color::Green), "String 'if' should be green, not yellow");
+        assert_eq!(
+            string_span.unwrap().style.fg,
+            Some(Color::Green),
+            "String 'if' should be green, not yellow"
+        );
 
         // Find the select keyword
         let select_span = spans.iter().find(|s| s.content == "select");
         assert!(select_span.is_some(), "select keyword should be present");
-        assert_eq!(select_span.unwrap().style.fg, Some(Color::Blue), "select should be blue (function)");
+        assert_eq!(
+            select_span.unwrap().style.fg,
+            Some(Color::Blue),
+            "select should be blue (function)"
+        );
     }
 
     #[test]
@@ -531,12 +567,23 @@ mod tests {
         // Find the field name (before :)
         let field_span = spans.iter().find(|s| s.content == "name");
         assert!(field_span.is_some(), "Field name 'name' should be present");
-        assert_eq!(field_span.unwrap().style.fg, Some(Color::Cyan), "Object field name should be cyan");
+        assert_eq!(
+            field_span.unwrap().style.fg,
+            Some(Color::Cyan),
+            "Object field name should be cyan"
+        );
 
         // The field accessor .name should be white (default)
         let accessor_span = spans.iter().find(|s| s.content == ".name");
-        assert!(accessor_span.is_some(), "Field accessor '.name' should be present");
-        assert_eq!(accessor_span.unwrap().style.fg, None, "Field accessor should be default color");
+        assert!(
+            accessor_span.is_some(),
+            "Field accessor '.name' should be present"
+        );
+        assert_eq!(
+            accessor_span.unwrap().style.fg,
+            None,
+            "Field accessor should be default color"
+        );
     }
 
     #[test]
@@ -546,7 +593,11 @@ mod tests {
         // Check that object field names are cyan
         for field_name in ["firstName", "lastName", "age"] {
             let field_span = spans.iter().find(|s| s.content == field_name);
-            assert!(field_span.is_some(), "Field '{}' should be present", field_name);
+            assert!(
+                field_span.is_some(),
+                "Field '{}' should be present",
+                field_name
+            );
             assert_eq!(
                 field_span.unwrap().style.fg,
                 Some(Color::Cyan),
@@ -558,7 +609,11 @@ mod tests {
         // Check that field accessors are white
         for accessor in [".first", ".last", ".age"] {
             let accessor_span = spans.iter().find(|s| s.content == accessor);
-            assert!(accessor_span.is_some(), "Accessor '{}' should be present", accessor);
+            assert!(
+                accessor_span.is_some(),
+                "Accessor '{}' should be present",
+                accessor
+            );
             assert_eq!(
                 accessor_span.unwrap().style.fg,
                 None,
@@ -575,14 +630,18 @@ mod tests {
 
         let field_span = spans.iter().find(|s| s.content == "name");
         assert!(field_span.is_some(), "Field name should be present");
-        assert_eq!(field_span.unwrap().style.fg, Some(Color::Cyan), "Field name should be cyan even with whitespace");
+        assert_eq!(
+            field_span.unwrap().style.fg,
+            Some(Color::Cyan),
+            "Field name should be cyan even with whitespace"
+        );
     }
 }
 
 #[cfg(test)]
 mod snapshot_tests {
-    use super::*;
     use super::snapshot_helpers::serialize_spans;
+    use super::*;
     use insta::assert_yaml_snapshot;
 
     // === Basic Element Tests ===
@@ -616,15 +675,18 @@ mod snapshot_tests {
     #[test]
     fn snapshot_keywords() {
         let keywords = vec![
-            "if", "then", "else", "elif", "end",
-            "and", "or", "not",
-            "as", "def", "reduce", "foreach",
-            "try", "catch",
-            "empty", "null", "true", "false"
+            "if", "then", "else", "elif", "end", "and", "or", "not", "as", "def", "reduce",
+            "foreach", "try", "catch", "empty", "null", "true", "false",
         ];
 
-        let results: Vec<_> = keywords.iter()
-            .map(|kw| (kw.to_string(), serialize_spans(&JqHighlighter::highlight(kw))))
+        let results: Vec<_> = keywords
+            .iter()
+            .map(|kw| {
+                (
+                    kw.to_string(),
+                    serialize_spans(&JqHighlighter::highlight(kw)),
+                )
+            })
             .collect();
 
         assert_yaml_snapshot!(results);
@@ -635,12 +697,12 @@ mod snapshot_tests {
     #[test]
     fn snapshot_common_functions() {
         let functions = vec![
-            "map", "select", "sort", "keys", "values",
-            "length", "type", "add", "first", "last",
-            "has", "contains", "split", "join"
+            "map", "select", "sort", "keys", "values", "length", "type", "add", "first", "last",
+            "has", "contains", "split", "join",
         ];
 
-        let results: Vec<_> = functions.iter()
+        let results: Vec<_> = functions
+            .iter()
             .map(|f| (f.to_string(), serialize_spans(&JqHighlighter::highlight(f))))
             .collect();
 
@@ -652,13 +714,18 @@ mod snapshot_tests {
     #[test]
     fn snapshot_operators() {
         let operators = vec![
-            "|", "==", "!=", "<=", ">=", "//",
-            "+", "-", "*", "/", "%",
-            "(", ")", "[", "]", "{", "}", ",", ";", ":", "?"
+            "|", "==", "!=", "<=", ">=", "//", "+", "-", "*", "/", "%", "(", ")", "[", "]", "{",
+            "}", ",", ";", ":", "?",
         ];
 
-        let results: Vec<_> = operators.iter()
-            .map(|op| (op.to_string(), serialize_spans(&JqHighlighter::highlight(op))))
+        let results: Vec<_> = operators
+            .iter()
+            .map(|op| {
+                (
+                    op.to_string(),
+                    serialize_spans(&JqHighlighter::highlight(op)),
+                )
+            })
             .collect();
 
         assert_yaml_snapshot!(results);
@@ -675,7 +742,8 @@ mod snapshot_tests {
             r#""unicode: 世界""#,
         ];
 
-        let results: Vec<_> = strings.iter()
+        let results: Vec<_> = strings
+            .iter()
             .map(|s| (s.to_string(), serialize_spans(&JqHighlighter::highlight(s))))
             .collect();
 
@@ -686,7 +754,8 @@ mod snapshot_tests {
     fn snapshot_number_literals() {
         let numbers = ["0", "42", "-123", "3.14", "-0.5"];
 
-        let results: Vec<_> = numbers.iter()
+        let results: Vec<_> = numbers
+            .iter()
             .map(|n| (n.to_string(), serialize_spans(&JqHighlighter::highlight(n))))
             .collect();
 

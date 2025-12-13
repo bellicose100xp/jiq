@@ -73,11 +73,14 @@ mod tests {
     fn test_compute_array_stats() {
         let mut state = StatsState::default();
         state.compute("[1, 2, 3]");
-        
+
         assert!(state.stats().is_some());
         assert_eq!(
             state.stats(),
-            Some(&ResultStats::Array { count: 3, element_type: ElementType::Numbers })
+            Some(&ResultStats::Array {
+                count: 3,
+                element_type: ElementType::Numbers
+            })
         );
         assert_eq!(state.display(), Some("Array [3 numbers]".to_string()));
     }
@@ -86,7 +89,7 @@ mod tests {
     fn test_compute_object_stats() {
         let mut state = StatsState::default();
         state.compute(r#"{"key": "value"}"#);
-        
+
         assert_eq!(state.stats(), Some(&ResultStats::Object));
         assert_eq!(state.display(), Some("Object".to_string()));
     }
@@ -95,7 +98,7 @@ mod tests {
     fn test_compute_string_stats() {
         let mut state = StatsState::default();
         state.compute(r#""hello world""#);
-        
+
         assert_eq!(state.stats(), Some(&ResultStats::String));
         assert_eq!(state.display(), Some("String".to_string()));
     }
@@ -104,7 +107,7 @@ mod tests {
     fn test_compute_number_stats() {
         let mut state = StatsState::default();
         state.compute("42");
-        
+
         assert_eq!(state.stats(), Some(&ResultStats::Number));
         assert_eq!(state.display(), Some("Number".to_string()));
     }
@@ -113,7 +116,7 @@ mod tests {
     fn test_compute_boolean_stats() {
         let mut state = StatsState::default();
         state.compute("true");
-        
+
         assert_eq!(state.stats(), Some(&ResultStats::Boolean));
         assert_eq!(state.display(), Some("Boolean".to_string()));
     }
@@ -122,7 +125,7 @@ mod tests {
     fn test_compute_null_stats() {
         let mut state = StatsState::default();
         state.compute("null");
-        
+
         assert_eq!(state.stats(), Some(&ResultStats::Null));
         assert_eq!(state.display(), Some("null".to_string()));
     }
@@ -131,7 +134,7 @@ mod tests {
     fn test_compute_stream_stats() {
         let mut state = StatsState::default();
         state.compute("{}\n{}\n{}");
-        
+
         assert_eq!(state.stats(), Some(&ResultStats::Stream { count: 3 }));
         assert_eq!(state.display(), Some("Stream [3]".to_string()));
     }
@@ -141,11 +144,11 @@ mod tests {
         let mut state = StatsState::default();
         state.compute("[1, 2, 3]");
         let original_stats = state.stats().cloned();
-        
+
         // Empty result should not update stats (preserves last successful)
         state.compute("");
         assert_eq!(state.stats().cloned(), original_stats);
-        
+
         // Whitespace-only result should also preserve
         state.compute("   ");
         assert_eq!(state.stats().cloned(), original_stats);
@@ -154,10 +157,10 @@ mod tests {
     #[test]
     fn test_stats_update_on_new_result() {
         let mut state = StatsState::default();
-        
+
         state.compute("[1, 2, 3]");
         assert_eq!(state.display(), Some("Array [3 numbers]".to_string()));
-        
+
         state.compute(r#"{"a": 1}"#);
         assert_eq!(state.display(), Some("Object".to_string()));
     }
@@ -190,15 +193,15 @@ mod tests {
             prop::collection::vec(arb_simple_json_value(), 0..10)
                 .prop_map(|elements| format!("[{}]", elements.join(", "))),
             // Objects
-            prop::collection::vec(
-                ("[a-z]{1,5}", arb_simple_json_value()),
-                0..5
-            ).prop_map(|pairs| {
-                let fields: Vec<String> = pairs.iter()
-                    .map(|(k, v)| format!(r#""{}": {}"#, k, v))
-                    .collect();
-                format!("{{{}}}", fields.join(", "))
-            }),
+            prop::collection::vec(("[a-z]{1,5}", arb_simple_json_value()), 0..5).prop_map(
+                |pairs| {
+                    let fields: Vec<String> = pairs
+                        .iter()
+                        .map(|(k, v)| format!(r#""{}": {}"#, k, v))
+                        .collect();
+                    format!("{{{}}}", fields.join(", "))
+                }
+            ),
         ]
     }
 
@@ -227,31 +230,31 @@ mod tests {
             error_result in arb_error_result()
         ) {
             let mut state = StatsState::default();
-            
+
             // First, compute stats from a valid result
             state.compute(&valid_json);
             let stats_after_valid = state.stats().cloned();
             let display_after_valid = state.display();
-            
+
             // Stats should be computed (not None) for valid JSON
             prop_assert!(
                 stats_after_valid.is_some(),
                 "Stats should be computed for valid JSON: '{}'",
                 valid_json
             );
-            
+
             // Now simulate an error (empty result)
             state.compute(&error_result);
             let stats_after_error = state.stats().cloned();
             let display_after_error = state.display();
-            
+
             // Stats should be preserved (same as before the error)
             prop_assert_eq!(
                 &stats_after_error, &stats_after_valid,
                 "Stats should persist after error. Before: {:?}, After: {:?}",
                 &stats_after_valid, &stats_after_error
             );
-            
+
             // Display should also be preserved
             prop_assert_eq!(
                 &display_after_error, &display_after_valid,
@@ -266,22 +269,22 @@ mod tests {
             error_count in 1usize..5
         ) {
             let mut state = StatsState::default();
-            
+
             // Compute stats from valid result
             state.compute(&valid_json);
             let original_stats = state.stats().cloned();
             let original_display = state.display();
-            
+
             prop_assert!(
                 original_stats.is_some(),
                 "Stats should be computed for valid JSON"
             );
-            
+
             // Apply multiple error results
             for _ in 0..error_count {
                 state.compute("");
             }
-            
+
             // Stats should still be preserved
             prop_assert_eq!(
                 state.stats().cloned(), original_stats,
@@ -301,19 +304,19 @@ mod tests {
             second_json in arb_valid_json()
         ) {
             let mut state = StatsState::default();
-            
+
             // Compute stats from first valid result
             state.compute(&first_json);
             let first_stats = state.stats().cloned();
-            
+
             // Compute stats from second valid result
             state.compute(&second_json);
             let second_stats = state.stats().cloned();
-            
+
             // Both should have stats
             prop_assert!(first_stats.is_some(), "First result should have stats");
             prop_assert!(second_stats.is_some(), "Second result should have stats");
-            
+
             // The second stats should reflect the second JSON
             // (We can't easily compare the exact stats without parsing,
             // but we can verify that stats are computed)
@@ -336,10 +339,10 @@ mod tests {
     fn test_update_stats_from_app_with_object() {
         let json = r#"{"name": "Alice", "age": 30}"#;
         let mut app = test_app(json);
-        
+
         // Initial query executes identity filter, which sets last_successful_result_unformatted
         update_stats_from_app(&mut app);
-        
+
         assert_eq!(app.stats.display(), Some("Object".to_string()));
     }
 
@@ -347,9 +350,9 @@ mod tests {
     fn test_update_stats_from_app_with_array() {
         let json = r#"[1, 2, 3, 4, 5]"#;
         let mut app = test_app(json);
-        
+
         update_stats_from_app(&mut app);
-        
+
         assert_eq!(app.stats.display(), Some("Array [5 numbers]".to_string()));
     }
 
@@ -357,15 +360,15 @@ mod tests {
     fn test_update_stats_from_app_no_result() {
         let json = r#"{"test": true}"#;
         let mut app = test_app(json);
-        
+
         // Clear the last successful result to simulate no result available
         app.query.last_successful_result_unformatted = None;
-        
+
         // Stats should remain unchanged (None)
         let stats_before = app.stats.display();
         update_stats_from_app(&mut app);
         let stats_after = app.stats.display();
-        
+
         assert_eq!(stats_before, stats_after);
     }
 
@@ -373,15 +376,15 @@ mod tests {
     fn test_update_stats_from_app_preserves_on_error() {
         let json = r#"[1, 2, 3]"#;
         let mut app = test_app(json);
-        
+
         // First update with valid result
         update_stats_from_app(&mut app);
         assert_eq!(app.stats.display(), Some("Array [3 numbers]".to_string()));
-        
+
         // Simulate an error by setting result to error but keeping last_successful_result_unformatted
         app.query.result = Err("syntax error".to_string());
         // Note: last_successful_result_unformatted is still set from the initial query
-        
+
         // Update stats again - should still show the last successful stats
         update_stats_from_app(&mut app);
         assert_eq!(app.stats.display(), Some("Array [3 numbers]".to_string()));
@@ -391,15 +394,15 @@ mod tests {
     fn test_update_stats_from_app_updates_on_new_query() {
         let json = r#"{"items": [1, 2, 3]}"#;
         let mut app = test_app(json);
-        
+
         // Initial stats for the object
         update_stats_from_app(&mut app);
         assert_eq!(app.stats.display(), Some("Object".to_string()));
-        
+
         // Execute a new query that returns an array
         app.query.execute(".items");
         update_stats_from_app(&mut app);
-        
+
         assert_eq!(app.stats.display(), Some("Array [3 numbers]".to_string()));
     }
 }

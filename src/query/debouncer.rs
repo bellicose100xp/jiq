@@ -82,7 +82,6 @@ impl Debouncer {
     pub fn has_pending(&self) -> bool {
         self.pending_execution
     }
-
 }
 
 #[cfg(test)]

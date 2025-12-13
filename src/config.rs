@@ -81,7 +81,6 @@ fn get_config_path() -> PathBuf {
         .join("config.toml")
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -107,10 +106,10 @@ backend = "{}"
 "#, invalid_backend);
 
             let config: Result<Config, _> = toml::from_str(&toml_content);
-            
+
             // Should fail to parse (serde will reject invalid enum value)
             prop_assert!(config.is_err(), "Invalid backend should fail to parse");
-            
+
             // In the actual load_config function, this error would be caught
             // and Config::default() would be returned, which has Auto backend
             let default_config = Config::default();
@@ -141,10 +140,10 @@ backend = "{}"
             ])
         ) {
             let config: Result<Config, _> = toml::from_str(malformed);
-            
+
             // Should fail to parse
             prop_assert!(config.is_err(), "Malformed TOML should fail to parse");
-            
+
             // In the actual load_config function, this error would be caught
             // and Config::default() would be returned
             let default_config = Config::default();
@@ -169,11 +168,11 @@ backend = "{}"
             let path1 = get_config_path();
             let path2 = get_config_path();
             let path3 = get_config_path();
-            
+
             // All should return the same path
             prop_assert_eq!(&path1, &path2, "Config path should be consistent");
             prop_assert_eq!(&path2, &path3, "Config path should be consistent");
-            
+
             // Path should end with jiq/config.toml
             let path_str = path1.to_string_lossy();
             prop_assert!(
@@ -185,7 +184,7 @@ backend = "{}"
     }
 
     // Unit tests for configuration loading
-    
+
     #[test]
     fn test_config_default_values() {
         let config = Config::default();

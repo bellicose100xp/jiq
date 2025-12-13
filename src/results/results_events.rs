@@ -60,7 +60,6 @@ pub fn handle_results_pane_key(app: &mut App, key: KeyEvent) {
             app.results_scroll.scroll_right(10);
         }
 
-
         // Jump to left edge
         KeyCode::Char('0') | KeyCode::Char('^') => {
             app.results_scroll.jump_to_left();
@@ -82,10 +81,14 @@ pub fn handle_results_pane_key(app: &mut App, key: KeyEvent) {
         }
 
         // Half page scrolling
-        KeyCode::PageUp | KeyCode::Char('u') if key.code == KeyCode::PageUp || key.modifiers.contains(KeyModifiers::CONTROL) => {
+        KeyCode::PageUp | KeyCode::Char('u')
+            if key.code == KeyCode::PageUp || key.modifiers.contains(KeyModifiers::CONTROL) =>
+        {
             app.results_scroll.page_up();
         }
-        KeyCode::PageDown | KeyCode::Char('d') if key.code == KeyCode::PageDown || key.modifiers.contains(KeyModifiers::CONTROL) => {
+        KeyCode::PageDown | KeyCode::Char('d')
+            if key.code == KeyCode::PageDown || key.modifiers.contains(KeyModifiers::CONTROL) =>
+        {
             app.results_scroll.page_down();
         }
 
@@ -99,8 +102,7 @@ pub fn handle_results_pane_key(app: &mut App, key: KeyEvent) {
 mod tests {
     use super::*;
     use crate::app::Focus;
-    use crate::test_utils::test_helpers::{test_app, key, key_with_mods, app_with_query};
-
+    use crate::test_utils::test_helpers::{app_with_query, key, key_with_mods, test_app};
 
     // ========== Results Scrolling Tests ==========
 
@@ -313,7 +315,6 @@ mod tests {
 
         assert_eq!(app.results_scroll.offset, 0);
     }
-
 
     // ========== Scroll clamping tests ==========
 

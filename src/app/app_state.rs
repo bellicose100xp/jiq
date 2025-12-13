@@ -1,10 +1,10 @@
-use crate::help::HelpPopupState;
-use crate::input::InputState;
-use crate::query::{Debouncer, QueryState};
 use crate::autocomplete::{self, AutocompleteState};
 use crate::config::{ClipboardBackend, Config};
+use crate::help::HelpPopupState;
 use crate::history::HistoryState;
+use crate::input::InputState;
 use crate::notification::NotificationState;
+use crate::query::{Debouncer, QueryState};
 use crate::scroll::ScrollState;
 use crate::search::SearchState;
 use crate::stats::{self, StatsState};
@@ -93,7 +93,6 @@ impl App {
         self.query.line_count()
     }
 
-
     /// Update autocomplete suggestions based on current query and cursor position
     /// Delegates to the autocomplete module for the actual logic
     pub fn update_autocomplete(&mut self) {
@@ -114,7 +113,10 @@ impl App {
 
     /// Insert an autocomplete suggestion at the current cursor position
     /// Delegates to the autocomplete insertion module
-    pub fn insert_autocomplete_suggestion(&mut self, suggestion: &autocomplete::autocomplete_state::Suggestion) {
+    pub fn insert_autocomplete_suggestion(
+        &mut self,
+        suggestion: &autocomplete::autocomplete_state::Suggestion,
+    ) {
         autocomplete::insert_suggestion_from_app(self, suggestion);
     }
 }
@@ -306,7 +308,7 @@ mod tests {
     fn test_tooltip_initialized_enabled() {
         let json = r#"{"name": "test"}"#;
         let app = test_app(json);
-        
+
         // Tooltip should be enabled by default
         assert!(app.tooltip.enabled);
         assert!(app.tooltip.current_function.is_none());

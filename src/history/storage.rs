@@ -96,11 +96,7 @@ fn deduplicate(entries: &[String]) -> Vec<String> {
 
 /// Trims the entries to the maximum allowed size.
 fn trim_to_max(entries: &[String]) -> Vec<String> {
-    entries
-        .iter()
-        .take(MAX_HISTORY_ENTRIES)
-        .cloned()
-        .collect()
+    entries.iter().take(MAX_HISTORY_ENTRIES).cloned().collect()
 }
 
 #[cfg(test)]
