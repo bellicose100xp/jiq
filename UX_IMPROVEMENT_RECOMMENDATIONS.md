@@ -9,44 +9,13 @@ Based on research of similar tools (jnv, jless, fx, jqp) and analysis of jq user
 
 ## 🔥 CRITICAL PRIORITY - Highest Impact
 
-### 1. Export to Multiple Formats
+### 1. Better Error Messages & Query Hints
 **Impact:** VERY HIGH | **Effort:** Medium
 
-**What Users Want:**
-- Export JSON results to CSV, YAML, TOML formats
-- Users frequently need to convert JSON for different tools/contexts
-- Common workflow: explore in JSON viewer → export for Excel/databases
-
-**Current State:** jiq only outputs JSON or query string
-**Recommendation:** Add export format options (Ctrl+Shift+C for CSV, Ctrl+Shift+Y for YAML, etc.)
-
-**Evidence:**
-- Users across tools request JSON→CSV/YAML export
-- ClickUp users specifically requesting JSON/XML export capabilities
-- fx supports multiple formats and gets positive feedback for this
-
-### 2. Performance with Large Files (>10MB)
-**Impact:** VERY HIGH | **Effort:** High
-
-**What Users Want:**
-- Handle files 100MB-1GB without crashing or massive RAM usage
-- Streaming/lazy evaluation for large datasets
-- Progress indicators for slow queries
-
-**Current Problems (from jq issues):**
-- jq uses 5GB RAM for 800MB file (7x memory overhead)
-- jq 1.6 extremely slow on large files vs 1.5
-- No performance debugging tools
-
-**Recommendations:**
-1. Implement result pagination/virtualization (only render visible results)
-2. Add debouncing for large file processing (already started with debouncer.rs)
-3. Show loading indicator with "Processing large file..." message
-4. Add file size warning: "Large file detected (500MB). Performance may be impacted."
-5. Stream processing for JSONL files instead of loading all in memory
-
-### 3. Better Error Messages & Debugging
-**Impact:** HIGH | **Effort:** Medium
+**Why This Matters for Query Building:**
+- Users spend most time **fixing broken queries**
+- Faster error resolution = faster query building
+- Learning jq syntax through helpful hints
 
 **What Users Want:**
 - Understand WHY their query failed
@@ -58,30 +27,67 @@ Based on research of similar tools (jnv, jless, fx, jqp) and analysis of jq user
 **Recommendations:**
 1. Parse jq error messages and add context:
    - "Cannot index string with number" → "Hint: Use .[] for arrays, not strings"
-   - Show relevant jq function documentation
-2. Add "Did you mean...?" suggestions for typos
-3. Link to jq manual section for specific errors
-4. Show example of correct syntax for the attempted operation
+   - Show relevant jq function documentation inline
+2. Add "Did you mean...?" suggestions for typos (`.legnth` → `.length`)
+3. Show example of correct syntax for the attempted operation
+4. Inline query validation hints as you type
 
-### 4. JSON Path/Breadcrumb Display
+**Impact:** Dramatically speeds up query building workflow
+
+### 2. Query Templates & Custom Functions
 **Impact:** HIGH | **Effort:** Medium
 
+**Why This Matters for Query Building:**
+- Reusing common patterns saves time
+- Complex queries built from proven components
+- Project-specific jq libraries
+
 **What Users Want:**
-- Know WHERE they are in deeply nested JSON
-- Copy path to current selection
-- Navigate back to parent levels easily
+- Define reusable jq functions
+- Quick-insert common query patterns
+- Save frequently used queries
 
 **Evidence:**
-- jless issue #133: "Copy path to element"
-- Users get lost in complex nested structures
-- Common request across all JSON viewers
+- jnv issue #64: "Allow specifying a jq file to expose custom functions"
+- Users have complex, repeated queries across sessions
 
-**Recommendation:**
-Add breadcrumb bar showing current path:
+**Recommendations:**
+1. Support `~/.config/jiq/functions.jq` for custom functions
+2. Add keyboard shortcuts for saved queries (Ctrl+1-9)
+3. Show available custom functions in autocomplete
+4. Built-in templates: "Extract all X", "Filter by date", "Flatten nested"
+5. In-app query saving: type query → Ctrl+S → name it → reuse later
+
+**Example Templates:**
 ```
-Root > users[0] > addresses[2] > street
-[Copy Path] [Go to Parent] [Expand All Children]
+Ctrl+1: .[] | select(.FIELD == "VALUE")
+Ctrl+2: [.[] | {key: .FIELD}]
+Ctrl+3: .. | select(type == "string")
 ```
+
+### 3. Enhanced Result Type Information
+**Impact:** HIGH | **Effort:** Low
+
+**Why This Matters for Query Building:**
+- Know what your query produces **without looking at output**
+- Type info guides next step in query chain
+- Catch mistakes early (expected array, got object)
+
+**Current State:** Stats bar shows "Array [5 objects]" (good!)
+
+**Enhancement Recommendations:**
+```
+Current: Array [5 items]
+Better:  Array [5 objects] | Keys: name, age, city | 12.3 KB
+```
+
+**Show:**
+- Detailed type breakdown (Objects: 5, Strings: 12, Numbers: 8)
+- Available keys in objects (for autocomplete context)
+- Data size (helps understand query impact)
+- Nesting depth for complex structures
+
+**Impact:** Helps users understand their query results at a glance
 
 ---
 
