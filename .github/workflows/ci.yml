@@ -17,6 +17,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Install jq 1.8.1
+        run: |
+          curl -Lo jq https://github.com/jqlang/jq/releases/download/jq-1.8.1/jq-linux-amd64
+          chmod +x jq
+          sudo mv jq /usr/local/bin/jq
+          jq --version
+
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
 
@@ -31,6 +38,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
+      - name: Install jq 1.8.1
+        run: |
+          curl -Lo jq https://github.com/jqlang/jq/releases/download/jq-1.8.1/jq-linux-amd64
+          chmod +x jq
+          sudo mv jq /usr/local/bin/jq
+          jq --version
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
