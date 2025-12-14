@@ -138,10 +138,10 @@ impl<R: BufRead> Iterator for SseIterator<R> {
                         }
 
                         // Try to parse as content_block_delta
-                        if let Some(text) = Self::parse_delta_text(data) {
-                            if !text.is_empty() {
-                                return Some(Ok(text));
-                            }
+                        if let Some(text) = Self::parse_delta_text(data)
+                            && !text.is_empty()
+                        {
+                            return Some(Ok(text));
                         }
                         // Continue to next line if not a text delta
                         continue;
@@ -274,6 +274,6 @@ data: {"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text
             1024,
         );
         // Just verify it creates without panic
-        assert_eq!(format!("{:?}", client).contains("AnthropicClient"), true);
+        assert!(format!("{:?}", client).contains("AnthropicClient"));
     }
 }

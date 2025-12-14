@@ -9,6 +9,14 @@ repository = "https://github.com/bellicose100xp/jiq"
 homepage = "https://github.com/bellicose100xp/jiq"
 categories = ["command-line-utilities", "development-tools"]
 
+[lib]
+name = "jiq"
+path = "src/lib.rs"
+
+[[bin]]
+name = "jiq"
+path = "src/main.rs"
+
 [dependencies]
 # TUI framework
 ratatui = "0.29"

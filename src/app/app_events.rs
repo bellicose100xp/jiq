@@ -20,8 +20,7 @@ impl App {
         // Check for pending debounced execution before processing new events
         // This ensures queries are executed after the debounce period (50ms) has elapsed
         if self.debouncer.should_execute() {
-            let auto_show = self.ai_auto_show_on_error;
-            editor::editor_events::execute_query_with_auto_show(self, auto_show);
+            editor::editor_events::execute_query_with_auto_show(self);
             self.debouncer.mark_executed();
         }
 

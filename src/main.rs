@@ -162,7 +162,6 @@ fn run(
         ai::ai_events::handle_execution_result(
             &mut app.ai,
             &app.query.result,
-            false, // Don't auto-show (already visible)
             &query,
             cursor_pos,
             &json_input,
@@ -209,7 +208,7 @@ fn setup_ai_worker(app: &mut App, config: &config::Config) {
         .anthropic
         .api_key
         .as_ref()
-        .map_or(true, |k| k.trim().is_empty())
+        .is_none_or(|k| k.trim().is_empty())
     {
         app.notification.show_warning(
             "AI enabled but API key missing. Add api_key to [ai.anthropic] in config.",
