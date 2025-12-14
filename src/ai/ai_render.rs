@@ -25,8 +25,10 @@ pub const AUTOCOMPLETE_RESERVED_WIDTH: u16 = 37;
 const BORDER_HEIGHT: u16 = 2;
 /// Minimum height for the popup
 const MIN_HEIGHT: u16 = 6;
-/// Maximum height as percentage of available space
-const MAX_HEIGHT_PERCENT: u16 = 50;
+/// Maximum height as percentage of available space (Phase 2: reduced from 50%)
+const MAX_HEIGHT_PERCENT: u16 = 40;
+/// Maximum width as percentage of available space (Phase 2)
+const MAX_WIDTH_PERCENT: u16 = 70;
 
 /// Calculate the AI popup area based on frame dimensions
 ///
@@ -49,13 +51,14 @@ pub fn calculate_popup_area(frame_area: Rect, input_area: Rect) -> Option<Rect> 
         return None;
     }
 
-    // Popup width: use available space, capped at reasonable max
-    let popup_width = available_width.min(frame_area.width / 2);
+    // Phase 2: Use up to 70% of available width (after autocomplete reservation)
+    let max_width = (available_width * MAX_WIDTH_PERCENT) / 100;
+    let popup_width = available_width.min(max_width).max(AI_POPUP_MIN_WIDTH);
 
     // Calculate available height above input bar
     let available_height = input_area.y;
 
-    // Popup height: use percentage of available space, bounded by min/max
+    // Phase 2: Max 40% of available height (reduced from 50%)
     let max_height = (available_height * MAX_HEIGHT_PERCENT) / 100;
     let popup_height = max_height.max(MIN_HEIGHT).min(available_height);
 
@@ -78,13 +81,35 @@ pub fn calculate_popup_area(frame_area: Rect, input_area: Rect) -> Option<Rect> 
     })
 }
 
+/// Calculate dynamic word limit based on popup dimensions
+///
+/// Formula: (width - 4) * (height - 2) / 5, clamped to 100-800
+/// - width - 4: accounts for borders (2) and padding (2)
+/// - height - 2: accounts for top and bottom borders
+/// - / 5: approximate characters per word with spacing (Phase 2.1: more generous)
+///
+/// # Requirements
+/// - 7.1: Formula-based calculation
+/// - 7.2: Minimum 100 words
+/// - 7.3: Maximum 800 words (Phase 2.1: increased from 500)
+/// - 7.5: Pure and deterministic
+pub fn calculate_word_limit(width: u16, height: u16) -> u16 {
+    let content_width = width.saturating_sub(4); // borders + padding
+    let content_height = height.saturating_sub(2); // borders
+    let raw_limit = (content_width as u32 * content_height as u32) / 5;
+    raw_limit.clamp(100, 800) as u16
+}
+
 /// Render the AI assistant popup
 ///
 /// # Arguments
-/// * `ai_state` - The current AI state
+/// * `ai_state` - The current AI state (mutable to update word_limit)
 /// * `frame` - The frame to render to
 /// * `input_area` - The input bar area (popup renders above this)
-pub fn render_popup(ai_state: &AiState, frame: &mut Frame, input_area: Rect) {
+///
+/// # Phase 2 Updates
+/// - Calculates and stores word_limit in ai_state for next AI request
+pub fn render_popup(ai_state: &mut AiState, frame: &mut Frame, input_area: Rect) {
     if !ai_state.visible {
         return;
     }
@@ -96,6 +121,10 @@ pub fn render_popup(ai_state: &AiState, frame: &mut Frame, input_area: Rect) {
         Some(area) => area,
         None => return, // Not enough space
     };
+
+    // Phase 2: Calculate and store word limit for next AI request
+    // Requirements: 2.1, 7.4
+    ai_state.word_limit = calculate_word_limit(popup_area.width, popup_area.height);
 
     // Clear background for floating effect
     popup::clear_area(frame, popup_area);
@@ -234,11 +263,74 @@ fn build_content(ai_state: &AiState, max_width: u16) -> Text<'static> {
 
     // Show response if available
     if !ai_state.response.is_empty() {
-        for line in wrap_text(&ai_state.response, max_width as usize) {
-            lines.push(Line::from(Span::styled(
-                line,
-                Style::default().fg(Color::White),
-            )));
+        // Phase 2: Check if we have parsed suggestions
+        if !ai_state.suggestions.is_empty() {
+            // Render structured suggestions with colors
+            for (i, suggestion) in ai_state.suggestions.iter().enumerate() {
+                // Number and type label with color
+                let type_color = suggestion.suggestion_type.color();
+                let type_label = suggestion.suggestion_type.label();
+
+                // Calculate prefix length for query wrapping alignment
+                // Format: "N. [Type] " where N is the suggestion number
+                let prefix = format!("{}. {} ", i + 1, type_label);
+                let prefix_len = prefix.len();
+
+                // Wrap query text with proper indentation for continuation lines
+                let query_max_width = max_width.saturating_sub(prefix_len as u16) as usize;
+                let query_lines = wrap_text(&suggestion.query, query_max_width);
+
+                // Render first line with prefix
+                if let Some(first_query_line) = query_lines.first() {
+                    lines.push(Line::from(vec![
+                        Span::styled(
+                            format!("{}. ", i + 1),
+                            Style::default()
+                                .fg(Color::White)
+                                .add_modifier(Modifier::BOLD),
+                        ),
+                        Span::styled(
+                            type_label.to_string(),
+                            Style::default().fg(type_color).add_modifier(Modifier::BOLD),
+                        ),
+                        Span::raw(" "),
+                        Span::styled(first_query_line.clone(), Style::default().fg(Color::Cyan)),
+                    ]));
+                }
+
+                // Render continuation lines with proper indentation
+                for query_line in query_lines.iter().skip(1) {
+                    let indent = " ".repeat(prefix_len);
+                    lines.push(Line::from(Span::styled(
+                        format!("{}{}", indent, query_line),
+                        Style::default().fg(Color::Cyan),
+                    )));
+                }
+
+                // Description with 3-space indent, wrapped
+                if !suggestion.description.is_empty() {
+                    let desc_max_width = max_width.saturating_sub(3) as usize;
+                    for desc_line in wrap_text(&suggestion.description, desc_max_width) {
+                        lines.push(Line::from(Span::styled(
+                            format!("   {}", desc_line),
+                            Style::default().fg(Color::DarkGray),
+                        )));
+                    }
+                }
+
+                // Add blank line between suggestions (except after last)
+                if i < ai_state.suggestions.len() - 1 {
+                    lines.push(Line::from(""));
+                }
+            }
+        } else {
+            // Fallback: render raw response if no suggestions parsed
+            for line in wrap_text(&ai_state.response, max_width as usize) {
+                lines.push(Line::from(Span::styled(
+                    line,
+                    Style::default().fg(Color::White),
+                )));
+            }
         }
 
         return Text::from(lines);
@@ -374,6 +466,147 @@ mod tests {
     }
 
     // =========================================================================
+    // Phase 2 Property-Based Tests
+    // =========================================================================
+
+    // **Feature: ai-assistant-phase2, Property 1: Popup width respects maximum**
+    // *For any* terminal width, the AI popup width SHALL be at most 70% of available width.
+    // **Validates: Requirements 1.5, 6.2**
+    proptest! {
+        #![proptest_config(ProptestConfig::with_cases(100))]
+
+        #[test]
+        fn prop_popup_width_respects_maximum(
+            frame_width in 80u16..300u16,
+            frame_height in 20u16..100u16,
+            input_y in 10u16..50u16
+        ) {
+            let input_y = input_y.min(frame_height.saturating_sub(4));
+            let frame = Rect { x: 0, y: 0, width: frame_width, height: frame_height };
+            let input = Rect { x: 0, y: input_y, width: frame_width, height: 3 };
+
+            if let Some(area) = calculate_popup_area(frame, input) {
+                let available_width = frame_width.saturating_sub(AUTOCOMPLETE_RESERVED_WIDTH);
+                let max_allowed = (available_width * 70) / 100;
+                prop_assert!(
+                    area.width <= max_allowed || area.width == AI_POPUP_MIN_WIDTH,
+                    "Popup width ({}) should be <= 70% of available ({}) or minimum ({})",
+                    area.width, max_allowed, AI_POPUP_MIN_WIDTH
+                );
+            }
+        }
+    }
+
+    // **Feature: ai-assistant-phase2, Property 2: Popup height respects maximum**
+    // *For any* terminal height, the AI popup height SHALL be at most 40% of available vertical space.
+    // **Validates: Requirements 1.2, 6.4**
+    proptest! {
+        #![proptest_config(ProptestConfig::with_cases(100))]
+
+        #[test]
+        fn prop_popup_height_respects_maximum(
+            frame_width in 80u16..300u16,
+            frame_height in 20u16..100u16,
+            input_y in 10u16..50u16
+        ) {
+            let input_y = input_y.min(frame_height.saturating_sub(4));
+            let frame = Rect { x: 0, y: 0, width: frame_width, height: frame_height };
+            let input = Rect { x: 0, y: input_y, width: frame_width, height: 3 };
+
+            if let Some(area) = calculate_popup_area(frame, input) {
+                let available_height = input_y;
+                let max_allowed = (available_height * 40) / 100;
+                prop_assert!(
+                    area.height <= available_height && (area.height <= max_allowed || area.height == MIN_HEIGHT),
+                    "Popup height ({}) should be <= 40% of available ({}) or minimum ({})",
+                    area.height, max_allowed, MIN_HEIGHT
+                );
+            }
+        }
+    }
+
+    // **Feature: ai-assistant-phase2, Property 3: Minimum dimensions enforced**
+    // *For any* terminal size, the AI popup width SHALL be >= 40 and height >= 6, or not displayed.
+    // **Validates: Requirements 6.1, 6.3, 6.5**
+    proptest! {
+        #![proptest_config(ProptestConfig::with_cases(100))]
+
+        #[test]
+        fn prop_minimum_dimensions_enforced(
+            frame_width in 40u16..300u16,
+            frame_height in 10u16..100u16,
+            input_y in 5u16..50u16
+        ) {
+            let input_y = input_y.min(frame_height.saturating_sub(4));
+            let frame = Rect { x: 0, y: 0, width: frame_width, height: frame_height };
+            let input = Rect { x: 0, y: input_y, width: frame_width, height: 3 };
+
+            match calculate_popup_area(frame, input) {
+                Some(area) => {
+                    prop_assert!(
+                        area.width >= AI_POPUP_MIN_WIDTH,
+                        "Popup width ({}) must be >= minimum ({})",
+                        area.width, AI_POPUP_MIN_WIDTH
+                    );
+                    prop_assert!(
+                        area.height >= MIN_HEIGHT,
+                        "Popup height ({}) must be >= minimum ({})",
+                        area.height, MIN_HEIGHT
+                    );
+                }
+                None => {
+                    // If None, it means there wasn't enough space - that's valid
+                }
+            }
+        }
+    }
+
+    // **Feature: ai-assistant-phase2, Property 4: Word limit formula correctness**
+    // *For any* popup dimensions (w, h), the word limit SHALL equal clamp((w-4)*(h-2)/5, 100, 800).
+    // **Validates: Requirements 7.1, 7.2, 7.3**
+    proptest! {
+        #![proptest_config(ProptestConfig::with_cases(100))]
+
+        #[test]
+        fn prop_word_limit_formula_correctness(
+            width in 40u16..200u16,
+            height in 6u16..50u16
+        ) {
+            let result = calculate_word_limit(width, height);
+            let content_width = width.saturating_sub(4);
+            let content_height = height.saturating_sub(2);
+            let expected_raw = (content_width as u32 * content_height as u32) / 5;
+            let expected = expected_raw.clamp(100, 800) as u16;
+
+            prop_assert_eq!(
+                result, expected,
+                "Word limit for {}x{} should be {} (raw: {})",
+                width, height, expected, expected_raw
+            );
+        }
+    }
+
+    // **Feature: ai-assistant-phase2, Property 5: Word limit determinism**
+    // *For any* given popup dimensions, calling calculate_word_limit multiple times SHALL return the same value.
+    // **Validates: Requirements 7.5**
+    proptest! {
+        #![proptest_config(ProptestConfig::with_cases(100))]
+
+        #[test]
+        fn prop_word_limit_determinism(
+            width in 40u16..200u16,
+            height in 6u16..50u16
+        ) {
+            let result1 = calculate_word_limit(width, height);
+            let result2 = calculate_word_limit(width, height);
+            let result3 = calculate_word_limit(width, height);
+
+            prop_assert_eq!(result1, result2, "Word limit should be deterministic");
+            prop_assert_eq!(result2, result3, "Word limit should be deterministic");
+        }
+    }
+
+    // =========================================================================
     // Unit Tests
     // =========================================================================
 
@@ -399,6 +632,54 @@ mod tests {
     fn test_wrap_text_multiline() {
         let result = wrap_text("line one\nline two", 50);
         assert_eq!(result, vec!["line one", "line two"]);
+    }
+
+    // =========================================================================
+    // Word Limit Unit Tests (Phase 2)
+    // =========================================================================
+
+    #[test]
+    fn test_word_limit_minimum_clamp() {
+        // Very small dimensions should clamp to 100
+        let result = calculate_word_limit(10, 5);
+        assert_eq!(result, 100);
+    }
+
+    #[test]
+    fn test_word_limit_maximum_clamp() {
+        // Very large dimensions should clamp to 800
+        let result = calculate_word_limit(200, 100);
+        assert_eq!(result, 800);
+    }
+
+    #[test]
+    fn test_word_limit_typical_small() {
+        // 44 width, 8 height: (44-4)*(8-2)/5 = 40*6/5 = 48 -> clamped to 100
+        let result = calculate_word_limit(44, 8);
+        assert_eq!(result, 100);
+    }
+
+    #[test]
+    fn test_word_limit_typical_medium() {
+        // 60 width, 15 height: (60-4)*(15-2)/5 = 56*13/5 = 145
+        let result = calculate_word_limit(60, 15);
+        assert_eq!(result, 145);
+    }
+
+    #[test]
+    fn test_word_limit_typical_large() {
+        // 80 width, 20 height: (80-4)*(20-2)/5 = 76*18/5 = 273
+        let result = calculate_word_limit(80, 20);
+        assert_eq!(result, 273);
+    }
+
+    #[test]
+    fn test_word_limit_boundary_100() {
+        // Find dimensions that give exactly 100 (or just above)
+        // (w-4)*(h-2)/5 = 100 -> (w-4)*(h-2) = 500
+        // e.g., 44 width, 14 height: 40*12/5 = 96 -> clamped to 100
+        let result = calculate_word_limit(44, 14);
+        assert_eq!(result, 100);
     }
 
     #[test]
@@ -580,7 +861,7 @@ mod tests {
     }
 
     /// Render AI popup to a test terminal and return the buffer as a string
-    fn render_ai_popup_to_string(ai_state: &AiState, width: u16, height: u16) -> String {
+    fn render_ai_popup_to_string(ai_state: &mut AiState, width: u16, height: u16) -> String {
         let mut terminal = create_test_terminal(width, height);
         terminal
             .draw(|f| {
@@ -602,7 +883,7 @@ mod tests {
         let mut state = AiState::new_with_config(true, true, 1000);
         state.visible = true;
 
-        let output = render_ai_popup_to_string(&state, 100, 30);
+        let output = render_ai_popup_to_string(&mut state, 100, 30);
         assert_snapshot!(output);
     }
 
@@ -612,7 +893,7 @@ mod tests {
         state.visible = true;
         state.loading = true;
 
-        let output = render_ai_popup_to_string(&state, 100, 30);
+        let output = render_ai_popup_to_string(&mut state, 100, 30);
         assert_snapshot!(output);
     }
 
@@ -622,7 +903,7 @@ mod tests {
         state.visible = true;
         state.error = Some("API Error: Rate limit exceeded. Please try again later.".to_string());
 
-        let output = render_ai_popup_to_string(&state, 100, 30);
+        let output = render_ai_popup_to_string(&mut state, 100, 30);
         assert_snapshot!(output);
     }
 
@@ -632,7 +913,7 @@ mod tests {
         state.visible = true;
         state.response = "The error in your query `.foo[` is a missing closing bracket.\n\nTry using `.foo[]` to iterate over the array, or `.foo[0]` to access the first element.".to_string();
 
-        let output = render_ai_popup_to_string(&state, 100, 30);
+        let output = render_ai_popup_to_string(&mut state, 100, 30);
         assert_snapshot!(output);
     }
 
@@ -643,16 +924,17 @@ mod tests {
         state.loading = true;
         state.previous_response = Some("Previous suggestion: Use .foo instead of .bar".to_string());
 
-        let output = render_ai_popup_to_string(&state, 100, 30);
+        let output = render_ai_popup_to_string(&mut state, 100, 30);
         assert_snapshot!(output);
     }
 
     #[test]
     fn snapshot_ai_popup_not_visible() {
-        let state = AiState::new_with_config(true, true, 1000);
-        // visible is false by default
+        let mut state = AiState::new_with_config(true, true, 1000);
+        // Phase 2: Explicitly set visible to false to test hidden state
+        state.visible = false;
 
-        let output = render_ai_popup_to_string(&state, 100, 30);
+        let output = render_ai_popup_to_string(&mut state, 100, 30);
         assert_snapshot!(output);
     }
 
@@ -661,7 +943,84 @@ mod tests {
         let mut state = AiState::new_with_config(true, false, 1000);
         state.visible = true;
 
-        let output = render_ai_popup_to_string(&state, 100, 30);
+        let output = render_ai_popup_to_string(&mut state, 100, 30);
+        assert_snapshot!(output);
+    }
+
+    // =========================================================================
+    // Phase 2: Suggestion Display Snapshot Tests
+    // =========================================================================
+
+    #[test]
+    fn snapshot_ai_popup_with_suggestions() {
+        use super::super::ai_state::{Suggestion, SuggestionType};
+
+        let mut state = AiState::new_with_config(true, true, 1000);
+        state.visible = true;
+        state.response =
+            "1. [Fix] .users[] | select(.active)\n   Filters to only active users".to_string();
+        state.suggestions = vec![
+            Suggestion {
+                query: ".users[] | select(.active)".to_string(),
+                description: "Filters to only active users".to_string(),
+                suggestion_type: SuggestionType::Fix,
+            },
+            Suggestion {
+                query: ".users[] | .email".to_string(),
+                description: "Extracts email addresses from users".to_string(),
+                suggestion_type: SuggestionType::Next,
+            },
+            Suggestion {
+                query: ".users | map(.name)".to_string(),
+                description: "More efficient mapping".to_string(),
+                suggestion_type: SuggestionType::Optimize,
+            },
+        ];
+
+        let output = render_ai_popup_to_string(&mut state, 100, 30);
+        assert_snapshot!(output);
+    }
+
+    #[test]
+    fn snapshot_ai_popup_raw_response_fallback() {
+        let mut state = AiState::new_with_config(true, true, 1000);
+        state.visible = true;
+        // Response without parseable suggestions - should fall back to raw display
+        state.response = "This is a plain text response without structured suggestions.\n\nIt should be displayed as-is.".to_string();
+        state.suggestions = vec![]; // No parsed suggestions
+
+        let output = render_ai_popup_to_string(&mut state, 100, 30);
+        assert_snapshot!(output);
+    }
+
+    // =========================================================================
+    // Phase 2.2: Query Wrapping Snapshot Test
+    // =========================================================================
+
+    #[test]
+    fn snapshot_ai_popup_long_query_wrapping() {
+        use super::super::ai_state::{Suggestion, SuggestionType};
+
+        let mut state = AiState::new_with_config(true, true, 1000);
+        state.visible = true;
+        // Set response to non-empty so suggestions are displayed
+        state.response = "AI response with suggestions".to_string();
+        // Create a suggestion with a very long query that will wrap
+        state.suggestions = vec![
+            Suggestion {
+                query: ".users[] | select(.active == true and .age > 18) | {name: .name, email: .email, address: .address}".to_string(),
+                description: "Filters active adult users and extracts their contact information".to_string(),
+                suggestion_type: SuggestionType::Fix,
+            },
+            Suggestion {
+                query: ".items | map(select(.price < 100)) | sort_by(.name) | .[0:10]".to_string(),
+                description: "Gets first 10 items under $100 sorted by name".to_string(),
+                suggestion_type: SuggestionType::Next,
+            },
+        ];
+
+        // Use a narrower width to force wrapping
+        let output = render_ai_popup_to_string(&mut state, 80, 30);
         assert_snapshot!(output);
     }
 }

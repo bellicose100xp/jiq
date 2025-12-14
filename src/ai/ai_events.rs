@@ -165,7 +165,10 @@ pub fn handle_execution_result(
                     None,
                     Some(error.to_string()),
                 );
-                let prompt = build_prompt(&context);
+                // Phase 2: Use word limit calculated from popup dimensions
+                // Requirements: 2.1, 7.4
+                let word_limit = ai_state.word_limit;
+                let prompt = build_prompt(&context, word_limit);
                 ai_state.send_request(prompt);
             }
         }
@@ -179,7 +182,10 @@ pub fn handle_execution_result(
                     Some(output.clone()),
                     None,
                 );
-                let prompt = build_prompt(&context);
+                // Phase 2: Use word limit calculated from popup dimensions
+                // Requirements: 2.1, 7.4
+                let word_limit = ai_state.word_limit;
+                let prompt = build_prompt(&context, word_limit);
                 ai_state.send_request(prompt);
             }
         }

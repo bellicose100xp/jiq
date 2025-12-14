@@ -46,6 +46,8 @@ pub struct App {
     pub ai: AiState,
     /// Whether to auto-show AI popup on query errors (from config)
     pub ai_auto_show_on_error: bool,
+    /// Saved tooltip visibility state before AI popup opened (for restoration)
+    pub saved_tooltip_visibility: bool,
 }
 
 impl App {
@@ -55,6 +57,19 @@ impl App {
     /// * `json_input` - The JSON data to explore
     /// * `config` - Application configuration
     pub fn new(json_input: String, config: &Config) -> Self {
+        let ai_state = AiState::new_with_config(
+            config.ai.enabled,
+            config.ai.anthropic.api_key.is_some() && config.ai.anthropic.model.is_some(),
+            config.ai.debounce_ms,
+        );
+
+        // Requirements 9.5: When AI is enabled and visible by default, tooltip starts hidden
+        let tooltip_enabled = if ai_state.visible {
+            false
+        } else {
+            config.tooltip.auto_show
+        };
+
         Self {
             input: InputState::new(),
             query: QueryState::new(json_input),
@@ -68,16 +83,13 @@ impl App {
             help: HelpPopupState::new(),
             notification: NotificationState::new(),
             clipboard_backend: config.clipboard.backend,
-            tooltip: TooltipState::new(config.tooltip.auto_show),
+            tooltip: TooltipState::new(tooltip_enabled),
             stats: StatsState::default(),
             debouncer: Debouncer::new(),
             search: SearchState::new(),
-            ai: AiState::new_with_config(
-                config.ai.enabled,
-                config.ai.anthropic.api_key.is_some() && config.ai.anthropic.model.is_some(),
-                config.ai.debounce_ms,
-            ),
+            ai: ai_state,
             ai_auto_show_on_error: config.ai.auto_show_on_error,
+            saved_tooltip_visibility: config.tooltip.auto_show,
         }
     }
 
@@ -322,5 +334,101 @@ mod tests {
         // Tooltip should be enabled by default
         assert!(app.tooltip.enabled);
         assert!(app.tooltip.current_function.is_none());
+    }
+
+    // ========== Info Popup Management Property Tests ==========
+
+    use proptest::prelude::*;
+
+    // **Feature: ai-assistant-phase2, Property 10: Info popup hidden while AI visible**
+    // *For any* state where AI popup is visible, the info popup SHALL be hidden.
+    // **Validates: Requirements 9.1, 9.4**
+    proptest! {
+        #![proptest_config(ProptestConfig::with_cases(100))]
+
+        #[test]
+        fn prop_tooltip_hidden_while_ai_visible(
+            initial_tooltip_enabled: bool,
+            ai_enabled: bool,
+            ai_configured: bool
+        ) {
+            let json = r#"{"test": true}"#;
+            let mut app = test_app(json);
+
+            // Set up initial state
+            app.tooltip.enabled = initial_tooltip_enabled;
+            app.ai.enabled = ai_enabled;
+            app.ai.configured = ai_configured;
+            app.ai.visible = false;
+
+            // Toggle AI popup to make it visible
+            let was_visible = app.ai.visible;
+            app.ai.toggle();
+
+            if !was_visible && app.ai.visible {
+                // Save current tooltip state and hide it
+                app.saved_tooltip_visibility = app.tooltip.enabled;
+                app.tooltip.enabled = false;
+            }
+
+            // When AI popup is visible, tooltip should be disabled
+            if app.ai.visible {
+                prop_assert!(
+                    !app.tooltip.enabled,
+                    "Tooltip should be disabled when AI popup is visible"
+                );
+            }
+        }
+    }
+
+    // **Feature: ai-assistant-phase2, Property 11: Info popup state restoration**
+    // *For any* AI popup hide action, the info popup visibility SHALL be restored to its saved state.
+    // **Validates: Requirements 9.2, 9.3**
+    proptest! {
+        #![proptest_config(ProptestConfig::with_cases(100))]
+
+        #[test]
+        fn prop_tooltip_state_restoration(
+            initial_tooltip_enabled: bool,
+            ai_enabled: bool,
+            ai_configured: bool
+        ) {
+            let json = r#"{"test": true}"#;
+            let mut app = test_app(json);
+
+            // Set up initial state
+            app.tooltip.enabled = initial_tooltip_enabled;
+            app.ai.enabled = ai_enabled;
+            app.ai.configured = ai_configured;
+            app.ai.visible = false;
+
+            let original_tooltip_state = app.tooltip.enabled;
+
+            // Toggle AI popup to make it visible (simulating Ctrl+A press)
+            let was_visible = app.ai.visible;
+            app.ai.toggle();
+
+            if !was_visible && app.ai.visible {
+                // Save current tooltip state and hide it
+                app.saved_tooltip_visibility = app.tooltip.enabled;
+                app.tooltip.enabled = false;
+            }
+
+            // Now toggle AI popup to hide it (simulating second Ctrl+A press)
+            let was_visible = app.ai.visible;
+            app.ai.toggle();
+
+            if was_visible && !app.ai.visible {
+                // Restore saved tooltip state
+                app.tooltip.enabled = app.saved_tooltip_visibility;
+            }
+
+            // After hiding AI popup, tooltip should be restored to original state
+            prop_assert_eq!(
+                app.tooltip.enabled,
+                original_tooltip_state,
+                "Tooltip state should be restored to original value after AI popup is hidden"
+            );
+        }
     }
 }

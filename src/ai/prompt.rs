@@ -13,11 +13,12 @@ use super::context::QueryContext;
 /// # Requirements
 /// - 3.3: Error context for troubleshooting
 /// - 3.4: Success context for optimization suggestions
-pub fn build_prompt(context: &QueryContext) -> String {
+/// - Phase 2: Accepts dynamic word limit
+pub fn build_prompt(context: &QueryContext, word_limit: u16) -> String {
     if context.is_success {
-        build_success_prompt(context)
+        build_success_prompt(context, word_limit)
     } else {
-        build_error_prompt(context)
+        build_error_prompt(context, word_limit)
     }
 }
 
@@ -26,15 +27,21 @@ pub fn build_prompt(context: &QueryContext) -> String {
 /// Creates a prose prompt that includes the query, error message,
 /// JSON sample, and structure information to help the AI provide
 /// relevant assistance.
-pub fn build_error_prompt(context: &QueryContext) -> String {
+///
+/// # Phase 2 Updates
+/// - Dynamic word limit based on popup size
+/// - Structured suggestion format for parseability
+/// - Natural language detection instructions
+pub fn build_error_prompt(context: &QueryContext, word_limit: u16) -> String {
     let mut prompt = String::new();
 
-    // System context with strict brevity requirements
+    // System context with dynamic word limit
     prompt.push_str("You are a jq query assistant helping troubleshoot errors.\n");
-    prompt
-        .push_str("CRITICAL: Your response will be displayed in a small, non-scrollable window.\n");
-    prompt.push_str("Keep your ENTIRE response under 200 words. Be extremely concise.\n");
-    prompt.push_str("Format: 1-2 sentences explaining the error, then the corrected query.\n\n");
+    prompt.push_str("CRITICAL: Your response will be displayed in a popup window.\n");
+    prompt.push_str(&format!(
+        "Keep your ENTIRE response under {} words.\n\n",
+        word_limit
+    ));
 
     // Query information
     prompt.push_str("## Current Query\n");
@@ -71,14 +78,32 @@ pub fn build_error_prompt(context: &QueryContext) -> String {
     prompt.push_str("## Input JSON Sample\n");
     prompt.push_str(&format!("```json\n{}\n```\n\n", context.input_sample));
 
-    // Instructions - emphasize brevity
-    prompt.push_str("## Instructions\n");
-    prompt.push_str("Respond in this EXACT format (keep it SHORT):\n\n");
-    prompt.push_str("Error: [1 sentence explaining what's wrong]\n\n");
-    prompt.push_str("Fix: [the corrected jq query]\n\n");
-    prompt.push_str("Why: [1 sentence explaining the fix]\n\n");
-    prompt
-        .push_str("REMEMBER: Total response must be under 200 words and fit in a small window.\n");
+    // Phase 2: Structured format instructions
+    prompt.push_str("## Response Format\n");
+    prompt.push_str("Provide 3-5 numbered suggestions in this EXACT format:\n\n");
+    prompt.push_str("1. [Fix] corrected_jq_query_here\n");
+    prompt.push_str("   Brief explanation (1 sentence)\n\n");
+    prompt.push_str("2. [Optimize] alternative_query_if_applicable\n");
+    prompt.push_str("   Why this is better (1 sentence)\n\n");
+    prompt.push_str(
+        "Use [Fix] for error corrections, [Optimize] for improvements, [Next] for next steps.\n",
+    );
+    prompt.push_str("Each query must be valid jq syntax on a single line.\n\n");
+
+    // Phase 2: Natural language instructions
+    prompt.push_str("## Natural Language\n");
+    prompt.push_str(
+        "If the query contains natural language (e.g., 'how to get emails', 'filter by age'),\n",
+    );
+    prompt.push_str(
+        "interpret the user's intent and provide jq query suggestions using [Next] type.\n",
+    );
+    prompt.push_str("Natural language can appear anywhere in the query, not just at the end.\n\n");
+
+    prompt.push_str(&format!(
+        "REMEMBER: Total response must be under {} words.\n",
+        word_limit
+    ));
 
     prompt
 }
@@ -90,15 +115,20 @@ pub fn build_error_prompt(context: &QueryContext) -> String {
 ///
 /// # Requirements
 /// - 3.4: Success context for optimization suggestions
-pub fn build_success_prompt(context: &QueryContext) -> String {
+/// # Phase 2 Updates
+/// - Dynamic word limit based on popup size
+/// - Structured suggestion format for parseability
+/// - Natural language detection instructions
+pub fn build_success_prompt(context: &QueryContext, word_limit: u16) -> String {
     let mut prompt = String::new();
 
-    // System context with strict brevity requirements
+    // System context with dynamic word limit
     prompt.push_str("You are a jq query assistant helping optimize queries.\n");
-    prompt
-        .push_str("CRITICAL: Your response will be displayed in a small, non-scrollable window.\n");
-    prompt.push_str("Keep your ENTIRE response under 200 words. Be extremely concise.\n");
-    prompt.push_str("Format: Brief analysis, then any optimization suggestions.\n\n");
+    prompt.push_str("CRITICAL: Your response will be displayed in a popup window.\n");
+    prompt.push_str(&format!(
+        "Keep your ENTIRE response under {} words.\n\n",
+        word_limit
+    ));
 
     // Query information
     prompt.push_str("## Current Query\n");
@@ -130,15 +160,33 @@ pub fn build_success_prompt(context: &QueryContext) -> String {
         prompt.push_str(&format!("```json\n{}\n```\n\n", output_sample));
     }
 
-    // Instructions - emphasize brevity
-    prompt.push_str("## Instructions\n");
-    prompt.push_str("Respond in this EXACT format (keep it SHORT):\n\n");
-    prompt.push_str("Query: [1 sentence explaining what the query does]\n\n");
+    // Phase 2: Structured format instructions
+    prompt.push_str("## Response Format\n");
+    prompt.push_str("Provide 3-5 numbered suggestions in this EXACT format:\n\n");
+    prompt.push_str("1. [Optimize] optimized_jq_query_here\n");
+    prompt.push_str("   Brief explanation (1 sentence)\n\n");
+    prompt.push_str("2. [Next] next_step_query_if_applicable\n");
+    prompt.push_str("   What this does (1 sentence)\n\n");
+    prompt.push_str("Use [Optimize] for improvements, [Next] for next steps or related queries.\n");
+    prompt.push_str("Each query must be valid jq syntax on a single line.\n");
     prompt.push_str(
-        "Tip: [1 optimization suggestion if applicable, or 'Query looks good!' if optimal]\n\n",
+        "If the query is already optimal, provide [Next] suggestions for related operations.\n\n",
     );
-    prompt
-        .push_str("REMEMBER: Total response must be under 200 words and fit in a small window.\n");
+
+    // Phase 2: Natural language instructions
+    prompt.push_str("## Natural Language\n");
+    prompt.push_str(
+        "If the query contains natural language (e.g., 'how to get emails', 'filter by age'),\n",
+    );
+    prompt.push_str(
+        "interpret the user's intent and provide jq query suggestions using [Next] type.\n",
+    );
+    prompt.push_str("Natural language can appear anywhere in the query, not just at the end.\n\n");
+
+    prompt.push_str(&format!(
+        "REMEMBER: Total response must be under {} words.\n",
+        word_limit
+    ));
 
     prompt
 }
@@ -195,7 +243,7 @@ mod tests {
             is_success: false,
         };
 
-        let prompt = build_error_prompt(&ctx);
+        let prompt = build_error_prompt(&ctx, 200);
         assert!(prompt.contains(".name"));
         assert!(prompt.contains("syntax error"));
         assert!(prompt.contains("Cursor position: 5"));
@@ -214,7 +262,7 @@ mod tests {
             is_success: false,
         };
 
-        let prompt = build_error_prompt(&ctx);
+        let prompt = build_error_prompt(&ctx, 200);
         assert!(prompt.contains(r#"{"key": "value"}"#));
     }
 
@@ -237,7 +285,7 @@ mod tests {
             is_success: false,
         };
 
-        let prompt = build_error_prompt(&ctx);
+        let prompt = build_error_prompt(&ctx, 200);
         assert!(prompt.contains("Type: Object"));
         assert!(prompt.contains("name, age"));
     }
@@ -321,7 +369,7 @@ mod tests {
             is_success: true,
         };
 
-        let prompt = build_success_prompt(&ctx);
+        let prompt = build_success_prompt(&ctx, 200);
         assert!(prompt.contains(".items[]"));
         assert!(prompt.contains("optimize"));
     }
@@ -339,7 +387,7 @@ mod tests {
             is_success: true,
         };
 
-        let prompt = build_success_prompt(&ctx);
+        let prompt = build_success_prompt(&ctx, 200);
         assert!(prompt.contains(r#""test""#));
         assert!(prompt.contains("Query Output Sample"));
     }
@@ -363,7 +411,7 @@ mod tests {
             is_success: true,
         };
 
-        let prompt = build_success_prompt(&ctx);
+        let prompt = build_success_prompt(&ctx, 200);
         assert!(prompt.contains("Type: Array"));
         assert!(prompt.contains("Element type: numbers"));
         assert!(prompt.contains("Element count: 3"));
@@ -386,7 +434,7 @@ mod tests {
             is_success: false,
         };
 
-        let prompt = build_prompt(&ctx);
+        let prompt = build_prompt(&ctx, 200);
         // Error prompt contains "troubleshoot" and error message
         assert!(prompt.contains("troubleshoot"));
         assert!(prompt.contains("syntax error"));
@@ -405,9 +453,87 @@ mod tests {
             is_success: true,
         };
 
-        let prompt = build_prompt(&ctx);
+        let prompt = build_prompt(&ctx, 200);
         // Success prompt contains "optimize"
         assert!(prompt.contains("optimize"));
         assert!(!prompt.contains("troubleshoot"));
+    }
+
+    // =========================================================================
+    // Phase 2: Word Limit and Format Tests
+    // =========================================================================
+
+    #[test]
+    fn test_build_prompt_includes_word_limit() {
+        let ctx = QueryContext {
+            query: ".name".to_string(),
+            cursor_pos: 5,
+            input_sample: "{}".to_string(),
+            output: None,
+            output_sample: None,
+            error: Some("error".to_string()),
+            json_type_info: JsonTypeInfo::default(),
+            is_success: false,
+        };
+
+        let prompt = build_prompt(&ctx, 300);
+        assert!(prompt.contains("300 words"));
+    }
+
+    #[test]
+    fn test_build_error_prompt_includes_structured_format() {
+        let ctx = QueryContext {
+            query: ".name".to_string(),
+            cursor_pos: 5,
+            input_sample: "{}".to_string(),
+            output: None,
+            output_sample: None,
+            error: Some("error".to_string()),
+            json_type_info: JsonTypeInfo::default(),
+            is_success: false,
+        };
+
+        let prompt = build_error_prompt(&ctx, 200);
+        assert!(prompt.contains("[Fix]"));
+        assert!(prompt.contains("[Optimize]"));
+        assert!(prompt.contains("[Next]"));
+        assert!(prompt.contains("numbered suggestions"));
+    }
+
+    #[test]
+    fn test_build_success_prompt_includes_structured_format() {
+        let ctx = QueryContext {
+            query: ".name".to_string(),
+            cursor_pos: 5,
+            input_sample: "{}".to_string(),
+            output: Some("test".to_string()),
+            output_sample: Some("test".to_string()),
+            error: None,
+            json_type_info: JsonTypeInfo::default(),
+            is_success: true,
+        };
+
+        let prompt = build_success_prompt(&ctx, 200);
+        assert!(prompt.contains("[Optimize]"));
+        assert!(prompt.contains("[Next]"));
+        assert!(prompt.contains("numbered suggestions"));
+    }
+
+    #[test]
+    fn test_build_prompt_includes_natural_language_instructions() {
+        let ctx = QueryContext {
+            query: ".name".to_string(),
+            cursor_pos: 5,
+            input_sample: "{}".to_string(),
+            output: None,
+            output_sample: None,
+            error: Some("error".to_string()),
+            json_type_info: JsonTypeInfo::default(),
+            is_success: false,
+        };
+
+        let prompt = build_error_prompt(&ctx, 200);
+        assert!(prompt.contains("Natural Language"));
+        assert!(prompt.contains("natural language"));
     }
 }

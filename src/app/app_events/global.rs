@@ -260,8 +260,23 @@ pub fn handle_global_keys(app: &mut App, key: KeyEvent) -> bool {
 
         // Toggle AI assistant popup with Ctrl+A
         // Requirements 2.1: WHEN a user presses Ctrl+A THEN the AI_Popup SHALL toggle its visibility state
+        // Requirements 9.1, 9.2, 9.3: Manage tooltip visibility when AI popup toggles
         KeyCode::Char('a') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+            let was_visible = app.ai.visible;
             app.ai.toggle();
+
+            // If AI popup is now visible (was hidden, now shown)
+            if !was_visible && app.ai.visible {
+                // Save current tooltip state and hide it
+                app.saved_tooltip_visibility = app.tooltip.enabled;
+                app.tooltip.enabled = false;
+            }
+            // If AI popup is now hidden (was visible, now hidden)
+            else if was_visible && !app.ai.visible {
+                // Restore saved tooltip state
+                app.tooltip.enabled = app.saved_tooltip_visibility;
+            }
+
             true
         }
 

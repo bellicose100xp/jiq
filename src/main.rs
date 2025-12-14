@@ -152,6 +152,23 @@ fn run(
     // Requirements 1.1, 1.3, 4.1
     setup_ai_worker(&mut app, &config_result.config);
 
+    // Trigger initial AI request if AI popup is visible on startup
+    // Requirements 8.4: WHEN the AI_Popup becomes visible THEN the AI_Assistant SHALL
+    // immediately analyze the current query context and provide suggestions
+    if app.ai.visible && app.ai.enabled && app.ai.configured {
+        let query = app.input.query().to_string();
+        let cursor_pos = app.input.textarea.cursor().1;
+        let json_input = app.query.executor.json_input().to_string();
+        ai::ai_events::handle_execution_result(
+            &mut app.ai,
+            &app.query.result,
+            false, // Don't auto-show (already visible)
+            &query,
+            cursor_pos,
+            &json_input,
+        );
+    }
+
     loop {
         // Render the UI
         terminal.draw(|frame| app.render(frame))?;
