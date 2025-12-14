@@ -33,10 +33,10 @@ impl App {
         // Render help line
         crate::help::help_line_render::render_line(self, frame, help_area);
 
-        // Render AI popup (if visible) - render on right side, before tooltip
+        // Render AI popup (if visible) - render above input bar on right side
         // When AI popup is visible, skip tooltip to prevent visual overlap
         if self.ai.visible {
-            crate::ai::ai_render::render_popup(&self.ai, frame, results_area);
+            crate::ai::ai_render::render_popup(&self.ai, frame, input_area);
         } else if self.tooltip.should_show() {
             // Render tooltip popup (if visible) - render on right side, before autocomplete
             crate::tooltip::tooltip_render::render_popup(self, frame, input_area);
