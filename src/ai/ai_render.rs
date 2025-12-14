@@ -26,20 +26,21 @@ const BORDER_HEIGHT: u16 = 2;
 /// Minimum height for the popup
 const MIN_HEIGHT: u16 = 6;
 /// Maximum height as percentage of available space
-const MAX_HEIGHT_PERCENT: u16 = 80;
+const MAX_HEIGHT_PERCENT: u16 = 50;
 
 /// Calculate the AI popup area based on frame dimensions
 ///
-/// The popup is positioned on the right side of the results pane,
+/// The popup is positioned on the right side, above the input bar,
 /// reserving space for the autocomplete area on the left.
+/// The bottom of the AI popup aligns with the bottom of the autocomplete popup.
 ///
 /// # Arguments
 /// * `frame_area` - The full frame area
-/// * `results_area` - The results pane area (popup renders within this)
+/// * `input_area` - The input bar area (popup renders above this)
 ///
 /// # Returns
 /// A `Rect` for the AI popup, or `None` if there's not enough space
-pub fn calculate_popup_area(frame_area: Rect, results_area: Rect) -> Option<Rect> {
+pub fn calculate_popup_area(frame_area: Rect, input_area: Rect) -> Option<Rect> {
     // Calculate available width after reserving autocomplete space
     let available_width = frame_area.width.saturating_sub(AUTOCOMPLETE_RESERVED_WIDTH);
 
@@ -51,24 +52,29 @@ pub fn calculate_popup_area(frame_area: Rect, results_area: Rect) -> Option<Rect
     // Popup width: use available space, capped at reasonable max
     let popup_width = available_width.min(frame_area.width / 2);
 
-    // Popup height: use most of results area
-    let max_height = (results_area.height * MAX_HEIGHT_PERCENT) / 100;
-    let popup_height = max_height.max(MIN_HEIGHT);
+    // Calculate available height above input bar
+    let available_height = input_area.y;
 
-    // Position on right side, anchored to bottom
+    // Popup height: use percentage of available space, bounded by min/max
+    let max_height = (available_height * MAX_HEIGHT_PERCENT) / 100;
+    let popup_height = max_height.max(MIN_HEIGHT).min(available_height);
+
+    // Check if we have enough vertical space
+    if popup_height < MIN_HEIGHT {
+        return None;
+    }
+
+    // Position on right side
     let popup_x = frame_area.width.saturating_sub(popup_width + 1);
 
-    // Ensure popup fits within results area
-    let final_height = popup_height.min(results_area.height.saturating_sub(2));
-
-    // Anchor to bottom-right of results area
-    let popup_y = results_area.y + results_area.height.saturating_sub(final_height + 1);
+    // Position above input bar (bottom of popup aligns with top of input)
+    let popup_y = input_area.y.saturating_sub(popup_height);
 
     Some(Rect {
         x: popup_x,
         y: popup_y,
         width: popup_width,
-        height: final_height,
+        height: popup_height,
     })
 }
 
@@ -77,16 +83,16 @@ pub fn calculate_popup_area(frame_area: Rect, results_area: Rect) -> Option<Rect
 /// # Arguments
 /// * `ai_state` - The current AI state
 /// * `frame` - The frame to render to
-/// * `results_area` - The results pane area
-pub fn render_popup(ai_state: &AiState, frame: &mut Frame, results_area: Rect) {
+/// * `input_area` - The input bar area (popup renders above this)
+pub fn render_popup(ai_state: &AiState, frame: &mut Frame, input_area: Rect) {
     if !ai_state.visible {
         return;
     }
 
     let frame_area = frame.area();
 
-    // Calculate popup area
-    let popup_area = match calculate_popup_area(frame_area, results_area) {
+    // Calculate popup area (positioned above input bar)
+    let popup_area = match calculate_popup_area(frame_area, input_area) {
         Some(area) => area,
         None => return, // Not enough space
     };
@@ -316,13 +322,14 @@ mod tests {
         fn prop_autocomplete_area_reservation(
             frame_width in 80u16..300u16,
             frame_height in 20u16..100u16,
-            results_height in 10u16..50u16
+            input_y in 10u16..50u16
         ) {
-            let results_height = results_height.min(frame_height.saturating_sub(5));
+            let input_y = input_y.min(frame_height.saturating_sub(4));
             let frame = Rect { x: 0, y: 0, width: frame_width, height: frame_height };
-            let results = Rect { x: 0, y: 0, width: frame_width, height: results_height };
+            // Input area at bottom of screen (3 lines high)
+            let input = Rect { x: 0, y: input_y, width: frame_width, height: 3 };
 
-            if let Some(area) = calculate_popup_area(frame, results) {
+            if let Some(area) = calculate_popup_area(frame, input) {
                 // The popup x-position should leave room for autocomplete (37 chars)
                 prop_assert!(
                     area.x >= AUTOCOMPLETE_RESERVED_WIDTH,
@@ -345,13 +352,14 @@ mod tests {
         fn prop_minimum_popup_width(
             frame_width in 80u16..300u16,
             frame_height in 20u16..100u16,
-            results_height in 10u16..50u16
+            input_y in 10u16..50u16
         ) {
-            let results_height = results_height.min(frame_height.saturating_sub(5));
+            let input_y = input_y.min(frame_height.saturating_sub(4));
             let frame = Rect { x: 0, y: 0, width: frame_width, height: frame_height };
-            let results = Rect { x: 0, y: 0, width: frame_width, height: results_height };
+            // Input area at bottom of screen (3 lines high)
+            let input = Rect { x: 0, y: input_y, width: frame_width, height: 3 };
 
-            if let Some(area) = calculate_popup_area(frame, results) {
+            if let Some(area) = calculate_popup_area(frame, input) {
                 // For frame width >= 80, popup should have minimum width
                 prop_assert!(
                     area.width >= AI_POPUP_MIN_WIDTH,
@@ -401,20 +409,23 @@ mod tests {
             width: 120,
             height: 40,
         };
-        let results = Rect {
+        // Input area at bottom (y=37, height=3)
+        let input = Rect {
             x: 0,
-            y: 0,
+            y: 37,
             width: 120,
-            height: 30,
+            height: 3,
         };
 
-        let area = calculate_popup_area(frame, results);
+        let area = calculate_popup_area(frame, input);
         assert!(area.is_some());
 
         let area = area.unwrap();
         // Should be on right side, after autocomplete reserved space
         assert!(area.x >= AUTOCOMPLETE_RESERVED_WIDTH);
         assert!(area.width >= AI_POPUP_MIN_WIDTH);
+        // Should be positioned above input bar
+        assert!(area.y + area.height <= input.y);
     }
 
     #[test]
@@ -425,14 +436,14 @@ mod tests {
             width: 50,
             height: 40,
         };
-        let results = Rect {
+        let input = Rect {
             x: 0,
-            y: 0,
+            y: 37,
             width: 50,
-            height: 30,
+            height: 3,
         };
 
-        let area = calculate_popup_area(frame, results);
+        let area = calculate_popup_area(frame, input);
         // Should return None if not enough space after autocomplete reservation
         // 50 - 37 = 13, which is less than MIN_WIDTH (40)
         assert!(area.is_none());
@@ -447,14 +458,14 @@ mod tests {
             width: 80,
             height: 40,
         };
-        let results = Rect {
+        let input = Rect {
             x: 0,
-            y: 0,
+            y: 37,
             width: 80,
-            height: 30,
+            height: 3,
         };
 
-        let area = calculate_popup_area(frame, results);
+        let area = calculate_popup_area(frame, input);
         assert!(area.is_some());
 
         let area = area.unwrap();
@@ -573,13 +584,14 @@ mod tests {
         let mut terminal = create_test_terminal(width, height);
         terminal
             .draw(|f| {
-                let results_area = Rect {
+                // Input area is at the bottom (3 lines high, like in the real app)
+                let input_area = Rect {
                     x: 0,
-                    y: 0,
+                    y: height - 4,
                     width,
-                    height: height - 4,
+                    height: 3,
                 };
-                render_popup(ai_state, f, results_area);
+                render_popup(ai_state, f, input_area);
             })
             .unwrap();
         terminal.backend().to_string()
