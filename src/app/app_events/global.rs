@@ -32,6 +32,9 @@ pub fn handle_global_keys(app: &mut App, key: KeyEvent) -> bool {
         return false;
     }
 
+    // Note: ESC does NOT close AI popup - only Ctrl+A toggles it
+    // This allows ESC to be used for other purposes (closing autocomplete, switching modes)
+
     // Handle help popup when visible (must be first to block other keys)
     if app.help.visible {
         match key.code {
@@ -252,6 +255,13 @@ pub fn handle_global_keys(app: &mut App, key: KeyEvent) -> bool {
         // Requirements 1.1: Ctrl+F opens search from any pane
         KeyCode::Char('f') if key.modifiers.contains(KeyModifiers::CONTROL) => {
             crate::search::search_events::open_search(app);
+            true
+        }
+
+        // Toggle AI assistant popup with Ctrl+A
+        // Requirements 2.1: WHEN a user presses Ctrl+A THEN the AI_Popup SHALL toggle its visibility state
+        KeyCode::Char('a') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+            app.ai.toggle();
             true
         }
 

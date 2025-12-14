@@ -2,6 +2,8 @@
 
 use serde::Deserialize;
 
+use super::ai_types::AiConfig;
+
 /// Clipboard backend selection
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, Default)]
 #[serde(rename_all = "lowercase")]
@@ -51,6 +53,8 @@ pub struct Config {
     pub clipboard: ClipboardConfig,
     #[serde(default)]
     pub tooltip: TooltipConfig,
+    #[serde(default)]
+    pub ai: AiConfig,
 }
 
 #[cfg(test)]

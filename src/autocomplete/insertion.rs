@@ -30,6 +30,19 @@ pub fn insert_suggestion_from_app(app: &mut App, suggestion: &Suggestion) {
     app.autocomplete.hide();
     app.results_scroll.reset();
     app.error_overlay_visible = false; // Auto-hide error overlay on query change
+
+    // Handle AI state based on query result (clear on success)
+    // Note: auto_show_on_error is false here since autocomplete doesn't trigger auto-show
+    let cursor_pos = app.input.textarea.cursor().1;
+    let query = app.input.textarea.lines()[0].as_ref();
+    crate::ai::ai_events::handle_query_result(
+        &mut app.ai,
+        &app.query.result,
+        false, // Don't auto-show on error for autocomplete
+        query,
+        cursor_pos,
+        app.query.executor.json_input(),
+    );
 }
 
 /// Insert an autocomplete suggestion at the current cursor position

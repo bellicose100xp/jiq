@@ -20,9 +20,14 @@ impl App {
         // Check for pending debounced execution before processing new events
         // This ensures queries are executed after the debounce period (50ms) has elapsed
         if self.debouncer.should_execute() {
-            editor::editor_events::execute_query(self);
+            let auto_show = self.ai_auto_show_on_error;
+            editor::editor_events::execute_query_with_auto_show(self, auto_show);
             self.debouncer.mark_executed();
         }
+
+        // Poll AI response channel for streaming updates
+        // This is non-blocking (uses try_recv) and processes any pending responses
+        crate::ai::ai_events::poll_response_channel(&mut self.ai);
 
         // Poll with timeout to allow periodic refresh for notification expiration
         if event::poll(EVENT_POLL_TIMEOUT)? {
@@ -96,6 +101,7 @@ impl App {
         }
 
         // Handle ESC - close autocomplete and switch to Normal mode
+        // Note: ESC does NOT close AI popup - only Ctrl+A toggles it
         if key.code == KeyCode::Esc {
             if self.autocomplete.is_visible() {
                 self.autocomplete.hide();

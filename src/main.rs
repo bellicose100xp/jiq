@@ -9,6 +9,7 @@ use ratatui::crossterm::terminal::{
 use std::io::stdout;
 use std::path::PathBuf;
 
+mod ai;
 mod app;
 mod autocomplete;
 mod clipboard;
@@ -147,6 +148,10 @@ fn run(
         app.notification.show_warning(&warning);
     }
 
+    // Set up AI worker thread if AI is enabled
+    // Requirements 1.1, 1.3, 4.1
+    setup_ai_worker(&mut app, &config_result.config);
+
     loop {
         // Render the UI
         terminal.draw(|frame| app.render(frame))?;
@@ -161,6 +166,48 @@ fn run(
     }
 
     Ok(app)
+}
+
+/// Set up the AI worker thread and channels
+///
+/// Creates request/response channels and spawns the worker thread.
+/// Also validates the config and shows a warning if AI is enabled but not configured.
+///
+/// # Requirements
+/// - 1.1: WHEN a user adds an `[ai]` section with `enabled = true` and valid credentials
+///        THEN the AI_Assistant SHALL initialize successfully
+/// - 1.3: WHEN the `[ai.anthropic]` section has a missing or empty `api_key` field
+///        THEN the AI_Assistant SHALL display a configuration error message
+/// - 4.1: WHEN the AI provider sends a streaming response THEN the AI_Popup
+///        SHALL display text incrementally as chunks arrive
+fn setup_ai_worker(app: &mut App, config: &config::Config) {
+    // Only set up worker if AI is enabled
+    if !config.ai.enabled {
+        return;
+    }
+
+    // Validate config and warn if API key is missing
+    if config
+        .ai
+        .anthropic
+        .api_key
+        .as_ref()
+        .map_or(true, |k| k.trim().is_empty())
+    {
+        app.notification.show_warning(
+            "AI enabled but API key missing. Add api_key to [ai.anthropic] in config.",
+        );
+    }
+
+    // Create channels for communication with worker thread
+    let (request_tx, request_rx) = std::sync::mpsc::channel();
+    let (response_tx, response_rx) = std::sync::mpsc::channel();
+
+    // Set channel handles in AiState
+    app.ai.set_channels(request_tx, response_rx);
+
+    // Spawn the worker thread
+    ai::worker::spawn_worker(&config.ai, request_rx, response_tx);
 }
 
 /// Handle output after terminal is restored

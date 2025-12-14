@@ -265,6 +265,15 @@ pub fn handle_operator_mode_key(app: &mut App, key: KeyEvent) {
 
 /// Execute current query and update results
 pub fn execute_query(app: &mut App) {
+    execute_query_with_auto_show(app, false);
+}
+
+/// Execute current query and update results, with optional auto-show on error
+///
+/// # Arguments
+/// * `app` - The application state
+/// * `auto_show_on_error` - Whether to auto-show AI popup on error (from config)
+pub fn execute_query_with_auto_show(app: &mut App, auto_show_on_error: bool) {
     let query = app.input.textarea.lines()[0].as_ref();
 
     // Rebuild brace tracker for autocomplete context detection (handles Normal mode edits)
@@ -275,6 +284,18 @@ pub fn execute_query(app: &mut App) {
 
     app.results_scroll.reset();
     app.error_overlay_visible = false; // Auto-hide error overlay on query change
+
+    // Handle AI state based on query result (auto-show on error or clear on success)
+    // Requirements 3.1, 3.2, 3.3
+    let cursor_pos = app.input.textarea.cursor().1;
+    crate::ai::ai_events::handle_query_result(
+        &mut app.ai,
+        &app.query.result,
+        auto_show_on_error,
+        query,
+        cursor_pos,
+        app.query.executor.json_input(),
+    );
 }
 
 #[cfg(test)]

@@ -1,8 +1,10 @@
 // Configuration module for jiq
 // This module handles loading and parsing configuration from ~/.config/jiq/config.toml
 
+pub mod ai_types;
 mod types;
 
+// AI types are used internally via Config struct
 pub use types::{ClipboardBackend, Config};
 
 use std::fs;

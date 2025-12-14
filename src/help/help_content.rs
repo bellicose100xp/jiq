@@ -7,6 +7,7 @@ pub const HELP_ENTRIES: &[(&str, &str)] = &[
     ("", ""),
     ("", "── GLOBAL ──"),
     ("F1 or ?", "Toggle this help"),
+    ("Ctrl+A", "Toggle AI assistant"),
     ("Ctrl+C", "Quit without output"),
     ("Enter", "Output filtered JSON and exit"),
     ("Ctrl+Q", "Output query string only and exit"),
@@ -62,6 +63,10 @@ pub const HELP_ENTRIES: &[(&str, &str)] = &[
     ("", ""),
     ("", "── ERROR OVERLAY ──"),
     ("Ctrl+E", "Toggle error details"),
+    ("", ""),
+    ("", "── AI ASSISTANT ──"),
+    ("Ctrl+A", "Toggle AI assistant"),
+    ("Esc", "Close AI popup"),
 ];
 
 /// Footer text shown at the bottom of the help popup

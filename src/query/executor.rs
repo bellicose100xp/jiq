@@ -12,6 +12,11 @@ impl JqExecutor {
         Self { json_input }
     }
 
+    /// Get a reference to the JSON input
+    pub fn json_input(&self) -> &str {
+        &self.json_input
+    }
+
     /// Execute a jq query and return results or error
     ///
     /// # Arguments

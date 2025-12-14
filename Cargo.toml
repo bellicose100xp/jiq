@@ -51,6 +51,9 @@ toml = "0.8"
 # Fuzzy matching (fzf-style)
 fuzzy-matcher = "0.3"
 
+# HTTP client for AI API calls (synchronous with streaming support)
+ureq = "2.9"
+
 # Logging (code only active in debug builds via #[cfg(debug_assertions)])
 log = "0.4"
 env_logger = "0.11"

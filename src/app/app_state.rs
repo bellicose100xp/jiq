@@ -1,3 +1,4 @@
+use crate::ai::AiState;
 use crate::autocomplete::{self, AutocompleteState};
 use crate::config::{ClipboardBackend, Config};
 use crate::help::HelpPopupState;
@@ -42,6 +43,9 @@ pub struct App {
     pub stats: StatsState,
     pub debouncer: Debouncer,
     pub search: SearchState,
+    pub ai: AiState,
+    /// Whether to auto-show AI popup on query errors (from config)
+    pub ai_auto_show_on_error: bool,
 }
 
 impl App {
@@ -68,6 +72,12 @@ impl App {
             stats: StatsState::default(),
             debouncer: Debouncer::new(),
             search: SearchState::new(),
+            ai: AiState::new_with_config(
+                config.ai.enabled,
+                config.ai.anthropic.api_key.is_some() && config.ai.anthropic.model.is_some(),
+                config.ai.debounce_ms,
+            ),
+            ai_auto_show_on_error: config.ai.auto_show_on_error,
         }
     }
 
