@@ -380,14 +380,13 @@ impl AiState {
     /// - 5.4: WHEN a query change occurs while an API request is in-flight THEN
     ///        the AI_Assistant SHALL send a cancel signal to abort the previous request
     pub fn cancel_in_flight_request(&mut self) -> bool {
-        if let Some(request_id) = self.in_flight_request_id {
-            if let Some(ref tx) = self.request_tx {
-                if tx.send(AiRequest::Cancel { request_id }).is_ok() {
-                    log::debug!("Sent cancel for request {}", request_id);
-                    self.in_flight_request_id = None;
-                    return true;
-                }
-            }
+        if let Some(request_id) = self.in_flight_request_id
+            && let Some(ref tx) = self.request_tx
+            && tx.send(AiRequest::Cancel { request_id }).is_ok()
+        {
+            log::debug!("Sent cancel for request {}", request_id);
+            self.in_flight_request_id = None;
+            return true;
         }
         false
     }
@@ -422,36 +421,6 @@ impl AiState {
         self.loading = false;
     }
 
-    /// Auto-show the AI popup on query error
-    ///
-    /// Opens the popup if not already visible, and returns true to indicate
-    /// a new AI request should be made.
-    ///
-    /// Returns true if:
-    /// - AI is enabled
-    /// - auto_show_on_error is true
-    ///
-    /// This allows new requests for each error, even if popup is already visible.
-    ///
-    /// # Requirements
-    /// - 3.1: WHEN a jq query produces an error AND `auto_show_on_error` is true
-    ///        THEN the AI_Popup SHALL automatically open and request assistance
-    /// - 3.2: WHEN `auto_show_on_error` is false THEN the AI_Popup SHALL remain
-    ///        closed on query errors until manually opened with Ctrl+A
-    pub fn auto_show_on_error(&mut self, auto_show_enabled: bool) -> bool {
-        if !self.enabled || !auto_show_enabled {
-            return false;
-        }
-
-        // Show popup if not already visible
-        if !self.visible {
-            self.visible = true;
-        }
-
-        // Always return true to trigger new request for each error
-        true
-    }
-
     /// Send an AI request through the channel
     ///
     /// Returns true if the request was sent successfully, false otherwise.
@@ -468,10 +437,10 @@ impl AiState {
         let request_id = self.request_id;
 
         // Now send the request
-        if let Some(ref tx) = self.request_tx {
-            if tx.send(AiRequest::Query { prompt, request_id }).is_ok() {
-                return true;
-            }
+        if let Some(ref tx) = self.request_tx
+            && tx.send(AiRequest::Query { prompt, request_id }).is_ok()
+        {
+            return true;
         }
         false
     }
@@ -858,80 +827,6 @@ mod tests {
             prop_assert!(
                 state.previous_response.is_none(),
                 "Empty response should not be preserved"
-            );
-        }
-    }
-
-    // **Feature: ai-assistant, Property 8: Auto-show on error when enabled**
-    // *For any* app state with a query error and `auto_show_on_error = true`,
-    // the AI popup should become visible.
-    // **Validates: Requirements 3.1**
-    proptest! {
-        #![proptest_config(ProptestConfig::with_cases(100))]
-
-        #[test]
-        fn prop_auto_show_on_error_when_enabled(
-            debounce_ms in 100u64..5000u64,
-            initial_visible in prop::bool::ANY,
-        ) {
-            let mut state = AiState::new(true, debounce_ms); // AI enabled
-            state.visible = initial_visible;
-
-            // Call auto_show_on_error with auto_show enabled
-            let result = state.auto_show_on_error(true);
-
-            // Should always return true to trigger new request for each error
-            prop_assert!(result, "Should return true to trigger AI request");
-
-            // Popup should be visible after call
-            prop_assert!(state.visible, "Popup should be visible");
-        }
-    }
-
-    // **Feature: ai-assistant, Property 9: No auto-show when disabled**
-    // *For any* app state with a query error and `auto_show_on_error = false`,
-    // the AI popup visibility should remain unchanged.
-    // **Validates: Requirements 3.2**
-    proptest! {
-        #![proptest_config(ProptestConfig::with_cases(100))]
-
-        #[test]
-        fn prop_no_auto_show_when_disabled(
-            debounce_ms in 100u64..5000u64,
-            initial_visible in prop::bool::ANY,
-            ai_enabled in prop::bool::ANY,
-        ) {
-            let mut state = AiState::new(ai_enabled, debounce_ms);
-            state.visible = initial_visible;
-
-            // Call auto_show_on_error with auto_show DISABLED
-            let result = state.auto_show_on_error(false);
-
-            // Should never auto-show when auto_show_on_error is false
-            prop_assert!(!result, "Should not auto-show when auto_show_on_error is false");
-            prop_assert_eq!(
-                state.visible, initial_visible,
-                "Visibility should remain unchanged when auto_show_on_error is false"
-            );
-        }
-
-        #[test]
-        fn prop_no_auto_show_when_ai_disabled(
-            debounce_ms in 100u64..5000u64,
-            initial_visible in prop::bool::ANY,
-            auto_show_enabled in prop::bool::ANY,
-        ) {
-            let mut state = AiState::new(false, debounce_ms); // AI disabled
-            state.visible = initial_visible;
-
-            // Call auto_show_on_error (regardless of auto_show setting)
-            let result = state.auto_show_on_error(auto_show_enabled);
-
-            // Should never auto-show when AI is disabled
-            prop_assert!(!result, "Should not auto-show when AI is disabled");
-            prop_assert_eq!(
-                state.visible, initial_visible,
-                "Visibility should remain unchanged when AI is disabled"
             );
         }
     }

@@ -7,11 +7,6 @@ fn default_debounce_ms() -> u64 {
     1000
 }
 
-/// Default auto-show on error setting
-fn default_auto_show_on_error() -> bool {
-    true
-}
-
 // Model is now required - no default provided
 
 /// Default max tokens for AI responses (kept short to fit in non-scrollable window)
@@ -61,9 +56,6 @@ pub struct AiConfig {
     /// Debounce delay in milliseconds before making API requests
     #[serde(default = "default_debounce_ms")]
     pub debounce_ms: u64,
-    /// Whether to automatically show AI popup on query errors
-    #[serde(default = "default_auto_show_on_error")]
-    pub auto_show_on_error: bool,
     /// Anthropic-specific configuration
     #[serde(default)]
     pub anthropic: AnthropicConfig,
@@ -75,7 +67,6 @@ impl Default for AiConfig {
             enabled: false,
             provider: AiProviderType::default(),
             debounce_ms: default_debounce_ms(),
-            auto_show_on_error: default_auto_show_on_error(),
             anthropic: AnthropicConfig::default(),
         }
     }
@@ -98,7 +89,6 @@ mod tests {
         fn prop_valid_ai_config_parsing(
             enabled in prop::bool::ANY,
             debounce_ms in 100u64..5000u64,
-            auto_show_on_error in prop::bool::ANY,
             max_tokens in 256u32..4096u32,
         ) {
             let toml_content = format!(r#"
@@ -106,13 +96,12 @@ mod tests {
 enabled = {}
 provider = "anthropic"
 debounce_ms = {}
-auto_show_on_error = {}
 
 [ai.anthropic]
 api_key = "sk-ant-test-key"
 model = "claude-3-haiku-20240307"
 max_tokens = {}
-"#, enabled, debounce_ms, auto_show_on_error, max_tokens);
+"#, enabled, debounce_ms, max_tokens);
 
             let config: Result<Config, _> = toml::from_str(&toml_content);
 
@@ -121,7 +110,6 @@ max_tokens = {}
             let config = config.unwrap();
             prop_assert_eq!(config.ai.enabled, enabled);
             prop_assert_eq!(config.ai.debounce_ms, debounce_ms);
-            prop_assert_eq!(config.ai.auto_show_on_error, auto_show_on_error);
             prop_assert_eq!(config.ai.provider, AiProviderType::Anthropic);
             prop_assert_eq!(config.ai.anthropic.max_tokens, max_tokens);
             prop_assert_eq!(config.ai.anthropic.api_key, Some("sk-ant-test-key".to_string()));
@@ -166,7 +154,6 @@ auto_show = true
             prop_assert!(!config.ai.enabled, "AI should be disabled when [ai] section is missing");
             // Other defaults should also be set
             prop_assert_eq!(config.ai.debounce_ms, 1000);
-            prop_assert!(config.ai.auto_show_on_error);
             prop_assert_eq!(config.ai.provider, AiProviderType::Anthropic);
         }
     }
@@ -211,7 +198,6 @@ provider = "{}"
         assert!(!config.enabled);
         assert_eq!(config.provider, AiProviderType::Anthropic);
         assert_eq!(config.debounce_ms, 1000);
-        assert!(config.auto_show_on_error);
         assert!(config.anthropic.api_key.is_none());
         assert!(config.anthropic.model.is_none());
         assert_eq!(config.anthropic.max_tokens, 512);
@@ -257,7 +243,6 @@ enabled = false
         let config: Config = toml::from_str(toml).unwrap();
         assert!(!config.ai.enabled);
         assert_eq!(config.ai.debounce_ms, 1000);
-        assert!(config.ai.auto_show_on_error);
     }
 
     #[test]
@@ -269,7 +254,6 @@ enabled = true
         let config: Config = toml::from_str(toml).unwrap();
         assert!(config.ai.enabled);
         assert_eq!(config.ai.debounce_ms, 1000);
-        assert!(config.ai.auto_show_on_error);
         assert!(config.ai.anthropic.api_key.is_none());
     }
 

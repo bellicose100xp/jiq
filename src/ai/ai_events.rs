@@ -102,7 +102,6 @@ pub fn poll_response_channel(ai_state: &mut AiState) {
 /// # Arguments
 /// * `ai_state` - The AI state to update
 /// * `query_result` - The result of the query execution (Ok with output or Err with message)
-/// * `auto_show_on_error` - Whether to auto-show the popup on error (controls visibility only)
 /// * `query` - The current query text
 /// * `cursor_pos` - The cursor position in the query
 /// * `json_input` - The JSON input being queried
@@ -111,22 +110,10 @@ pub fn poll_response_channel(ai_state: &mut AiState) {
 /// - Query changed + error: Cancel in-flight, clear stale, send AI request with error context
 /// - Query changed + success: Cancel in-flight, clear stale, send AI request with output context
 /// - Query unchanged: Do nothing (no duplicate requests)
-///
-/// # Requirements
-/// - 3.1: WHEN a jq query produces an error AND `auto_show_on_error` is true
-///        THEN the AI_Popup SHALL automatically open
-/// - 3.2: WHEN `auto_show_on_error` is false THEN the AI_Popup SHALL remain
-///        closed on query errors until manually opened with Ctrl+A
-/// - 3.3: WHEN a query executes with an error THEN the AI_Assistant SHALL send
-///        the error context to the AI provider
-/// - 3.4: WHEN a query executes successfully THEN the AI_Assistant SHALL send
-///        the success context to the AI provider
-/// - 3.5: WHEN a new query change occurs THEN the AI_Assistant SHALL cancel
-///        any in-flight API request
+/// - AI requests are sent when AI popup is visible (for both errors and success)
 pub fn handle_execution_result(
     ai_state: &mut AiState,
     query_result: &Result<String, String>,
-    auto_show_on_error: bool,
     query: &str,
     cursor_pos: usize,
     json_input: &str,
@@ -140,7 +127,6 @@ pub fn handle_execution_result(
     }
 
     // Cancel any in-flight request before processing new result
-    // Requirements 3.5, 5.4
     ai_state.cancel_in_flight_request();
 
     // Clear stale response from previous query
@@ -151,13 +137,8 @@ pub fn handle_execution_result(
 
     match query_result {
         Err(error) => {
-            // Optionally auto-show popup based on config (error only)
-            if auto_show_on_error {
-                ai_state.auto_show_on_error(true);
-            }
-
-            // Send AI request with error context
-            if ai_state.enabled {
+            // Send AI request with error context when popup is visible
+            if ai_state.visible {
                 let context = QueryContext::new(
                     query.to_string(),
                     cursor_pos,
@@ -173,8 +154,8 @@ pub fn handle_execution_result(
             }
         }
         Ok(output) => {
-            // Send AI request with success context (for optimization suggestions)
-            if ai_state.enabled {
+            // Send AI request with success context when popup is visible
+            if ai_state.visible {
                 let context = QueryContext::new(
                     query.to_string(),
                     cursor_pos,
@@ -202,7 +183,6 @@ pub fn handle_execution_result(
 pub fn handle_query_result<T: ToString>(
     ai_state: &mut AiState,
     query_result: &Result<T, String>,
-    auto_show_on_error: bool,
     query: &str,
     cursor_pos: usize,
     json_input: &str,
@@ -213,14 +193,7 @@ pub fn handle_query_result<T: ToString>(
         Err(e) => Err(e.clone()),
     };
 
-    handle_execution_result(
-        ai_state,
-        &result,
-        auto_show_on_error,
-        query,
-        cursor_pos,
-        json_input,
-    );
+    handle_execution_result(ai_state, &result, query, cursor_pos, json_input);
 }
 
 /// Process a single AI response message
@@ -741,7 +714,7 @@ mod tests {
 
         // Simulate successful query result with different query
         let result: Result<String, String> = Ok("success output".to_string());
-        handle_execution_result(&mut ai_state, &result, true, ".valid", 6, "{}");
+        handle_execution_result(&mut ai_state, &result, ".valid", 6, "{}");
 
         // Stale response should be cleared (query changed)
         // Note: response is cleared by clear_stale_response, then new request starts
@@ -762,7 +735,7 @@ mod tests {
 
         // Simulate new error result with different query
         let result: Result<String, String> = Err("new error".to_string());
-        handle_execution_result(&mut ai_state, &result, false, ".new", 4, "{}");
+        handle_execution_result(&mut ai_state, &result, ".new", 4, "{}");
 
         // Old response should be cleared (query changed)
         assert!(ai_state.response.is_empty());
@@ -778,7 +751,7 @@ mod tests {
 
         // Different query should clear stale response (even with same error)
         let result: Result<String, String> = Err("same error".to_string());
-        handle_execution_result(&mut ai_state, &result, false, ".query2", 7, "{}");
+        handle_execution_result(&mut ai_state, &result, ".query2", 7, "{}");
 
         // Response should be cleared because query changed
         assert!(ai_state.response.is_empty());
@@ -794,7 +767,7 @@ mod tests {
 
         // Same query should NOT clear response (regardless of error)
         let result: Result<String, String> = Err("same error".to_string());
-        handle_execution_result(&mut ai_state, &result, false, ".same", 5, "{}");
+        handle_execution_result(&mut ai_state, &result, ".same", 5, "{}");
 
         // Response should be preserved (query didn't change)
         assert_eq!(ai_state.response, "Existing explanation");
@@ -810,7 +783,7 @@ mod tests {
 
         // Same query should NOT clear response even with different error
         let result: Result<String, String> = Err("different error".to_string());
-        handle_execution_result(&mut ai_state, &result, false, ".same", 5, "{}");
+        handle_execution_result(&mut ai_state, &result, ".same", 5, "{}");
 
         // Response should be preserved (query didn't change)
         assert_eq!(ai_state.response, "Existing explanation");
@@ -826,7 +799,7 @@ mod tests {
 
         // Different query should trigger new request
         let result: Result<String, String> = Err("different error".to_string());
-        handle_execution_result(&mut ai_state, &result, false, ".query2", 7, "{}");
+        handle_execution_result(&mut ai_state, &result, ".query2", 7, "{}");
 
         // Response should be cleared because query changed
         assert!(ai_state.response.is_empty());
@@ -839,19 +812,13 @@ mod tests {
 
         let mut ai_state = AiState::new(true, 1000);
         ai_state.enabled = true;
+        ai_state.visible = true; // Popup must be visible for requests to be sent
         let (tx, rx) = mpsc::channel();
         ai_state.request_tx = Some(tx);
 
         // Simulate successful query result
         let result: Result<String, String> = Ok("output data".to_string());
-        handle_execution_result(
-            &mut ai_state,
-            &result,
-            false,
-            ".name",
-            5,
-            r#"{"name": "test"}"#,
-        );
+        handle_execution_result(&mut ai_state, &result, ".name", 5, r#"{"name": "test"}"#);
 
         // Should have sent a request
         let request = rx.try_recv();
@@ -877,19 +844,13 @@ mod tests {
 
         let mut ai_state = AiState::new(true, 1000);
         ai_state.enabled = true;
+        ai_state.visible = true; // Popup must be visible for requests to be sent
         let (tx, rx) = mpsc::channel();
         ai_state.request_tx = Some(tx);
 
         // Simulate error query result
         let result: Result<String, String> = Err("syntax error".to_string());
-        handle_execution_result(
-            &mut ai_state,
-            &result,
-            false,
-            ".invalid",
-            8,
-            r#"{"name": "test"}"#,
-        );
+        handle_execution_result(&mut ai_state, &result, ".invalid", 8, r#"{"name": "test"}"#);
 
         // Should have sent a request
         let request = rx.try_recv();
@@ -919,6 +880,7 @@ mod tests {
 
         let mut ai_state = AiState::new(true, 1000);
         ai_state.enabled = true;
+        ai_state.visible = true; // Popup must be visible for requests to be sent
         let (tx, rx) = mpsc::channel();
         ai_state.request_tx = Some(tx);
 
@@ -935,7 +897,7 @@ mod tests {
 
         // Simulate new query result (different query)
         let result: Result<String, String> = Ok("output".to_string());
-        handle_execution_result(&mut ai_state, &result, false, ".new", 4, "{}");
+        handle_execution_result(&mut ai_state, &result, ".new", 4, "{}");
 
         // Should have sent Cancel for old request, then Query for new
         let mut found_cancel = false;
@@ -969,16 +931,15 @@ mod tests {
 
         // Test with generic type that implements ToString
         let result: Result<&str, String> = Ok("output");
-        handle_query_result(&mut ai_state, &result, false, ".new", 4, "{}");
+        handle_query_result(&mut ai_state, &result, ".new", 4, "{}");
 
         // Should have updated query hash
         assert!(!ai_state.is_query_changed(".new"));
     }
 
     // =========================================================================
-    // Integration Tests for Full Flow (Task 20.5)
+    // Integration Tests for Full Flow
     // Tests the complete execution result → AI request flow
-    // **Validates: Requirements 3.3, 3.4, 3.5, 5.4**
     // =========================================================================
 
     /// Test: query change → jq executes → error result → cancel → AI request with error
@@ -989,6 +950,7 @@ mod tests {
 
         let mut ai_state = AiState::new(true, 1000);
         ai_state.enabled = true;
+        ai_state.visible = true; // Popup must be visible for requests to be sent
         let (tx, rx) = mpsc::channel();
         ai_state.request_tx = Some(tx);
 
@@ -1008,7 +970,6 @@ mod tests {
         handle_execution_result(
             &mut ai_state,
             &error_result,
-            true, // auto_show_on_error
             ".invalid",
             8,
             r#"{"name": "test"}"#,
@@ -1047,10 +1008,8 @@ mod tests {
             query_prompt.contains(".invalid is not defined"),
             "Error prompt should contain error message"
         );
-        assert!(
-            ai_state.visible,
-            "Popup should be visible (auto_show_on_error=true)"
-        );
+        // Note: Popup visibility is controlled by config and manual toggles,
+        // not by error analysis, so we don't check visibility here
     }
 
     /// Test: query change → jq executes → success result → cancel → AI request with output
@@ -1061,6 +1020,7 @@ mod tests {
 
         let mut ai_state = AiState::new(true, 1000);
         ai_state.enabled = true;
+        ai_state.visible = true; // Popup must be visible for requests to be sent
         let (tx, rx) = mpsc::channel();
         ai_state.request_tx = Some(tx);
 
@@ -1079,7 +1039,6 @@ mod tests {
         handle_execution_result(
             &mut ai_state,
             &success_result,
-            false, // auto_show_on_error (doesn't apply to success)
             ".name",
             5,
             r#"{"name": "test_value"}"#,
@@ -1128,11 +1087,12 @@ mod tests {
 
         let mut ai_state = AiState::new(true, 1000);
         ai_state.enabled = true;
+        ai_state.visible = true; // Popup must be visible for requests to be sent
         let (tx, rx) = mpsc::channel();
         ai_state.request_tx = Some(tx);
 
         // Simulate rapid typing: .n → .na → .nam → .name
-        let queries = vec![".n", ".na", ".nam", ".name"];
+        let queries = [".n", ".na", ".nam", ".name"];
         let mut last_request_id = 0;
 
         for (i, query) in queries.iter().enumerate() {
@@ -1148,7 +1108,6 @@ mod tests {
             handle_execution_result(
                 &mut ai_state,
                 &result,
-                false,
                 query,
                 query.len(),
                 r#"{"name": "test"}"#,
@@ -1203,14 +1162,7 @@ mod tests {
 
         // First execution
         let result: Result<String, String> = Ok(r#""test""#.to_string());
-        handle_execution_result(
-            &mut ai_state,
-            &result,
-            false,
-            ".name",
-            5,
-            r#"{"name": "test"}"#,
-        );
+        handle_execution_result(&mut ai_state, &result, ".name", 5, r#"{"name": "test"}"#);
 
         // Drain channel
         while rx.try_recv().is_ok() {}
@@ -1219,7 +1171,6 @@ mod tests {
         handle_execution_result(
             &mut ai_state,
             &result,
-            false,
             ".name", // Same query
             5,
             r#"{"name": "test"}"#,
@@ -1246,20 +1197,152 @@ mod tests {
 
         // Execute query
         let result: Result<String, String> = Ok(r#""test""#.to_string());
-        handle_execution_result(
-            &mut ai_state,
-            &result,
-            false,
-            ".name",
-            5,
-            r#"{"name": "test"}"#,
-        );
+        handle_execution_result(&mut ai_state, &result, ".name", 5, r#"{"name": "test"}"#);
 
         // Should NOT have sent any requests
         let request = rx.try_recv();
         assert!(
             request.is_err(),
             "Should not send request when AI is disabled"
+        );
+    }
+
+    // =========================================================================
+    // Tests for visibility-based AI request behavior (Phase 2.5)
+    // Validates that AI requests are sent when popup is visible
+    // =========================================================================
+
+    /// Test: visible=true → AI requests sent on error
+    /// Validates that error analysis sends AI requests when popup is visible
+    #[test]
+    fn test_visible_sends_requests_on_error() {
+        use std::sync::mpsc;
+
+        let mut ai_state = AiState::new(true, 1000);
+        ai_state.enabled = true;
+        ai_state.visible = true; // Popup visible
+        let (tx, rx) = mpsc::channel();
+        ai_state.request_tx = Some(tx);
+
+        // Execute query with error
+        let result: Result<String, String> = Err("syntax error".to_string());
+        handle_execution_result(&mut ai_state, &result, ".invalid", 8, r#"{"name": "test"}"#);
+
+        // Should have sent AI request
+        let request = rx.try_recv();
+        assert!(
+            request.is_ok(),
+            "Should send AI request when popup is visible"
+        );
+
+        // Verify it's a Query request with error context
+        match request.unwrap() {
+            super::super::ai_state::AiRequest::Query { prompt, .. } => {
+                assert!(
+                    prompt.contains("troubleshoot"),
+                    "Error prompt should mention troubleshooting"
+                );
+                assert!(
+                    prompt.contains("syntax error"),
+                    "Error prompt should contain error message"
+                );
+            }
+            _ => panic!("Expected Query request"),
+        }
+    }
+
+    /// Test: visible=false → no AI requests on error
+    /// Validates that no requests are sent when popup is hidden
+    #[test]
+    fn test_hidden_no_requests_on_error() {
+        use std::sync::mpsc;
+
+        let mut ai_state = AiState::new(true, 1000);
+        ai_state.enabled = true;
+        ai_state.visible = false; // Popup hidden
+        let (tx, rx) = mpsc::channel();
+        ai_state.request_tx = Some(tx);
+
+        // Execute query with error
+        let result: Result<String, String> = Err("syntax error".to_string());
+        handle_execution_result(&mut ai_state, &result, ".invalid", 8, r#"{"name": "test"}"#);
+
+        // Should NOT have sent AI request
+        let request = rx.try_recv();
+        assert!(
+            request.is_err(),
+            "Should not send AI request when popup is hidden"
+        );
+    }
+
+    /// Test: visible=true with success → AI request sent
+    /// Validates that success results also send AI requests when popup is visible
+    #[test]
+    fn test_visible_sends_requests_on_success() {
+        use std::sync::mpsc;
+
+        let mut ai_state = AiState::new(true, 1000);
+        ai_state.enabled = true;
+        ai_state.visible = true; // Popup visible
+        let (tx, rx) = mpsc::channel();
+        ai_state.request_tx = Some(tx);
+
+        // Execute query with success
+        let result: Result<String, String> = Ok(r#""test_value""#.to_string());
+        handle_execution_result(
+            &mut ai_state,
+            &result,
+            ".name",
+            5,
+            r#"{"name": "test_value"}"#,
+        );
+
+        // Should have sent AI request
+        let request = rx.try_recv();
+        assert!(
+            request.is_ok(),
+            "Should send AI request for success when popup is visible"
+        );
+
+        // Verify it's a Query request with success context
+        match request.unwrap() {
+            super::super::ai_state::AiRequest::Query { prompt, .. } => {
+                assert!(
+                    prompt.contains("optimize"),
+                    "Success prompt should mention optimization"
+                );
+            }
+            _ => panic!("Expected Query request"),
+        }
+    }
+
+    /// Test: visible=false with success → no AI request sent
+    /// Validates that no requests are sent when popup is hidden, even for success
+    #[test]
+    fn test_hidden_no_requests_on_success() {
+        use std::sync::mpsc;
+
+        let mut ai_state = AiState::new(true, 1000);
+        ai_state.enabled = true;
+        ai_state.visible = false; // Popup hidden
+        let (tx, rx) = mpsc::channel();
+        ai_state.request_tx = Some(tx);
+
+        // Execute query with success
+        let result: Result<String, String> = Ok(r#""test_value""#.to_string());
+        handle_execution_result(
+            &mut ai_state,
+            &result,
+            ".name",
+            5,
+            r#"{"name": "test_value"}"#,
+        );
+
+        // Should NOT have sent AI request
+        let request = rx.try_recv();
+        assert!(
+            request.is_err(),
+            "Should not send AI request when popup is hidden"
         );
     }
 }

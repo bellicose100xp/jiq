@@ -6,7 +6,7 @@
 mod ai_debouncer;
 pub mod ai_events;
 pub mod ai_render;
-mod ai_state;
+pub mod ai_state; // Made public for integration tests
 mod cache;
 pub mod context;
 pub mod prompt;

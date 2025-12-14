@@ -294,18 +294,15 @@ data: {"type":"message_stop"}
                     break;
                 }
                 // Try to parse as content_block_delta
-                if let Ok(json) = serde_json::from_str::<serde_json::Value>(data) {
-                    if json.get("type").and_then(|t| t.as_str()) == Some("content_block_delta") {
-                        if let Some(text) = json
-                            .get("delta")
-                            .and_then(|d| d.get("text"))
-                            .and_then(|t| t.as_str())
-                        {
-                            if !text.is_empty() {
-                                chunks.push(text.to_string());
-                            }
-                        }
-                    }
+                if let Ok(json) = serde_json::from_str::<serde_json::Value>(data)
+                    && json.get("type").and_then(|t| t.as_str()) == Some("content_block_delta")
+                    && let Some(text) = json
+                        .get("delta")
+                        .and_then(|d| d.get("text"))
+                        .and_then(|t| t.as_str())
+                    && !text.is_empty()
+                {
+                    chunks.push(text.to_string());
                 }
             }
         }
@@ -356,53 +353,371 @@ data: {"type":"message_stop"}
     worker_handle.join().expect("Worker should complete");
 }
 
-/// Test auto-show behavior with different configurations
+/// Test visibility-based AI request behavior
 #[test]
-fn test_ai_auto_show_configurations() {
+fn test_ai_visibility_configurations() {
     struct MockAiState {
         visible: bool,
         enabled: bool,
     }
 
     impl MockAiState {
-        fn auto_show_on_error(&mut self, auto_show_enabled: bool) -> bool {
-            if !self.enabled || !auto_show_enabled || self.visible {
-                return false;
-            }
-            self.visible = true;
-            true
+        fn should_send_request(&self) -> bool {
+            self.enabled && self.visible
         }
     }
 
-    // Case 1: AI enabled, auto-show enabled, not visible → should show
-    let mut state = MockAiState {
-        visible: false,
-        enabled: true,
-    };
-    assert!(state.auto_show_on_error(true));
-    assert!(state.visible);
-
-    // Case 2: AI enabled, auto-show disabled → should not show
-    let mut state = MockAiState {
-        visible: false,
-        enabled: true,
-    };
-    assert!(!state.auto_show_on_error(false));
-    assert!(!state.visible);
-
-    // Case 3: AI disabled → should not show
-    let mut state = MockAiState {
-        visible: false,
-        enabled: false,
-    };
-    assert!(!state.auto_show_on_error(true));
-    assert!(!state.visible);
-
-    // Case 4: Already visible → should not re-show
-    let mut state = MockAiState {
+    // Case 1: AI enabled, visible → should send request
+    let state = MockAiState {
         visible: true,
         enabled: true,
     };
-    assert!(!state.auto_show_on_error(true));
-    assert!(state.visible);
+    assert!(state.should_send_request());
+
+    // Case 2: AI enabled, hidden → should not send request
+    let state = MockAiState {
+        visible: false,
+        enabled: true,
+    };
+    assert!(!state.should_send_request());
+
+    // Case 3: AI disabled, visible → should not send request
+    let state = MockAiState {
+        visible: true,
+        enabled: false,
+    };
+    assert!(!state.should_send_request());
+
+    // Case 4: AI disabled, hidden → should not send request
+    let state = MockAiState {
+        visible: false,
+        enabled: false,
+    };
+    assert!(!state.should_send_request());
+}
+
+// =============================================================================
+// Task 20: AI Visibility Control Integration Tests
+// =============================================================================
+
+/// Test initial AI popup visibility based on config
+///
+/// **Validates: Requirements 8.1, 8.2**
+/// - 8.1: WHEN AI is enabled in config THEN the AI_Popup SHALL be visible by default
+/// - 8.2: WHEN AI is disabled in config THEN the AI_Popup SHALL be hidden by default
+#[test]
+fn test_initial_visibility_ai_enabled() {
+    use jiq::app::App;
+    use jiq::config::{AiConfig, AnthropicConfig, Config};
+
+    // Create config with AI enabled
+    let config = Config {
+        ai: AiConfig {
+            enabled: true,
+            anthropic: AnthropicConfig {
+                api_key: Some("test-key".to_string()),
+                model: Some("claude-3-5-sonnet-20241022".to_string()),
+                ..Default::default()
+            },
+            ..Default::default()
+        },
+        ..Default::default()
+    };
+
+    let json_input = r#"{"test": "data"}"#.to_string();
+    let app = App::new(json_input, &config);
+
+    // Requirement 8.1: AI enabled → popup visible by default
+    assert!(
+        app.ai.visible,
+        "AI popup should be visible when AI is enabled in config"
+    );
+    assert!(app.ai.enabled, "AI should be enabled");
+    assert!(app.ai.configured, "AI should be configured with API key");
+}
+
+/// Test initial AI popup visibility when AI is disabled in config
+///
+/// **Validates: Requirements 8.2**
+#[test]
+fn test_initial_visibility_ai_disabled() {
+    use jiq::app::App;
+    use jiq::config::Config;
+
+    // Create config with AI disabled (default)
+    let config = Config::default();
+
+    let json_input = r#"{"test": "data"}"#.to_string();
+    let app = App::new(json_input, &config);
+
+    // Requirement 8.2: AI disabled → popup hidden by default
+    assert!(
+        !app.ai.visible,
+        "AI popup should be hidden when AI is disabled in config"
+    );
+    assert!(!app.ai.enabled, "AI should be disabled");
+}
+
+/// Test that tooltip is hidden when AI is visible on startup
+///
+/// **Validates: Requirements 9.5**
+/// - 9.5: WHEN jiq starts with AI enabled THEN the Info_Popup SHALL start in hidden state
+#[test]
+fn test_tooltip_hidden_when_ai_visible_on_startup() {
+    use jiq::app::App;
+    use jiq::config::{AiConfig, AnthropicConfig, Config, TooltipConfig};
+
+    // Create config with AI enabled and tooltip auto_show enabled
+    let config = Config {
+        ai: AiConfig {
+            enabled: true,
+            anthropic: AnthropicConfig {
+                api_key: Some("test-key".to_string()),
+                model: Some("claude-3-5-sonnet-20241022".to_string()),
+                ..Default::default()
+            },
+            ..Default::default()
+        },
+        tooltip: TooltipConfig { auto_show: true },
+        ..Default::default()
+    };
+
+    let json_input = r#"{"test": "data"}"#.to_string();
+    let app = App::new(json_input, &config);
+
+    // AI should be visible
+    assert!(app.ai.visible, "AI popup should be visible");
+
+    // Tooltip should be hidden (even though auto_show is true in config)
+    assert!(
+        !app.tooltip.enabled,
+        "Tooltip should be hidden when AI popup is visible on startup"
+    );
+}
+
+/// Test that tooltip is visible when AI is disabled on startup
+///
+/// **Validates: Requirements 9.5** (inverse case)
+#[test]
+fn test_tooltip_visible_when_ai_disabled_on_startup() {
+    use jiq::app::App;
+    use jiq::config::{Config, TooltipConfig};
+
+    // Create config with AI disabled and tooltip auto_show enabled
+    let config = Config {
+        tooltip: TooltipConfig { auto_show: true },
+        ..Default::default()
+    };
+
+    let json_input = r#"{"test": "data"}"#.to_string();
+    let app = App::new(json_input, &config);
+
+    // AI should be hidden
+    assert!(!app.ai.visible, "AI popup should be hidden");
+
+    // Tooltip should be visible (respecting auto_show config)
+    assert!(
+        app.tooltip.enabled,
+        "Tooltip should be visible when AI popup is hidden on startup"
+    );
+}
+
+// =============================================================================
+// Task 20.2: Documentation of Existing Ctrl+A Toggle Tests
+// =============================================================================
+//
+// The following tests for Ctrl+A toggle functionality already exist in the codebase:
+//
+// **Unit Tests** (in src/ai/ai_events.rs):
+// - `test_ctrl_a_toggles_visibility_on`: Tests that Ctrl+A toggles visibility from hidden to visible
+// - `test_ctrl_a_toggles_visibility_off`: Tests that Ctrl+A toggles visibility from visible to hidden
+// - `test_plain_a_not_handled`: Tests that plain 'a' key without Ctrl is not handled
+// - `test_ctrl_other_key_not_handled`: Tests that other Ctrl+key combinations are not handled
+//
+// **Property-Based Test** (in src/ai/ai_state.rs):
+// - `prop_toggle_visibility`: Property test that verifies toggle() flips visibility state
+//   for any initial visibility state, enabled state, and debounce_ms value.
+//   Tests both single toggle and double toggle (round-trip).
+//
+// **Validates: Requirements 8.3**
+// - 8.3: WHEN the user presses Ctrl+A THEN the AI_Popup visibility SHALL toggle
+//
+// These tests comprehensively cover the Ctrl+A toggle functionality at both the
+// unit level (specific key combinations) and property level (state transitions).
+// =============================================================================
+
+// =============================================================================
+// Task 20.3: Verify No Other Visibility Control Mechanisms
+// =============================================================================
+
+/// Test that handle_execution_result does NOT change visibility on error
+///
+/// **Validates: Requirements 8.1, 8.2, 8.3**
+/// Confirms that only config initialization and Ctrl+A toggle control visibility,
+/// not execution results.
+#[test]
+fn test_handle_execution_result_does_not_change_visibility_on_error() {
+    use jiq::ai::ai_events::handle_execution_result;
+    use jiq::ai::ai_state::AiState;
+
+    // Test with visibility = false
+    let mut ai_state = AiState::new(true, 1000);
+    ai_state.visible = false;
+    let initial_visibility = ai_state.visible;
+
+    let error_result: Result<String, String> = Err("syntax error".to_string());
+    handle_execution_result(
+        &mut ai_state,
+        &error_result,
+        ".invalid",
+        0,
+        r#"{"test": "data"}"#,
+    );
+
+    assert_eq!(
+        ai_state.visible, initial_visibility,
+        "handle_execution_result should NOT change visibility on error"
+    );
+
+    // Test with visibility = true
+    let mut ai_state = AiState::new(true, 1000);
+    ai_state.visible = true;
+    let initial_visibility = ai_state.visible;
+
+    let error_result: Result<String, String> = Err("syntax error".to_string());
+    handle_execution_result(
+        &mut ai_state,
+        &error_result,
+        ".invalid2",
+        0,
+        r#"{"test": "data"}"#,
+    );
+
+    assert_eq!(
+        ai_state.visible, initial_visibility,
+        "handle_execution_result should NOT change visibility on error (even when visible)"
+    );
+}
+
+/// Test that handle_execution_result does NOT change visibility on success
+///
+/// **Validates: Requirements 8.1, 8.2, 8.3**
+/// Confirms that only config initialization and Ctrl+A toggle control visibility,
+/// not execution results.
+#[test]
+fn test_handle_execution_result_does_not_change_visibility_on_success() {
+    use jiq::ai::ai_events::handle_execution_result;
+    use jiq::ai::ai_state::AiState;
+
+    // Test with visibility = false
+    let mut ai_state = AiState::new(true, 1000);
+    ai_state.visible = false;
+    let initial_visibility = ai_state.visible;
+
+    let success_result: Result<String, String> = Ok(r#"{"result": "value"}"#.to_string());
+    handle_execution_result(
+        &mut ai_state,
+        &success_result,
+        ".test",
+        0,
+        r#"{"test": "data"}"#,
+    );
+
+    assert_eq!(
+        ai_state.visible, initial_visibility,
+        "handle_execution_result should NOT change visibility on success"
+    );
+
+    // Test with visibility = true
+    let mut ai_state = AiState::new(true, 1000);
+    ai_state.visible = true;
+    let initial_visibility = ai_state.visible;
+
+    let success_result: Result<String, String> = Ok(r#"{"result": "value2"}"#.to_string());
+    handle_execution_result(
+        &mut ai_state,
+        &success_result,
+        ".test2",
+        0,
+        r#"{"test": "data"}"#,
+    );
+
+    assert_eq!(
+        ai_state.visible, initial_visibility,
+        "handle_execution_result should NOT change visibility on success (even when visible)"
+    );
+}
+
+/// Test that only config and Ctrl+A control visibility
+///
+/// **Validates: Requirements 8.1, 8.2, 8.3**
+/// This test documents the complete visibility control mechanism:
+/// 1. Initial visibility is set by config (8.1, 8.2)
+/// 2. Ctrl+A toggle is the only runtime control (8.3)
+/// 3. Execution results do NOT affect visibility
+#[test]
+fn test_visibility_control_mechanisms_complete() {
+    use jiq::ai::ai_events::handle_execution_result;
+    use jiq::ai::ai_state::AiState;
+    use jiq::app::App;
+    use jiq::config::{AiConfig, AnthropicConfig, Config};
+
+    // Mechanism 1: Config controls initial visibility
+    let config_enabled = Config {
+        ai: AiConfig {
+            enabled: true,
+            anthropic: AnthropicConfig {
+                api_key: Some("test-key".to_string()),
+                model: Some("claude-3-5-sonnet-20241022".to_string()),
+                ..Default::default()
+            },
+            ..Default::default()
+        },
+        ..Default::default()
+    };
+
+    let app_enabled = App::new(r#"{"test": "data"}"#.to_string(), &config_enabled);
+    assert!(
+        app_enabled.ai.visible,
+        "Config with AI enabled should set initial visibility to true"
+    );
+
+    let config_disabled = Config::default();
+    let app_disabled = App::new(r#"{"test": "data"}"#.to_string(), &config_disabled);
+    assert!(
+        !app_disabled.ai.visible,
+        "Config with AI disabled should set initial visibility to false"
+    );
+
+    // Mechanism 2: Ctrl+A toggle is the only runtime control
+    let mut ai_state = AiState::new(true, 1000);
+    ai_state.visible = false;
+
+    ai_state.toggle(); // Simulates Ctrl+A
+    assert!(ai_state.visible, "Toggle should change visibility");
+
+    ai_state.toggle(); // Simulates Ctrl+A again
+    assert!(!ai_state.visible, "Toggle should change visibility back");
+
+    // Mechanism 3: Execution results do NOT change visibility
+    let mut ai_state = AiState::new(true, 1000);
+    ai_state.visible = false;
+
+    // Try error result
+    let error_result: Result<String, String> = Err("error".to_string());
+    handle_execution_result(&mut ai_state, &error_result, ".err", 0, r#"{}"#);
+    assert!(
+        !ai_state.visible,
+        "Error result should NOT change visibility"
+    );
+
+    // Try success result
+    let success_result: Result<String, String> = Ok(r#"{"ok": true}"#.to_string());
+    handle_execution_result(&mut ai_state, &success_result, ".ok", 0, r#"{}"#);
+    assert!(
+        !ai_state.visible,
+        "Success result should NOT change visibility"
+    );
+
+    // Summary: Only config (initial) and toggle (runtime) control visibility
 }

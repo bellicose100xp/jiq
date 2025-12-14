@@ -44,8 +44,6 @@ pub struct App {
     pub debouncer: Debouncer,
     pub search: SearchState,
     pub ai: AiState,
-    /// Whether to auto-show AI popup on query errors (from config)
-    pub ai_auto_show_on_error: bool,
     /// Saved tooltip visibility state before AI popup opened (for restoration)
     pub saved_tooltip_visibility: bool,
 }
@@ -88,7 +86,6 @@ impl App {
             debouncer: Debouncer::new(),
             search: SearchState::new(),
             ai: ai_state,
-            ai_auto_show_on_error: config.ai.auto_show_on_error,
             saved_tooltip_visibility: config.tooltip.auto_show,
         }
     }

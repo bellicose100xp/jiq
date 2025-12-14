@@ -120,7 +120,6 @@ mod tests {
         #[test]
         fn prop_missing_api_key_produces_error(
             debounce_ms in 100u64..5000u64,
-            auto_show_on_error in prop::bool::ANY,
             model in "[a-z0-9-]{5,30}",
             max_tokens in 256u32..4096u32,
         ) {
@@ -129,7 +128,6 @@ mod tests {
                 enabled: true,
                 provider: AiProviderType::Anthropic,
                 debounce_ms,
-                auto_show_on_error,
                 anthropic: AnthropicConfig {
                     api_key: None,
                     model: Some(model),
@@ -158,7 +156,6 @@ mod tests {
         #[test]
         fn prop_empty_api_key_produces_error(
             debounce_ms in 100u64..5000u64,
-            auto_show_on_error in prop::bool::ANY,
             model in "[a-z0-9-]{5,30}",
             max_tokens in 256u32..4096u32,
             // Generate empty or whitespace-only strings
@@ -168,7 +165,6 @@ mod tests {
                 enabled: true,
                 provider: AiProviderType::Anthropic,
                 debounce_ms,
-                auto_show_on_error,
                 anthropic: AnthropicConfig {
                     api_key: Some(empty_key),
                     model: Some(model),
@@ -197,7 +193,6 @@ mod tests {
         #[test]
         fn prop_valid_api_key_creates_provider(
             debounce_ms in 100u64..5000u64,
-            auto_show_on_error in prop::bool::ANY,
             model in "[a-z0-9-]{5,30}",
             max_tokens in 256u32..4096u32,
             // Generate non-empty API keys
@@ -207,7 +202,6 @@ mod tests {
                 enabled: true,
                 provider: AiProviderType::Anthropic,
                 debounce_ms,
-                auto_show_on_error,
                 anthropic: AnthropicConfig {
                     api_key: Some(api_key),
                     model: Some(model),
@@ -226,7 +220,6 @@ mod tests {
         #[test]
         fn prop_disabled_config_produces_error(
             debounce_ms in 100u64..5000u64,
-            auto_show_on_error in prop::bool::ANY,
             model in "[a-z0-9-]{5,30}",
             max_tokens in 256u32..4096u32,
             api_key in "[a-zA-Z0-9_-]{10,50}",
@@ -236,7 +229,6 @@ mod tests {
                 enabled: false,
                 provider: AiProviderType::Anthropic,
                 debounce_ms,
-                auto_show_on_error,
                 anthropic: AnthropicConfig {
                     api_key: Some(api_key),
                     model: Some(model),

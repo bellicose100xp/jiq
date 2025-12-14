@@ -7,6 +7,12 @@ mod types;
 // AI types are used internally via Config struct
 pub use types::{ClipboardBackend, Config};
 
+// Re-export for integration tests
+#[allow(unused_imports)]
+pub use ai_types::{AiConfig, AnthropicConfig};
+#[allow(unused_imports)]
+pub use types::TooltipConfig;
+
 use std::fs;
 use std::path::PathBuf;
 

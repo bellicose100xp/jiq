@@ -124,11 +124,9 @@ impl JsonTypeInfo {
                     let has_colon = rest.iter().take_while(|c| c.is_whitespace()).count()
                         < rest.len()
                         && rest.iter().skip_while(|c| c.is_whitespace()).next() == Some(&':');
-                    if has_colon {
-                        if let Some(start) = key_start {
-                            let key: String = chars[start..key_end].iter().collect();
-                            keys.push(key);
-                        }
+                    if has_colon && let Some(start) = key_start {
+                        let key: String = chars[start..key_end].iter().collect();
+                        keys.push(key);
                     }
                     key_start = None;
                 }
