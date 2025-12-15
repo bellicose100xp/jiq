@@ -5,74 +5,13 @@
 
 use std::sync::mpsc::{Receiver, Sender};
 
-use ratatui::style::Color;
-
 use super::ai_debouncer::AiDebouncer;
+use super::selection::SelectionState;
+use super::suggestion::parse_suggestions;
 
-// =========================================================================
-// Phase 2: Suggestion Types
-// =========================================================================
-
-/// Type of AI suggestion
-///
-/// # Requirements
-/// - 5.4: Fix type displayed in red
-/// - 5.5: Optimize type displayed in yellow
-/// - 5.6: Next type displayed in green
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum SuggestionType {
-    /// Error corrections - displayed in red
-    Fix,
-    /// Performance/style improvements - displayed in yellow
-    Optimize,
-    /// Next steps, NL interpretations - displayed in green
-    Next,
-}
-
-impl SuggestionType {
-    /// Get the color for this suggestion type
-    pub fn color(&self) -> Color {
-        match self {
-            SuggestionType::Fix => Color::Red,
-            SuggestionType::Optimize => Color::Yellow,
-            SuggestionType::Next => Color::Green,
-        }
-    }
-
-    /// Parse suggestion type from string
-    pub fn from_str(s: &str) -> Option<Self> {
-        match s.to_lowercase().as_str() {
-            "fix" => Some(SuggestionType::Fix),
-            "optimize" => Some(SuggestionType::Optimize),
-            "next" => Some(SuggestionType::Next),
-            _ => None,
-        }
-    }
-
-    /// Get the display label for this type
-    pub fn label(&self) -> &'static str {
-        match self {
-            SuggestionType::Fix => "[Fix]",
-            SuggestionType::Optimize => "[Optimize]",
-            SuggestionType::Next => "[Next]",
-        }
-    }
-}
-
-/// A single AI suggestion for a jq query
-///
-/// # Requirements
-/// - 5.2: Format "N. [Type] jq_query_here" followed by description
-/// - 5.3: Extractable query for future selection feature
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Suggestion {
-    /// The suggested jq query (extractable for future selection)
-    pub query: String,
-    /// Brief explanation of what the query does
-    pub description: String,
-    /// Type of suggestion: Fix, Optimize, or Next
-    pub suggestion_type: SuggestionType,
-}
+// Re-export for backward compatibility
+#[allow(unused_imports)]
+pub use super::suggestion::{Suggestion, SuggestionType};
 
 /// Request messages sent to the AI worker thread
 #[derive(Debug)]
@@ -152,6 +91,9 @@ pub struct AiState {
     /// Current word limit based on popup dimensions (Phase 2)
     /// Updated when popup is rendered, used for next AI request
     pub word_limit: u16,
+    /// Selection state for suggestion navigation (Phase 3)
+    /// Tracks which suggestion is selected and navigation mode
+    pub selection: SelectionState,
 }
 
 impl AiState {
@@ -179,6 +121,7 @@ impl AiState {
             in_flight_request_id: None,
             suggestions: Vec::new(),
             word_limit: 200, // Default word limit, updated during rendering
+            selection: SelectionState::new(),
         }
     }
 
@@ -209,6 +152,7 @@ impl AiState {
             in_flight_request_id: None,
             suggestions: Vec::new(),
             word_limit: 200, // Default word limit, updated during rendering
+            selection: SelectionState::new(),
         }
     }
 
@@ -229,6 +173,9 @@ impl AiState {
     /// Increments the request_id to ensure stale responses from previous
     /// requests are filtered out. Also sets in_flight_request_id to track
     /// the active request for cancellation.
+    ///
+    /// # Requirements (Phase 3)
+    /// - 1.1-1.5: Selection state is cleared when starting a new request
     pub fn start_request(&mut self) {
         if !self.response.is_empty() {
             self.previous_response = Some(self.response.clone());
@@ -239,6 +186,7 @@ impl AiState {
         self.request_id = self.request_id.wrapping_add(1);
         self.in_flight_request_id = Some(self.request_id);
         self.suggestions.clear(); // Phase 2: Clear suggestions on new request
+        self.selection.clear_selection(); // Phase 3: Clear selection on new request
     }
 
     /// Append a chunk to the current response
@@ -255,109 +203,7 @@ impl AiState {
         self.previous_response = None;
         self.in_flight_request_id = None;
         // Phase 2: Parse suggestions from response
-        self.suggestions = Self::parse_suggestions(&self.response);
-    }
-
-    /// Parse suggestions from AI response text
-    ///
-    /// Expected format:
-    /// ```text
-    /// 1. [Fix] .users[] | select(.active)
-    ///    Filters to only active users
-    ///
-    /// 2. [Next] .users[] | .email
-    ///    Extracts email addresses from users
-    /// ```
-    ///
-    /// # Requirements
-    /// - 5.2: Parse "N. [Type] jq_query_here" format
-    /// - 5.3: Extract query string from each suggestion
-    /// - 5.9: Return empty vec if parsing fails (fallback to raw response)
-    pub fn parse_suggestions(response: &str) -> Vec<Suggestion> {
-        let mut suggestions = Vec::new();
-        let lines: Vec<&str> = response.lines().collect();
-        let mut i = 0;
-
-        while i < lines.len() {
-            let line = lines[i].trim();
-
-            // Look for pattern: "N. [Type] query"
-            // e.g., "1. [Fix] .users[]"
-            if let Some(suggestion) = Self::parse_suggestion_line(line, &lines[i + 1..]) {
-                suggestions.push(suggestion.0);
-                i += suggestion.1; // Skip the lines we consumed
-            } else {
-                i += 1;
-            }
-        }
-
-        suggestions
-    }
-
-    /// Parse a single suggestion starting from a numbered line
-    ///
-    /// Returns (Suggestion, lines_consumed) if successful
-    fn parse_suggestion_line(line: &str, remaining_lines: &[&str]) -> Option<(Suggestion, usize)> {
-        // Match pattern: digit(s) followed by ". ["
-        let line = line.trim();
-
-        // Find the number at the start
-        let dot_pos = line.find(". [")?;
-        let num_str = &line[..dot_pos];
-        if !num_str.chars().all(|c| c.is_ascii_digit()) || num_str.is_empty() {
-            return None;
-        }
-
-        // Find the type between [ and ]
-        let type_start = dot_pos + 3; // Skip ". ["
-        let type_end = line[type_start..].find(']')? + type_start;
-        let type_str = &line[type_start..type_end];
-        let suggestion_type = SuggestionType::from_str(type_str)?;
-
-        // Query is everything after "] "
-        let query_start = type_end + 1;
-        let query = line[query_start..].trim().to_string();
-
-        if query.is_empty() {
-            return None;
-        }
-
-        // Collect description from following indented lines
-        let mut description_lines = Vec::new();
-        let mut lines_consumed = 1;
-
-        for remaining_line in remaining_lines {
-            let trimmed = remaining_line.trim();
-
-            // Stop at empty line or next numbered suggestion
-            if trimmed.is_empty() {
-                lines_consumed += 1;
-                break;
-            }
-
-            // Check if this is a new numbered suggestion
-            if let Some(dot_pos) = trimmed.find(". [") {
-                let num_part = &trimmed[..dot_pos];
-                if num_part.chars().all(|c| c.is_ascii_digit()) && !num_part.is_empty() {
-                    break;
-                }
-            }
-
-            // This is a description line (indented or continuation)
-            description_lines.push(trimmed);
-            lines_consumed += 1;
-        }
-
-        let description = description_lines.join(" ");
-
-        Some((
-            Suggestion {
-                query,
-                description,
-                suggestion_type,
-            },
-            lines_consumed,
-        ))
+        self.suggestions = parse_suggestions(&self.response);
     }
 
     /// Set an error state
@@ -1038,112 +884,8 @@ mod tests {
     }
 
     // =========================================================================
-    // Phase 2: Suggestion Parsing Tests
+    // Phase 2: Suggestion Integration Tests (parsing tests moved to suggestion/parser.rs)
     // =========================================================================
-
-    #[test]
-    fn test_suggestion_type_colors() {
-        assert_eq!(SuggestionType::Fix.color(), ratatui::style::Color::Red);
-        assert_eq!(
-            SuggestionType::Optimize.color(),
-            ratatui::style::Color::Yellow
-        );
-        assert_eq!(SuggestionType::Next.color(), ratatui::style::Color::Green);
-    }
-
-    #[test]
-    fn test_suggestion_type_from_str() {
-        assert_eq!(SuggestionType::from_str("Fix"), Some(SuggestionType::Fix));
-        assert_eq!(SuggestionType::from_str("fix"), Some(SuggestionType::Fix));
-        assert_eq!(SuggestionType::from_str("FIX"), Some(SuggestionType::Fix));
-        assert_eq!(
-            SuggestionType::from_str("Optimize"),
-            Some(SuggestionType::Optimize)
-        );
-        assert_eq!(SuggestionType::from_str("Next"), Some(SuggestionType::Next));
-        assert_eq!(SuggestionType::from_str("Invalid"), None);
-    }
-
-    #[test]
-    fn test_suggestion_type_labels() {
-        assert_eq!(SuggestionType::Fix.label(), "[Fix]");
-        assert_eq!(SuggestionType::Optimize.label(), "[Optimize]");
-        assert_eq!(SuggestionType::Next.label(), "[Next]");
-    }
-
-    #[test]
-    fn test_parse_suggestions_single() {
-        let response = "1. [Fix] .users[] | select(.active)\n   Filters to only active users";
-        let suggestions = AiState::parse_suggestions(response);
-
-        assert_eq!(suggestions.len(), 1);
-        assert_eq!(suggestions[0].query, ".users[] | select(.active)");
-        assert_eq!(suggestions[0].description, "Filters to only active users");
-        assert_eq!(suggestions[0].suggestion_type, SuggestionType::Fix);
-    }
-
-    #[test]
-    fn test_parse_suggestions_multiple() {
-        let response = r#"1. [Fix] .users[] | select(.active)
-   Filters to only active users
-
-2. [Next] .users[] | .email
-   Extracts email addresses
-
-3. [Optimize] .users | map(.name)
-   More efficient mapping"#;
-
-        let suggestions = AiState::parse_suggestions(response);
-
-        assert_eq!(suggestions.len(), 3);
-
-        assert_eq!(suggestions[0].query, ".users[] | select(.active)");
-        assert_eq!(suggestions[0].suggestion_type, SuggestionType::Fix);
-
-        assert_eq!(suggestions[1].query, ".users[] | .email");
-        assert_eq!(suggestions[1].suggestion_type, SuggestionType::Next);
-
-        assert_eq!(suggestions[2].query, ".users | map(.name)");
-        assert_eq!(suggestions[2].suggestion_type, SuggestionType::Optimize);
-    }
-
-    #[test]
-    fn test_parse_suggestions_multiline_description() {
-        let response =
-            "1. [Fix] .data[]\n   This is a longer description\n   that spans multiple lines";
-        let suggestions = AiState::parse_suggestions(response);
-
-        assert_eq!(suggestions.len(), 1);
-        assert_eq!(suggestions[0].query, ".data[]");
-        assert!(suggestions[0].description.contains("longer description"));
-        assert!(suggestions[0].description.contains("multiple lines"));
-    }
-
-    #[test]
-    fn test_parse_suggestions_empty_response() {
-        let suggestions = AiState::parse_suggestions("");
-        assert!(suggestions.is_empty());
-    }
-
-    #[test]
-    fn test_parse_suggestions_no_valid_format() {
-        let response = "This is just plain text without any structured suggestions.";
-        let suggestions = AiState::parse_suggestions(response);
-        assert!(suggestions.is_empty());
-    }
-
-    #[test]
-    fn test_parse_suggestions_malformed() {
-        // Missing type bracket
-        let response = "1. Fix .users[]";
-        let suggestions = AiState::parse_suggestions(response);
-        assert!(suggestions.is_empty());
-
-        // Missing query
-        let response = "1. [Fix]";
-        let suggestions = AiState::parse_suggestions(response);
-        assert!(suggestions.is_empty());
-    }
 
     #[test]
     fn test_complete_request_parses_suggestions() {
@@ -1170,75 +912,6 @@ mod tests {
         state.start_request();
 
         assert!(state.suggestions.is_empty());
-    }
-
-    // **Feature: ai-assistant-phase2, Property 7: Suggestion parsing extracts queries**
-    // *For any* AI response containing valid suggestion format, parsing SHALL extract the query.
-    // **Validates: Requirements 5.2, 5.3**
-    proptest! {
-        #![proptest_config(ProptestConfig::with_cases(100))]
-
-        #[test]
-        fn prop_suggestion_parsing_extracts_queries(
-            // Query must start with a non-space character to be valid
-            query in "\\.[a-zA-Z0-9_|\\[\\]]{1,30}",
-            desc in "[a-zA-Z ]{1,50}",
-            suggestion_type in prop::sample::select(vec!["Fix", "Optimize", "Next"]),
-        ) {
-            let response = format!("1. [{}] {}\n   {}", suggestion_type, query, desc);
-            let suggestions = AiState::parse_suggestions(&response);
-
-            prop_assert_eq!(suggestions.len(), 1, "Should parse exactly one suggestion");
-            prop_assert_eq!(&suggestions[0].query, query.trim(), "Query should match");
-        }
-    }
-
-    // **Feature: ai-assistant-phase2, Property 8: Malformed response fallback**
-    // *For any* AI response that cannot be parsed, parsing SHALL return empty vec.
-    // **Validates: Requirements 5.9**
-    proptest! {
-        #![proptest_config(ProptestConfig::with_cases(100))]
-
-        #[test]
-        fn prop_malformed_response_returns_empty(
-            text in "[a-zA-Z ]{0,100}",
-        ) {
-            // Plain text without numbered format should return empty
-            let suggestions = AiState::parse_suggestions(&text);
-            // Either empty or valid suggestions (if text accidentally matches format)
-            // The key property is that it doesn't crash
-            prop_assert!(suggestions.len() <= 1, "Should handle any text gracefully");
-        }
-    }
-
-    // **Feature: ai-assistant-phase2, Property 9: Suggestion type colors**
-    // *For any* parsed suggestion, the type SHALL have the correct color.
-    // **Validates: Requirements 5.4, 5.5, 5.6**
-    proptest! {
-        #![proptest_config(ProptestConfig::with_cases(100))]
-
-        #[test]
-        fn prop_suggestion_type_colors_correct(
-            type_idx in 0usize..3usize,
-        ) {
-            let types = [SuggestionType::Fix, SuggestionType::Optimize, SuggestionType::Next];
-            let expected_colors = [
-                ratatui::style::Color::Red,
-                ratatui::style::Color::Yellow,
-                ratatui::style::Color::Green,
-            ];
-
-            let suggestion_type = types[type_idx];
-            let expected_color = expected_colors[type_idx];
-
-            prop_assert_eq!(
-                suggestion_type.color(),
-                expected_color,
-                "Color for {:?} should be {:?}",
-                suggestion_type,
-                expected_color
-            );
-        }
     }
 
     // **Feature: ai-assistant-phase2, Property 12: Initial visibility matches config**
@@ -1268,5 +941,96 @@ mod tests {
             prop_assert_eq!(state.enabled, ai_enabled, "Enabled should match input");
             prop_assert_eq!(state.configured, configured, "Configured should match input");
         }
+    }
+
+    // =========================================================================
+    // Phase 3: Selection State Integration Tests
+    // =========================================================================
+
+    #[test]
+    fn test_selection_initialized_in_new() {
+        let state = AiState::new(true, 1000);
+        assert!(state.selection.get_selected().is_none());
+        assert!(!state.selection.is_navigation_active());
+    }
+
+    #[test]
+    fn test_selection_initialized_in_new_with_config() {
+        let state = AiState::new_with_config(true, true, 1000);
+        assert!(state.selection.get_selected().is_none());
+        assert!(!state.selection.is_navigation_active());
+    }
+
+    #[test]
+    fn test_selection_initialized_in_default() {
+        let state = AiState::default();
+        assert!(state.selection.get_selected().is_none());
+        assert!(!state.selection.is_navigation_active());
+    }
+
+    #[test]
+    fn test_selection_cleared_on_new_request() {
+        let mut state = AiState::new(true, 1000);
+
+        // Set up a selection
+        state.selection.select_index(2);
+        assert_eq!(state.selection.get_selected(), Some(2));
+
+        // Start a new request
+        state.start_request();
+
+        // Selection should be cleared
+        assert!(state.selection.get_selected().is_none());
+        assert!(!state.selection.is_navigation_active());
+    }
+
+    #[test]
+    fn test_selection_cleared_on_new_request_with_navigation() {
+        let mut state = AiState::new(true, 1000);
+
+        // Set up navigation mode
+        state.selection.navigate_next(5);
+        assert!(state.selection.is_navigation_active());
+        assert_eq!(state.selection.get_selected(), Some(0));
+
+        // Start a new request
+        state.start_request();
+
+        // Selection and navigation mode should be cleared
+        assert!(state.selection.get_selected().is_none());
+        assert!(!state.selection.is_navigation_active());
+    }
+
+    #[test]
+    fn test_selection_persists_during_response_streaming() {
+        let mut state = AiState::new(true, 1000);
+
+        // Set up a selection
+        state.selection.select_index(1);
+        assert_eq!(state.selection.get_selected(), Some(1));
+
+        // Simulate response streaming (append_chunk doesn't clear selection)
+        state.append_chunk("1. [Fix] .users[]\n");
+        state.append_chunk("   Fix the query\n");
+
+        // Selection should persist
+        assert_eq!(state.selection.get_selected(), Some(1));
+    }
+
+    #[test]
+    fn test_selection_persists_after_complete_request() {
+        let mut state = AiState::new(true, 1000);
+        state.loading = true;
+        state.response = "1. [Fix] .users[]\n   Fix the query".to_string();
+
+        // Set up a selection
+        state.selection.select_index(0);
+        assert_eq!(state.selection.get_selected(), Some(0));
+
+        // Complete the request
+        state.complete_request();
+
+        // Selection should persist (user may want to apply it)
+        assert_eq!(state.selection.get_selected(), Some(0));
     }
 }

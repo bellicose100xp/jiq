@@ -144,11 +144,20 @@ pub fn render_popup(ai_state: &mut AiState, frame: &mut Frame, input_area: Rect)
         Span::raw(" "),
     ]);
 
-    // Build hints for top-right of border (only Ctrl+A toggles)
-    let hints = Line::from(vec![Span::styled(
-        " Ctrl+A to close ",
-        Style::default().fg(Color::DarkGray),
-    )]);
+    // Build hints for top-right of border
+    // Phase 3: Add selection keybindings if suggestions are available
+    // Requirements: 4.6, 7.3
+    let hints = if !ai_state.suggestions.is_empty() {
+        Line::from(vec![Span::styled(
+            " Alt+1-5 or Alt+↑↓+Enter to apply | Ctrl+A to close ",
+            Style::default().fg(Color::DarkGray),
+        )])
+    } else {
+        Line::from(vec![Span::styled(
+            " Ctrl+A to close ",
+            Style::default().fg(Color::DarkGray),
+        )])
+    };
 
     // Create the popup widget with green border
     let popup_widget = Paragraph::new(content).wrap(Wrap { trim: false }).block(
@@ -265,64 +274,11 @@ fn build_content(ai_state: &AiState, max_width: u16) -> Text<'static> {
     if !ai_state.response.is_empty() {
         // Phase 2: Check if we have parsed suggestions
         if !ai_state.suggestions.is_empty() {
-            // Render structured suggestions with colors
-            for (i, suggestion) in ai_state.suggestions.iter().enumerate() {
-                // Number and type label with color
-                let type_color = suggestion.suggestion_type.color();
-                let type_label = suggestion.suggestion_type.label();
-
-                // Calculate prefix length for query wrapping alignment
-                // Format: "N. [Type] " where N is the suggestion number
-                let prefix = format!("{}. {} ", i + 1, type_label);
-                let prefix_len = prefix.len();
-
-                // Wrap query text with proper indentation for continuation lines
-                let query_max_width = max_width.saturating_sub(prefix_len as u16) as usize;
-                let query_lines = wrap_text(&suggestion.query, query_max_width);
-
-                // Render first line with prefix
-                if let Some(first_query_line) = query_lines.first() {
-                    lines.push(Line::from(vec![
-                        Span::styled(
-                            format!("{}. ", i + 1),
-                            Style::default()
-                                .fg(Color::White)
-                                .add_modifier(Modifier::BOLD),
-                        ),
-                        Span::styled(
-                            type_label.to_string(),
-                            Style::default().fg(type_color).add_modifier(Modifier::BOLD),
-                        ),
-                        Span::raw(" "),
-                        Span::styled(first_query_line.clone(), Style::default().fg(Color::Cyan)),
-                    ]));
-                }
-
-                // Render continuation lines with proper indentation
-                for query_line in query_lines.iter().skip(1) {
-                    let indent = " ".repeat(prefix_len);
-                    lines.push(Line::from(Span::styled(
-                        format!("{}{}", indent, query_line),
-                        Style::default().fg(Color::Cyan),
-                    )));
-                }
-
-                // Description with 3-space indent, wrapped
-                if !suggestion.description.is_empty() {
-                    let desc_max_width = max_width.saturating_sub(3) as usize;
-                    for desc_line in wrap_text(&suggestion.description, desc_max_width) {
-                        lines.push(Line::from(Span::styled(
-                            format!("   {}", desc_line),
-                            Style::default().fg(Color::DarkGray),
-                        )));
-                    }
-                }
-
-                // Add blank line between suggestions (except after last)
-                if i < ai_state.suggestions.len() - 1 {
-                    lines.push(Line::from(""));
-                }
-            }
+            // Phase 3: Render suggestions with selection highlighting
+            // Extracted to separate module for maintainability
+            let suggestion_lines =
+                super::render::suggestions::render_suggestions(ai_state, max_width, wrap_text);
+            lines.extend(suggestion_lines);
         } else {
             // Fallback: render raw response if no suggestions parsed
             for line in wrap_text(&ai_state.response, max_width as usize) {
@@ -1022,5 +978,288 @@ mod tests {
         // Use a narrower width to force wrapping
         let output = render_ai_popup_to_string(&mut state, 80, 30);
         assert_snapshot!(output);
+    }
+
+    // =========================================================================
+    // Phase 3: Selection Rendering Snapshot Tests
+    // =========================================================================
+
+    #[test]
+    fn snapshot_ai_popup_with_selection_numbers() {
+        use super::super::ai_state::{Suggestion, SuggestionType};
+
+        let mut state = AiState::new_with_config(true, true, 1000);
+        state.visible = true;
+        state.response = "AI response with suggestions".to_string();
+        state.suggestions = vec![
+            Suggestion {
+                query: ".users[] | select(.active)".to_string(),
+                description: "Filters to only active users".to_string(),
+                suggestion_type: SuggestionType::Fix,
+            },
+            Suggestion {
+                query: ".users[] | .email".to_string(),
+                description: "Extracts email addresses".to_string(),
+                suggestion_type: SuggestionType::Next,
+            },
+            Suggestion {
+                query: ".users | map(.name)".to_string(),
+                description: "More efficient mapping".to_string(),
+                suggestion_type: SuggestionType::Optimize,
+            },
+        ];
+
+        let output = render_ai_popup_to_string(&mut state, 100, 30);
+        assert_snapshot!(output);
+    }
+
+    #[test]
+    fn snapshot_ai_popup_with_selected_suggestion() {
+        use super::super::ai_state::{Suggestion, SuggestionType};
+
+        let mut state = AiState::new_with_config(true, true, 1000);
+        state.visible = true;
+        state.response = "AI response with suggestions".to_string();
+        state.suggestions = vec![
+            Suggestion {
+                query: ".users[] | select(.active)".to_string(),
+                description: "Filters to only active users".to_string(),
+                suggestion_type: SuggestionType::Fix,
+            },
+            Suggestion {
+                query: ".users[] | .email".to_string(),
+                description: "Extracts email addresses".to_string(),
+                suggestion_type: SuggestionType::Next,
+            },
+            Suggestion {
+                query: ".users | map(.name)".to_string(),
+                description: "More efficient mapping".to_string(),
+                suggestion_type: SuggestionType::Optimize,
+            },
+        ];
+
+        // Select the second suggestion (index 1)
+        state.selection.navigate_next(state.suggestions.len());
+        state.selection.navigate_next(state.suggestions.len());
+
+        let output = render_ai_popup_to_string(&mut state, 100, 30);
+        assert_snapshot!(output);
+    }
+
+    #[test]
+    fn snapshot_ai_popup_with_selection_hints() {
+        use super::super::ai_state::{Suggestion, SuggestionType};
+
+        let mut state = AiState::new_with_config(true, true, 1000);
+        state.visible = true;
+        state.response = "AI response with suggestions".to_string();
+        state.suggestions = vec![Suggestion {
+            query: ".users[] | select(.active)".to_string(),
+            description: "Filters to only active users".to_string(),
+            suggestion_type: SuggestionType::Fix,
+        }];
+
+        let output = render_ai_popup_to_string(&mut state, 100, 30);
+        assert_snapshot!(output);
+    }
+
+    #[test]
+    fn snapshot_ai_popup_more_than_five_suggestions() {
+        use super::super::ai_state::{Suggestion, SuggestionType};
+
+        let mut state = AiState::new_with_config(true, true, 1000);
+        state.visible = true;
+        state.response = "AI response with many suggestions".to_string();
+        state.suggestions = vec![
+            Suggestion {
+                query: ".users[0]".to_string(),
+                description: "First user".to_string(),
+                suggestion_type: SuggestionType::Fix,
+            },
+            Suggestion {
+                query: ".users[1]".to_string(),
+                description: "Second user".to_string(),
+                suggestion_type: SuggestionType::Next,
+            },
+            Suggestion {
+                query: ".users[2]".to_string(),
+                description: "Third user".to_string(),
+                suggestion_type: SuggestionType::Optimize,
+            },
+            Suggestion {
+                query: ".users[3]".to_string(),
+                description: "Fourth user".to_string(),
+                suggestion_type: SuggestionType::Fix,
+            },
+            Suggestion {
+                query: ".users[4]".to_string(),
+                description: "Fifth user".to_string(),
+                suggestion_type: SuggestionType::Next,
+            },
+            Suggestion {
+                query: ".users[5]".to_string(),
+                description: "Sixth user (no number)".to_string(),
+                suggestion_type: SuggestionType::Optimize,
+            },
+            Suggestion {
+                query: ".users[6]".to_string(),
+                description: "Seventh user (no number)".to_string(),
+                suggestion_type: SuggestionType::Fix,
+            },
+        ];
+
+        let output = render_ai_popup_to_string(&mut state, 100, 30);
+        assert_snapshot!(output);
+    }
+
+    // =========================================================================
+    // Phase 3: Selection Property-Based Tests
+    // =========================================================================
+
+    // **Feature: ai-assistant-phase3-actionable-suggestions, Property 11: Selection number rendering**
+    // *For any* AI popup with N suggestions where N ≤ 5, each suggestion should be rendered
+    // with its selection number (1 through N) at the start of the line in a distinct color
+    // (dim white or gray), followed by the suggestion type and query.
+    // **Validates: Requirements 4.1, 4.2, 4.3**
+    proptest! {
+        #![proptest_config(ProptestConfig::with_cases(100))]
+
+        #[test]
+        fn prop_selection_number_rendering(suggestion_count in 1usize..=5) {
+            use super::super::ai_state::{Suggestion, SuggestionType};
+
+            let mut state = AiState::new_with_config(true, true, 1000);
+            state.visible = true;
+            state.response = "AI response".to_string();
+
+            // Create N suggestions
+            state.suggestions = (0..suggestion_count)
+                .map(|i| Suggestion {
+                    query: format!(".query{}", i),
+                    description: format!("Description {}", i),
+                    suggestion_type: SuggestionType::Fix,
+                })
+                .collect();
+
+            let content = build_content(&state, 80);
+            let text: String = content
+                .lines
+                .iter()
+                .flat_map(|l| l.spans.iter())
+                .map(|s| s.content.as_ref())
+                .collect();
+
+            // Verify each suggestion has its number (1-N)
+            for i in 1..=suggestion_count {
+                prop_assert!(
+                    text.contains(&format!("{}.", i)),
+                    "Suggestion {} should have selection number '{}.'",
+                    i, i
+                );
+            }
+        }
+    }
+
+    // **Feature: ai-assistant-phase3-actionable-suggestions, Property 12: Selection number limit**
+    // *For any* AI popup with N suggestions where N > 5, only the first 5 suggestions should be
+    // rendered with selection numbers (1-5), and suggestions 6 through N should be rendered
+    // without selection numbers.
+    // **Validates: Requirements 4.4**
+    proptest! {
+        #![proptest_config(ProptestConfig::with_cases(100))]
+
+        #[test]
+        fn prop_selection_number_limit(suggestion_count in 6usize..15) {
+            use super::super::ai_state::{Suggestion, SuggestionType};
+
+            let mut state = AiState::new_with_config(true, true, 1000);
+            state.visible = true;
+            state.response = "AI response".to_string();
+
+            // Create N suggestions (N > 5)
+            state.suggestions = (0..suggestion_count)
+                .map(|i| Suggestion {
+                    query: format!(".query{}", i),
+                    description: format!("Description {}", i),
+                    suggestion_type: SuggestionType::Fix,
+                })
+                .collect();
+
+            let content = build_content(&state, 80);
+
+            // Check each line to see if it starts with a number
+            let mut numbered_suggestions = 0;
+            for line in &content.lines {
+                let line_text: String = line.spans.iter()
+                    .map(|s| s.content.as_ref())
+                    .collect();
+
+                // Check if line starts with "N. " where N is 1-5
+                for i in 1..=5 {
+                    if line_text.trim_start().starts_with(&format!("{}. ", i)) {
+                        numbered_suggestions += 1;
+                        break;
+                    }
+                }
+            }
+
+            // Should have exactly 5 numbered suggestions
+            prop_assert_eq!(
+                numbered_suggestions, 5,
+                "Should have exactly 5 numbered suggestions, found {}",
+                numbered_suggestions
+            );
+        }
+    }
+
+    // **Feature: ai-assistant-phase3-actionable-suggestions, Property 6: Selection highlight visibility**
+    // *For any* suggestion selected via Alt+Up/Down navigation, the selected suggestion should be
+    // rendered with a distinct background color or visual indicator that differs from unselected suggestions.
+    // **Validates: Requirements 4.5, 8.5**
+    proptest! {
+        #![proptest_config(ProptestConfig::with_cases(100))]
+
+        #[test]
+        fn prop_selection_highlight_visibility(
+            suggestion_count in 1usize..10,
+            selected_index in 0usize..10
+        ) {
+            use super::super::ai_state::{Suggestion, SuggestionType};
+            use ratatui::style::Color;
+
+            prop_assume!(selected_index < suggestion_count);
+
+            let mut state = AiState::new_with_config(true, true, 1000);
+            state.visible = true;
+            state.response = "AI response".to_string();
+
+            // Create N suggestions
+            state.suggestions = (0..suggestion_count)
+                .map(|i| Suggestion {
+                    query: format!(".query{}", i),
+                    description: format!("Description {}", i),
+                    suggestion_type: SuggestionType::Fix,
+                })
+                .collect();
+
+            // Select a suggestion via navigation
+            for _ in 0..=selected_index {
+                state.selection.navigate_next(suggestion_count);
+            }
+
+            let content = build_content(&state, 80);
+
+            // Check that at least one span has a background color (indicating selection)
+            let has_background = content.lines.iter().any(|line| {
+                line.spans.iter().any(|span| {
+                    span.style.bg.is_some() && span.style.bg != Some(Color::Black)
+                })
+            });
+
+            prop_assert!(
+                has_background,
+                "Selected suggestion should have a distinct background color"
+            );
+        }
     }
 }

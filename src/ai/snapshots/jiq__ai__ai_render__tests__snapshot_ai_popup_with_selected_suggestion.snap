@@ -23,7 +23,7 @@ expression: output
 "                                                       │   Filters to only active users           │ "
 "                                                       │                                          │ "
 "                                                       │2. [Next] .users[] | .email               │ "
-"                                                       │   Extracts email addresses from users    │ "
+"                                                       │   Extracts email addresses               │ "
 "                                                       │                                          │ "
 "                                                       │3. [Optimize] .users | map(.name)         │ "
 "                                                       │   More efficient mapping                 │ "
