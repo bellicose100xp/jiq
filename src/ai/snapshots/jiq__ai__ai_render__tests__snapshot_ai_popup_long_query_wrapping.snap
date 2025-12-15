@@ -18,7 +18,7 @@ expression: output
 "                                                                                "
 "                                                                                "
 "                                                                                "
-"                                       ┌ AI Assistant ─────── Ctrl+A to close ┐ "
+"                                       ┌ AI Assistant apply | Ctrl+A to close ┐ "
 "                                       │1. [Fix] .users[] | select(.active    │ "
 "                                       │         == true and .age > 18) |     │ "
 "                                       │         {name: .name, email:         │ "

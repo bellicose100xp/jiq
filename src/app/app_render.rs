@@ -288,6 +288,20 @@ mod snapshot_tests {
     }
 
     #[test]
+    fn snapshot_help_popup_with_ai_keybindings() {
+        let json = r#"{"test": true}"#;
+        let mut app = test_app(json);
+        app.help.visible = true;
+
+        // Scroll down to show the AI ASSISTANT section
+        // The AI ASSISTANT section is near the end of the help content
+        app.help.scroll.offset = 45;
+
+        let output = render_to_string(&mut app, TEST_WIDTH, TEST_HEIGHT);
+        assert_snapshot!(output);
+    }
+
+    #[test]
     fn snapshot_error_overlay() {
         let json = r#"{"test": true}"#;
         let mut app = test_app(json);
