@@ -1,0 +1,15 @@
+//! Tests for AI render module
+//!
+//! This module organizes tests for the AI rendering functionality.
+
+// Module declarations using #[path] attributes
+#[path = "ai_render_tests/content_tests.rs"]
+mod content_tests;
+#[path = "ai_render_tests/layout_tests.rs"]
+mod layout_tests;
+#[path = "ai_render_tests/snapshot_tests.rs"]
+mod snapshot_tests;
+
+// Re-export items from parent module for test use
+pub(crate) use super::ai_render::*;
+pub(crate) use super::ai_state::AiState;
