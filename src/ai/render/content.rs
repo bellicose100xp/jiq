@@ -7,8 +7,8 @@ use ratatui::{
     text::{Line, Span, Text},
 };
 
-use super::text::wrap_text;
 use crate::ai::ai_state::AiState;
+use crate::ai::render::text::wrap_text;
 
 /// Build the content text based on AI state
 pub fn build_content(ai_state: &AiState, max_width: u16) -> Text<'static> {

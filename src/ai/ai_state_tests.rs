@@ -1,6 +1,6 @@
 //! Tests for AI state management
 
-use super::{AiRequest, AiResponse, AiState};
+use super::{AiRequest, AiState};
 use crate::ai::suggestion::{Suggestion, SuggestionType};
 use proptest::prelude::*;
 

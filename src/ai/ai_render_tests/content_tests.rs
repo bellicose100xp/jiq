@@ -1,6 +1,7 @@
 //! Content building tests for AI render module
 
 use super::*;
+use crate::ai::render::text::wrap_text;
 use proptest::prelude::*;
 use ratatui::style::Color;
 
