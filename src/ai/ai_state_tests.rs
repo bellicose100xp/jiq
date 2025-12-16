@@ -10,7 +10,7 @@ use proptest::prelude::*;
 
 #[test]
 fn test_new_ai_state_disabled() {
-    let state = AiState::new(false, 1000);
+    let state = AiState::new(false);
     assert!(!state.visible);
     assert!(!state.enabled);
     assert!(!state.configured);
@@ -22,7 +22,7 @@ fn test_new_ai_state_disabled() {
 
 #[test]
 fn test_new_ai_state_enabled() {
-    let state = AiState::new(true, 500);
+    let state = AiState::new(true);
     assert!(!state.visible);
     assert!(state.enabled);
     assert!(!state.configured); // new() defaults to not configured
@@ -31,7 +31,7 @@ fn test_new_ai_state_enabled() {
 
 #[test]
 fn test_new_with_config_configured() {
-    let state = AiState::new_with_config(true, true, 500);
+    let state = AiState::new_with_config(true, true);
     assert!(state.visible); // Phase 2: visible when enabled
     assert!(state.enabled);
     assert!(state.configured);
@@ -40,7 +40,7 @@ fn test_new_with_config_configured() {
 
 #[test]
 fn test_new_with_config_not_configured() {
-    let state = AiState::new_with_config(true, false, 500);
+    let state = AiState::new_with_config(true, false);
     assert!(state.visible); // Phase 2: visible when enabled
     assert!(state.enabled);
     assert!(!state.configured);
@@ -49,7 +49,7 @@ fn test_new_with_config_not_configured() {
 
 #[test]
 fn test_toggle_visibility() {
-    let mut state = AiState::new(true, 1000);
+    let mut state = AiState::new(true);
     assert!(!state.visible);
     state.toggle();
     assert!(state.visible);
@@ -59,7 +59,7 @@ fn test_toggle_visibility() {
 
 #[test]
 fn test_close() {
-    let mut state = AiState::new(true, 1000);
+    let mut state = AiState::new(true);
     state.visible = true;
     state.close();
     assert!(!state.visible);
@@ -67,7 +67,7 @@ fn test_close() {
 
 #[test]
 fn test_start_request_preserves_response() {
-    let mut state = AiState::new(true, 1000);
+    let mut state = AiState::new(true);
     state.response = "previous answer".to_string();
     state.start_request();
     assert!(state.loading);
@@ -77,7 +77,7 @@ fn test_start_request_preserves_response() {
 
 #[test]
 fn test_start_request_empty_response() {
-    let mut state = AiState::new(true, 1000);
+    let mut state = AiState::new(true);
     state.start_request();
     assert!(state.loading);
     assert!(state.response.is_empty());
@@ -86,7 +86,7 @@ fn test_start_request_empty_response() {
 
 #[test]
 fn test_append_chunk() {
-    let mut state = AiState::new(true, 1000);
+    let mut state = AiState::new(true);
     state.append_chunk("Hello ");
     state.append_chunk("World");
     assert_eq!(state.response, "Hello World");
@@ -94,7 +94,7 @@ fn test_append_chunk() {
 
 #[test]
 fn test_complete_request() {
-    let mut state = AiState::new(true, 1000);
+    let mut state = AiState::new(true);
     state.loading = true;
     state.previous_response = Some("old".to_string());
     state.complete_request();
@@ -104,7 +104,7 @@ fn test_complete_request() {
 
 #[test]
 fn test_set_error() {
-    let mut state = AiState::new(true, 1000);
+    let mut state = AiState::new(true);
     state.loading = true;
     state.set_error("Network error".to_string());
     assert!(!state.loading);
@@ -113,7 +113,7 @@ fn test_set_error() {
 
 #[test]
 fn test_clear_on_success() {
-    let mut state = AiState::new(true, 1000);
+    let mut state = AiState::new(true);
     state.visible = true;
     state.response = "Error explanation".to_string();
     state.error = Some("Query error".to_string());
@@ -133,7 +133,7 @@ fn test_clear_on_success() {
 
 #[test]
 fn test_clear_stale_response() {
-    let mut state = AiState::new(true, 1000);
+    let mut state = AiState::new(true);
     state.visible = true;
     state.response = "Old error explanation".to_string();
     state.error = Some("Old query error".to_string());
@@ -161,7 +161,7 @@ fn test_default() {
 
 #[test]
 fn test_request_id_increments() {
-    let mut state = AiState::new(true, 1000);
+    let mut state = AiState::new(true);
     assert_eq!(state.request_id, 0);
 
     state.start_request();
@@ -177,27 +177,27 @@ fn test_request_id_increments() {
 
 #[test]
 fn test_is_query_changed_no_previous() {
-    let state = AiState::new(true, 1000);
+    let state = AiState::new(true);
     assert!(state.is_query_changed(".name"));
 }
 
 #[test]
 fn test_is_query_changed_same_query() {
-    let mut state = AiState::new(true, 1000);
+    let mut state = AiState::new(true);
     state.set_last_query_hash(".name");
     assert!(!state.is_query_changed(".name"));
 }
 
 #[test]
 fn test_is_query_changed_different_query() {
-    let mut state = AiState::new(true, 1000);
+    let mut state = AiState::new(true);
     state.set_last_query_hash(".name");
     assert!(state.is_query_changed(".age"));
 }
 
 #[test]
 fn test_same_query_no_new_request() {
-    let mut state = AiState::new(true, 1000);
+    let mut state = AiState::new(true);
     state.set_last_query_hash(".name");
 
     // Same query should NOT trigger new request (regardless of error)
@@ -206,7 +206,7 @@ fn test_same_query_no_new_request() {
 
 #[test]
 fn test_different_query_triggers_new_request() {
-    let mut state = AiState::new(true, 1000);
+    let mut state = AiState::new(true);
     state.set_last_query_hash(".name");
 
     // Different query should trigger new request
@@ -224,8 +224,8 @@ proptest! {
     #![proptest_config(ProptestConfig::with_cases(100))]
 
     #[test]
-    fn prop_toggle_visibility(initial_visible: bool, enabled: bool, debounce_ms in 100u64..5000u64) {
-        let mut state = AiState::new(enabled, debounce_ms);
+    fn prop_toggle_visibility(initial_visible: bool, enabled: bool) {
+        let mut state = AiState::new(enabled);
         state.visible = initial_visible;
 
         let expected = !initial_visible;
@@ -253,8 +253,8 @@ proptest! {
     #![proptest_config(ProptestConfig::with_cases(100))]
 
     #[test]
-    fn prop_toggle_is_only_way_to_close(enabled: bool, debounce_ms in 100u64..5000u64, has_response: bool, response in "[a-zA-Z ]{0,100}") {
-        let mut state = AiState::new(enabled, debounce_ms);
+    fn prop_toggle_is_only_way_to_close(enabled: bool, has_response: bool, response in "[a-zA-Z ]{0,100}") {
+        let mut state = AiState::new(enabled);
         state.visible = true;
 
         if has_response {
@@ -289,10 +289,9 @@ proptest! {
     #[test]
     fn prop_previous_response_preservation(
         enabled: bool,
-        debounce_ms in 100u64..5000u64,
         response in "[a-zA-Z0-9 ]{1,100}"
     ) {
-        let mut state = AiState::new(enabled, debounce_ms);
+        let mut state = AiState::new(enabled);
         state.response = response.clone();
 
         state.start_request();
@@ -313,8 +312,8 @@ proptest! {
     }
 
     #[test]
-    fn prop_empty_response_not_preserved(enabled: bool, debounce_ms in 100u64..5000u64) {
-        let mut state = AiState::new(enabled, debounce_ms);
+    fn prop_empty_response_not_preserved(enabled: bool) {
+        let mut state = AiState::new(enabled);
         // Response is empty by default
 
         state.start_request();
@@ -336,14 +335,13 @@ proptest! {
     #[test]
     fn prop_response_cleared_on_success(
         enabled: bool,
-        debounce_ms in 100u64..5000u64,
         initial_visible in prop::bool::ANY,
         response in "[a-zA-Z0-9 ]{0,100}",
         error in prop::option::of("[a-zA-Z0-9 ]{1,50}"),
         previous_response in prop::option::of("[a-zA-Z0-9 ]{1,50}"),
         loading in prop::bool::ANY,
     ) {
-        let mut state = AiState::new(enabled, debounce_ms);
+        let mut state = AiState::new(enabled);
         state.visible = initial_visible;
         state.response = response;
         state.error = error;
@@ -383,7 +381,7 @@ proptest! {
 
 #[test]
 fn test_start_request_sets_in_flight_request_id() {
-    let mut state = AiState::new(true, 1000);
+    let mut state = AiState::new(true);
     assert!(state.in_flight_request_id.is_none());
 
     state.start_request();
@@ -395,7 +393,7 @@ fn test_start_request_sets_in_flight_request_id() {
 
 #[test]
 fn test_complete_request_clears_in_flight_request_id() {
-    let mut state = AiState::new(true, 1000);
+    let mut state = AiState::new(true);
     state.start_request();
     assert!(state.in_flight_request_id.is_some());
 
@@ -405,7 +403,7 @@ fn test_complete_request_clears_in_flight_request_id() {
 
 #[test]
 fn test_set_error_clears_in_flight_request_id() {
-    let mut state = AiState::new(true, 1000);
+    let mut state = AiState::new(true);
     state.start_request();
     assert!(state.in_flight_request_id.is_some());
 
@@ -415,7 +413,7 @@ fn test_set_error_clears_in_flight_request_id() {
 
 #[test]
 fn test_has_in_flight_request() {
-    let mut state = AiState::new(true, 1000);
+    let mut state = AiState::new(true);
     assert!(!state.has_in_flight_request());
 
     state.start_request();
@@ -427,7 +425,7 @@ fn test_has_in_flight_request() {
 
 #[test]
 fn test_cancel_in_flight_request_without_channel() {
-    let mut state = AiState::new(true, 1000);
+    let mut state = AiState::new(true);
     state.start_request();
 
     // Without a channel, cancel should return false
@@ -439,7 +437,7 @@ fn test_cancel_in_flight_request_without_channel() {
 fn test_cancel_in_flight_request_with_channel() {
     use std::sync::mpsc;
 
-    let mut state = AiState::new(true, 1000);
+    let mut state = AiState::new(true);
     let (tx, rx) = mpsc::channel();
     state.request_tx = Some(tx);
     state.start_request();
@@ -459,7 +457,7 @@ fn test_cancel_in_flight_request_with_channel() {
 fn test_cancel_in_flight_request_no_active_request() {
     use std::sync::mpsc;
 
-    let mut state = AiState::new(true, 1000);
+    let mut state = AiState::new(true);
     let (tx, _rx) = mpsc::channel();
     state.request_tx = Some(tx);
     // Don't start a request
@@ -479,11 +477,10 @@ proptest! {
     #[test]
     fn prop_cancel_in_flight_request_sends_cancel(
         enabled: bool,
-        debounce_ms in 100u64..5000u64,
     ) {
         use std::sync::mpsc;
 
-        let mut state = AiState::new(enabled, debounce_ms);
+        let mut state = AiState::new(enabled);
         let (tx, rx) = mpsc::channel();
         state.request_tx = Some(tx);
 
@@ -511,11 +508,10 @@ proptest! {
     #[test]
     fn prop_no_cancel_without_in_flight_request(
         enabled: bool,
-        debounce_ms in 100u64..5000u64,
     ) {
         use std::sync::mpsc;
 
-        let mut state = AiState::new(enabled, debounce_ms);
+        let mut state = AiState::new(enabled);
         let (tx, rx) = mpsc::channel();
         state.request_tx = Some(tx);
 
@@ -538,7 +534,7 @@ proptest! {
 
 #[test]
 fn test_complete_request_parses_suggestions() {
-    let mut state = AiState::new(true, 1000);
+    let mut state = AiState::new(true);
     state.response = "1. [Fix] .users[]\n   Fix the query".to_string();
     state.loading = true;
 
@@ -551,7 +547,7 @@ fn test_complete_request_parses_suggestions() {
 
 #[test]
 fn test_start_request_clears_suggestions() {
-    let mut state = AiState::new(true, 1000);
+    let mut state = AiState::new(true);
     state.suggestions = vec![Suggestion {
         query: ".test".to_string(),
         description: "Test".to_string(),
@@ -573,9 +569,8 @@ proptest! {
     fn prop_initial_visibility_matches_config(
         ai_enabled in prop::bool::ANY,
         configured in prop::bool::ANY,
-        debounce_ms in 100u64..5000u64,
     ) {
-        let state = AiState::new_with_config(ai_enabled, configured, debounce_ms);
+        let state = AiState::new_with_config(ai_enabled, configured);
 
         // Visibility should match enabled state
         prop_assert_eq!(
@@ -598,14 +593,14 @@ proptest! {
 
 #[test]
 fn test_selection_initialized_in_new() {
-    let state = AiState::new(true, 1000);
+    let state = AiState::new(true);
     assert!(state.selection.get_selected().is_none());
     assert!(!state.selection.is_navigation_active());
 }
 
 #[test]
 fn test_selection_initialized_in_new_with_config() {
-    let state = AiState::new_with_config(true, true, 1000);
+    let state = AiState::new_with_config(true, true);
     assert!(state.selection.get_selected().is_none());
     assert!(!state.selection.is_navigation_active());
 }
@@ -619,7 +614,7 @@ fn test_selection_initialized_in_default() {
 
 #[test]
 fn test_selection_cleared_on_new_request() {
-    let mut state = AiState::new(true, 1000);
+    let mut state = AiState::new(true);
 
     // Set up a selection
     state.selection.select_index(2);
@@ -635,7 +630,7 @@ fn test_selection_cleared_on_new_request() {
 
 #[test]
 fn test_selection_cleared_on_new_request_with_navigation() {
-    let mut state = AiState::new(true, 1000);
+    let mut state = AiState::new(true);
 
     // Set up navigation mode
     state.selection.navigate_next(5);
@@ -652,7 +647,7 @@ fn test_selection_cleared_on_new_request_with_navigation() {
 
 #[test]
 fn test_selection_persists_during_response_streaming() {
-    let mut state = AiState::new(true, 1000);
+    let mut state = AiState::new(true);
 
     // Set up a selection
     state.selection.select_index(1);
@@ -668,7 +663,7 @@ fn test_selection_persists_during_response_streaming() {
 
 #[test]
 fn test_selection_persists_after_complete_request() {
-    let mut state = AiState::new(true, 1000);
+    let mut state = AiState::new(true);
     state.loading = true;
     state.response = "1. [Fix] .users[]\n   Fix the query".to_string();
 

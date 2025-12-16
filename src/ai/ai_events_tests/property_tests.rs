@@ -13,7 +13,7 @@ proptest! {
     fn prop_streaming_concatenation(
         chunks in prop::collection::vec("[a-zA-Z0-9 .,!?]{0,50}", 0..10)
     ) {
-        let mut ai_state = AiState::new(true, 1000);
+        let mut ai_state = AiState::new(true);
         let (tx, rx) = mpsc::channel();
         ai_state.response_rx = Some(rx);
         ai_state.start_request();
@@ -53,7 +53,7 @@ proptest! {
         num_chunks in 1usize..10,
         chunk_content in "[a-zA-Z0-9 ]{1,20}"
     ) {
-        let mut ai_state = AiState::new(true, 1000);
+        let mut ai_state = AiState::new(true);
         let (tx, rx) = mpsc::channel();
         ai_state.response_rx = Some(rx);
 
@@ -95,7 +95,7 @@ proptest! {
     fn prop_loading_state_cleared_on_error(
         error_msg in "[a-zA-Z0-9 ]{1,50}"
     ) {
-        let mut ai_state = AiState::new(true, 1000);
+        let mut ai_state = AiState::new(true);
         let (tx, rx) = mpsc::channel();
         ai_state.response_rx = Some(rx);
 

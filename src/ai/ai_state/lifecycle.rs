@@ -2,7 +2,6 @@
 //!
 //! Handles initialization, state transitions, and clearing operations.
 
-use super::super::ai_debouncer::AiDebouncer;
 use super::super::selection::SelectionState;
 use super::super::suggestion::parse_suggestions;
 use crate::ai::ai_state::AiState;
@@ -12,10 +11,9 @@ impl AiState {
     ///
     /// # Arguments
     /// * `enabled` - Whether AI features are enabled (from config)
-    /// * `debounce_ms` - Debounce delay in milliseconds
     // TODO: Remove #[allow(dead_code)] when this constructor is used
     #[allow(dead_code)] // Phase 1: Use new_with_config instead
-    pub fn new(enabled: bool, debounce_ms: u64) -> Self {
+    pub fn new(enabled: bool) -> Self {
         Self {
             visible: false,
             enabled,
@@ -24,7 +22,6 @@ impl AiState {
             error: None,
             response: String::new(),
             previous_response: None,
-            debouncer: AiDebouncer::new(debounce_ms),
             request_tx: None,
             response_rx: None,
             request_id: 0,
@@ -41,12 +38,11 @@ impl AiState {
     /// # Arguments
     /// * `enabled` - Whether AI features are enabled (from config)
     /// * `configured` - Whether AI is properly configured (has API key)
-    /// * `debounce_ms` - Debounce delay in milliseconds
     ///
     /// # Requirements
     /// - 8.1: WHEN AI is enabled in config THEN the AI_Popup SHALL be visible by default
     /// - 8.2: WHEN AI is disabled in config THEN the AI_Popup SHALL be hidden by default
-    pub fn new_with_config(enabled: bool, configured: bool, debounce_ms: u64) -> Self {
+    pub fn new_with_config(enabled: bool, configured: bool) -> Self {
         Self {
             visible: enabled, // Phase 2: visible by default when AI enabled
             enabled,
@@ -55,7 +51,6 @@ impl AiState {
             error: None,
             response: String::new(),
             previous_response: None,
-            debouncer: AiDebouncer::new(debounce_ms),
             request_tx: None,
             response_rx: None,
             request_id: 0,

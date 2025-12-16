@@ -3,7 +3,6 @@
 //! Provides AI-powered contextual help for jq queries, including error troubleshooting,
 //! function explanations, and query optimization suggestions.
 
-mod ai_debouncer;
 pub mod ai_events;
 pub mod ai_render;
 pub mod ai_state; // Made public for integration tests

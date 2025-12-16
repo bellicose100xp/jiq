@@ -119,7 +119,6 @@ mod tests {
 
         #[test]
         fn prop_missing_api_key_produces_error(
-            debounce_ms in 100u64..5000u64,
             model in "[a-z0-9-]{5,30}",
             max_tokens in 256u32..4096u32,
         ) {
@@ -127,7 +126,6 @@ mod tests {
             let config = AiConfig {
                 enabled: true,
                 provider: AiProviderType::Anthropic,
-                debounce_ms,
                 anthropic: AnthropicConfig {
                     api_key: None,
                     model: Some(model),
@@ -155,7 +153,6 @@ mod tests {
 
         #[test]
         fn prop_empty_api_key_produces_error(
-            debounce_ms in 100u64..5000u64,
             model in "[a-z0-9-]{5,30}",
             max_tokens in 256u32..4096u32,
             // Generate empty or whitespace-only strings
@@ -164,7 +161,6 @@ mod tests {
             let config = AiConfig {
                 enabled: true,
                 provider: AiProviderType::Anthropic,
-                debounce_ms,
                 anthropic: AnthropicConfig {
                     api_key: Some(empty_key),
                     model: Some(model),
@@ -192,7 +188,6 @@ mod tests {
 
         #[test]
         fn prop_valid_api_key_creates_provider(
-            debounce_ms in 100u64..5000u64,
             model in "[a-z0-9-]{5,30}",
             max_tokens in 256u32..4096u32,
             // Generate non-empty API keys
@@ -201,7 +196,6 @@ mod tests {
             let config = AiConfig {
                 enabled: true,
                 provider: AiProviderType::Anthropic,
-                debounce_ms,
                 anthropic: AnthropicConfig {
                     api_key: Some(api_key),
                     model: Some(model),
@@ -219,7 +213,6 @@ mod tests {
 
         #[test]
         fn prop_disabled_config_produces_error(
-            debounce_ms in 100u64..5000u64,
             model in "[a-z0-9-]{5,30}",
             max_tokens in 256u32..4096u32,
             api_key in "[a-zA-Z0-9_-]{10,50}",
@@ -228,7 +221,6 @@ mod tests {
             let config = AiConfig {
                 enabled: false,
                 provider: AiProviderType::Anthropic,
-                debounce_ms,
                 anthropic: AnthropicConfig {
                     api_key: Some(api_key),
                     model: Some(model),
@@ -268,7 +260,6 @@ mod tests {
                 api_key: None,
                 ..Default::default()
             },
-            ..Default::default()
         };
 
         let result = AiProvider::from_config(&config);
@@ -285,7 +276,6 @@ mod tests {
                 api_key: Some("".to_string()),
                 ..Default::default()
             },
-            ..Default::default()
         };
 
         let result = AiProvider::from_config(&config);
@@ -302,7 +292,6 @@ mod tests {
                 api_key: Some("   ".to_string()),
                 ..Default::default()
             },
-            ..Default::default()
         };
 
         let result = AiProvider::from_config(&config);
@@ -320,7 +309,6 @@ mod tests {
                 model: Some("claude-3-haiku".to_string()),
                 max_tokens: 1024,
             },
-            ..Default::default()
         };
 
         let result = AiProvider::from_config(&config);
@@ -336,7 +324,6 @@ mod tests {
                 api_key: Some("sk-ant-test-key".to_string()),
                 ..Default::default()
             },
-            ..Default::default()
         };
 
         let result = AiProvider::from_config(&config);
