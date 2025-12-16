@@ -35,7 +35,7 @@ pub fn handle_global_keys(app: &mut App, key: KeyEvent) -> bool {
     // Note: ESC does NOT close AI popup - only Ctrl+A toggles it
     // This allows ESC to be used for other purposes (closing autocomplete, switching modes)
 
-    // Handle AI suggestion selection (Alt+1-5, Alt+Up/Down, Enter)
+    // Handle AI suggestion selection (Alt+1-5, Alt+Up/Down/j/k, Enter)
     // This must be checked before other handlers to allow suggestion selection
     // Requirements 6.1-6.4: Selection works in all editor modes
     if crate::ai::ai_events::handle_suggestion_selection(

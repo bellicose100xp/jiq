@@ -1,6 +1,6 @@
 //! Keybinding handlers for AI suggestion selection
 //!
-//! Handles Alt+1-5 for direct selection, Alt+Up/Down for navigation,
+//! Handles Alt+1-5 for direct selection, Alt+Up/Down/j/k for navigation,
 //! and Enter for applying navigated selection.
 
 use ratatui::crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
@@ -71,9 +71,9 @@ pub fn handle_direct_selection(key: KeyEvent, suggestion_count: usize) -> Option
     }
 }
 
-/// Handle navigation keybindings (Alt+Up/Down)
+/// Handle navigation keybindings (Alt+Up/Down and Alt+j/k)
 ///
-/// Parses Alt+Up and Alt+Down keybindings and updates the selection state
+/// Parses Alt+Up/Down and Alt+j/k keybindings and updates the selection state
 /// with wrapping behavior at boundaries.
 ///
 /// # Arguments
@@ -82,12 +82,12 @@ pub fn handle_direct_selection(key: KeyEvent, suggestion_count: usize) -> Option
 /// * `suggestion_count` - Number of available suggestions
 ///
 /// # Returns
-/// * `true` - If the key was handled (Alt+Up or Alt+Down)
+/// * `true` - If the key was handled (Alt+Up/Down or Alt+j/k)
 /// * `false` - If the key was not a navigation key
 ///
 /// # Requirements
-/// - 8.1: Alt+Down moves selection to next suggestion
-/// - 8.2: Alt+Up moves selection to previous suggestion
+/// - 8.1: Alt+Down/j moves selection to next suggestion
+/// - 8.2: Alt+Up/k moves selection to previous suggestion
 /// - 8.3: Wraps to first suggestion when at the end
 /// - 8.4: Wraps to last suggestion when at the beginning
 pub fn handle_navigation(
@@ -95,7 +95,7 @@ pub fn handle_navigation(
     selection_state: &mut SelectionState,
     suggestion_count: usize,
 ) -> bool {
-    // Only handle Alt+arrow keys
+    // Only handle Alt+arrow keys or Alt+j/k
     if !key.modifiers.contains(KeyModifiers::ALT) {
         return false;
     }
@@ -106,11 +106,11 @@ pub fn handle_navigation(
     }
 
     match key.code {
-        KeyCode::Down => {
+        KeyCode::Down | KeyCode::Char('j') => {
             selection_state.navigate_next(suggestion_count);
             true
         }
-        KeyCode::Up => {
+        KeyCode::Up | KeyCode::Char('k') => {
             selection_state.navigate_previous(suggestion_count);
             true
         }
@@ -120,7 +120,7 @@ pub fn handle_navigation(
 
 /// Handle Enter key for applying navigated selection
 ///
-/// Checks if navigation mode is active (user has used Alt+Up/Down) and
+/// Checks if navigation mode is active (user has used Alt+Up/Down/j/k) and
 /// returns the selected index if so. This allows Enter to apply the
 /// currently highlighted suggestion.
 ///
@@ -143,7 +143,7 @@ pub fn handle_apply_selection(key: KeyEvent, selection_state: &SelectionState) -
         return None;
     }
 
-    // Only apply if navigation mode is active (user has used Alt+Up/Down)
+    // Only apply if navigation mode is active (user has used Alt+Up/Down/j/k)
     // Requirements 9.2, 9.4: Don't interfere with normal Enter behavior
     if !selection_state.is_navigation_active() {
         return None;
@@ -244,10 +244,36 @@ mod tests {
     }
 
     #[test]
+    fn test_alt_j_navigates_next() {
+        let mut state = SelectionState::new();
+        let handled = handle_navigation(
+            key_with_mods(KeyCode::Char('j'), KeyModifiers::ALT),
+            &mut state,
+            5,
+        );
+        assert!(handled);
+        assert_eq!(state.get_selected(), Some(0));
+        assert!(state.is_navigation_active());
+    }
+
+    #[test]
     fn test_alt_up_navigates_previous() {
         let mut state = SelectionState::new();
         let handled =
             handle_navigation(key_with_mods(KeyCode::Up, KeyModifiers::ALT), &mut state, 5);
+        assert!(handled);
+        assert_eq!(state.get_selected(), Some(4)); // Wraps to last
+        assert!(state.is_navigation_active());
+    }
+
+    #[test]
+    fn test_alt_k_navigates_previous() {
+        let mut state = SelectionState::new();
+        let handled = handle_navigation(
+            key_with_mods(KeyCode::Char('k'), KeyModifiers::ALT),
+            &mut state,
+            5,
+        );
         assert!(handled);
         assert_eq!(state.get_selected(), Some(4)); // Wraps to last
         assert!(state.is_navigation_active());

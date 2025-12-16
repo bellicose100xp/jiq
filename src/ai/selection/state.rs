@@ -10,7 +10,7 @@
 pub struct SelectionState {
     /// Currently selected suggestion index (None = no selection)
     selected_index: Option<usize>,
-    /// Whether navigation mode is active (user has used Alt+Up/Down)
+    /// Whether navigation mode is active (user has used Alt+Up/Down/j/k)
     navigation_active: bool,
 }
 
@@ -46,14 +46,14 @@ impl SelectionState {
 
     /// Check if navigation mode is active
     ///
-    /// Navigation mode is active when the user has used Alt+Up/Down
+    /// Navigation mode is active when the user has used Alt+Up/Down/j/k
     /// to navigate through suggestions. In this mode, Enter applies
     /// the selected suggestion.
     pub fn is_navigation_active(&self) -> bool {
         self.navigation_active
     }
 
-    /// Navigate to the next suggestion (Alt+Down)
+    /// Navigate to the next suggestion (Alt+Down or Alt+j)
     ///
     /// Wraps around to the first suggestion when at the end.
     /// Activates navigation mode.
@@ -62,7 +62,7 @@ impl SelectionState {
     /// * `suggestion_count` - Total number of available suggestions
     ///
     /// # Requirements
-    /// - 8.1: Alt+Down moves selection to next suggestion
+    /// - 8.1: Alt+Down/j moves selection to next suggestion
     /// - 8.3: Wraps to first suggestion when at the end
     pub fn navigate_next(&mut self, suggestion_count: usize) {
         if suggestion_count == 0 {
@@ -83,7 +83,7 @@ impl SelectionState {
         }
     }
 
-    /// Navigate to the previous suggestion (Alt+Up)
+    /// Navigate to the previous suggestion (Alt+Up or Alt+k)
     ///
     /// Wraps around to the last suggestion when at the beginning.
     /// Activates navigation mode.
@@ -92,7 +92,7 @@ impl SelectionState {
     /// * `suggestion_count` - Total number of available suggestions
     ///
     /// # Requirements
-    /// - 8.2: Alt+Up moves selection to previous suggestion
+    /// - 8.2: Alt+Up/k moves selection to previous suggestion
     /// - 8.4: Wraps to last suggestion when at the beginning
     pub fn navigate_previous(&mut self, suggestion_count: usize) {
         if suggestion_count == 0 {

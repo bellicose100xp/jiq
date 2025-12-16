@@ -67,7 +67,7 @@ pub const HELP_ENTRIES: &[(&str, &str)] = &[
     ("", "── AI ASSISTANT ──"),
     ("Ctrl+A", "Toggle AI assistant"),
     ("Alt+1-5", "Apply AI suggestion (direct)"),
-    ("Alt+↑↓", "Navigate suggestions"),
+    ("Alt+↑↓/j/k", "Navigate suggestions"),
     ("Enter", "Apply selected suggestion"),
 ];
 

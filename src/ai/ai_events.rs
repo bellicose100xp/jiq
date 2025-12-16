@@ -48,11 +48,11 @@ pub fn handle_close_key(key: KeyEvent, ai_state: &mut AiState) -> bool {
     false
 }
 
-/// Handle suggestion selection events (Alt+1-5, Alt+Up/Down, Enter)
+/// Handle suggestion selection events (Alt+1-5, Alt+Up/Down/j/k, Enter)
 ///
 /// This function handles all suggestion selection keybindings:
 /// 1. Direct selection (Alt+1-5): Immediately applies the selected suggestion
-/// 2. Navigation (Alt+Up/Down): Moves selection highlight through suggestions
+/// 2. Navigation (Alt+Up/Down or Alt+j/k): Moves selection highlight through suggestions
 /// 3. Enter: Applies the currently navigated selection (if navigation is active)
 ///
 /// Returns true if the key was handled, false otherwise.
@@ -66,7 +66,7 @@ pub fn handle_close_key(key: KeyEvent, ai_state: &mut AiState) -> bool {
 ///
 /// # Requirements
 /// - 1.1-1.5: Alt+1-5 selects corresponding suggestion
-/// - 8.1, 8.2: Alt+Up/Down navigates through suggestions
+/// - 8.1, 8.2: Alt+Up/Down/j/k navigates through suggestions
 /// - 9.1: Enter applies the highlighted suggestion when navigation is active
 pub fn handle_suggestion_selection(
     key: KeyEvent,
