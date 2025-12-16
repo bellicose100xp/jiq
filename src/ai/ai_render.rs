@@ -14,17 +14,16 @@ use ratatui::{
 use super::ai_state::AiState;
 use crate::widgets::popup;
 
+// Use modules from render submodule instead of loading them directly
+use super::render::layout;
+
 // Re-export public items from sub-modules
 pub use self::content::build_content;
-pub use self::layout::{calculate_popup_area, calculate_word_limit};
+pub use layout::{calculate_popup_area, calculate_word_limit};
 
-// Module declarations using #[path] attributes
+// Module declarations - only content is local
 #[path = "render/content.rs"]
 mod content;
-#[path = "render/layout.rs"]
-mod layout;
-#[path = "render/text.rs"]
-mod text;
 
 /// Render the AI assistant popup
 ///

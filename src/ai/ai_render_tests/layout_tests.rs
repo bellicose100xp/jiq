@@ -1,6 +1,7 @@
 //! Layout calculation tests for AI render module
 
 use super::*;
+use crate::ai::render::layout::{AI_POPUP_MIN_WIDTH, AUTOCOMPLETE_RESERVED_WIDTH};
 use proptest::prelude::*;
 use ratatui::layout::Rect;
 

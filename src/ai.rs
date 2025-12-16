@@ -22,8 +22,7 @@ mod ai_events_tests;
 #[cfg(test)]
 mod ai_render_tests;
 
-#[cfg(test)]
-mod ai_state_tests;
+// Note: ai_state_tests is declared in ai_state.rs to avoid duplicate module loading
 
 // Re-export main types (others are internal for Phase 1)
 pub use ai_state::AiState;

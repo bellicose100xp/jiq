@@ -2,6 +2,8 @@
 //!
 //! Handles popup positioning and size calculations.
 
+#![allow(dead_code)] // Phase 1: Reserved for future layout calculations
+
 use ratatui::layout::Rect;
 
 // AI popup display constants
@@ -9,8 +11,6 @@ use ratatui::layout::Rect;
 pub const AI_POPUP_MIN_WIDTH: u16 = 40;
 /// Reserved space for autocomplete area on the left (35 chars + 2 margin)
 pub const AUTOCOMPLETE_RESERVED_WIDTH: u16 = 37;
-// TODO: Remove #[allow(dead_code)] when BORDER_HEIGHT is used
-#[allow(dead_code)] // Phase 1: Reserved for future layout calculations
 /// Border height (top + bottom)
 const BORDER_HEIGHT: u16 = 2;
 /// Minimum height for the popup
