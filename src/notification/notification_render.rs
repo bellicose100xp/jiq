@@ -1,7 +1,3 @@
-//! Notification rendering
-//!
-//! Provides functions for rendering notification overlays in the UI.
-
 use ratatui::{
     Frame,
     layout::Rect,
@@ -13,22 +9,9 @@ use ratatui::{
 use super::notification_state::NotificationState;
 use crate::widgets::popup;
 
-/// Render the notification overlay in the top-right corner of the frame
-///
-/// This function should be called after rendering the main UI so the
-/// notification appears on top of other content.
-///
-/// # Arguments
-/// * `frame` - The frame to render to
-/// * `notification` - The notification state to render
-///
-/// # Returns
-/// Nothing - renders directly to the frame if there's an active notification
 pub fn render_notification(frame: &mut Frame, notification: &mut NotificationState) {
-    // Clear expired notifications first
     notification.clear_if_expired();
 
-    // Get current notification, return early if none
     let notif = match notification.current() {
         Some(n) => n,
         None => return,
@@ -37,13 +20,10 @@ pub fn render_notification(frame: &mut Frame, notification: &mut NotificationSta
     let message = &notif.message;
     let style = &notif.style;
 
-    // Calculate notification dimensions
-    // Width: message length + padding (2 chars each side) + borders (2)
     let content_width = message.len() as u16;
-    let notification_width = content_width + 4; // 2 padding + 2 borders
-    let notification_height = 3; // 1 line content + 2 borders
+    let notification_width = content_width + 4;
+    let notification_height = 3;
 
-    // Position in top-right corner with small margin
     let frame_area = frame.area();
     let margin = 2;
     let notification_x = frame_area.width.saturating_sub(notification_width + margin);
@@ -61,10 +41,8 @@ pub fn render_notification(frame: &mut Frame, notification: &mut NotificationSta
         return;
     }
 
-    // Clear background for floating effect
     popup::clear_area(frame, notification_area);
 
-    // Create the notification widget
     let block = Block::default()
         .borders(Borders::ALL)
         .border_style(Style::default().fg(style.border).bg(style.bg))
@@ -87,13 +65,11 @@ mod tests {
     use ratatui::Terminal;
     use ratatui::backend::TestBackend;
 
-    /// Create a test terminal with specified dimensions
     fn create_test_terminal(width: u16, height: u16) -> Terminal<TestBackend> {
         let backend = TestBackend::new(width, height);
         Terminal::new(backend).unwrap()
     }
 
-    /// Render notification to a test terminal and return the buffer as a string
     fn render_notification_to_string(
         notification: &mut NotificationState,
         width: u16,
@@ -105,8 +81,6 @@ mod tests {
             .unwrap();
         terminal.backend().to_string()
     }
-
-    // === Snapshot Tests ===
 
     #[test]
     fn snapshot_notification_overlay() {

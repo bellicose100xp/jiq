@@ -4,10 +4,6 @@ use super::{AiRequest, AiState};
 use crate::ai::suggestion::{Suggestion, SuggestionType};
 use proptest::prelude::*;
 
-// =========================================================================
-// Unit Tests
-// =========================================================================
-
 #[test]
 fn test_new_ai_state_disabled() {
     let state = AiState::new(false);
@@ -25,14 +21,14 @@ fn test_new_ai_state_enabled() {
     let state = AiState::new(true);
     assert!(!state.visible);
     assert!(state.enabled);
-    assert!(!state.configured); // new() defaults to not configured
+    assert!(!state.configured);
     assert!(!state.loading);
 }
 
 #[test]
 fn test_new_with_config_configured() {
     let state = AiState::new_with_config(true, true);
-    assert!(state.visible); // Phase 2: visible when enabled
+    assert!(state.visible);
     assert!(state.enabled);
     assert!(state.configured);
     assert!(!state.loading);
@@ -41,7 +37,7 @@ fn test_new_with_config_configured() {
 #[test]
 fn test_new_with_config_not_configured() {
     let state = AiState::new_with_config(true, false);
-    assert!(state.visible); // Phase 2: visible when enabled
+    assert!(state.visible);
     assert!(state.enabled);
     assert!(!state.configured);
     assert!(!state.loading);
@@ -171,10 +167,6 @@ fn test_request_id_increments() {
     assert_eq!(state.request_id, 2);
 }
 
-// =========================================================================
-// Query Hash Tests
-// =========================================================================
-
 #[test]
 fn test_is_query_changed_no_previous() {
     let state = AiState::new(true);
@@ -200,7 +192,6 @@ fn test_same_query_no_new_request() {
     let mut state = AiState::new(true);
     state.set_last_query_hash(".name");
 
-    // Same query should NOT trigger new request (regardless of error)
     assert!(!state.is_query_changed(".name"));
 }
 
@@ -209,13 +200,8 @@ fn test_different_query_triggers_new_request() {
     let mut state = AiState::new(true);
     state.set_last_query_hash(".name");
 
-    // Different query should trigger new request
     assert!(state.is_query_changed(".age"));
 }
-
-// =========================================================================
-// Property-Based Tests
-// =========================================================================
 
 // **Feature: ai-assistant, Property 5: Toggle visibility**
 // *For any* AiState with visibility V, calling toggle() should result in visibility !V.
@@ -375,10 +361,6 @@ proptest! {
     }
 }
 
-// =========================================================================
-// Cancellation Tests
-// =========================================================================
-
 #[test]
 fn test_start_request_sets_in_flight_request_id() {
     let mut state = AiState::new(true);
@@ -528,10 +510,6 @@ proptest! {
     }
 }
 
-// =========================================================================
-// Phase 2: Suggestion Integration Tests (parsing tests moved to suggestion/parser.rs)
-// =========================================================================
-
 #[test]
 fn test_complete_request_parses_suggestions() {
     let mut state = AiState::new(true);
@@ -586,10 +564,6 @@ proptest! {
         prop_assert_eq!(state.configured, configured, "Configured should match input");
     }
 }
-
-// =========================================================================
-// Phase 3: Selection State Integration Tests
-// =========================================================================
 
 #[test]
 fn test_selection_initialized_in_new() {

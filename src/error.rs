@@ -1,6 +1,5 @@
 use thiserror::Error;
 
-/// Custom error types for jiq
 #[derive(Debug, Error)]
 pub enum JiqError {
     #[error("jq binary not found in PATH.\n\nInstall jq from: https://jqlang.org/download/")]

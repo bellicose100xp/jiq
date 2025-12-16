@@ -1,19 +1,8 @@
-//! OSC 52 clipboard backend
-//!
-//! Provides clipboard access via terminal escape sequences,
-//! useful for remote sessions (SSH, tmux).
-
 use base64::{Engine as _, engine::general_purpose::STANDARD};
 use std::io::{self, Write};
 
 use super::backend::{ClipboardError, ClipboardResult};
 
-/// Copy text to clipboard using OSC 52 escape sequence
-///
-/// Format: \x1b]52;c;{base64}\x07
-///
-/// This writes the escape sequence directly to stdout, which terminal
-/// emulators that support OSC 52 will interpret as a clipboard operation.
 pub fn copy(text: &str) -> ClipboardResult {
     let sequence = encode_osc52(text);
 
@@ -25,15 +14,6 @@ pub fn copy(text: &str) -> ClipboardResult {
     io::stdout().flush().map_err(|_| ClipboardError::WriteError)
 }
 
-/// Encode text for OSC 52 (exposed for testing)
-///
-/// Format: \x1b]52;c;{base64}\x07
-///
-/// The sequence consists of:
-/// - `\x1b]52;` - OSC 52 introducer
-/// - `c;` - clipboard selection (c = clipboard, p = primary)
-/// - `{base64}` - base64-encoded content
-/// - `\x07` - string terminator (BEL)
 pub fn encode_osc52(text: &str) -> String {
     let encoded = STANDARD.encode(text);
     format!("\x1b]52;c;{}\x07", encoded)
@@ -76,25 +56,21 @@ mod tests {
     #[test]
     fn test_encode_osc52_simple() {
         let result = encode_osc52("hello");
-        // "hello" in base64 is "aGVsbG8="
         assert_eq!(result, "\x1b]52;c;aGVsbG8=\x07");
     }
 
     #[test]
     fn test_encode_osc52_empty() {
         let result = encode_osc52("");
-        // Empty string in base64 is ""
         assert_eq!(result, "\x1b]52;c;\x07");
     }
 
     #[test]
     fn test_encode_osc52_unicode() {
         let result = encode_osc52("日本語");
-        // Verify it starts and ends correctly
         assert!(result.starts_with("\x1b]52;c;"));
         assert!(result.ends_with("\x07"));
 
-        // Verify round-trip
         let base64_part = &result[7..result.len() - 1];
         let decoded = STANDARD.decode(base64_part).unwrap();
         assert_eq!(String::from_utf8(decoded).unwrap(), "日本語");

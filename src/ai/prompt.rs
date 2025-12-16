@@ -9,11 +9,6 @@ use super::context::QueryContext;
 ///
 /// Dispatches to either error troubleshooting or success optimization prompt
 /// based on the `is_success` field in the context.
-///
-/// # Requirements
-/// - 3.3: Error context for troubleshooting
-/// - 3.4: Success context for optimization suggestions
-/// - Phase 2: Accepts dynamic word limit
 pub fn build_prompt(context: &QueryContext, word_limit: u16) -> String {
     if context.is_success {
         build_success_prompt(context, word_limit)
@@ -27,15 +22,9 @@ pub fn build_prompt(context: &QueryContext, word_limit: u16) -> String {
 /// Creates a prose prompt that includes the query, error message,
 /// JSON sample, and structure information to help the AI provide
 /// relevant assistance.
-///
-/// # Phase 2 Updates
-/// - Dynamic word limit based on popup size
-/// - Structured suggestion format for parseability
-/// - Natural language detection instructions
 pub fn build_error_prompt(context: &QueryContext, word_limit: u16) -> String {
     let mut prompt = String::new();
 
-    // System context with dynamic word limit
     prompt.push_str("You are a jq query assistant helping troubleshoot errors.\n");
     prompt.push_str("CRITICAL: Your response will be displayed in a popup window.\n");
     prompt.push_str(&format!(
@@ -43,18 +32,15 @@ pub fn build_error_prompt(context: &QueryContext, word_limit: u16) -> String {
         word_limit
     ));
 
-    // Query information
     prompt.push_str("## Current Query\n");
     prompt.push_str(&format!("```\n{}\n```\n", context.query));
     prompt.push_str(&format!("Cursor position: {}\n\n", context.cursor_pos));
 
-    // Error information
     if let Some(ref error) = context.error {
         prompt.push_str("## Error\n");
         prompt.push_str(&format!("```\n{}\n```\n\n", error));
     }
 
-    // JSON structure information
     prompt.push_str("## Input JSON Structure\n");
     prompt.push_str(&format!("Type: {}\n", context.json_type_info.root_type));
     if let Some(ref elem_type) = context.json_type_info.element_type {
@@ -74,11 +60,9 @@ pub fn build_error_prompt(context: &QueryContext, word_limit: u16) -> String {
         context.json_type_info.schema_hint
     ));
 
-    // JSON sample
     prompt.push_str("## Input JSON Sample\n");
     prompt.push_str(&format!("```json\n{}\n```\n\n", context.input_sample));
 
-    // Phase 2: Structured format instructions
     prompt.push_str("## Response Format\n");
     prompt.push_str("Provide 3-5 numbered suggestions in this EXACT format:\n\n");
     prompt.push_str("1. [Fix] corrected_jq_query_here\n");
@@ -90,7 +74,6 @@ pub fn build_error_prompt(context: &QueryContext, word_limit: u16) -> String {
     );
     prompt.push_str("Each query must be valid jq syntax on a single line.\n\n");
 
-    // Phase 2: Natural language instructions
     prompt.push_str("## Natural Language\n");
     prompt.push_str(
         "If the query contains natural language (e.g., 'how to get emails', 'filter by age'),\n",
@@ -112,17 +95,9 @@ pub fn build_error_prompt(context: &QueryContext, word_limit: u16) -> String {
 ///
 /// Creates a prose prompt that includes the query, output sample,
 /// and structure information to help the AI suggest optimizations.
-///
-/// # Requirements
-/// - 3.4: Success context for optimization suggestions
-/// # Phase 2 Updates
-/// - Dynamic word limit based on popup size
-/// - Structured suggestion format for parseability
-/// - Natural language detection instructions
 pub fn build_success_prompt(context: &QueryContext, word_limit: u16) -> String {
     let mut prompt = String::new();
 
-    // System context with dynamic word limit
     prompt.push_str("You are a jq query assistant helping optimize queries.\n");
     prompt.push_str("CRITICAL: Your response will be displayed in a popup window.\n");
     prompt.push_str(&format!(
@@ -130,11 +105,9 @@ pub fn build_success_prompt(context: &QueryContext, word_limit: u16) -> String {
         word_limit
     ));
 
-    // Query information
     prompt.push_str("## Current Query\n");
     prompt.push_str(&format!("```\n{}\n```\n\n", context.query));
 
-    // JSON structure information
     prompt.push_str("## Input JSON Structure\n");
     prompt.push_str(&format!("Type: {}\n", context.json_type_info.root_type));
     if let Some(ref elem_type) = context.json_type_info.element_type {
@@ -154,13 +127,11 @@ pub fn build_success_prompt(context: &QueryContext, word_limit: u16) -> String {
         context.json_type_info.schema_hint
     ));
 
-    // Output sample (truncated)
     if let Some(ref output_sample) = context.output_sample {
         prompt.push_str("## Query Output Sample\n");
         prompt.push_str(&format!("```json\n{}\n```\n\n", output_sample));
     }
 
-    // Phase 2: Structured format instructions
     prompt.push_str("## Response Format\n");
     prompt.push_str("Provide 3-5 numbered suggestions in this EXACT format:\n\n");
     prompt.push_str("1. [Optimize] optimized_jq_query_here\n");
@@ -173,7 +144,6 @@ pub fn build_success_prompt(context: &QueryContext, word_limit: u16) -> String {
         "If the query is already optimal, provide [Next] suggestions for related operations.\n\n",
     );
 
-    // Phase 2: Natural language instructions
     prompt.push_str("## Natural Language\n");
     prompt.push_str(
         "If the query contains natural language (e.g., 'how to get emails', 'filter by age'),\n",
@@ -192,8 +162,7 @@ pub fn build_success_prompt(context: &QueryContext, word_limit: u16) -> String {
 }
 
 /// Build a general help prompt (for non-error queries)
-// TODO: Remove #[allow(dead_code)] when help prompts are implemented
-#[allow(dead_code)] // Phase 1: Reserved for future help feature
+#[allow(dead_code)]
 pub fn build_help_prompt(context: &QueryContext) -> String {
     let mut prompt = String::new();
 
@@ -206,7 +175,6 @@ pub fn build_help_prompt(context: &QueryContext) -> String {
     prompt.push_str("## Input JSON Structure\n");
     prompt.push_str(&format!("{}\n\n", context.json_type_info.schema_hint));
 
-    // Use output_sample if available, otherwise truncate output
     if let Some(ref output_sample) = context.output_sample {
         prompt.push_str("## Current Output\n");
         prompt.push_str(&format!("```json\n{}\n```\n\n", output_sample));
@@ -352,10 +320,6 @@ mod tests {
         assert!(prompt.contains("[truncated]"));
     }
 
-    // =========================================================================
-    // Tests for build_success_prompt
-    // =========================================================================
-
     #[test]
     fn test_build_success_prompt_includes_query() {
         let ctx = QueryContext {
@@ -417,10 +381,6 @@ mod tests {
         assert!(prompt.contains("Element count: 3"));
     }
 
-    // =========================================================================
-    // Tests for build_prompt (dispatcher)
-    // =========================================================================
-
     #[test]
     fn test_build_prompt_dispatches_to_error_prompt() {
         let ctx = QueryContext {
@@ -458,10 +418,6 @@ mod tests {
         assert!(prompt.contains("optimize"));
         assert!(!prompt.contains("troubleshoot"));
     }
-
-    // =========================================================================
-    // Phase 2: Word Limit and Format Tests
-    // =========================================================================
 
     #[test]
     fn test_build_prompt_includes_word_limit() {

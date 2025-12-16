@@ -429,10 +429,6 @@ mod tests {
         assert_eq!(state.matches()[0].line, 99);
     }
 
-    // =========================================================================
-    // Property-Based Tests
-    // =========================================================================
-
     // Feature: search-in-results, Property 3: Match count accuracy
     // *For any* search query and results content, the displayed match count
     // (current/total) should accurately reflect the actual number of matches

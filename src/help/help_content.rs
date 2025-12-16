@@ -1,8 +1,3 @@
-//! Help popup content
-//!
-//! Contains the keyboard shortcuts and descriptions shown in the help popup.
-
-/// Help entries as (key, description) pairs, grouped by category
 pub const HELP_ENTRIES: &[(&str, &str)] = &[
     ("", ""),
     ("", "── GLOBAL ──"),
@@ -71,5 +66,4 @@ pub const HELP_ENTRIES: &[(&str, &str)] = &[
     ("Enter", "Apply selected suggestion"),
 ];
 
-/// Footer text shown at the bottom of the help popup
 pub const HELP_FOOTER: &str = "j/k: scroll | g/G: top/bottom | F1/q/?: close";

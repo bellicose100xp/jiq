@@ -1,9 +1,3 @@
-//! Tooltip module
-//!
-//! Provides TLDR-style contextual help for jq functions and operators.
-//! When enabled (default), a tooltip automatically appears when the cursor
-//! is on a recognized jq function or operator.
-
 mod detector;
 mod operator_content;
 mod tooltip_content;

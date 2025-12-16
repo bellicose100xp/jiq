@@ -1,8 +1,3 @@
-//! Tooltip content for jq operators
-//!
-//! Provides TLDR-style content for jq operators, including
-//! a description, practical examples, and optional tips.
-
 use super::tooltip_content::TooltipContent;
 
 /// Static array of tooltip content for jq operators
@@ -53,14 +48,6 @@ pub static OPERATOR_CONTENT: &[TooltipContent] = &[
     ),
 ];
 
-/// Look up tooltip content for an operator
-///
-/// # Arguments
-/// * `operator` - The operator string to look up (e.g., "//", "|=")
-///
-/// # Returns
-/// * `Some(&'static TooltipContent)` - The tooltip content if found
-/// * `None` - If the operator is not recognized
 pub fn get_operator_content(operator: &str) -> Option<&'static TooltipContent> {
     OPERATOR_CONTENT.iter().find(|c| c.function == operator)
 }
@@ -69,8 +56,6 @@ pub fn get_operator_content(operator: &str) -> Option<&'static TooltipContent> {
 mod tests {
     use super::*;
     use proptest::prelude::*;
-
-    // ==================== Unit Tests ====================
 
     #[test]
     fn test_get_operator_content_alternative() {
@@ -118,8 +103,6 @@ mod tests {
         assert!(get_operator_content("+").is_none());
         assert!(get_operator_content("").is_none());
     }
-
-    // ==================== Property Tests ====================
 
     // **Feature: operator-tooltips, Property 5: Operator content completeness**
     // *For any* supported operator, the tooltip content SHALL have a non-empty

@@ -1,7 +1,3 @@
-//! History popup rendering
-//!
-//! This module handles rendering of the history popup.
-
 use ratatui::{
     Frame,
     layout::{Constraint, Layout, Rect},
@@ -14,12 +10,9 @@ use crate::app::App;
 use crate::history::MAX_VISIBLE_HISTORY;
 use crate::widgets::popup;
 
-// History popup display constants
 pub const HISTORY_SEARCH_HEIGHT: u16 = 3;
 
-/// Render the history popup above the input field
 pub fn render_popup(app: &mut App, frame: &mut Frame, input_area: Rect) {
-    // Calculate dimensions - ensure minimum 1 row for "No matches" message
     let visible_count = app.history.filtered_count().min(MAX_VISIBLE_HISTORY);
     let list_height = (visible_count as u16).max(1) + 2; // +2 for borders, min 1 row
     let total_height = list_height + HISTORY_SEARCH_HEIGHT;
@@ -34,10 +27,8 @@ pub fn render_popup(app: &mut App, frame: &mut Frame, input_area: Rect) {
         height: total_height.min(input_area.y),
     };
 
-    // Clear background
     popup::clear_area(frame, popup_area);
 
-    // Split into list area and search area
     let layout = Layout::vertical([
         Constraint::Min(3),                        // History list
         Constraint::Length(HISTORY_SEARCH_HEIGHT), // Search box
@@ -47,20 +38,15 @@ pub fn render_popup(app: &mut App, frame: &mut Frame, input_area: Rect) {
     let list_area = layout[0];
     let search_area = layout[1];
 
-    // Build title with match count
     let title = format!(
         " History ({}/{}) ",
         app.history.filtered_count(),
         app.history.total_count()
     );
 
-    // Calculate max text length based on available width
-    // Format: " ► text " with borders -> overhead = 6 chars (borders + padding + arrow)
     let max_text_len = (list_area.width as usize).saturating_sub(6);
 
-    // Create list items
     let items: Vec<ListItem> = if app.history.filtered_count() == 0 {
-        // Show "No matches" when search has no results
         vec![ListItem::new(Line::from(Span::styled(
             "   No matches",
             Style::default().fg(Color::DarkGray),
@@ -69,7 +55,6 @@ pub fn render_popup(app: &mut App, frame: &mut Frame, input_area: Rect) {
         app.history
             .visible_entries()
             .map(|(display_idx, entry)| {
-                // Truncate long entries (char-safe for UTF-8)
                 let display_text = if entry.chars().count() > max_text_len {
                     let truncated: String = entry.chars().take(max_text_len).collect();
                     format!("{}…", truncated)
@@ -78,7 +63,6 @@ pub fn render_popup(app: &mut App, frame: &mut Frame, input_area: Rect) {
                 };
 
                 let line = if display_idx == app.history.selected_index() {
-                    // Selected item
                     Line::from(vec![Span::styled(
                         format!(" ► {} ", display_text),
                         Style::default()
@@ -87,7 +71,6 @@ pub fn render_popup(app: &mut App, frame: &mut Frame, input_area: Rect) {
                             .add_modifier(Modifier::BOLD),
                     )])
                 } else {
-                    // Unselected item
                     Line::from(vec![Span::styled(
                         format!("   {} ", display_text),
                         Style::default().fg(Color::White).bg(Color::Black),
@@ -99,7 +82,6 @@ pub fn render_popup(app: &mut App, frame: &mut Frame, input_area: Rect) {
             .collect()
     };
 
-    // Render list
     let list = List::new(items).block(
         Block::default()
             .borders(Borders::ALL)
@@ -109,7 +91,6 @@ pub fn render_popup(app: &mut App, frame: &mut Frame, input_area: Rect) {
     );
     frame.render_widget(list, list_area);
 
-    // Render search box using TextArea
     let search_textarea = app.history.search_textarea_mut();
     search_textarea.set_block(
         Block::default()

@@ -1,34 +1,21 @@
-//! Results pane event handling
-//!
-//! This module handles keyboard events when the results pane is focused.
-
 use ratatui::crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 
 use crate::app::App;
 use crate::clipboard;
-
-/// Handle keys when Results pane is focused
 pub fn handle_results_pane_key(app: &mut App, key: KeyEvent) {
     match key.code {
-        // Open search with '/' (only from results pane)
-        // Requirements 1.2: Slash opens search only from results pane
         KeyCode::Char('/') => {
             crate::search::search_events::open_search(app);
         }
 
-        // Toggle help popup
         KeyCode::Char('?') => {
             app.help.visible = !app.help.visible;
         }
 
-        // Yank (copy) result to clipboard
         KeyCode::Char('y') => {
-            // yy command - copy result to clipboard
-            // Note: Ctrl+Y is handled globally in events.rs before this
             clipboard::clipboard_events::handle_yank_key(app, app.clipboard_backend);
         }
 
-        // Basic line scrolling (1 line)
         KeyCode::Up | KeyCode::Char('k') => {
             app.results_scroll.scroll_up(1);
         }
@@ -36,7 +23,6 @@ pub fn handle_results_pane_key(app: &mut App, key: KeyEvent) {
             app.results_scroll.scroll_down(1);
         }
 
-        // 10 line scrolling
         KeyCode::Char('K') => {
             app.results_scroll.scroll_up(10);
         }
@@ -44,7 +30,6 @@ pub fn handle_results_pane_key(app: &mut App, key: KeyEvent) {
             app.results_scroll.scroll_down(10);
         }
 
-        // Horizontal scrolling (1 column)
         KeyCode::Left | KeyCode::Char('h') => {
             app.results_scroll.scroll_left(1);
         }
@@ -52,7 +37,6 @@ pub fn handle_results_pane_key(app: &mut App, key: KeyEvent) {
             app.results_scroll.scroll_right(1);
         }
 
-        // Horizontal scrolling (10 columns)
         KeyCode::Char('H') => {
             app.results_scroll.scroll_left(10);
         }
@@ -60,27 +44,22 @@ pub fn handle_results_pane_key(app: &mut App, key: KeyEvent) {
             app.results_scroll.scroll_right(10);
         }
 
-        // Jump to left edge
         KeyCode::Char('0') | KeyCode::Char('^') => {
             app.results_scroll.jump_to_left();
         }
 
-        // Jump to right edge
         KeyCode::Char('$') => {
             app.results_scroll.jump_to_right();
         }
 
-        // Jump to top
         KeyCode::Home | KeyCode::Char('g') => {
             app.results_scroll.jump_to_top();
         }
 
-        // Jump to bottom
         KeyCode::End | KeyCode::Char('G') => {
             app.results_scroll.jump_to_bottom();
         }
 
-        // Half page scrolling
         KeyCode::PageUp | KeyCode::Char('u')
             if key.code == KeyCode::PageUp || key.modifiers.contains(KeyModifiers::CONTROL) =>
         {
@@ -92,9 +71,7 @@ pub fn handle_results_pane_key(app: &mut App, key: KeyEvent) {
             app.results_scroll.page_down();
         }
 
-        _ => {
-            // Ignore other keys in Results pane
-        }
+        _ => {}
     }
 }
 
@@ -104,18 +81,14 @@ mod tests {
     use crate::app::Focus;
     use crate::test_utils::test_helpers::{app_with_query, key, key_with_mods, test_app};
 
-    // ========== Results Scrolling Tests ==========
-
     #[test]
     fn test_j_scrolls_down_one_line() {
         let mut app = app_with_query(".");
         app.focus = Focus::ResultsPane;
 
-        // Set up content with enough lines for scrolling
         let content: String = (0..20).map(|i| format!("line{}\n", i)).collect();
         app.query.result = Ok(content);
 
-        // Set up bounds so scrolling works
         let line_count = app.results_line_count_u32();
         app.results_scroll.update_bounds(line_count, 10);
         app.results_scroll.offset = 0;
@@ -144,7 +117,6 @@ mod tests {
 
         app.handle_key_event(key(KeyCode::Char('k')));
 
-        // Should saturate at 0, not go negative
         assert_eq!(app.results_scroll.offset, 0);
     }
 
@@ -153,18 +125,15 @@ mod tests {
         let mut app = app_with_query(".");
         app.focus = Focus::ResultsPane;
 
-        // Set up content with 30 lines so max_offset = 30 - 10 = 20
         let content: String = (0..30).map(|i| format!("line{}\n", i)).collect();
         app.query.result = Ok(content);
 
-        // Update bounds and set initial scroll
         let line_count = app.results_line_count_u32();
         app.results_scroll.update_bounds(line_count, 10);
         app.results_scroll.offset = 5;
 
         app.handle_key_event(key(KeyCode::Char('J')));
 
-        // Should scroll from 5 to 15 (10 lines down, within max_offset of 20)
         assert_eq!(app.results_scroll.offset, 15);
     }
 
@@ -197,16 +166,14 @@ mod tests {
         app.input.textarea.insert_str(".");
         app.focus = Focus::ResultsPane;
         app.results_scroll.offset = 0;
-        app.results_scroll.viewport_height = 2; // Small viewport to ensure max_offset > 0
+        app.results_scroll.viewport_height = 2;
 
-        // Update bounds to calculate max_offset
         let line_count = app.results_line_count_u32();
         app.results_scroll.update_bounds(line_count, 2);
         let max_scroll = app.results_scroll.max_offset;
 
         app.handle_key_event(key(KeyCode::Char('G')));
 
-        // Should jump to max_offset position
         assert_eq!(app.results_scroll.offset, max_scroll);
     }
 
@@ -219,7 +186,6 @@ mod tests {
 
         app.handle_key_event(key(KeyCode::PageUp));
 
-        // Should scroll up by half viewport (10 lines)
         assert_eq!(app.results_scroll.offset, 10);
     }
 
@@ -228,18 +194,15 @@ mod tests {
         let mut app = app_with_query(".");
         app.focus = Focus::ResultsPane;
 
-        // Set up content with 50 lines so max_offset = 50 - 20 = 30
         let content: String = (0..50).map(|i| format!("line{}\n", i)).collect();
         app.query.result = Ok(content);
 
-        // Update bounds
         let line_count = app.results_line_count_u32();
         app.results_scroll.update_bounds(line_count, 20);
         app.results_scroll.offset = 0;
 
         app.handle_key_event(key(KeyCode::PageDown));
 
-        // Should scroll down by half viewport (10 lines), within max_offset of 30
         assert_eq!(app.results_scroll.offset, 10);
     }
 
@@ -260,18 +223,15 @@ mod tests {
         let mut app = app_with_query(".");
         app.focus = Focus::ResultsPane;
 
-        // Set up content with 50 lines so max_offset = 50 - 20 = 30
         let content: String = (0..50).map(|i| format!("line{}\n", i)).collect();
         app.query.result = Ok(content);
 
-        // Update bounds
         let line_count = app.results_line_count_u32();
         app.results_scroll.update_bounds(line_count, 20);
         app.results_scroll.offset = 0;
 
         app.handle_key_event(key_with_mods(KeyCode::Char('d'), KeyModifiers::CONTROL));
 
-        // Should scroll down by half viewport (10 lines), within max_offset of 30
         assert_eq!(app.results_scroll.offset, 10);
     }
 
@@ -291,11 +251,9 @@ mod tests {
         let mut app = app_with_query(".");
         app.focus = Focus::ResultsPane;
 
-        // Set up content with enough lines for scrolling
         let content: String = (0..20).map(|i| format!("line{}\n", i)).collect();
         app.query.result = Ok(content);
 
-        // Set up bounds so scrolling works
         let line_count = app.results_line_count_u32();
         app.results_scroll.update_bounds(line_count, 10);
         app.results_scroll.offset = 0;
@@ -316,28 +274,21 @@ mod tests {
         assert_eq!(app.results_scroll.offset, 0);
     }
 
-    // ========== Scroll clamping tests ==========
-
     #[test]
     fn test_scroll_clamped_to_max() {
         let mut app = app_with_query("");
         app.focus = Focus::ResultsPane;
 
-        // Set up a short content with few lines
         app.query.result = Ok("line1\nline2\nline3".to_string());
 
-        // Update bounds - viewport larger than content
         let line_count = app.results_line_count_u32();
         app.results_scroll.update_bounds(line_count, 10);
 
-        // max_offset should be 0 since content fits in viewport
         assert_eq!(app.results_scroll.max_offset, 0);
 
-        // Try to scroll down - should stay at 0
         app.handle_key_event(key(KeyCode::Char('j')));
         assert_eq!(app.results_scroll.offset, 0);
 
-        // Try to scroll down multiple times - should stay at 0
         for _ in 0..100 {
             app.handle_key_event(key(KeyCode::Char('j')));
         }
@@ -349,23 +300,18 @@ mod tests {
         let mut app = app_with_query("");
         app.focus = Focus::ResultsPane;
 
-        // Set up content with 20 lines
         let content: String = (0..20).map(|i| format!("line{}\n", i)).collect();
         app.query.result = Ok(content);
 
-        // Update bounds
         let line_count = app.results_line_count_u32();
         app.results_scroll.update_bounds(line_count, 10);
 
-        // max_offset should be 20 - 10 = 10
         assert_eq!(app.results_scroll.max_offset, 10);
 
-        // Scroll down many times
         for _ in 0..100 {
             app.handle_key_event(key(KeyCode::Char('j')));
         }
 
-        // Should be clamped to max_offset
         assert_eq!(app.results_scroll.offset, 10);
     }
 
@@ -374,22 +320,17 @@ mod tests {
         let mut app = app_with_query("");
         app.focus = Focus::ResultsPane;
 
-        // 15 lines content, 10 line viewport
         let content: String = (0..15).map(|i| format!("line{}\n", i)).collect();
         app.query.result = Ok(content);
 
-        // Update bounds
         let line_count = app.results_line_count_u32();
         app.results_scroll.update_bounds(line_count, 10);
 
-        // max_offset = 15 - 10 = 5
         assert_eq!(app.results_scroll.max_offset, 5);
 
-        // Page down (half page = 5) should go to max
         app.handle_key_event(key(KeyCode::PageDown));
         assert_eq!(app.results_scroll.offset, 5);
 
-        // Another page down should stay at max
         app.handle_key_event(key(KeyCode::PageDown));
         assert_eq!(app.results_scroll.offset, 5);
     }
@@ -399,18 +340,14 @@ mod tests {
         let mut app = app_with_query("");
         app.focus = Focus::ResultsPane;
 
-        // 5 lines content, 3 line viewport
         let content: String = (0..5).map(|i| format!("line{}\n", i)).collect();
         app.query.result = Ok(content);
 
-        // Update bounds
         let line_count = app.results_line_count_u32();
         app.results_scroll.update_bounds(line_count, 3);
 
-        // max_offset = 5 - 3 = 2
         assert_eq!(app.results_scroll.max_offset, 2);
 
-        // Big scroll (J = 10 lines) should clamp to max
         app.handle_key_event(key(KeyCode::Char('J')));
         assert_eq!(app.results_scroll.offset, 2);
     }
@@ -424,17 +361,14 @@ mod tests {
         assert!(app.help.visible);
     }
 
-    // ========== Horizontal Scroll Tests ==========
-
     fn app_with_wide_content() -> App {
         let mut app = app_with_query(".");
         app.focus = Focus::ResultsPane;
-        // Content with long lines (100 chars each)
         let content: String = (0..10)
             .map(|i| format!("{}{}\n", i, "x".repeat(100)))
             .collect();
         app.query.result = Ok(content);
-        app.results_scroll.update_h_bounds(101, 40); // max_h_offset = 61
+        app.results_scroll.update_h_bounds(101, 40);
         app
     }
 
@@ -525,7 +459,7 @@ mod tests {
 
         app.handle_key_event(key(KeyCode::Char('$')));
 
-        assert_eq!(app.results_scroll.h_offset, 61); // max_h_offset
+        assert_eq!(app.results_scroll.h_offset, 61);
     }
 
     #[test]
@@ -541,7 +475,7 @@ mod tests {
     #[test]
     fn test_l_scroll_right_clamped_at_max() {
         let mut app = app_with_wide_content();
-        app.results_scroll.h_offset = 61; // at max
+        app.results_scroll.h_offset = 61;
 
         app.handle_key_event(key(KeyCode::Char('l')));
 
@@ -560,6 +494,6 @@ mod tests {
 
         app.handle_key_event(key(KeyCode::End));
 
-        assert_eq!(app.results_scroll.offset, 10); // max_offset
+        assert_eq!(app.results_scroll.offset, 10);
     }
 }

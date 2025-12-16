@@ -4,10 +4,8 @@ use tui_textarea::TextArea;
 use super::matcher::HistoryMatcher;
 use super::storage;
 
-/// Maximum number of history items to display in the popup.
 pub const MAX_VISIBLE_HISTORY: usize = 15;
 
-/// Creates a TextArea configured for history search input.
 fn create_search_textarea() -> TextArea<'static> {
     let mut textarea = TextArea::default();
     textarea.set_cursor_line_style(Style::default());
@@ -15,13 +13,6 @@ fn create_search_textarea() -> TextArea<'static> {
     textarea
 }
 
-/// Manages the state of the history popup.
-///
-/// Design note on `persist_to_disk`:
-/// This flag allows tests to use in-memory-only history without writing to the real
-/// history file. While trait-based dependency injection would be more "proper", it would
-/// add significant complexity for a single-user CLI tool with minimal benefit.
-/// This pragmatic approach keeps the codebase simple while ensuring test isolation.
 pub struct HistoryState {
     entries: Vec<String>,
     filtered_indices: Vec<usize>,
@@ -29,7 +20,6 @@ pub struct HistoryState {
     selected_index: usize,
     visible: bool,
     matcher: HistoryMatcher,
-    /// Controls whether history is persisted to disk (false in tests)
     persist_to_disk: bool,
     cycling_index: Option<usize>,
 }
@@ -41,7 +31,6 @@ impl Default for HistoryState {
 }
 
 impl HistoryState {
-    /// Creates a new HistoryState and loads history from disk.
     pub fn new() -> Self {
         let entries = storage::load_history();
         let filtered_indices = (0..entries.len()).collect();
@@ -58,8 +47,6 @@ impl HistoryState {
         }
     }
 
-    /// Creates an empty HistoryState without loading from disk.
-    /// Useful for testing - does not persist to disk.
     #[cfg(test)]
     pub fn empty() -> Self {
         Self {
@@ -74,8 +61,6 @@ impl HistoryState {
         }
     }
 
-    /// Adds an entry to in-memory history only (does NOT persist to disk).
-    /// Used for testing to avoid polluting real history file.
     #[cfg(test)]
     pub fn add_entry_in_memory(&mut self, query: &str) {
         if query.trim().is_empty() {
@@ -87,7 +72,6 @@ impl HistoryState {
         self.filtered_indices = (0..self.entries.len()).collect();
     }
 
-    /// Opens the history popup with an optional initial search query.
     pub fn open(&mut self, initial_query: Option<&str>) {
         self.visible = true;
         // Clear existing text and set initial query
@@ -100,7 +84,6 @@ impl HistoryState {
         self.selected_index = 0;
     }
 
-    /// Closes the history popup and resets state.
     pub fn close(&mut self) {
         self.visible = false;
         self.search_textarea.select_all();
@@ -109,12 +92,10 @@ impl HistoryState {
         self.filtered_indices = (0..self.entries.len()).collect();
     }
 
-    /// Returns whether the history popup is visible.
     pub fn is_visible(&self) -> bool {
         self.visible
     }
 
-    /// Returns the current search query (used for testing).
     #[cfg(test)]
     pub fn search_query(&self) -> &str {
         self.search_textarea
@@ -124,25 +105,21 @@ impl HistoryState {
             .unwrap_or("")
     }
 
-    /// Returns a mutable reference to the search TextArea for input handling.
     pub fn search_textarea_mut(&mut self) -> &mut TextArea<'static> {
         &mut self.search_textarea
     }
 
-    /// Called after TextArea input to update the filter.
     pub fn on_search_input_changed(&mut self) {
         self.update_filter();
         self.selected_index = 0;
     }
 
-    /// Selects the next item in the filtered list.
     pub fn select_next(&mut self) {
         if !self.filtered_indices.is_empty() {
             self.selected_index = (self.selected_index + 1) % self.filtered_indices.len();
         }
     }
 
-    /// Selects the previous item in the filtered list.
     pub fn select_previous(&mut self) {
         if !self.filtered_indices.is_empty() {
             self.selected_index = if self.selected_index == 0 {
@@ -153,7 +130,6 @@ impl HistoryState {
         }
     }
 
-    /// Returns the currently selected entry, if any.
     pub fn selected_entry(&self) -> Option<&str> {
         self.filtered_indices
             .get(self.selected_index)
@@ -161,27 +137,18 @@ impl HistoryState {
             .map(String::as_str)
     }
 
-    /// Returns the index of the currently selected item.
     pub fn selected_index(&self) -> usize {
         self.selected_index
     }
 
-    /// Returns the total number of entries (unfiltered).
     pub fn total_count(&self) -> usize {
         self.entries.len()
     }
 
-    /// Returns the number of filtered entries.
     pub fn filtered_count(&self) -> usize {
         self.filtered_indices.len()
     }
 
-    /// Returns an iterator over the visible (filtered) entries with their display indices.
-    /// Limited to MAX_VISIBLE_HISTORY items.
-    /// Returns entries in reverse order (most recent at bottom, closest to input).
-    ///
-    /// Note: This allocates a small Vec (~15 items) to enable reversing.
-    /// For MAX_VISIBLE_HISTORY=15, this is ~240 bytes - acceptable for render frequency.
     pub fn visible_entries(&self) -> impl Iterator<Item = (usize, &str)> {
         let entries: Vec<(usize, &str)> = self
             .filtered_indices
@@ -199,11 +166,6 @@ impl HistoryState {
         entries.into_iter().rev()
     }
 
-    /// Adds a query to the history (saves to disk if persist_to_disk is true).
-    ///
-    /// If disk save fails, continues with in-memory update and logs error to stderr.
-    /// This allows the app to degrade gracefully - history works for current session
-    /// even if persistence fails.
     pub fn add_entry(&mut self, query: &str) {
         if query.trim().is_empty() {
             return;
@@ -224,7 +186,6 @@ impl HistoryState {
         self.filtered_indices = (0..self.entries.len()).collect();
     }
 
-    /// Updates the filtered indices based on the current search query.
     fn update_filter(&mut self) {
         let query = self
             .search_textarea
@@ -235,8 +196,6 @@ impl HistoryState {
         self.filtered_indices = self.matcher.filter(query, &self.entries);
     }
 
-    /// Cycle to the previous history entry (older).
-    /// Returns the entry if available.
     pub fn cycle_previous(&mut self) -> Option<String> {
         if self.entries.is_empty() {
             return None;
@@ -252,8 +211,6 @@ impl HistoryState {
         self.entries.get(next_idx).cloned()
     }
 
-    /// Cycle to the next history entry (newer).
-    /// Returns the entry if available, or None if at most recent.
     pub fn cycle_next(&mut self) -> Option<String> {
         match self.cycling_index {
             None => None,
@@ -270,7 +227,6 @@ impl HistoryState {
         }
     }
 
-    /// Reset cycling state (called when user types).
     pub fn reset_cycling(&mut self) {
         self.cycling_index = None;
     }

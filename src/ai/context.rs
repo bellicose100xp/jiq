@@ -199,8 +199,7 @@ impl QueryContext {
     }
 
     /// Check if context has all required fields populated
-    // TODO: Remove #[allow(dead_code)] when is_complete is used
-    #[allow(dead_code)] // Phase 1: Reserved for future validation
+    #[allow(dead_code)]
     pub fn is_complete(&self) -> bool {
         !self.query.is_empty() && !self.input_sample.is_empty()
     }
@@ -221,10 +220,6 @@ pub fn truncate_json(json: &str, max_len: usize) -> String {
 mod tests {
     use super::*;
     use proptest::prelude::*;
-
-    // =========================================================================
-    // Unit Tests
-    // =========================================================================
 
     #[test]
     fn test_json_type_info_from_object() {
@@ -356,10 +351,6 @@ mod tests {
         let keys = JsonTypeInfo::extract_top_level_keys(json);
         assert_eq!(keys, vec!["items", "count"]);
     }
-
-    // =========================================================================
-    // Property-Based Tests
-    // =========================================================================
 
     // **Feature: ai-assistant, Property 15: Context completeness**
     // *For any* app state, the built QueryContext should include: query text,

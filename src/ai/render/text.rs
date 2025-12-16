@@ -2,7 +2,7 @@
 //!
 //! Handles text wrapping and formatting.
 
-#![allow(dead_code)] // Phase 1: Reserved for future text rendering
+#![allow(dead_code)]
 
 /// Wrap text to fit within a given width, breaking at word boundaries
 pub fn wrap_text(text: &str, max_width: usize) -> Vec<String> {

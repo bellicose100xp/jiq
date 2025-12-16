@@ -11,21 +11,18 @@ use crate::search::SearchState;
 use crate::stats::{self, StatsState};
 use crate::tooltip::{self, TooltipState};
 
-/// Which pane has focus
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Focus {
     InputField,
     ResultsPane,
 }
 
-/// What to output when exiting
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum OutputMode {
-    Results, // Output filtered JSON results (Enter)
-    Query,   // Output query string only (Shift+Enter)
+    Results,
+    Query,
 }
 
-/// Application state
 pub struct App {
     pub input: InputState,
     pub query: QueryState,
@@ -44,23 +41,16 @@ pub struct App {
     pub debouncer: Debouncer,
     pub search: SearchState,
     pub ai: AiState,
-    /// Saved tooltip visibility state before AI popup opened (for restoration)
     pub saved_tooltip_visibility: bool,
 }
 
 impl App {
-    /// Create a new App instance with JSON input and configuration
-    ///
-    /// # Arguments
-    /// * `json_input` - The JSON data to explore
-    /// * `config` - Application configuration
     pub fn new(json_input: String, config: &Config) -> Self {
         let ai_state = AiState::new_with_config(
             config.ai.enabled,
             config.ai.anthropic.api_key.is_some() && config.ai.anthropic.model.is_some(),
         );
 
-        // Requirements 9.5: When AI is enabled and visible by default, tooltip starts hidden
         let tooltip_enabled = if ai_state.visible {
             false
         } else {
@@ -89,48 +79,34 @@ impl App {
         }
     }
 
-    /// Check if the application should quit
     pub fn should_quit(&self) -> bool {
         self.should_quit
     }
 
-    /// Get the output mode (if set)
     pub fn output_mode(&self) -> Option<OutputMode> {
         self.output_mode
     }
 
-    /// Get the current query text
     pub fn query(&self) -> &str {
         self.input.query()
     }
 
-    /// Get the total number of lines in the current results
-    /// Note: Returns u32 to handle large files (>65K lines) correctly
-    /// When there's an error, uses last_successful_result since that's what gets rendered
     pub fn results_line_count_u32(&self) -> u32 {
         self.query.line_count()
     }
 
-    /// Update autocomplete suggestions based on current query and cursor position
-    /// Delegates to the autocomplete module for the actual logic
     pub fn update_autocomplete(&mut self) {
         autocomplete::update_suggestions_from_app(self);
     }
 
-    /// Update tooltip state based on current cursor position
-    /// Delegates to the tooltip module for the actual logic
     pub fn update_tooltip(&mut self) {
         tooltip::update_tooltip_from_app(self);
     }
 
-    /// Update stats based on the last successful result
-    /// Delegates to the stats module for the actual logic
     pub fn update_stats(&mut self) {
         stats::update_stats_from_app(self);
     }
 
-    /// Insert an autocomplete suggestion at the current cursor position
-    /// Delegates to the autocomplete insertion module
     pub fn insert_autocomplete_suggestion(
         &mut self,
         suggestion: &autocomplete::autocomplete_state::Suggestion,
@@ -149,7 +125,6 @@ mod tests {
         let json = r#"{"name": "Alice", "age": 30}"#;
         let app = test_app(json);
 
-        // Check default state
         assert_eq!(app.focus, Focus::InputField);
         assert_eq!(app.results_scroll.offset, 0);
         assert_eq!(app.output_mode, None);
@@ -162,7 +137,6 @@ mod tests {
         let json = r#"{"name": "Bob"}"#;
         let app = test_app(json);
 
-        // Initial query should execute identity filter "."
         assert!(app.query.result.is_ok());
         let result = app.query.result.as_ref().unwrap();
         assert!(result.contains("Bob"));
@@ -235,24 +209,19 @@ mod tests {
         assert!(result.contains("3"));
     }
 
-    // Tests for large file handling (>65K lines)
     #[test]
     fn test_max_scroll_large_content() {
         let json = r#"{"test": true}"#;
         let mut app = test_app(json);
 
-        // Simulate large content result
         let large_result: String = (0..70000).map(|i| format!("line {}\n", i)).collect();
         app.query.result = Ok(large_result);
 
-        // Should handle >65K lines without overflow
         let line_count = app.results_line_count_u32();
         assert!(line_count > 65535);
 
-        // Update scroll bounds
         app.results_scroll.update_bounds(line_count, 20);
 
-        // max_offset should be clamped to u16::MAX
         assert_eq!(app.results_scroll.max_offset, u16::MAX);
     }
 
@@ -261,18 +230,14 @@ mod tests {
         let json = r#"{"test": true}"#;
         let mut app = test_app(json);
 
-        // Simulate result with exactly u16::MAX lines
         let result: String = (0..65535).map(|_| "x\n").collect();
         app.query.result = Ok(result);
 
-        // Verify line count is correct (using internal method)
         assert_eq!(app.results_line_count_u32(), 65535);
 
-        // Update scroll bounds
         app.results_scroll.update_bounds(65535, 10);
 
-        // Verify max_offset handles it correctly
-        assert_eq!(app.results_scroll.max_offset, 65525); // 65535 - 10
+        assert_eq!(app.results_scroll.max_offset, 65525);
     }
 
     #[test]
@@ -280,23 +245,18 @@ mod tests {
         let json = r#"{"test": true}"#;
         let mut app = test_app(json);
 
-        // Execute a valid query first to cache result
         let valid_result: String = (0..50).map(|i| format!("line{}\n", i)).collect();
         app.query.result = Ok(valid_result.clone());
         app.query.last_successful_result = Some(valid_result);
 
-        // Verify line count with valid result
         assert_eq!(app.results_line_count_u32(), 50);
 
-        // Now simulate an error (short error message)
         app.query.result = Err("syntax error\nline 2\nline 3".to_string());
 
-        // Line count should use last_successful_result (50 lines), not error (3 lines)
         assert_eq!(app.results_line_count_u32(), 50);
 
-        // Update scroll bounds and verify max_offset is calculated correctly
         app.results_scroll.update_bounds(50, 10);
-        assert_eq!(app.results_scroll.max_offset, 40); // 50 - 10 = 40
+        assert_eq!(app.results_scroll.max_offset, 40);
     }
 
     #[test]
@@ -304,35 +264,23 @@ mod tests {
         let json = r#"{"test": true}"#;
         let mut app = test_app(json);
 
-        // Set error without any cached result
         app.query.last_successful_result = None;
         app.query.result = Err("error message".to_string());
 
-        // Should return 0 when no cached result available
         assert_eq!(app.results_line_count_u32(), 0);
 
-        // Update scroll bounds
         app.results_scroll.update_bounds(0, 10);
         assert_eq!(app.results_scroll.max_offset, 0);
     }
-
-    // Autocomplete insertion tests have been moved to src/autocomplete/insertion.rs
-    // Tooltip detection tests have been moved to src/tooltip/tooltip_state.rs
-
-    // ========== Tooltip Integration Tests ==========
-    // Only cross-feature integration tests remain here
 
     #[test]
     fn test_tooltip_initialized_enabled() {
         let json = r#"{"name": "test"}"#;
         let app = test_app(json);
 
-        // Tooltip should be enabled by default
         assert!(app.tooltip.enabled);
         assert!(app.tooltip.current_function.is_none());
     }
-
-    // ========== Info Popup Management Property Tests ==========
 
     use proptest::prelude::*;
 

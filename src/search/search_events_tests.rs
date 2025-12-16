@@ -1,5 +1,3 @@
-//! Tests for search event handling
-
 #[path = "search_events_tests/lifecycle_tests.rs"]
 mod lifecycle_tests;
 #[path = "search_events_tests/navigation_tests.rs"]

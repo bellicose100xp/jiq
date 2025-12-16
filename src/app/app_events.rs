@@ -11,31 +11,22 @@ use crate::results;
 
 mod global;
 
-/// Timeout for event polling - allows periodic UI refresh for notifications
 const EVENT_POLL_TIMEOUT: Duration = Duration::from_millis(100);
 
 impl App {
-    /// Handle events and update application state
     pub fn handle_events(&mut self) -> io::Result<()> {
-        // Check for pending debounced execution before processing new events
-        // This ensures queries are executed after the debounce period (50ms) has elapsed
         if self.debouncer.should_execute() {
             editor::editor_events::execute_query_with_auto_show(self);
             self.debouncer.mark_executed();
         }
 
-        // Poll AI response channel for streaming updates
-        // This is non-blocking (uses try_recv) and processes any pending responses
         crate::ai::ai_events::poll_response_channel(&mut self.ai);
 
-        // Poll with timeout to allow periodic refresh for notification expiration
         if event::poll(EVENT_POLL_TIMEOUT)? {
             match event::read()? {
-                // Check that it's a key press event to avoid duplicates
                 Event::Key(key_event) if key_event.kind == KeyEventKind::Press => {
                     self.handle_key_event(key_event);
                 }
-                // Handle paste events (bracketed paste mode)
                 Event::Paste(text) => {
                     self.handle_paste_event(text);
                 }
@@ -45,62 +36,45 @@ impl App {
         Ok(())
     }
 
-    /// Handle paste events from bracketed paste mode
-    /// Inserts all pasted text at once and executes query immediately (no debounce)
     fn handle_paste_event(&mut self, text: String) {
-        // Insert all text at once into the textarea
         self.input.textarea.insert_str(&text);
 
-        // Rebuild brace tracker for autocomplete context detection
         self.input
             .brace_tracker
             .rebuild(self.input.textarea.lines()[0].as_ref());
 
-        // Execute query immediately (no debounce for paste operations)
         editor::editor_events::execute_query(self);
 
-        // Update autocomplete suggestions after paste
         self.update_autocomplete();
 
-        // Update tooltip based on new cursor position
         self.update_tooltip();
     }
 
-    /// Handle key press events
     pub fn handle_key_event(&mut self, key: KeyEvent) {
-        // Handle search keys FIRST when search is visible
-        // This ensures Enter confirms search instead of executing query
         if crate::search::search_events::handle_search_key(self, key) {
-            return; // Key was handled by search
+            return;
         }
 
-        // Try global keys next
         if global::handle_global_keys(self, key) {
-            return; // Key was handled globally
+            return;
         }
 
-        // Handle clipboard Ctrl+Y before mode-specific handling
         if clipboard::clipboard_events::handle_clipboard_key(self, key, self.clipboard_backend) {
-            return; // Key was handled by clipboard
+            return;
         }
 
-        // Not a global key, delegate to focused pane
         match self.focus {
             Focus::InputField => self.handle_input_field_key(key),
             Focus::ResultsPane => results::results_events::handle_results_pane_key(self, key),
         }
     }
 
-    /// Handle keys when Input field is focused
     fn handle_input_field_key(&mut self, key: KeyEvent) {
-        // Handle history popup when visible
         if self.history.is_visible() {
             history::history_events::handle_history_popup_key(self, key);
             return;
         }
 
-        // Handle ESC - close autocomplete and switch to Normal mode
-        // Note: ESC does NOT close AI popup - only Ctrl+A toggles it
         if key.code == KeyCode::Esc {
             if self.autocomplete.is_visible() {
                 self.autocomplete.hide();
@@ -109,7 +83,6 @@ impl App {
             return;
         }
 
-        // Handle autocomplete navigation (in Insert mode only)
         if self.input.editor_mode == EditorMode::Insert && self.autocomplete.is_visible() {
             match key.code {
                 KeyCode::Down => {
@@ -124,9 +97,7 @@ impl App {
             }
         }
 
-        // Handle history trigger (in Insert mode only)
         if self.input.editor_mode == EditorMode::Insert {
-            // Ctrl+P: Cycle to previous (older) history entry
             if key.code == KeyCode::Char('p') && key.modifiers.contains(KeyModifiers::CONTROL) {
                 if let Some(entry) = self.history.cycle_previous() {
                     self.replace_query_with(&entry);
@@ -134,12 +105,10 @@ impl App {
                 return;
             }
 
-            // Ctrl+N: Cycle to next (newer) history entry
             if key.code == KeyCode::Char('n') && key.modifiers.contains(KeyModifiers::CONTROL) {
                 if let Some(entry) = self.history.cycle_next() {
                     self.replace_query_with(&entry);
                 } else {
-                    // At most recent, clear the input
                     self.input.textarea.delete_line_by_head();
                     self.input.textarea.delete_line_by_end();
                     editor::editor_events::execute_query(self);
@@ -147,20 +116,17 @@ impl App {
                 return;
             }
 
-            // Ctrl+R: Open history
             if key.code == KeyCode::Char('r') && key.modifiers.contains(KeyModifiers::CONTROL) {
                 self.open_history_popup();
                 return;
             }
 
-            // Up arrow: Open history popup (always)
             if key.code == KeyCode::Up {
                 self.open_history_popup();
                 return;
             }
         }
 
-        // Handle input based on current mode
         match self.input.editor_mode {
             EditorMode::Insert => editor::editor_events::handle_insert_mode_key(self, key),
             EditorMode::Normal => editor::editor_events::handle_normal_mode_key(self, key),
@@ -168,7 +134,6 @@ impl App {
         }
     }
 
-    /// Replace the current query with the given text
     fn replace_query_with(&mut self, text: &str) {
         self.input.textarea.delete_line_by_head();
         self.input.textarea.delete_line_by_end();
@@ -176,9 +141,7 @@ impl App {
         editor::editor_events::execute_query(self);
     }
 
-    /// Open the history popup with current query as initial search
     fn open_history_popup(&mut self) {
-        // Don't open if history is empty
         if self.history.total_count() == 0 {
             return;
         }
@@ -199,15 +162,10 @@ mod tests {
     use crate::test_utils::test_helpers::test_app;
     use proptest::prelude::*;
 
-    // =========================================================================
-    // Unit Tests for Paste Event Handling
-    // =========================================================================
-
     #[test]
     fn test_paste_event_inserts_text() {
         let mut app = test_app(r#"{"name": "test"}"#);
 
-        // Simulate paste event
         app.handle_paste_event(".name".to_string());
 
         assert_eq!(app.query(), ".name");
@@ -217,10 +175,8 @@ mod tests {
     fn test_paste_event_executes_query() {
         let mut app = test_app(r#"{"name": "Alice"}"#);
 
-        // Simulate paste event
         app.handle_paste_event(".name".to_string());
 
-        // Query should have been executed
         assert!(app.query.result.is_ok());
         let result = app.query.result.as_ref().unwrap();
         assert!(result.contains("Alice"));
@@ -230,10 +186,8 @@ mod tests {
     fn test_paste_event_appends_to_existing_text() {
         let mut app = test_app(r#"{"user": {"name": "Bob"}}"#);
 
-        // First, type some text
         app.input.textarea.insert_str(".user");
 
-        // Then paste more text
         app.handle_paste_event(".name".to_string());
 
         assert_eq!(app.query(), ".user.name");
@@ -243,10 +197,8 @@ mod tests {
     fn test_paste_event_with_empty_string() {
         let mut app = test_app(r#"{"name": "test"}"#);
 
-        // Paste empty string
         app.handle_paste_event(String::new());
 
-        // Query should remain empty
         assert_eq!(app.query(), "");
     }
 
@@ -254,16 +206,10 @@ mod tests {
     fn test_paste_event_with_multiline_text() {
         let mut app = test_app(r#"{"name": "test"}"#);
 
-        // Paste multiline text (jq queries are single-line, but paste should handle it)
         app.handle_paste_event(".name\n| length".to_string());
 
-        // The textarea handles this - verify text was inserted
         assert!(app.query().contains(".name"));
     }
-
-    // =========================================================================
-    // Property-Based Tests
-    // =========================================================================
 
     // Feature: performance, Property 1: Paste text insertion integrity
     // *For any* string pasted into the application, the input field content after

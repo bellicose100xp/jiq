@@ -1,5 +1,3 @@
-//! Tests for search lifecycle (open/close)
-
 use super::super::*;
 use crate::app::Focus;
 use crate::test_utils::test_helpers::{key, test_app};

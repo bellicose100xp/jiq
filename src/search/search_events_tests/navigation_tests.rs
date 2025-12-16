@@ -1,5 +1,3 @@
-//! Tests for search navigation (n/N, Enter, Shift+Enter, etc.)
-
 use super::super::*;
 use crate::test_utils::test_helpers::{key, key_with_mods, test_app};
 use proptest::prelude::*;
@@ -251,12 +249,6 @@ fn test_can_type_after_reenter_edit_mode() {
     assert_eq!(app.search.query(), "test2");
 }
 
-// =========================================================================
-// Navigation Keys When Search Is Confirmed Tests
-// Feature: search-navigation
-// =========================================================================
-
-/// Helper to set up app with confirmed search and scrollable content
 fn app_with_confirmed_search() -> crate::app::App {
     let mut app = test_app(r#"{"name": "test"}"#);
 
@@ -397,10 +389,6 @@ fn test_navigation_preserves_match_index() {
     assert_eq!(app.search.current_index(), match_index_before);
 }
 
-// =========================================================================
-// Property-Based Tests
-// =========================================================================
-
 // Feature: search-in-results, Property 1: Ctrl+F opens search from any pane
 // *For any* app state regardless of current focus, pressing Ctrl+F should
 // result in search being visible and focus being on results pane.
@@ -492,10 +480,6 @@ proptest! {
         }
     }
 }
-
-// =========================================================================
-// Feature: search-navigation Property-Based Tests
-// =========================================================================
 
 // Feature: search-navigation, Property 1: Vertical navigation keys scroll results when search is confirmed
 // *For any* confirmed search state with scrollable content, pressing a vertical navigation key
@@ -823,10 +807,6 @@ proptest! {
         prop_assert!(app.search.is_confirmed(), "Search should remain confirmed after navigation");
     }
 }
-
-// =========================================================================
-// Feature: search-in-results Property-Based Tests (existing)
-// =========================================================================
 
 // Feature: search-in-results, Property 9: Scroll preserves search state
 // *For any* active search state, scrolling the results pane should not modify

@@ -1,55 +1,31 @@
-//! State management for result statistics
-//!
-//! This module provides the `StatsState` struct which caches computed statistics
-//! about query results and provides display formatting.
-
 use crate::app::App;
 use crate::stats::parser::StatsParser;
 use crate::stats::types::ResultStats;
 
-/// Update stats based on the last successful result from the App
-///
-/// This is the delegation function called by `App::update_stats()`.
-/// It extracts the last successful unformatted result and computes stats if available.
 pub fn update_stats_from_app(app: &mut App) {
     if let Some(result) = &app.query.last_successful_result_unformatted {
         app.stats.compute(result);
     }
 }
 
-/// State for managing cached result statistics
-///
-/// `StatsState` caches the computed statistics for the current query result.
-/// When a syntax error occurs, the cached stats are preserved to show the
-/// stats from the last successful result (per Requirement 4.4).
 #[derive(Debug, Clone, Default)]
 pub struct StatsState {
-    /// Cached stats for the current/last successful result
     stats: Option<ResultStats>,
 }
 
 impl StatsState {
-    /// Compute stats from a result string and cache them
-    ///
-    /// This parses the result string using the fast character-based parser
-    /// and caches the computed statistics.
     pub fn compute(&mut self, result: &str) {
         let trimmed = result.trim();
         if trimmed.is_empty() {
-            // Don't update stats for empty results (preserves last stats)
             return;
         }
         self.stats = Some(StatsParser::parse(result));
     }
 
-    /// Get the display string for the stats bar
-    ///
-    /// Returns `None` if no stats have been computed yet.
     pub fn display(&self) -> Option<String> {
         self.stats.as_ref().map(|s| s.to_string())
     }
 
-    /// Get a reference to the cached stats (used in tests)
     #[cfg(test)]
     pub fn stats(&self) -> Option<&ResultStats> {
         self.stats.as_ref()
@@ -145,11 +121,9 @@ mod tests {
         state.compute("[1, 2, 3]");
         let original_stats = state.stats().cloned();
 
-        // Empty result should not update stats (preserves last successful)
         state.compute("");
         assert_eq!(state.stats().cloned(), original_stats);
 
-        // Whitespace-only result should also preserve
         state.compute("   ");
         assert_eq!(state.stats().cloned(), original_stats);
     }
@@ -165,21 +139,13 @@ mod tests {
         assert_eq!(state.display(), Some("Object".to_string()));
     }
 
-    // =========================================================================
-    // Property-Based Tests
-    // =========================================================================
-
     /// Strategy to generate a simple JSON value (non-container)
     fn arb_simple_json_value() -> impl Strategy<Value = String> {
         prop_oneof![
-            // Numbers
             (-1000i64..1000).prop_map(|n| n.to_string()),
-            // Strings (simple, no special chars)
             "[a-zA-Z0-9]{0,10}".prop_map(|s| format!(r#""{}""#, s)),
-            // Booleans
             Just("true".to_string()),
             Just("false".to_string()),
-            // Null
             Just("null".to_string()),
         ]
     }
@@ -205,8 +171,6 @@ mod tests {
         ]
     }
 
-    /// Strategy to generate "error" results (empty or whitespace-only strings)
-    /// These simulate what happens when a query fails - the result is empty
     fn arb_error_result() -> impl Strategy<Value = String> {
         prop_oneof![
             Just("".to_string()),
@@ -231,31 +195,26 @@ mod tests {
         ) {
             let mut state = StatsState::default();
 
-            // First, compute stats from a valid result
             state.compute(&valid_json);
             let stats_after_valid = state.stats().cloned();
             let display_after_valid = state.display();
 
-            // Stats should be computed (not None) for valid JSON
             prop_assert!(
                 stats_after_valid.is_some(),
                 "Stats should be computed for valid JSON: '{}'",
                 valid_json
             );
 
-            // Now simulate an error (empty result)
             state.compute(&error_result);
             let stats_after_error = state.stats().cloned();
             let display_after_error = state.display();
 
-            // Stats should be preserved (same as before the error)
             prop_assert_eq!(
                 &stats_after_error, &stats_after_valid,
                 "Stats should persist after error. Before: {:?}, After: {:?}",
                 &stats_after_valid, &stats_after_error
             );
 
-            // Display should also be preserved
             prop_assert_eq!(
                 &display_after_error, &display_after_valid,
                 "Display should persist after error. Before: {:?}, After: {:?}",
@@ -270,7 +229,6 @@ mod tests {
         ) {
             let mut state = StatsState::default();
 
-            // Compute stats from valid result
             state.compute(&valid_json);
             let original_stats = state.stats().cloned();
             let original_display = state.display();
@@ -280,12 +238,10 @@ mod tests {
                 "Stats should be computed for valid JSON"
             );
 
-            // Apply multiple error results
             for _ in 0..error_count {
                 state.compute("");
             }
 
-            // Stats should still be preserved
             prop_assert_eq!(
                 state.stats().cloned(), original_stats,
                 "Stats should persist after {} errors",
@@ -305,21 +261,15 @@ mod tests {
         ) {
             let mut state = StatsState::default();
 
-            // Compute stats from first valid result
             state.compute(&first_json);
             let first_stats = state.stats().cloned();
 
-            // Compute stats from second valid result
             state.compute(&second_json);
             let second_stats = state.stats().cloned();
 
-            // Both should have stats
             prop_assert!(first_stats.is_some(), "First result should have stats");
             prop_assert!(second_stats.is_some(), "Second result should have stats");
 
-            // The second stats should reflect the second JSON
-            // (We can't easily compare the exact stats without parsing,
-            // but we can verify that stats are computed)
             let expected_stats = StatsParser::parse(&second_json);
             prop_assert_eq!(
                 second_stats, Some(expected_stats),
@@ -328,11 +278,6 @@ mod tests {
         }
     }
 
-    // =========================================================================
-    // App Integration Tests for Stats
-    // =========================================================================
-    // These tests verify the update_stats_from_app() delegation function
-
     use crate::test_utils::test_helpers::test_app;
 
     #[test]
@@ -340,9 +285,7 @@ mod tests {
         let json = r#"{"name": "Alice", "age": 30}"#;
         let mut app = test_app(json);
 
-        // Initial query executes identity filter, which sets last_successful_result_unformatted
         update_stats_from_app(&mut app);
-
         assert_eq!(app.stats.display(), Some("Object".to_string()));
     }
 
@@ -361,10 +304,8 @@ mod tests {
         let json = r#"{"test": true}"#;
         let mut app = test_app(json);
 
-        // Clear the last successful result to simulate no result available
         app.query.last_successful_result_unformatted = None;
 
-        // Stats should remain unchanged (None)
         let stats_before = app.stats.display();
         update_stats_from_app(&mut app);
         let stats_after = app.stats.display();
@@ -377,15 +318,11 @@ mod tests {
         let json = r#"[1, 2, 3]"#;
         let mut app = test_app(json);
 
-        // First update with valid result
         update_stats_from_app(&mut app);
         assert_eq!(app.stats.display(), Some("Array [3 numbers]".to_string()));
 
-        // Simulate an error by setting result to error but keeping last_successful_result_unformatted
         app.query.result = Err("syntax error".to_string());
-        // Note: last_successful_result_unformatted is still set from the initial query
 
-        // Update stats again - should still show the last successful stats
         update_stats_from_app(&mut app);
         assert_eq!(app.stats.display(), Some("Array [3 numbers]".to_string()));
     }
@@ -395,14 +332,11 @@ mod tests {
         let json = r#"{"items": [1, 2, 3]}"#;
         let mut app = test_app(json);
 
-        // Initial stats for the object
         update_stats_from_app(&mut app);
         assert_eq!(app.stats.display(), Some("Object".to_string()));
 
-        // Execute a new query that returns an array
         app.query.execute(".items");
         update_stats_from_app(&mut app);
-
         assert_eq!(app.stats.display(), Some("Array [3 numbers]".to_string()));
     }
 }

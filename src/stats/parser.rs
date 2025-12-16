@@ -1,15 +1,8 @@
-//! Fast character-based parser for computing stats without full JSON parsing
-
 use crate::stats::types::{ElementType, ResultStats};
 
-/// Fast stats parser without full JSON parsing
 pub struct StatsParser;
 
 impl StatsParser {
-    /// Parse result string and compute stats
-    ///
-    /// Uses character-based detection to identify JSON type from the first
-    /// non-whitespace character, avoiding full JSON parsing for performance.
     pub fn parse(result: &str) -> ResultStats {
         let trimmed = result.trim();
 
@@ -17,12 +10,10 @@ impl StatsParser {
             return ResultStats::Null;
         }
 
-        // Check for stream (multiple JSON values) first
         if let Some(count) = Self::is_stream(trimmed) {
             return ResultStats::Stream { count };
         }
 
-        // Detect type from first character
         match trimmed.chars().next() {
             Some('[') => {
                 let count = Self::count_array_items(trimmed);
@@ -41,14 +32,10 @@ impl StatsParser {
             Some('t') | Some('f') => ResultStats::Boolean,
             Some('n') => ResultStats::Null,
             Some(c) if c.is_ascii_digit() || c == '-' => ResultStats::Number,
-            _ => ResultStats::Null, // Fallback for unexpected input
+            _ => ResultStats::Null,
         }
     }
 
-    /// Count top-level array items using depth tracking
-    ///
-    /// Counts commas at depth 1 (inside the array but not nested).
-    /// Items = commas + 1 for non-empty arrays.
     fn count_array_items(result: &str) -> usize {
         let mut depth = 0;
         let mut comma_count = 0;
@@ -101,14 +88,9 @@ impl StatsParser {
             }
         }
 
-        // Items = commas + 1 for non-empty arrays, 0 for empty arrays
         if has_content { comma_count + 1 } else { 0 }
     }
 
-    /// Detect element type from first few array elements
-    ///
-    /// Peeks at array elements to determine if they are homogeneous
-    /// (all same type) or mixed.
     fn detect_element_type(result: &str) -> ElementType {
         let mut depth = 0;
         let mut in_string = false;
@@ -137,7 +119,6 @@ impl StatsParser {
 
             if ch == '"' {
                 if depth == 1 && !in_string {
-                    // Starting a string element at depth 1
                     let element_type = ElementType::Strings;
                     match &first_type {
                         None => first_type = Some(element_type),
@@ -159,7 +140,6 @@ impl StatsParser {
             match ch {
                 '[' => {
                     if depth == 1 {
-                        // Starting an array element
                         let element_type = ElementType::Arrays;
                         match &first_type {
                             None => first_type = Some(element_type),
@@ -172,7 +152,6 @@ impl StatsParser {
                 }
                 '{' => {
                     if depth == 1 {
-                        // Starting an object element
                         let element_type = ElementType::Objects;
                         match &first_type {
                             None => first_type = Some(element_type),
@@ -187,7 +166,6 @@ impl StatsParser {
                     depth -= 1;
                 }
                 't' | 'f' if depth == 1 => {
-                    // Boolean (true/false)
                     let element_type = ElementType::Booleans;
                     match &first_type {
                         None => first_type = Some(element_type),
@@ -197,7 +175,6 @@ impl StatsParser {
                     elements_checked += 1;
                 }
                 'n' if depth == 1 => {
-                    // null
                     let element_type = ElementType::Nulls;
                     match &first_type {
                         None => first_type = Some(element_type),
@@ -207,7 +184,6 @@ impl StatsParser {
                     elements_checked += 1;
                 }
                 c if (c.is_ascii_digit() || c == '-') && depth == 1 => {
-                    // Number
                     let element_type = ElementType::Numbers;
                     match &first_type {
                         None => first_type = Some(element_type),
@@ -225,10 +201,6 @@ impl StatsParser {
         first_type.unwrap_or(ElementType::Empty)
     }
 
-    /// Check if result contains a stream of JSON values
-    ///
-    /// Returns Some(count) if multiple separate JSON values are detected,
-    /// None if it's a single value.
     fn is_stream(result: &str) -> Option<usize> {
         let mut count = 0;
         let mut depth = 0;
@@ -248,12 +220,9 @@ impl StatsParser {
             }
 
             if ch == '"' {
-                if !in_string && depth == 0 {
-                    // Starting a new string value at top level
-                    if !in_value {
-                        count += 1;
-                        in_value = true;
-                    }
+                if !in_string && depth == 0 && !in_value {
+                    count += 1;
+                    in_value = true;
                 }
                 in_string = !in_string;
                 continue;
@@ -266,7 +235,6 @@ impl StatsParser {
             match ch {
                 '[' | '{' => {
                     if depth == 0 && !in_value {
-                        // Starting a new container at top level
                         count += 1;
                         in_value = true;
                     }
@@ -279,17 +247,14 @@ impl StatsParser {
                     }
                 }
                 't' | 'f' | 'n' if depth == 0 && !in_value => {
-                    // Starting a boolean or null at top level
                     count += 1;
                     in_value = true;
                 }
                 c if (c.is_ascii_digit() || c == '-') && depth == 0 && !in_value => {
-                    // Starting a number at top level
                     count += 1;
                     in_value = true;
                 }
                 c if c.is_whitespace() && depth == 0 => {
-                    // Whitespace at top level ends the current value
                     in_value = false;
                 }
                 _ => {}
@@ -304,10 +269,6 @@ impl StatsParser {
 mod tests {
     use super::*;
     use proptest::prelude::*;
-
-    // =========================================================================
-    // Unit Tests for count_array_items
-    // =========================================================================
 
     #[test]
     fn test_count_empty_array() {
@@ -326,7 +287,6 @@ mod tests {
 
     #[test]
     fn test_count_nested_arrays() {
-        // Nested arrays should not count inner commas
         assert_eq!(StatsParser::count_array_items("[[1, 2], [3, 4]]"), 2);
         assert_eq!(StatsParser::count_array_items("[[1, 2, 3]]"), 1);
         assert_eq!(StatsParser::count_array_items("[[[1]], [[2]]]"), 2);
@@ -334,36 +294,24 @@ mod tests {
 
     #[test]
     fn test_count_nested_objects() {
-        // Nested objects should not count inner commas
         assert_eq!(StatsParser::count_array_items(r#"[{"a": 1, "b": 2}]"#), 1);
         assert_eq!(StatsParser::count_array_items(r#"[{"a": 1}, {"b": 2}]"#), 2);
     }
 
     #[test]
     fn test_count_strings_with_special_chars() {
-        // Commas inside strings should not be counted
         assert_eq!(StatsParser::count_array_items(r#"["a,b", "c,d"]"#), 2);
-        // Escaped quotes inside strings
         assert_eq!(StatsParser::count_array_items(r#"["a\"b", "c"]"#), 2);
-        // Brackets inside strings
         assert_eq!(StatsParser::count_array_items(r#"["[1,2]", "{a,b}"]"#), 2);
     }
-
-    // =========================================================================
-    // Property-Based Tests
-    // =========================================================================
 
     /// Strategy to generate a simple JSON value (non-container)
     fn arb_simple_json_value() -> impl Strategy<Value = String> {
         prop_oneof![
-            // Numbers
             (-1000i64..1000).prop_map(|n| n.to_string()),
-            // Strings (simple, no special chars for now)
             "[a-zA-Z0-9]{0,10}".prop_map(|s| format!(r#""{}""#, s)),
-            // Booleans
             Just("true".to_string()),
             Just("false".to_string()),
-            // Null
             Just("null".to_string()),
         ]
     }
@@ -433,10 +381,6 @@ mod tests {
             );
         }
     }
-
-    // =========================================================================
-    // Unit Tests for detect_element_type
-    // =========================================================================
 
     #[test]
     fn test_detect_empty_array() {
@@ -535,10 +479,6 @@ mod tests {
             ElementType::Mixed
         );
     }
-
-    // =========================================================================
-    // Property-Based Tests for Element Type Detection
-    // =========================================================================
 
     /// Strategy to generate homogeneous arrays of objects
     fn arb_array_of_objects() -> impl Strategy<Value = String> {
@@ -668,10 +608,6 @@ mod tests {
         }
     }
 
-    // =========================================================================
-    // Unit Tests for is_stream
-    // =========================================================================
-
     #[test]
     fn test_single_value_not_stream() {
         assert_eq!(StatsParser::is_stream("{}"), None);
@@ -704,10 +640,6 @@ mod tests {
         assert_eq!(StatsParser::is_stream("1\n2\n3"), Some(3));
     }
 
-    // =========================================================================
-    // Property-Based Tests for Stream Detection
-    // =========================================================================
-
     /// Strategy to generate a stream of JSON values with known count
     fn arb_json_stream() -> impl Strategy<Value = (String, usize)> {
         prop::collection::vec(
@@ -720,7 +652,7 @@ mod tests {
                 Just("false".to_string()),
                 Just("null".to_string()),
             ],
-            2..10, // At least 2 values to be a stream
+            2..10,
         )
         .prop_map(|values| {
             let count = values.len();
@@ -732,7 +664,6 @@ mod tests {
     /// Strategy to generate a single JSON value (not a stream)
     fn arb_single_json_value() -> impl Strategy<Value = String> {
         prop_oneof![
-            // Simple object
             prop::collection::vec(
                 ("[a-z]{1,3}", (-100i64..100).prop_map(|n| n.to_string())),
                 0..3
@@ -744,17 +675,12 @@ mod tests {
                     .collect();
                 format!("{{{}}}", fields.join(", "))
             }),
-            // Simple array
             prop::collection::vec((-100i64..100).prop_map(|n| n.to_string()), 0..5)
                 .prop_map(|nums| format!("[{}]", nums.join(", "))),
-            // String
             "[a-zA-Z0-9]{0,10}".prop_map(|s| format!(r#""{}""#, s)),
-            // Number
             (-1000i64..1000).prop_map(|n| n.to_string()),
-            // Boolean
             Just("true".to_string()),
             Just("false".to_string()),
-            // Null
             Just("null".to_string()),
         ]
     }
@@ -787,10 +713,6 @@ mod tests {
             );
         }
     }
-
-    // =========================================================================
-    // Unit Tests for parse (integration)
-    // =========================================================================
 
     #[test]
     fn test_parse_array() {

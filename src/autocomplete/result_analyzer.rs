@@ -2,20 +2,14 @@ use crate::autocomplete::autocomplete_state::{JsonFieldType, Suggestion, Suggest
 use crate::query::ResultType;
 use serde_json::Value;
 
-/// Analyze query execution results to extract field suggestions
-///
-/// This module provides the core functionality for generating autocompletion suggestions
-/// based on the actual query results rather than parsing jq syntax.
 pub struct ResultAnalyzer;
 
-/// Helper to determine if a leading dot is needed
 #[inline]
 fn dot_prefix(needs_leading_dot: bool) -> &'static str {
     if needs_leading_dot { "." } else { "" }
 }
 
 impl ResultAnalyzer {
-    /// Extract field suggestions from object map
     fn extract_object_fields(
         map: &serde_json::Map<String, Value>,
         prefix: &str,
@@ -30,15 +24,7 @@ impl ResultAnalyzer {
             ));
         }
     }
-    /// Main entry point: analyze a query result and extract suggestions
-    ///
-    /// # Arguments
-    /// * `result` - The query execution result WITHOUT ANSI codes (pre-stripped)
-    /// * `result_type` - The type of result (ArrayOfObjects, DestructuredObjects, etc.)
-    /// * `needs_leading_dot` - Whether suggestions should include leading dot (based on trigger context)
-    ///
-    /// # Returns
-    /// Vector of field suggestions in context-appropriate format
+
     pub fn analyze_result(
         result: &str,
         result_type: ResultType,
@@ -48,27 +34,14 @@ impl ResultAnalyzer {
             return Vec::new();
         }
 
-        // Parse the first JSON value from the result
         let value = match Self::parse_first_json_value(result) {
             Some(v) => v,
             None => return Vec::new(),
         };
 
-        // Extract field suggestions based on result type and context
         Self::extract_suggestions_for_type(&value, result_type, needs_leading_dot)
     }
 
-    /// Parse the first JSON value from text (handles multi-value output)
-    ///
-    /// jq can output multiple JSON values when using `.[]` or similar:
-    /// ```text
-    /// {"a": 1}
-    /// {"a": 2}
-    /// {"a": 3}
-    /// ```
-    ///
-    /// This function parses the first valid JSON value and ignores the rest.
-    /// Handles both compact and pretty-printed JSON output.
     fn parse_first_json_value(text: &str) -> Option<Value> {
         let text = text.trim();
         if text.is_empty() {
@@ -80,8 +53,6 @@ impl ResultAnalyzer {
             return Some(value);
         }
 
-        // Handle multi-value output - could be pretty-printed or compact
-        // Strategy: Use serde_json's streaming parser to read first value
         let mut deserializer = serde_json::Deserializer::from_str(text).into_iter();
         if let Some(Ok(value)) = deserializer.next() {
             return Some(value);
@@ -90,13 +61,6 @@ impl ResultAnalyzer {
         None
     }
 
-    /// Extract suggestions based on result type and context
-    ///
-    /// Generates suggestions in format appropriate for the result type and trigger context:
-    /// - ArrayOfObjects: `[]`, `[].field` (with optional leading `.`)
-    /// - DestructuredObjects: `field` (with optional leading `.`)
-    /// - Object: `.field` (with optional leading `.`)
-    /// - Primitives: No suggestions
     fn extract_suggestions_for_type(
         value: &Value,
         result_type: ResultType,
@@ -104,7 +68,6 @@ impl ResultAnalyzer {
     ) -> Vec<Suggestion> {
         match result_type {
             ResultType::ArrayOfObjects => {
-                // Suggestions for array containing objects
                 let prefix = dot_prefix(needs_leading_dot);
                 let mut suggestions = vec![Suggestion::new_with_type(
                     format!("{}[]", prefix),
@@ -112,7 +75,6 @@ impl ResultAnalyzer {
                     None,
                 )];
 
-                // Add field suggestions from first object
                 if let Value::Array(arr) = value
                     && let Some(Value::Object(map)) = arr.first()
                 {
@@ -129,7 +91,6 @@ impl ResultAnalyzer {
                 suggestions
             }
             ResultType::DestructuredObjects => {
-                // Suggestions for destructured objects (from .[])
                 let prefix = dot_prefix(needs_leading_dot);
                 let mut suggestions = Vec::new();
 
@@ -140,7 +101,6 @@ impl ResultAnalyzer {
                 suggestions
             }
             ResultType::Object => {
-                // Suggestions for single object
                 let prefix = dot_prefix(needs_leading_dot);
                 let mut suggestions = Vec::new();
 
@@ -151,7 +111,6 @@ impl ResultAnalyzer {
                 suggestions
             }
             ResultType::Array => {
-                // Array of primitives - just suggest []
                 let prefix = dot_prefix(needs_leading_dot);
                 vec![Suggestion::new_with_type(
                     format!("{}[]", prefix),
@@ -159,14 +118,10 @@ impl ResultAnalyzer {
                     None,
                 )]
             }
-            _ => Vec::new(), // Primitives (String, Number, Boolean, Null): no field suggestions
+            _ => Vec::new(),
         }
     }
 
-    /// Detect the JSON field type for a value
-    ///
-    /// This function is copied from the original json_analyzer.rs
-    /// to maintain type detection logic.
     fn detect_json_type(value: &Value) -> JsonFieldType {
         match value {
             Value::Null => JsonFieldType::Null,
@@ -190,13 +145,8 @@ impl ResultAnalyzer {
 mod tests {
     use super::*;
 
-    // ============================================================================
-    // Basic Functionality Tests
-    // ============================================================================
-
     #[test]
     fn test_analyze_simple_object() {
-        // Single object result after operator (needs leading dot)
         let result = r#"{"name": "test", "age": 30, "active": true}"#;
         let suggestions = ResultAnalyzer::analyze_result(
             result,

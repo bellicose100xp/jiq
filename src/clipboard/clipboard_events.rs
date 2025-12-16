@@ -1,17 +1,10 @@
-//! Clipboard event handlers
-//!
-//! Handles keybindings for copy operations.
-
 use crate::app::{App, Focus};
 use crate::config::ClipboardBackend;
 use ratatui::crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 
 use super::backend::copy_to_clipboard;
 
-/// Handle clipboard-related key events
-/// Returns true if the key was handled
 pub fn handle_clipboard_key(app: &mut App, key: KeyEvent, backend: ClipboardBackend) -> bool {
-    // Ctrl+Y - copy in any mode
     if key.code == KeyCode::Char('y') && key.modifiers.contains(KeyModifiers::CONTROL) {
         return copy_focused_content(app, backend);
     }
@@ -19,13 +12,10 @@ pub fn handle_clipboard_key(app: &mut App, key: KeyEvent, backend: ClipboardBack
     false
 }
 
-/// Handle 'y' key in Normal mode (for yy command)
-/// Called from vim event handler when 'y' is pressed
 pub fn handle_yank_key(app: &mut App, backend: ClipboardBackend) -> bool {
     copy_focused_content(app, backend)
 }
 
-/// Copy content based on current focus
 fn copy_focused_content(app: &mut App, backend: ClipboardBackend) -> bool {
     match app.focus {
         Focus::InputField => copy_query(app, backend),
@@ -33,17 +23,14 @@ fn copy_focused_content(app: &mut App, backend: ClipboardBackend) -> bool {
     }
 }
 
-/// Copy current query to clipboard
 fn copy_query(app: &mut App, backend: ClipboardBackend) -> bool {
     let query = app.query();
 
-    // Don't copy empty queries
     if query.is_empty() {
         return false;
     }
 
     if copy_to_clipboard(query, backend).is_ok() {
-        // Use the shared notification system
         app.notification.show("Copied query!");
         true
     } else {
@@ -51,21 +38,17 @@ fn copy_query(app: &mut App, backend: ClipboardBackend) -> bool {
     }
 }
 
-/// Copy current result to clipboard
 fn copy_result(app: &mut App, backend: ClipboardBackend) -> bool {
-    // Get result text, stripping ANSI codes
     let result = match &app.query.result {
         Ok(text) => strip_ansi_codes(text),
-        Err(_) => return false, // Don't copy errors
+        Err(_) => return false,
     };
 
-    // Don't copy empty results
     if result.is_empty() {
         return false;
     }
 
     if copy_to_clipboard(&result, backend).is_ok() {
-        // Use the shared notification system
         app.notification.show("Copied result!");
         true
     } else {
@@ -73,15 +56,6 @@ fn copy_result(app: &mut App, backend: ClipboardBackend) -> bool {
     }
 }
 
-/// Strip ANSI escape codes from text
-///
-/// Removes terminal color codes and other escape sequences
-/// to get plain text for clipboard operations.
-///
-/// Handles:
-/// - CSI sequences: `\x1b[...m` (colors, styles)
-/// - OSC sequences: `\x1b]...(\x07|\x1b\\)` (operating system commands)
-/// - Simple escape sequences: `\x1b` followed by a single character
 pub fn strip_ansi_codes(text: &str) -> String {
     let mut result = String::with_capacity(text.len());
     let mut chars = text.chars().peekable();
@@ -143,10 +117,6 @@ mod tests {
     use crate::test_utils::test_helpers::test_app;
     use proptest::prelude::*;
 
-    // =========================================================================
-    // Unit Tests
-    // =========================================================================
-
     #[test]
     fn test_strip_ansi_codes_no_codes() {
         assert_eq!(strip_ansi_codes("hello world"), "hello world");
@@ -154,13 +124,11 @@ mod tests {
 
     #[test]
     fn test_strip_ansi_codes_simple_color() {
-        // Red text: \x1b[31m
         assert_eq!(strip_ansi_codes("\x1b[31mhello\x1b[0m"), "hello");
     }
 
     #[test]
     fn test_strip_ansi_codes_multiple_colors() {
-        // Bold red: \x1b[1;31m
         assert_eq!(
             strip_ansi_codes("\x1b[1;31mbold red\x1b[0m normal"),
             "bold red normal"
@@ -187,13 +155,8 @@ mod tests {
 
     #[test]
     fn test_strip_ansi_codes_osc_sequence() {
-        // OSC sequence with BEL terminator
         assert_eq!(strip_ansi_codes("\x1b]0;title\x07text"), "text");
     }
-
-    // =========================================================================
-    // Property-Based Tests
-    // =========================================================================
 
     // Feature: clipboard, Property 2: ANSI stripping preserves non-ANSI content
     // *For any* input text without ANSI escape sequences, stripping ANSI codes
@@ -319,14 +282,9 @@ mod tests {
         }
     }
 
-    // =========================================================================
-    // Unit Tests for Empty Content Rejection
-    // =========================================================================
-
     #[test]
     fn test_copy_query_rejects_empty() {
         let mut app = test_app("{}");
-        // Query starts empty
         let result = copy_query(&mut app, ClipboardBackend::Osc52);
         assert!(!result, "Empty query should be rejected");
         assert!(
@@ -350,7 +308,6 @@ mod tests {
     #[test]
     fn test_copy_result_rejects_ansi_only() {
         let mut app = test_app("{}");
-        // Result with only ANSI codes (becomes empty after stripping)
         app.query.result = Ok("\x1b[31m\x1b[0m".to_string());
         let result = copy_result(&mut app, ClipboardBackend::Osc52);
         assert!(!result, "ANSI-only result should be rejected");
@@ -375,7 +332,6 @@ mod tests {
     #[test]
     fn test_copy_query_accepts_non_empty() {
         let mut app = test_app("{}");
-        // Insert a query
         app.input.textarea.insert_str(".foo");
         let result = copy_query(&mut app, ClipboardBackend::Osc52);
         assert!(result, "Non-empty query should be accepted");

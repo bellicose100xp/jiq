@@ -1,22 +1,14 @@
-/// Manages scroll state for scrollable content
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ScrollState {
-    /// Current vertical scroll offset (0-based, 0 = top)
     pub offset: u16,
-    /// Maximum valid vertical scroll offset
     pub max_offset: u16,
-    /// Height of the visible viewport
     pub viewport_height: u16,
-    /// Current horizontal scroll offset (0-based, 0 = left)
     pub h_offset: u16,
-    /// Maximum valid horizontal scroll offset
     pub max_h_offset: u16,
-    /// Width of the visible viewport
     pub viewport_width: u16,
 }
 
 impl ScrollState {
-    /// Create a new ScrollState initialized to top-left
     pub fn new() -> Self {
         Self {
             offset: 0,
@@ -28,83 +20,65 @@ impl ScrollState {
         }
     }
 
-    /// Update bounds based on content and viewport size
-    ///
-    /// # Arguments
-    /// * `content_lines` - Total number of lines in the content
-    /// * `viewport_height` - Height of the visible viewport
     pub fn update_bounds(&mut self, content_lines: u32, viewport_height: u16) {
         self.viewport_height = viewport_height;
 
-        // Calculate max scroll, clamping to u16::MAX for ratatui compatibility
+        // Clamp to u16::MAX for ratatui compatibility
         self.max_offset = content_lines
             .saturating_sub(viewport_height as u32)
             .min(u16::MAX as u32) as u16;
 
-        // Clamp current offset to new bounds
         self.offset = self.offset.min(self.max_offset);
     }
 
-    /// Scroll down by the specified number of lines
     pub fn scroll_down(&mut self, lines: u16) {
         self.offset = self.offset.saturating_add(lines).min(self.max_offset);
     }
 
-    /// Scroll up by the specified number of lines
     pub fn scroll_up(&mut self, lines: u16) {
         self.offset = self.offset.saturating_sub(lines);
     }
 
-    /// Scroll down by half a page
     pub fn page_down(&mut self) {
         let half_page = self.viewport_height / 2;
         self.scroll_down(half_page);
     }
 
-    /// Scroll up by half a page
     pub fn page_up(&mut self) {
         let half_page = self.viewport_height / 2;
         self.scroll_up(half_page);
     }
 
-    /// Jump to the top of the content
     pub fn jump_to_top(&mut self) {
         self.offset = 0;
     }
 
-    /// Jump to the bottom of the content
     pub fn jump_to_bottom(&mut self) {
         self.offset = self.max_offset;
     }
 
-    /// Update horizontal bounds based on content and viewport width
     pub fn update_h_bounds(&mut self, max_line_width: u16, viewport_width: u16) {
         self.viewport_width = viewport_width;
         self.max_h_offset = max_line_width.saturating_sub(viewport_width);
         self.h_offset = self.h_offset.min(self.max_h_offset);
     }
 
-    /// Scroll right by the specified number of columns
     pub fn scroll_right(&mut self, cols: u16) {
         self.h_offset = self.h_offset.saturating_add(cols).min(self.max_h_offset);
     }
 
-    /// Scroll left by the specified number of columns
     pub fn scroll_left(&mut self, cols: u16) {
         self.h_offset = self.h_offset.saturating_sub(cols);
     }
 
-    /// Jump to the left edge
     pub fn jump_to_left(&mut self) {
         self.h_offset = 0;
     }
 
-    /// Jump to the right edge
     pub fn jump_to_right(&mut self) {
         self.h_offset = self.max_h_offset;
     }
 
-    /// Reset scroll state to initial position
     pub fn reset(&mut self) {
         self.offset = 0;
         self.h_offset = 0;

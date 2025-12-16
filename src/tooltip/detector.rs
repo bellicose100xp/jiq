@@ -1,38 +1,7 @@
-//! Function detection for tooltip
-//!
-//! Identifies which jq function (if any) the cursor is currently within.
-//! This includes both direct cursor placement on a function name AND
-//! cursor placement inside a function's parentheses.
-
 use crate::autocomplete::jq_functions::JQ_FUNCTION_METADATA;
 
-/// Detect jq function at cursor position in query string
-///
-/// Returns the function name if the cursor is:
-/// 1. Positioned directly on a recognized jq function name, OR
-/// 2. Inside the parentheses of a recognized jq function
-///
-/// For nested function calls, returns the innermost enclosing function.
-///
-/// # Arguments
-/// * `query` - The query string to search in
-/// * `cursor_pos` - The cursor position (0-indexed, in characters)
-///
-/// # Returns
-/// * `Some(&'static str)` - The function name if cursor is within a function context
-/// * `None` - If cursor is not within any function context or position is invalid
-///
-/// # Examples
-/// ```ignore
-/// // Cursor on function name
-/// detect_function_at_cursor("select(.x)", 3) // Some("select")
-///
-/// // Cursor inside function parentheses
-/// detect_function_at_cursor("select(.field)", 8) // Some("select")
-///
-/// // Nested functions - returns innermost
-/// detect_function_at_cursor("select(test(\"pat\"))", 13) // Some("test")
-/// ```
+/// Detect jq function at cursor position. Returns innermost enclosing function
+/// if cursor is on a function name or inside its parentheses.
 pub fn detect_function_at_cursor(query: &str, cursor_pos: usize) -> Option<&'static str> {
     // Handle edge cases
     if query.is_empty() {
@@ -73,10 +42,6 @@ fn detect_function_at_word(chars: &[char], cursor_pos: usize) -> Option<&'static
     lookup_function(&token)
 }
 
-/// Phase 2: Find the enclosing function by tracking parenthesis nesting
-///
-/// Scans backwards from cursor position, tracking paren depth.
-/// When we find an unmatched '(', we look for the function name before it.
 fn find_enclosing_function(chars: &[char], cursor_pos: usize) -> Option<&'static str> {
     let mut depth: i32 = 0;
     let scan_start = cursor_pos.min(chars.len());
@@ -104,7 +69,6 @@ fn find_enclosing_function(chars: &[char], cursor_pos: usize) -> Option<&'static
     None
 }
 
-/// Find function name immediately before an opening parenthesis
 fn find_function_before_paren(chars: &[char], paren_pos: usize) -> Option<&'static str> {
     if paren_pos == 0 {
         return None;
@@ -135,9 +99,6 @@ fn find_function_before_paren(chars: &[char], paren_pos: usize) -> Option<&'stat
     lookup_function(&token)
 }
 
-/// Find word boundaries around a cursor position
-///
-/// Returns (start, end) indices where the word spans [start, end)
 fn find_word_boundaries(chars: &[char], cursor_pos: usize) -> (usize, usize) {
     let len = chars.len();
 
@@ -183,12 +144,10 @@ fn find_word_boundaries(chars: &[char], cursor_pos: usize) -> (usize, usize) {
     (start, end)
 }
 
-/// Check if a character is part of a word (alphanumeric or underscore)
 fn is_word_char(c: char) -> bool {
     c.is_alphanumeric() || c == '_'
 }
 
-/// Look up a token in JQ_FUNCTION_METADATA
 fn lookup_function(token: &str) -> Option<&'static str> {
     JQ_FUNCTION_METADATA
         .iter()
@@ -196,31 +155,7 @@ fn lookup_function(token: &str) -> Option<&'static str> {
         .map(|f| f.name)
 }
 
-/// Detect jq operator at cursor position
-///
-/// Checks for multi-char operators first (//=, //, |=, ..) to avoid partial matches.
-/// Returns None if cursor is not on an operator or if the character sequence
-/// is actually a different construct (single /, single |, single .).
-///
-/// # Arguments
-/// * `query` - The query string to search in
-/// * `cursor_pos` - The cursor position (0-indexed, in characters)
-///
-/// # Returns
-/// * `Some(&'static str)` - The operator if cursor is on an operator
-/// * `None` - If cursor is not on any operator
-///
-/// # Examples
-/// ```ignore
-/// // Cursor on alternative operator
-/// detect_operator_at_cursor(".x // \"default\"", 3) // Some("//")
-///
-/// // Cursor on update operator
-/// detect_operator_at_cursor(".x |= . + 1", 3) // Some("|=")
-///
-/// // Single pipe (not an operator we track)
-/// detect_operator_at_cursor(".x | .y", 3) // None
-/// ```
+/// Detect jq operator at cursor position. Checks multi-char operators first.
 pub fn detect_operator_at_cursor(query: &str, cursor_pos: usize) -> Option<&'static str> {
     if query.is_empty() {
         return None;
@@ -247,7 +182,6 @@ pub fn detect_operator_at_cursor(query: &str, cursor_pos: usize) -> Option<&'sta
     None
 }
 
-/// Detect operator at a specific position in the character array
 fn detect_operator_at_position(chars: &[char], pos: usize) -> Option<&'static str> {
     let len = chars.len();
 
@@ -285,7 +219,6 @@ fn detect_operator_at_position(chars: &[char], pos: usize) -> Option<&'static st
     None
 }
 
-/// Check if cursor is on //= operator
 fn check_triple_slash_equals(chars: &[char], cursor_pos: usize) -> Option<&'static str> {
     let len = chars.len();
     let current = chars[cursor_pos];
@@ -319,7 +252,6 @@ fn check_triple_slash_equals(chars: &[char], cursor_pos: usize) -> Option<&'stat
     None
 }
 
-/// Check if cursor is on // operator (but not //=)
 fn check_double_slash(chars: &[char], cursor_pos: usize) -> Option<&'static str> {
     let len = chars.len();
     let current = chars[cursor_pos];
@@ -347,7 +279,6 @@ fn check_double_slash(chars: &[char], cursor_pos: usize) -> Option<&'static str>
     None
 }
 
-/// Check if cursor is on |= operator
 fn check_pipe_equals(chars: &[char], cursor_pos: usize) -> Option<&'static str> {
     let len = chars.len();
     let current = chars[cursor_pos];
@@ -371,7 +302,6 @@ fn check_pipe_equals(chars: &[char], cursor_pos: usize) -> Option<&'static str> 
     None
 }
 
-/// Check if cursor is on .. operator
 fn check_double_dot(chars: &[char], cursor_pos: usize) -> Option<&'static str> {
     let len = chars.len();
     let current = chars[cursor_pos];
@@ -409,10 +339,6 @@ fn check_double_dot(chars: &[char], cursor_pos: usize) -> Option<&'static str> {
 mod tests {
     use super::*;
     use proptest::prelude::*;
-
-    // ==================== Unit Tests ====================
-
-    // Tests for cursor directly on function name (Phase 1)
 
     #[test]
     fn test_detect_function_cursor_on_function() {
@@ -538,8 +464,6 @@ mod tests {
         assert_eq!(detect_function_at_cursor("select", 6), Some("select"));
     }
 
-    // ==================== Operator Detection Unit Tests ====================
-
     #[test]
     fn test_detect_operator_double_slash() {
         // Cursor on first /
@@ -626,8 +550,6 @@ mod tests {
         assert_eq!(detect_operator_at_cursor("...", 1), None);
         assert_eq!(detect_operator_at_cursor("...", 2), None);
     }
-
-    // ==================== Property Tests ====================
 
     // **Feature: function-tooltip, Property 6: Function detection correctness**
     // *For any* query string and cursor position:

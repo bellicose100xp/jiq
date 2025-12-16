@@ -3,18 +3,15 @@ use tui_textarea::Input;
 
 use crate::app::App;
 
-/// Handle keys when history popup is visible
 pub fn handle_history_popup_key(app: &mut App, key: KeyEvent) {
     match key.code {
-        // Navigation (reversed because display is reversed - most recent at bottom)
         KeyCode::Up => {
-            app.history.select_next(); // Move to older entries (visually up)
+            app.history.select_next();
         }
         KeyCode::Down => {
-            app.history.select_previous(); // Move to newer entries (visually down)
+            app.history.select_previous();
         }
 
-        // Select and close
         KeyCode::Enter | KeyCode::Tab => {
             if let Some(entry) = app.history.selected_entry() {
                 let entry = entry.to_string();
@@ -23,31 +20,25 @@ pub fn handle_history_popup_key(app: &mut App, key: KeyEvent) {
             app.history.close();
         }
 
-        // Cancel
         KeyCode::Esc => {
             app.history.close();
         }
 
-        // Let TextArea handle all other input (chars, backspace, left/right arrows, etc.)
         _ => {
             let input = Input::from(key);
             if app.history.search_textarea_mut().input(input) {
-                // Input was consumed, update filter
                 app.history.on_search_input_changed();
             }
         }
     }
 }
 
-/// Replace the current query with the given text (helper for history)
 fn replace_query_with(app: &mut App, text: &str) {
     app.input.textarea.delete_line_by_head();
     app.input.textarea.delete_line_by_end();
     app.input.textarea.insert_str(text);
 
-    // Execute the new query
     let query = app.input.textarea.lines()[0].as_ref();
-    // Use QueryState::execute() which handles non-null result caching
     app.query.execute(query);
 
     app.results_scroll.reset();
@@ -61,8 +52,6 @@ mod tests {
     use crate::editor::EditorMode;
     use crate::test_utils::test_helpers::{app_with_query, key, key_with_mods};
     use crossterm::event::KeyModifiers;
-
-    // ========== History Popup Tests ==========
 
     #[test]
     fn test_history_popup_does_not_open_when_empty() {
@@ -249,8 +238,6 @@ mod tests {
         // History should open
         assert!(app.history.is_visible());
     }
-
-    // ========== History Cycling Tests (Ctrl+P/Ctrl+N) ==========
 
     #[test]
     fn test_ctrl_p_cycles_to_previous_history() {

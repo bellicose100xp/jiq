@@ -1,11 +1,8 @@
 use super::search_state::Match;
 
-/// Finds all occurrences of a query in text (case-insensitive)
 pub struct SearchMatcher;
 
 impl SearchMatcher {
-    /// Find all matches of query in content
-    /// Returns Vec of Match structs with (line, col, len)
     pub fn find_all(content: &str, query: &str) -> Vec<Match> {
         if query.is_empty() {
             return Vec::new();
@@ -104,10 +101,6 @@ mod tests {
         let matches = SearchMatcher::find_all("hello world", "xyz");
         assert!(matches.is_empty());
     }
-
-    // =========================================================================
-    // Property-Based Tests
-    // =========================================================================
 
     // Feature: search-in-results, Property 5: Case-insensitive matching
     // *For any* search query and results content, the matcher should find the

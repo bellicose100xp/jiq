@@ -3,7 +3,6 @@ use std::fmt;
 use fuzzy_matcher::FuzzyMatcher;
 use fuzzy_matcher::skim::SkimMatcherV2;
 
-/// A fuzzy matcher using the Skim algorithm (fzf-style matching).
 pub struct HistoryMatcher {
     matcher: SkimMatcherV2,
 }
@@ -27,12 +26,6 @@ impl HistoryMatcher {
         }
     }
 
-    /// Filters entries by the given query using fuzzy matching.
-    /// Returns indices of matching entries sorted by score (highest first).
-    /// If query is empty, returns all indices in original order.
-    ///
-    /// Multiple space-separated terms are ANDed together (like fzf).
-    /// Each term must match somewhere in the entry for it to be included.
     pub fn filter(&self, query: &str, entries: &[String]) -> Vec<usize> {
         if query.is_empty() {
             return (0..entries.len()).collect();

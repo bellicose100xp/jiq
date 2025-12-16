@@ -4,7 +4,6 @@ use super::jq_functions::filter_builtins;
 use super::result_analyzer::ResultAnalyzer;
 use crate::query::ResultType;
 
-/// Filter suggestions by partial match (case-insensitive)
 fn filter_suggestions_by_partial(suggestions: Vec<Suggestion>, partial: &str) -> Vec<Suggestion> {
     let partial_lower = partial.to_lowercase();
     suggestions
@@ -13,23 +12,14 @@ fn filter_suggestions_by_partial(suggestions: Vec<Suggestion>, partial: &str) ->
         .collect()
 }
 
-/// Context information about what's being typed
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[allow(clippy::enum_variant_names)] // Context suffix is intentional for clarity
+#[allow(clippy::enum_variant_names)]
 pub enum SuggestionContext {
-    /// At start or after pipe/operator - suggest functions and patterns
     FunctionContext,
-    /// After a dot - suggest field names
     FieldContext,
-    /// Inside object literal `{}` where an object key name is expected.
-    /// This context is triggered after `{` or `,` inside an object literal
-    /// when the user is typing a partial identifier (not starting with `.`).
-    /// Suggestions in this context do NOT have a leading dot, enabling
-    /// efficient construction of object literals like `{name: .name}`.
     ObjectKeyContext,
 }
 
-/// Analyze query text and cursor position to determine what to suggest
 pub fn get_suggestions(
     query: &str,
     cursor_pos: usize,
@@ -37,19 +27,13 @@ pub fn get_suggestions(
     result_type: Option<ResultType>,
     brace_tracker: &BraceTracker,
 ) -> Vec<Suggestion> {
-    // Get the text before cursor
     let before_cursor = &query[..cursor_pos.min(query.len())];
-
-    // Determine context and get the partial word being typed
     let (context, partial) = analyze_context(before_cursor, brace_tracker);
 
     match context {
         SuggestionContext::FieldContext => {
-            // Determine trigger context to decide if suggestions need leading dot
             let char_before_dot = find_char_before_field_access(before_cursor, &partial);
 
-            // Check if there's a dot immediately before the partial (or at cursor if no partial)
-            // This helps distinguish: ".services.ca" (continuation) vs "then .ca" (new path)
             let dot_pos = if partial.is_empty() {
                 before_cursor.len().saturating_sub(1)
             } else {
@@ -58,7 +42,6 @@ pub fn get_suggestions(
             let has_immediate_dot =
                 dot_pos < before_cursor.len() && before_cursor.chars().nth(dot_pos) == Some('.');
 
-            // Check if there's whitespace between char_before and the dot
             let has_whitespace_before_dot = if dot_pos > 0 && has_immediate_dot {
                 before_cursor[..dot_pos]
                     .chars()
@@ -70,10 +53,6 @@ pub fn get_suggestions(
                 false
             };
 
-            // Include leading dot when:
-            // 1. After operators (starting new path): |, ;, ,, :, (, [, {
-            // 2. At start of query (None)
-            // 3. After whitespace + dot (like "then .field") - new path after keyword
             let needs_leading_dot = matches!(
                 char_before_dot,
                 Some('|')
@@ -86,14 +65,12 @@ pub fn get_suggestions(
                     | None
             ) || has_whitespace_before_dot;
 
-            // Generate type-aware suggestions (no mutation needed!)
             let suggestions = if let (Some(result), Some(typ)) = (result, result_type) {
                 ResultAnalyzer::analyze_result(result, typ, needs_leading_dot)
             } else {
                 Vec::new()
             };
 
-            // Filter suggestions by partial match
             if partial.is_empty() {
                 suggestions
             } else {
@@ -101,7 +78,6 @@ pub fn get_suggestions(
             }
         }
         SuggestionContext::FunctionContext => {
-            // Suggest jq functions/patterns/operators
             if partial.is_empty() {
                 Vec::new()
             } else {
@@ -109,26 +85,21 @@ pub fn get_suggestions(
             }
         }
         SuggestionContext::ObjectKeyContext => {
-            // Object key context: suggest field names without leading dot
-            // Per requirement 1.3: return empty if partial is empty
             if partial.is_empty() {
                 return Vec::new();
             }
 
-            // Generate suggestions without leading dot (needs_leading_dot = false)
             let suggestions = if let (Some(result), Some(typ)) = (result, result_type) {
                 ResultAnalyzer::analyze_result(result, typ, false)
             } else {
                 Vec::new()
             };
 
-            // Filter suggestions by partial match (same as FieldContext)
             filter_suggestions_by_partial(suggestions, &partial)
         }
     }
 }
 
-/// Analyze the text before cursor to determine context and partial word
 pub fn analyze_context(
     before_cursor: &str,
     brace_tracker: &BraceTracker,
@@ -137,11 +108,9 @@ pub fn analyze_context(
         return (SuggestionContext::FunctionContext, String::new());
     }
 
-    // Find the last "word" being typed by looking backwards
     let chars: Vec<char> = before_cursor.chars().collect();
     let mut i = chars.len();
 
-    // Skip trailing whitespace
     while i > 0 && chars[i - 1].is_whitespace() {
         i -= 1;
     }
@@ -150,18 +119,14 @@ pub fn analyze_context(
         return (SuggestionContext::FunctionContext, String::new());
     }
 
-    // Check if we're in field context (after a dot)
     if i > 0 && chars[i - 1] == '.' {
-        // Just typed a dot - suggest all fields
         return (SuggestionContext::FieldContext, String::new());
     }
 
-    // Look for the start of the current token
     let mut start = i;
     while start > 0 {
         let ch = chars[start - 1];
 
-        // Stop at delimiters
         if is_delimiter(ch) {
             break;
         }
@@ -169,12 +134,9 @@ pub fn analyze_context(
         start -= 1;
     }
 
-    // Extract the partial word
     let partial: String = chars[start..i].iter().collect();
 
-    // Check if the partial starts with a dot (field access) or question mark (optional field access)
     if let Some(stripped) = partial.strip_prefix('.') {
-        // Field context - return the part after the LAST dot (for nested fields like .user.na)
         let field_partial = if let Some(last_dot_pos) = partial.rfind('.') {
             partial[last_dot_pos + 1..].to_string()
         } else {
@@ -182,20 +144,15 @@ pub fn analyze_context(
         };
         return (SuggestionContext::FieldContext, field_partial);
     } else if let Some(stripped) = partial.strip_prefix('?') {
-        // Optional field access like []?.field
-        // If after ? there's a dot, strip it and get the field name
         let field_partial = if let Some(after_dot) = stripped.strip_prefix('.') {
             after_dot.to_string()
         } else {
-            // Just ? with no dot yet
             String::new()
         };
         return (SuggestionContext::FieldContext, field_partial);
     }
 
-    // Check what comes before the partial to determine context
     if start > 0 {
-        // Look backwards to see if there's a dot or question mark before this position
         let mut j = start;
         while j > 0 && chars[j - 1].is_whitespace() {
             j -= 1;
@@ -203,17 +160,11 @@ pub fn analyze_context(
 
         if j > 0 {
             let char_before = chars[j - 1];
-            // Field context if preceded by dot or question mark
-            // Examples: .field, []?.field
             if char_before == '.' || char_before == '?' {
                 return (SuggestionContext::FieldContext, partial);
             }
 
-            // Check for ObjectKeyContext: after `{` or `,` when inside an object literal
-            // Only if we have a non-empty partial (per requirement 1.3)
             if !partial.is_empty() && (char_before == '{' || char_before == ',') {
-                // Use BraceTracker to verify we're actually inside an object literal
-                // The position to check is the cursor position (end of before_cursor)
                 if brace_tracker.is_in_object(before_cursor.len()) {
                     return (SuggestionContext::ObjectKeyContext, partial);
                 }
@@ -221,30 +172,20 @@ pub fn analyze_context(
         }
     }
 
-    // Otherwise, function context
     (SuggestionContext::FunctionContext, partial)
 }
 
-/// Find the character that precedes the field access (the dot we're typing after)
-/// Returns None if at the start of the query
 pub fn find_char_before_field_access(before_cursor: &str, partial: &str) -> Option<char> {
-    // We need to find what's before the dot that triggered FieldContext
-    // If we have a partial (like "ser" in ".services | .ser"), go back past it
-    // If no partial (like in ".services | ."), we're right after the dot
-
     let search_end = if partial.is_empty() {
-        // No partial - we just typed the dot, so look before it
         before_cursor.len().saturating_sub(1)
     } else {
-        // Have partial - go back past partial and the dot
         before_cursor.len().saturating_sub(partial.len() + 1)
     };
 
     if search_end == 0 {
-        return None; // At start of query
+        return None;
     }
 
-    // Search backwards for the first non-whitespace character
     let chars: Vec<char> = before_cursor[..search_end].chars().collect();
     for i in (0..chars.len()).rev() {
         let ch = chars[i];
@@ -256,7 +197,6 @@ pub fn find_char_before_field_access(before_cursor: &str, partial: &str) -> Opti
     None
 }
 
-/// Check if a character is a delimiter
 fn is_delimiter(ch: char) -> bool {
     matches!(
         ch,
@@ -269,7 +209,6 @@ mod tests {
     use super::*;
     use proptest::prelude::*;
 
-    /// Helper to create a BraceTracker initialized with the given query
     fn tracker_for(query: &str) -> BraceTracker {
         let mut tracker = BraceTracker::new();
         tracker.rebuild(query);
@@ -477,11 +416,8 @@ mod tests {
         assert_eq!(partial, "i");
     }
 
-    // ========== ObjectKeyContext Unit Tests ==========
-
     #[test]
     fn test_object_key_context_after_open_brace() {
-        // `{na` should return ObjectKeyContext
         let query = "{na";
         let tracker = tracker_for(query);
         let (ctx, partial) = analyze_context(query, &tracker);
@@ -491,7 +427,6 @@ mod tests {
 
     #[test]
     fn test_object_key_context_after_comma() {
-        // `{name: .name, ag` should return ObjectKeyContext
         let query = "{name: .name, ag";
         let tracker = tracker_for(query);
         let (ctx, partial) = analyze_context(query, &tracker);
@@ -501,31 +436,26 @@ mod tests {
 
     #[test]
     fn test_array_context_not_object_key() {
-        // `[1, na` should NOT return ObjectKeyContext
         let query = "[1, na";
         let tracker = tracker_for(query);
         let (ctx, partial) = analyze_context(query, &tracker);
         assert_ne!(ctx, SuggestionContext::ObjectKeyContext);
         assert_eq!(partial, "na");
-        // Should be FunctionContext since it's not a field access
         assert_eq!(ctx, SuggestionContext::FunctionContext);
     }
 
     #[test]
     fn test_function_call_context_not_object_key() {
-        // `select(.a, na` should NOT return ObjectKeyContext
         let query = "select(.a, na";
         let tracker = tracker_for(query);
         let (ctx, partial) = analyze_context(query, &tracker);
         assert_ne!(ctx, SuggestionContext::ObjectKeyContext);
         assert_eq!(partial, "na");
-        // Should be FunctionContext since it's inside a function call
         assert_eq!(ctx, SuggestionContext::FunctionContext);
     }
 
     #[test]
     fn test_nested_object_in_array() {
-        // `[{na` should return ObjectKeyContext (innermost is object)
         let query = "[{na";
         let tracker = tracker_for(query);
         let (ctx, partial) = analyze_context(query, &tracker);
@@ -535,40 +465,33 @@ mod tests {
 
     #[test]
     fn test_nested_array_in_object() {
-        // `{items: [na` should NOT return ObjectKeyContext (innermost is array)
         let query = "{items: [na";
         let tracker = tracker_for(query);
         let (ctx, partial) = analyze_context(query, &tracker);
         assert_ne!(ctx, SuggestionContext::ObjectKeyContext);
         assert_eq!(partial, "na");
-        // Should be FunctionContext since innermost context is array
         assert_eq!(ctx, SuggestionContext::FunctionContext);
     }
 
     #[test]
     fn test_object_key_empty_partial_no_suggestions() {
-        // `{` alone should NOT return ObjectKeyContext (no partial)
         let query = "{";
         let tracker = tracker_for(query);
         let (ctx, partial) = analyze_context(query, &tracker);
-        // With empty partial, we don't trigger ObjectKeyContext per requirement 1.3
         assert_ne!(ctx, SuggestionContext::ObjectKeyContext);
         assert_eq!(partial, "");
     }
 
     #[test]
     fn test_object_key_after_comma_empty_partial() {
-        // `{name: .name, ` should NOT return ObjectKeyContext (no partial)
         let query = "{name: .name, ";
         let tracker = tracker_for(query);
         let (ctx, _partial) = analyze_context(query, &tracker);
-        // With empty partial, we don't trigger ObjectKeyContext
         assert_ne!(ctx, SuggestionContext::ObjectKeyContext);
     }
 
     #[test]
     fn test_dot_after_brace_is_field_context() {
-        // `{.na` should return FieldContext (not ObjectKeyContext)
         let query = "{.na";
         let tracker = tracker_for(query);
         let (ctx, partial) = analyze_context(query, &tracker);
@@ -578,7 +501,6 @@ mod tests {
 
     #[test]
     fn test_object_key_with_complex_value() {
-        // `{name: .name | map(.), ag` should return ObjectKeyContext
         let query = "{name: .name | map(.), ag";
         let tracker = tracker_for(query);
         let (ctx, partial) = analyze_context(query, &tracker);
@@ -588,7 +510,6 @@ mod tests {
 
     #[test]
     fn test_deeply_nested_object_context() {
-        // `{a: {b: {c` should return ObjectKeyContext
         let query = "{a: {b: {c";
         let tracker = tracker_for(query);
         let (ctx, partial) = analyze_context(query, &tracker);
@@ -596,13 +517,8 @@ mod tests {
         assert_eq!(partial, "c");
     }
 
-    // ========== Regression Tests for Existing Behavior ==========
-    // These tests verify that the ObjectKeyContext feature doesn't break
-    // existing FieldContext and FunctionContext behavior.
-
     #[test]
     fn test_regression_field_context_at_start() {
-        // `.na` at start should return FieldContext (not ObjectKeyContext)
         let query = ".na";
         let tracker = tracker_for(query);
         let (ctx, partial) = analyze_context(query, &tracker);
@@ -613,7 +529,6 @@ mod tests {
 
     #[test]
     fn test_regression_field_context_after_pipe() {
-        // `.services | .na` should return FieldContext
         let query = ".services | .na";
         let tracker = tracker_for(query);
         let (ctx, partial) = analyze_context(query, &tracker);
@@ -624,7 +539,6 @@ mod tests {
 
     #[test]
     fn test_regression_field_context_in_map() {
-        // `map(.na` should return FieldContext
         let query = "map(.na";
         let tracker = tracker_for(query);
         let (ctx, partial) = analyze_context(query, &tracker);
@@ -635,7 +549,6 @@ mod tests {
 
     #[test]
     fn test_regression_function_context_at_start() {
-        // `sel` at start should return FunctionContext
         let query = "sel";
         let tracker = tracker_for(query);
         let (ctx, partial) = analyze_context(query, &tracker);
@@ -646,7 +559,6 @@ mod tests {
 
     #[test]
     fn test_regression_function_context_after_pipe() {
-        // `.services | sel` should return FunctionContext
         let query = ".services | sel";
         let tracker = tracker_for(query);
         let (ctx, partial) = analyze_context(query, &tracker);
@@ -654,8 +566,6 @@ mod tests {
         assert_ne!(ctx, SuggestionContext::ObjectKeyContext);
         assert_eq!(partial, "sel");
     }
-
-    // ========== Property-Based Tests ==========
 
     proptest! {
         /// **Feature: object-key-autocomplete, Property 1: ObjectKeyContext suggestions have no leading dot**

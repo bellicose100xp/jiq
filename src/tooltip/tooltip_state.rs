@@ -1,17 +1,7 @@
-//! Tooltip state management
-//!
-//! Manages the enabled/disabled state and current function for the tooltip feature.
-
 use crate::app::App;
 use crate::tooltip::{detect_function_at_cursor, detect_operator_at_cursor};
 
-/// Update tooltip state based on current cursor position in the App
-///
-/// Detects if cursor is on or inside a jq function or operator and updates tooltip accordingly.
-/// Functions take priority over operators when both could apply.
-///
-/// # Arguments
-/// * `app` - Mutable reference to the App state
+/// Update tooltip state based on cursor position. Functions take priority over operators.
 pub fn update_tooltip_from_app(app: &mut App) {
     let query = app.input.query();
     let cursor_pos = app.input.textarea.cursor().1; // Column position
@@ -31,7 +21,6 @@ pub fn update_tooltip_from_app(app: &mut App) {
         .set_current_operator(detected_operator.map(|s| s.to_string()));
 }
 
-/// Tooltip state for managing contextual function help
 pub struct TooltipState {
     /// Whether tooltip feature is enabled (shows automatically)
     pub enabled: bool,
@@ -42,11 +31,6 @@ pub struct TooltipState {
 }
 
 impl TooltipState {
-    /// Create a new TooltipState with specified auto_show behavior
-    ///
-    /// # Arguments
-    /// * `auto_show` - If true, tooltip auto-shows when cursor is on a function.
-    ///   If false, tooltip is hidden by default and requires Ctrl+I to show.
     pub fn new(auto_show: bool) -> Self {
         Self {
             enabled: auto_show,
@@ -55,23 +39,18 @@ impl TooltipState {
         }
     }
 
-    /// Toggle the tooltip enabled state
     pub fn toggle(&mut self) {
         self.enabled = !self.enabled;
     }
 
-    /// Set the current function detected at cursor position
     pub fn set_current_function(&mut self, func: Option<String>) {
         self.current_function = func;
     }
 
-    /// Set the current operator detected at cursor position
     pub fn set_current_operator(&mut self, op: Option<String>) {
         self.current_operator = op;
     }
 
-    /// Check if tooltip should be shown
-    /// Returns true only when enabled AND (a function OR operator is detected)
     pub fn should_show(&self) -> bool {
         self.enabled && (self.current_function.is_some() || self.current_operator.is_some())
     }

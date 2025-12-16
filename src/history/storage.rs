@@ -6,17 +6,10 @@ const MAX_HISTORY_ENTRIES: usize = 1000;
 const HISTORY_DIR: &str = "jiq";
 const HISTORY_FILE: &str = "history";
 
-/// Returns the path to the history file using platform-appropriate directories.
-/// - Linux: ~/.local/share/jiq/history
-/// - macOS: ~/Library/Application Support/jiq/history
-/// - Windows: C:\Users\<User>\AppData\Roaming\jiq\history
 pub fn history_path() -> Option<PathBuf> {
     dirs::data_dir().map(|p| p.join(HISTORY_DIR).join(HISTORY_FILE))
 }
 
-/// Loads history entries from the history file.
-/// Returns an empty vector if the file doesn't exist or cannot be read.
-/// Entries are returned in file order (most recent first).
 pub fn load_history() -> Vec<String> {
     let Some(path) = history_path() else {
         return Vec::new();
@@ -35,9 +28,6 @@ pub fn load_history() -> Vec<String> {
         .collect()
 }
 
-/// Saves all history entries to the history file.
-/// Creates the directory structure if it doesn't exist.
-/// Deduplicates entries (keeps first occurrence).
 pub fn save_history(entries: &[String]) -> io::Result<()> {
     let Some(path) = history_path() else {
         return Err(io::Error::new(
@@ -62,14 +52,7 @@ pub fn save_history(entries: &[String]) -> io::Result<()> {
     Ok(())
 }
 
-/// Adds a new entry to the history.
-/// If the entry already exists, it's moved to the top (most recent).
-/// Maintains the maximum entry limit.
-///
-/// ## Concurrency Note
-/// This function uses a read-modify-write pattern without file locking.
-/// If multiple jiq instances run simultaneously, the last writer wins and
-/// earlier updates may be lost. For a single-user CLI tool, this is acceptable.
+/// No file locking - last writer wins if multiple instances run simultaneously.
 pub fn add_entry(query: &str) -> io::Result<()> {
     let query = query.trim();
     if query.is_empty() {
@@ -102,18 +85,6 @@ fn trim_to_max(entries: &[String]) -> Vec<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    // Note: Integration tests for file I/O would require environment manipulation,
-    // but the `dirs` crate caches directory paths and doesn't respond to env changes.
-    // For proper testing, use dependency injection with a HistoryStorage trait.
-
-    // Integration tests for file I/O are removed.
-    // For proper testing, refactor to use dependency injection with a HistoryStorage trait:
-    //   trait HistoryStorage {
-    //       fn load(&self) -> Vec<String>;
-    //       fn save(&self, entries: &[String]) -> io::Result<()>;
-    //   }
-    // This would enable in-memory testing without filesystem dependencies.
 
     #[test]
     fn test_deduplicate_keeps_first_occurrence() {

@@ -1,9 +1,3 @@
-//! Tooltip content for jq functions
-//!
-//! Provides TLDR-style content for each jq function, including
-//! a description, practical examples, and optional tips.
-
-/// TLDR-style tooltip content for a jq function
 #[derive(Debug, Clone)]
 pub struct TooltipContent {
     /// Function name

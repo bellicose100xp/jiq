@@ -1,13 +1,11 @@
 use crate::scroll::ScrollState;
 
-/// Help popup state
 pub struct HelpPopupState {
     pub visible: bool,
     pub scroll: ScrollState,
 }
 
 impl HelpPopupState {
-    /// Create a new HelpPopupState (initially hidden)
     pub fn new() -> Self {
         Self {
             visible: false,

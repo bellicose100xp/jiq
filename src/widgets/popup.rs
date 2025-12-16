@@ -1,19 +1,5 @@
-//! Popup rendering utilities
-//!
-//! Provides reusable functions for positioning and rendering popup windows
-//! like autocomplete suggestions, history, help, and error overlays.
-
 use ratatui::{Frame, layout::Rect, widgets::Clear};
 
-/// Calculate a centered popup rectangle within the given frame area
-///
-/// # Arguments
-/// * `frame_area` - The full frame area to center within
-/// * `width` - Desired popup width
-/// * `height` - Desired popup height
-///
-/// # Returns
-/// A `Rect` centered within the frame area, clamped to fit
 pub fn centered_popup(frame_area: Rect, width: u16, height: u16) -> Rect {
     let popup_width = width.min(frame_area.width);
     let popup_height = height.min(frame_area.height);
@@ -29,16 +15,6 @@ pub fn centered_popup(frame_area: Rect, width: u16, height: u16) -> Rect {
     }
 }
 
-/// Calculate a popup rectangle positioned above an anchor area
-///
-/// # Arguments
-/// * `anchor` - The area to position above (typically an input field)
-/// * `width` - Desired popup width
-/// * `height` - Desired popup height
-/// * `x_offset` - Horizontal offset from anchor's x position (default: 0)
-///
-/// # Returns
-/// A `Rect` positioned above the anchor, clamped to not overflow
 pub fn popup_above_anchor(anchor: Rect, width: u16, height: u16, x_offset: u16) -> Rect {
     let popup_x = anchor.x + x_offset;
     let popup_y = anchor.y.saturating_sub(height);
@@ -47,19 +23,10 @@ pub fn popup_above_anchor(anchor: Rect, width: u16, height: u16, x_offset: u16) 
         x: popup_x,
         y: popup_y,
         width: width.min(anchor.width.saturating_sub(x_offset * 2)),
-        height: height.min(anchor.y), // Don't overflow above anchor
+        height: height.min(anchor.y),
     }
 }
 
-/// Calculate an inset rectangle with margins applied
-///
-/// # Arguments
-/// * `area` - The parent area to inset from
-/// * `horizontal_margin` - Margin on left and right (total: 2x this value)
-/// * `vertical_margin` - Margin on top and bottom (total: 2x this value)
-///
-/// # Returns
-/// A `Rect` inset from the parent area by the specified margins
 pub fn inset_rect(area: Rect, horizontal_margin: u16, vertical_margin: u16) -> Rect {
     Rect {
         x: area.x + horizontal_margin,
@@ -69,14 +36,6 @@ pub fn inset_rect(area: Rect, horizontal_margin: u16, vertical_margin: u16) -> R
     }
 }
 
-/// Clear the background of a popup area to create a floating effect
-///
-/// This should be called before rendering popup content to ensure
-/// the popup appears to float over the background content.
-///
-/// # Arguments
-/// * `frame` - The frame to render to
-/// * `area` - The area to clear
 pub fn clear_area(frame: &mut Frame, area: Rect) {
     frame.render_widget(Clear, area);
 }
@@ -96,9 +55,8 @@ mod tests {
 
         let popup = centered_popup(frame, 40, 20);
 
-        // Should be centered
-        assert_eq!(popup.x, 30); // (100 - 40) / 2
-        assert_eq!(popup.y, 15); // (50 - 20) / 2
+        assert_eq!(popup.x, 30);
+        assert_eq!(popup.y, 15);
         assert_eq!(popup.width, 40);
         assert_eq!(popup.height, 20);
     }
@@ -114,7 +72,6 @@ mod tests {
 
         let popup = centered_popup(frame, 200, 100);
 
-        // Should be clamped to frame size
         assert_eq!(popup.width, 100);
         assert_eq!(popup.height, 50);
         assert_eq!(popup.x, 0);
@@ -132,9 +89,8 @@ mod tests {
 
         let popup = popup_above_anchor(anchor, 60, 10, 2);
 
-        // Should be above anchor with offset
-        assert_eq!(popup.x, 12); // 10 + 2
-        assert_eq!(popup.y, 20); // 30 - 10
+        assert_eq!(popup.x, 12);
+        assert_eq!(popup.y, 20);
         assert_eq!(popup.width, 60);
         assert_eq!(popup.height, 10);
     }
@@ -143,16 +99,15 @@ mod tests {
     fn test_popup_above_anchor_no_overflow() {
         let anchor = Rect {
             x: 0,
-            y: 5, // Only 5 rows above
+            y: 5,
             width: 100,
             height: 3,
         };
 
         let popup = popup_above_anchor(anchor, 80, 10, 0);
 
-        // Height should be clamped to available space above
         assert_eq!(popup.y, 0);
-        assert_eq!(popup.height, 5); // Clamped to anchor.y
+        assert_eq!(popup.height, 5);
     }
 
     #[test]
@@ -181,10 +136,8 @@ mod tests {
             height: 10,
         };
 
-        // Request huge margins
         let inset = inset_rect(area, 20, 20);
 
-        // Should saturate at 0
         assert_eq!(inset.width, 0);
         assert_eq!(inset.height, 0);
     }

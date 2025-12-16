@@ -69,9 +69,6 @@ impl AiState {
     /// Returns true if:
     /// - No previous query hash exists (first request)
     /// - The query hash differs from the last query hash
-    ///
-    /// Query change is the ONLY trigger for new AI requests.
-    /// The simplified flow: query changes → execute → if error, send AI request
     pub fn is_query_changed(&self, query: &str) -> bool {
         let query_hash = Self::compute_query_hash(query);
         match self.last_query_hash {
@@ -91,12 +88,6 @@ impl AiState {
     ///
     /// Sends a Cancel message to the worker thread if there's an active request.
     /// Returns true if a cancel was sent, false otherwise.
-    ///
-    /// # Requirements
-    /// - 3.5: WHEN a new query change occurs THEN the AI_Assistant SHALL cancel
-    ///   any in-flight API request before starting the debounce period
-    /// - 5.4: WHEN a query change occurs while an API request is in-flight THEN
-    ///   the AI_Assistant SHALL send a cancel signal to abort the previous request
     pub fn cancel_in_flight_request(&mut self) -> bool {
         if let Some(request_id) = self.in_flight_request_id
             && let Some(ref tx) = self.request_tx
@@ -110,7 +101,7 @@ impl AiState {
     }
 
     /// Check if there's an in-flight request
-    #[allow(dead_code)] // Used in tests
+    #[allow(dead_code)]
     pub fn has_in_flight_request(&self) -> bool {
         self.in_flight_request_id.is_some()
     }

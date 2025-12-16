@@ -1,5 +1,3 @@
-//! Scroll coordination for search matches
-
 #[cfg(debug_assertions)]
 use log::debug;
 

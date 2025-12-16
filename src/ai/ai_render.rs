@@ -31,9 +31,6 @@ mod content;
 /// * `ai_state` - The current AI state (mutable to update word_limit)
 /// * `frame` - The frame to render to
 /// * `input_area` - The input bar area (popup renders above this)
-///
-/// # Phase 2 Updates
-/// - Calculates and stores word_limit in ai_state for next AI request
 pub fn render_popup(ai_state: &mut AiState, frame: &mut Frame, input_area: Rect) {
     if !ai_state.visible {
         return;
@@ -41,23 +38,17 @@ pub fn render_popup(ai_state: &mut AiState, frame: &mut Frame, input_area: Rect)
 
     let frame_area = frame.area();
 
-    // Calculate popup area (positioned above input bar)
     let popup_area = match calculate_popup_area(frame_area, input_area) {
         Some(area) => area,
-        None => return, // Not enough space
+        None => return,
     };
 
-    // Phase 2: Calculate and store word limit for next AI request
-    // Requirements: 2.1, 7.4
     ai_state.word_limit = calculate_word_limit(popup_area.width, popup_area.height);
 
-    // Clear background for floating effect
     popup::clear_area(frame, popup_area);
 
-    // Build content based on state
     let content = build_content(ai_state, popup_area.width.saturating_sub(4));
 
-    // Build title with keybinding hints
     let title = Line::from(vec![
         Span::raw(" "),
         Span::styled(
@@ -69,9 +60,6 @@ pub fn render_popup(ai_state: &mut AiState, frame: &mut Frame, input_area: Rect)
         Span::raw(" "),
     ]);
 
-    // Build hints for top-right of border
-    // Phase 3: Add selection keybindings if suggestions are available
-    // Requirements: 4.6, 7.3
     let hints = if !ai_state.suggestions.is_empty() {
         Line::from(vec![Span::styled(
             " Alt+1-5 or Alt+↑↓+Enter to apply | Ctrl+A to close ",
@@ -84,7 +72,6 @@ pub fn render_popup(ai_state: &mut AiState, frame: &mut Frame, input_area: Rect)
         )])
     };
 
-    // Create the popup widget with green border
     let popup_widget = Paragraph::new(content).wrap(Wrap { trim: false }).block(
         Block::default()
             .borders(Borders::ALL)

@@ -1,7 +1,3 @@
-//! Notification state management
-//!
-//! Provides structures for displaying transient notifications in the UI.
-
 use ratatui::style::Color;
 use std::time::{Duration, Instant};
 
@@ -18,7 +14,6 @@ pub enum NotificationType {
 }
 
 impl NotificationType {
-    /// Get the duration for this notification type
     fn duration(self) -> Option<Duration> {
         match self {
             NotificationType::Info => Some(Duration::from_millis(1500)),
@@ -27,7 +22,6 @@ impl NotificationType {
         }
     }
 
-    /// Get the style for this notification type
     fn style(self) -> NotificationStyle {
         match self {
             NotificationType::Info => NotificationStyle {
@@ -49,7 +43,6 @@ impl NotificationType {
     }
 }
 
-/// Style configuration for a notification
 #[derive(Debug, Clone)]
 pub struct NotificationStyle {
     pub fg: Color,
@@ -63,7 +56,6 @@ impl Default for NotificationStyle {
     }
 }
 
-/// A single notification with message, timing, and style
 #[derive(Debug, Clone)]
 pub struct Notification {
     pub message: String,
@@ -75,16 +67,14 @@ pub struct Notification {
     #[allow(dead_code)]
     pub notification_type: NotificationType,
     pub created_at: Instant,
-    pub duration: Option<Duration>, // None = permanent
+    pub duration: Option<Duration>,
 }
 
 impl Notification {
-    /// Create a new info notification (short duration, gray style)
     pub fn new(message: &str) -> Self {
         Self::with_type(message, NotificationType::Info)
     }
 
-    /// Create a notification with specified type
     pub fn with_type(message: &str, notification_type: NotificationType) -> Self {
         Self {
             message: message.to_string(),
@@ -95,7 +85,6 @@ impl Notification {
         }
     }
 
-    /// Check if notification has expired
     pub fn is_expired(&self) -> bool {
         match self.duration {
             Some(d) => self.created_at.elapsed() > d,
@@ -104,7 +93,6 @@ impl Notification {
     }
 }
 
-/// Notification state manager for the application
 #[derive(Debug, Default)]
 pub struct NotificationState {
     pub current: Option<Notification>,
@@ -115,17 +103,14 @@ impl NotificationState {
         Self::default()
     }
 
-    /// Show an info notification (gray, 1.5s)
     pub fn show(&mut self, message: &str) {
         self.current = Some(Notification::new(message));
     }
 
-    /// Show a notification with specified type
     pub fn show_with_type(&mut self, message: &str, notification_type: NotificationType) {
         self.current = Some(Notification::with_type(message, notification_type));
     }
 
-    /// Show a warning notification (yellow, 5s)
     pub fn show_warning(&mut self, message: &str) {
         self.show_with_type(message, NotificationType::Warning);
     }
@@ -160,12 +145,10 @@ impl NotificationState {
         false
     }
 
-    /// Get current notification if visible
     pub fn current(&self) -> Option<&Notification> {
         self.current.as_ref()
     }
 
-    /// Get current notification message if visible (test-only)
     #[cfg(test)]
     pub fn current_message(&self) -> Option<&str> {
         self.current.as_ref().map(|n| n.message.as_str())
@@ -176,8 +159,6 @@ impl NotificationState {
 mod tests {
     use super::*;
     use std::thread;
-
-    // ==================== Unit Tests ====================
 
     #[test]
     fn test_info_notification() {
@@ -276,10 +257,8 @@ mod tests {
         assert_eq!(notif.duration, None);
         assert!(!notif.is_expired()); // Should never expire
         assert!(!state.clear_if_expired()); // Should not clear
-        assert!(state.current().is_some()); // Still there
+        assert!(state.current().is_some());
     }
-
-    // ==================== Property-Based Tests ====================
 
     use proptest::prelude::*;
 

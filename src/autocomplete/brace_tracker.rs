@@ -1,34 +1,15 @@
-//! Lexer-aware brace tracking for jq queries.
-//!
-//! This module provides the `BraceTracker` component that tracks the nesting of
-//! braces `{}`, brackets `[]`, and parentheses `()` in jq queries. It correctly
-//! ignores braces inside string literals to enable accurate context detection
-//! for autocomplete suggestions.
-
 use super::scan_state::ScanState;
 
-/// Types of braces tracked by the BraceTracker
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum BraceType {
-    /// Curly braces `{ }`
     Curly,
-    /// Square brackets `[ ]`
     Square,
-    /// Parentheses `( )`
     Paren,
 }
 
-/// Tracks brace nesting in jq queries with lexer-aware scanning.
-///
-/// The tracker maintains a stack of unclosed open braces and their positions,
-/// correctly handling string literals and escape sequences to avoid counting
-/// braces that appear inside strings.
 #[derive(Debug, Clone)]
 pub struct BraceTracker {
-    /// Stack of unclosed open braces: (byte_position, type)
-    /// Maintained in LIFO order for O(1) push/pop
     open_braces: Vec<(usize, BraceType)>,
-    /// Query snapshot for staleness detection
     query_snapshot: String,
 }
 
@@ -39,7 +20,6 @@ impl Default for BraceTracker {
 }
 
 impl BraceTracker {
-    /// Create a new empty BraceTracker
     pub fn new() -> Self {
         Self {
             open_braces: Vec::new(),
@@ -47,16 +27,6 @@ impl BraceTracker {
         }
     }
 
-    /// Rebuild the brace tracking state from a query string.
-    ///
-    /// This performs a lexer-aware scan of the query, tracking open braces
-    /// while correctly ignoring braces inside string literals.
-    ///
-    /// # Arguments
-    /// * `query` - The jq query string to analyze
-    ///
-    /// # Complexity
-    /// O(n) where n is the query length
     pub fn rebuild(&mut self, query: &str) {
         self.open_braces.clear();
         self.query_snapshot = query.to_string();
@@ -64,14 +34,12 @@ impl BraceTracker {
         let mut state = ScanState::default();
 
         for (pos, ch) in query.char_indices() {
-            // Only process braces when not inside a string
             if !state.is_in_string() {
                 match ch {
                     '{' => self.open_braces.push((pos, BraceType::Curly)),
                     '[' => self.open_braces.push((pos, BraceType::Square)),
                     '(' => self.open_braces.push((pos, BraceType::Paren)),
                     '}' => {
-                        // Only pop if matching type (graceful handling of mismatched braces)
                         if let Some((_, BraceType::Curly)) = self.open_braces.last() {
                             self.open_braces.pop();
                         }
@@ -93,22 +61,7 @@ impl BraceTracker {
         }
     }
 
-    /// Get the innermost brace context at a given position.
-    ///
-    /// Returns the type of the innermost unclosed brace that contains the
-    /// given position, or `None` if not inside any braces.
-    ///
-    /// # Arguments
-    /// * `pos` - The byte position to query
-    ///
-    /// # Returns
-    /// The `BraceType` of the innermost containing brace, or `None`
-    ///
-    /// # Complexity
-    /// O(k) where k is the nesting depth
     pub fn context_at(&self, pos: usize) -> Option<BraceType> {
-        // Find the innermost brace that opened before this position
-        // Since we track unclosed braces, we look for the last one that opened before pos
         for (brace_pos, brace_type) in self.open_braces.iter().rev() {
             if *brace_pos < pos {
                 return Some(*brace_type);
@@ -117,25 +70,11 @@ impl BraceTracker {
         None
     }
 
-    /// Check if the given position is inside an object literal `{}`.
-    ///
-    /// # Arguments
-    /// * `pos` - The byte position to query
-    ///
-    /// # Returns
-    /// `true` if the innermost unclosed brace at this position is a curly brace
     pub fn is_in_object(&self, pos: usize) -> bool {
         self.context_at(pos) == Some(BraceType::Curly)
     }
 
-    /// Check if the tracker is stale (query has changed since last rebuild).
-    ///
-    /// # Arguments
-    /// * `current_query` - The current query string to compare against
-    ///
-    /// # Returns
-    /// `true` if the query has changed and rebuild is needed
-    #[allow(dead_code)] // Part of public API for potential future optimization
+    #[allow(dead_code)]
     pub fn is_stale(&self, current_query: &str) -> bool {
         self.query_snapshot != current_query
     }
@@ -145,8 +84,6 @@ impl BraceTracker {
 mod tests {
     use super::*;
     use proptest::prelude::*;
-
-    // ========== Unit Tests ==========
 
     #[test]
     fn test_empty_query() {
@@ -269,34 +206,25 @@ mod tests {
     #[test]
     fn test_real_jq_pattern_map() {
         let mut tracker = BraceTracker::new();
-        // Test partial query (user is still typing)
         tracker.rebuild("map({na");
-        // Position 5 is inside the object (after '{' at position 4)
         assert!(tracker.is_in_object(5));
 
-        // Test complete query - all braces closed
         tracker.rebuild("map({name: .name})");
-        // After everything closes, no context
         assert_eq!(tracker.context_at(18), None);
-        // Even position 5 has no unclosed context after full query
         assert_eq!(tracker.context_at(5), None);
     }
 
     #[test]
     fn test_mismatched_braces() {
         let mut tracker = BraceTracker::new();
-        // Mismatched: opening { but closing with ]
         tracker.rebuild("{test]");
-        // The ] doesn't match {, so { stays open
         assert!(tracker.is_in_object(5));
     }
 
     #[test]
     fn test_unclosed_string() {
         let mut tracker = BraceTracker::new();
-        // Unclosed string - everything after " is in string
         tracker.rebuild("\"unclosed {");
-        // The { is inside the unclosed string
         assert_eq!(tracker.context_at(10), None);
     }
 
@@ -316,8 +244,6 @@ mod tests {
         // Position 0 is before the opening brace
         assert_eq!(tracker.context_at(0), None);
     }
-
-    // ========== Property-Based Tests ==========
 
     proptest! {
         /// **Feature: object-key-autocomplete, Property 4: BraceTracker never panics**

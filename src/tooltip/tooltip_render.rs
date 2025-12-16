@@ -1,7 +1,3 @@
-//! Tooltip popup rendering
-//!
-//! This module handles rendering of the function tooltip popup.
-
 use ratatui::{
     Frame,
     layout::Rect,
@@ -14,15 +10,13 @@ use crate::app::App;
 use crate::tooltip::{get_operator_content, get_tooltip_content};
 use crate::widgets::popup;
 
-// Tooltip popup display constants
 const TOOLTIP_MIN_WIDTH: u16 = 40;
 const TOOLTIP_MAX_WIDTH: u16 = 90;
 const TOOLTIP_BORDER_HEIGHT: u16 = 2;
 const TOOLTIP_BORDER_WIDTH: u16 = 4; // left border + padding + right border + padding
 const TOOLTIP_MIN_HEIGHT: u16 = 8;
-const TOOLTIP_MAX_HEIGHT: u16 = 18; // Increased to allow for wrapped tips
+const TOOLTIP_MAX_HEIGHT: u16 = 18;
 
-/// Wrap text to fit within a given width, breaking at word boundaries (max 2 lines)
 fn wrap_text(text: &str, max_width: usize) -> Vec<String> {
     if text.len() <= max_width {
         return vec![text.to_string()];
@@ -55,7 +49,6 @@ fn wrap_text(text: &str, max_width: usize) -> Vec<String> {
     lines
 }
 
-/// Render the tooltip popup on the right side, above the input field
 pub fn render_popup(app: &App, frame: &mut Frame, input_area: Rect) {
     // Determine what to show: function takes priority over operator
     let (title_prefix, name, content) = if let Some(func) = &app.tooltip.current_function {
@@ -246,14 +239,6 @@ pub fn render_popup(app: &App, frame: &mut Frame, input_area: Rect) {
     frame.render_widget(popup_widget, popup_area);
 }
 
-/// Generate the title text for a tooltip
-///
-/// # Arguments
-/// * `is_function` - true for function, false for operator
-/// * `name` - the function or operator name
-///
-/// # Returns
-/// The formatted title string: "fn: <name>" or "operator: <op>"
 #[cfg(test)]
 pub fn format_tooltip_title(is_function: bool, name: &str) -> String {
     if is_function {
@@ -270,8 +255,6 @@ mod tests {
     use crate::tooltip::operator_content::OPERATOR_CONTENT;
     use proptest::prelude::*;
 
-    // ==================== Unit Tests ====================
-
     #[test]
     fn test_format_tooltip_title_function() {
         assert_eq!(format_tooltip_title(true, "select"), "fn: select");
@@ -286,8 +269,6 @@ mod tests {
         assert_eq!(format_tooltip_title(false, "//="), "operator: //=");
         assert_eq!(format_tooltip_title(false, ".."), "operator: ..");
     }
-
-    // ==================== Property Tests ====================
 
     // **Feature: operator-tooltips, Property 6: Title format correctness**
     // *For any* function name, the title generator SHALL produce `fn: <name>`.

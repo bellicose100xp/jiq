@@ -92,13 +92,13 @@ pub struct AiState {
     /// ID of the currently in-flight request, if any
     /// Used to track active requests for cancellation
     pub in_flight_request_id: Option<u64>,
-    /// Parsed suggestions from AI response (Phase 2)
+    /// Parsed suggestions from AI response
     /// Empty if response couldn't be parsed into structured suggestions
     pub suggestions: Vec<Suggestion>,
-    /// Current word limit based on popup dimensions (Phase 2)
+    /// Current word limit based on popup dimensions
     /// Updated when popup is rendered, used for next AI request
     pub word_limit: u16,
-    /// Selection state for suggestion navigation (Phase 3)
+    /// Selection state for suggestion navigation
     /// Tracks which suggestion is selected and navigation mode
     pub selection: SelectionState,
 }

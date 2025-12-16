@@ -1,5 +1,3 @@
-//! Tests for scroll coordination
-
 use super::super::*;
 use crate::test_utils::test_helpers::test_app;
 use proptest::prelude::*;

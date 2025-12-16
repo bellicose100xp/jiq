@@ -3,15 +3,11 @@
 //! Placeholder for future caching of AI suggestions.
 
 /// Suggestion cache (stub implementation)
-// TODO: Remove #[allow(dead_code)] when cache is implemented in Phase 4
-#[allow(dead_code)] // Phase 1: Scaffolded for Phase 4
+#[allow(dead_code)]
 #[derive(Debug, Default)]
-pub struct SuggestionCache {
-    // Future: cache entries
-}
+pub struct SuggestionCache {}
 
-// TODO: Remove #[allow(dead_code)] when cache is implemented in Phase 4
-#[allow(dead_code)] // Phase 1: Scaffolded for Phase 4
+#[allow(dead_code)]
 impl SuggestionCache {
     /// Create a new empty cache
     pub fn new() -> Self {
