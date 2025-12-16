@@ -4,7 +4,7 @@ use super::*;
 
 #[test]
 fn test_poll_without_channel_does_nothing() {
-    let mut ai_state = AiState::new(true, 1000);
+    let mut ai_state = AiState::new(true);
     // No channel set
 
     poll_response_channel(&mut ai_state);
@@ -16,7 +16,7 @@ fn test_poll_without_channel_does_nothing() {
 
 #[test]
 fn test_poll_processes_chunk() {
-    let mut ai_state = AiState::new(true, 1000);
+    let mut ai_state = AiState::new(true);
     let (_tx, rx) = mpsc::channel();
     ai_state.response_rx = Some(rx);
     ai_state.loading = true;
@@ -41,7 +41,7 @@ fn test_poll_processes_chunk() {
 
 #[test]
 fn test_poll_processes_multiple_chunks() {
-    let mut ai_state = AiState::new(true, 1000);
+    let mut ai_state = AiState::new(true);
     let (tx, rx) = mpsc::channel();
     ai_state.response_rx = Some(rx);
     ai_state.start_request();
@@ -65,7 +65,7 @@ fn test_poll_processes_multiple_chunks() {
 
 #[test]
 fn test_poll_processes_complete() {
-    let mut ai_state = AiState::new(true, 1000);
+    let mut ai_state = AiState::new(true);
     let (tx, rx) = mpsc::channel();
     ai_state.response_rx = Some(rx);
     ai_state.start_request();
@@ -82,7 +82,7 @@ fn test_poll_processes_complete() {
 
 #[test]
 fn test_poll_processes_error() {
-    let mut ai_state = AiState::new(true, 1000);
+    let mut ai_state = AiState::new(true);
     let (tx, rx) = mpsc::channel();
     ai_state.response_rx = Some(rx);
     ai_state.loading = true;
@@ -98,7 +98,7 @@ fn test_poll_processes_error() {
 
 #[test]
 fn test_poll_processes_cancelled() {
-    let mut ai_state = AiState::new(true, 1000);
+    let mut ai_state = AiState::new(true);
     let (tx, rx) = mpsc::channel();
     ai_state.response_rx = Some(rx);
     ai_state.start_request();
@@ -114,7 +114,7 @@ fn test_poll_processes_cancelled() {
 
 #[test]
 fn test_poll_handles_disconnected_channel() {
-    let mut ai_state = AiState::new(true, 1000);
+    let mut ai_state = AiState::new(true);
     let (tx, rx) = mpsc::channel::<AiResponse>();
     ai_state.response_rx = Some(rx);
     ai_state.loading = true;
@@ -131,7 +131,7 @@ fn test_poll_handles_disconnected_channel() {
 
 #[test]
 fn test_poll_empty_channel_does_nothing() {
-    let mut ai_state = AiState::new(true, 1000);
+    let mut ai_state = AiState::new(true);
     let (_tx, rx) = mpsc::channel::<AiResponse>();
     ai_state.response_rx = Some(rx);
     ai_state.loading = true;
@@ -148,7 +148,7 @@ fn test_poll_empty_channel_does_nothing() {
 
 #[test]
 fn test_stale_responses_filtered() {
-    let mut ai_state = AiState::new(true, 1000);
+    let mut ai_state = AiState::new(true);
     let (tx, rx) = mpsc::channel();
     ai_state.response_rx = Some(rx);
 
@@ -184,7 +184,7 @@ fn test_stale_responses_filtered() {
 
 #[test]
 fn test_stale_complete_filtered() {
-    let mut ai_state = AiState::new(true, 1000);
+    let mut ai_state = AiState::new(true);
     let (tx, rx) = mpsc::channel();
     ai_state.response_rx = Some(rx);
 
@@ -210,7 +210,7 @@ fn test_stale_complete_filtered() {
 // Test: query changes from error to success → stale response cleared, new request sent
 #[test]
 fn test_query_error_to_success_clears_response() {
-    let mut ai_state = AiState::new(true, 1000);
+    let mut ai_state = AiState::new(true);
     ai_state.enabled = true;
     ai_state.visible = true;
     ai_state.response = "Error explanation".to_string();
@@ -232,7 +232,7 @@ fn test_query_error_to_success_clears_response() {
 // Test: query changes from one error to different error → old response cleared
 #[test]
 fn test_query_error_to_different_error_clears_response() {
-    let mut ai_state = AiState::new(true, 1000);
+    let mut ai_state = AiState::new(true);
     ai_state.enabled = true;
     ai_state.visible = true;
     ai_state.response = "Old error explanation".to_string();
@@ -249,7 +249,7 @@ fn test_query_error_to_different_error_clears_response() {
 // Test: different query with same error → new request (query changed)
 #[test]
 fn test_different_query_same_error_triggers_new_request() {
-    let mut ai_state = AiState::new(true, 1000);
+    let mut ai_state = AiState::new(true);
     ai_state.enabled = true;
     ai_state.response = "Old explanation".to_string();
     ai_state.set_last_query_hash(".query1");
@@ -265,7 +265,7 @@ fn test_different_query_same_error_triggers_new_request() {
 // Test: same query with same error → no new request
 #[test]
 fn test_same_query_same_error_no_change() {
-    let mut ai_state = AiState::new(true, 1000);
+    let mut ai_state = AiState::new(true);
     ai_state.enabled = true;
     ai_state.response = "Existing explanation".to_string();
     ai_state.set_last_query_hash(".same");
@@ -281,7 +281,7 @@ fn test_same_query_same_error_no_change() {
 // Test: same query with different error → no new request (query is the only trigger)
 #[test]
 fn test_same_query_different_error_no_change() {
-    let mut ai_state = AiState::new(true, 1000);
+    let mut ai_state = AiState::new(true);
     ai_state.enabled = true;
     ai_state.response = "Existing explanation".to_string();
     ai_state.set_last_query_hash(".same");
@@ -297,7 +297,7 @@ fn test_same_query_different_error_no_change() {
 // Test: different query with different error → new request (query changed)
 #[test]
 fn test_different_query_different_error_triggers_new_request() {
-    let mut ai_state = AiState::new(true, 1000);
+    let mut ai_state = AiState::new(true);
     ai_state.enabled = true;
     ai_state.response = "Old explanation".to_string();
     ai_state.set_last_query_hash(".query1");
@@ -313,7 +313,7 @@ fn test_different_query_different_error_triggers_new_request() {
 // Test: successful query triggers AI request with output context
 #[test]
 fn test_success_triggers_ai_request() {
-    let mut ai_state = AiState::new(true, 1000);
+    let mut ai_state = AiState::new(true);
     ai_state.enabled = true;
     ai_state.visible = true; // Popup must be visible for requests to be sent
     let (tx, rx) = mpsc::channel();
@@ -343,7 +343,7 @@ fn test_success_triggers_ai_request() {
 // Test: error query triggers AI request with error context
 #[test]
 fn test_error_triggers_ai_request() {
-    let mut ai_state = AiState::new(true, 1000);
+    let mut ai_state = AiState::new(true);
     ai_state.enabled = true;
     ai_state.visible = true; // Popup must be visible for requests to be sent
     let (tx, rx) = mpsc::channel();
@@ -377,7 +377,7 @@ fn test_error_triggers_ai_request() {
 // Test: query change cancels in-flight request
 #[test]
 fn test_query_change_cancels_in_flight_request() {
-    let mut ai_state = AiState::new(true, 1000);
+    let mut ai_state = AiState::new(true);
     ai_state.enabled = true;
     ai_state.visible = true; // Popup must be visible for requests to be sent
     let (tx, rx) = mpsc::channel();
@@ -424,7 +424,7 @@ fn test_query_change_cancels_in_flight_request() {
 // Test: handle_query_result wrapper works correctly
 #[test]
 fn test_handle_query_result_wrapper() {
-    let mut ai_state = AiState::new(true, 1000);
+    let mut ai_state = AiState::new(true);
     ai_state.enabled = true;
     ai_state.set_last_query_hash(".old");
 
@@ -439,7 +439,7 @@ fn test_handle_query_result_wrapper() {
 // Test: same query repeated → no duplicate AI requests
 #[test]
 fn test_same_query_no_duplicate_requests() {
-    let mut ai_state = AiState::new(true, 1000);
+    let mut ai_state = AiState::new(true);
     ai_state.enabled = true;
     let (tx, rx) = mpsc::channel();
     ai_state.request_tx = Some(tx);
@@ -471,7 +471,7 @@ fn test_same_query_no_duplicate_requests() {
 // Test: AI disabled → no requests sent
 #[test]
 fn test_ai_disabled_no_requests() {
-    let mut ai_state = AiState::new(true, 1000);
+    let mut ai_state = AiState::new(true);
     ai_state.enabled = false; // AI disabled
     let (tx, rx) = mpsc::channel();
     ai_state.request_tx = Some(tx);
@@ -491,7 +491,7 @@ fn test_ai_disabled_no_requests() {
 /// Test: visible=true → AI requests sent on error
 #[test]
 fn test_visible_sends_requests_on_error() {
-    let mut ai_state = AiState::new(true, 1000);
+    let mut ai_state = AiState::new(true);
     ai_state.enabled = true;
     ai_state.visible = true; // Popup visible
     let (tx, rx) = mpsc::channel();
@@ -527,7 +527,7 @@ fn test_visible_sends_requests_on_error() {
 /// Test: visible=false → no AI requests on error
 #[test]
 fn test_hidden_no_requests_on_error() {
-    let mut ai_state = AiState::new(true, 1000);
+    let mut ai_state = AiState::new(true);
     ai_state.enabled = true;
     ai_state.visible = false; // Popup hidden
     let (tx, rx) = mpsc::channel();
@@ -548,7 +548,7 @@ fn test_hidden_no_requests_on_error() {
 /// Test: visible=true with success → AI request sent
 #[test]
 fn test_visible_sends_requests_on_success() {
-    let mut ai_state = AiState::new(true, 1000);
+    let mut ai_state = AiState::new(true);
     ai_state.enabled = true;
     ai_state.visible = true; // Popup visible
     let (tx, rx) = mpsc::channel();
@@ -586,7 +586,7 @@ fn test_visible_sends_requests_on_success() {
 /// Test: visible=false with success → no AI request sent
 #[test]
 fn test_hidden_no_requests_on_success() {
-    let mut ai_state = AiState::new(true, 1000);
+    let mut ai_state = AiState::new(true);
     ai_state.enabled = true;
     ai_state.visible = false; // Popup hidden
     let (tx, rx) = mpsc::channel();

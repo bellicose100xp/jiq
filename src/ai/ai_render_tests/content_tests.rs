@@ -35,7 +35,7 @@ fn test_wrap_text_multiline() {
 
 #[test]
 fn test_build_content_empty_state() {
-    let state = AiState::new_with_config(true, true, 1000);
+    let state = AiState::new_with_config(true, true);
     let content = build_content(&state, 60);
 
     // Should have help text
@@ -44,7 +44,7 @@ fn test_build_content_empty_state() {
 
 #[test]
 fn test_build_content_not_configured() {
-    let state = AiState::new_with_config(true, false, 1000);
+    let state = AiState::new_with_config(true, false);
     let content = build_content(&state, 60);
     let text: String = content
         .lines
@@ -60,7 +60,7 @@ fn test_build_content_not_configured() {
 
 #[test]
 fn test_build_content_loading() {
-    let mut state = AiState::new_with_config(true, true, 1000);
+    let mut state = AiState::new_with_config(true, true);
     state.loading = true;
 
     let content = build_content(&state, 60);
@@ -76,7 +76,7 @@ fn test_build_content_loading() {
 
 #[test]
 fn test_build_content_error() {
-    let mut state = AiState::new_with_config(true, true, 1000);
+    let mut state = AiState::new_with_config(true, true);
     state.error = Some("Network error".to_string());
 
     let content = build_content(&state, 60);
@@ -93,7 +93,7 @@ fn test_build_content_error() {
 
 #[test]
 fn test_build_content_response() {
-    let mut state = AiState::new_with_config(true, true, 1000);
+    let mut state = AiState::new_with_config(true, true);
     state.response = "Try using .foo instead".to_string();
 
     let content = build_content(&state, 60);
@@ -109,7 +109,7 @@ fn test_build_content_response() {
 
 #[test]
 fn test_build_content_loading_with_previous() {
-    let mut state = AiState::new_with_config(true, true, 1000);
+    let mut state = AiState::new_with_config(true, true);
     state.loading = true;
     state.previous_response = Some("Previous answer".to_string());
 
@@ -141,7 +141,7 @@ proptest! {
     fn prop_selection_number_rendering(suggestion_count in 1usize..=5) {
         use crate::ai::ai_state::{Suggestion, SuggestionType};
 
-        let mut state = AiState::new_with_config(true, true, 1000);
+        let mut state = AiState::new_with_config(true, true);
         state.visible = true;
         state.response = "AI response".to_string();
 
@@ -185,7 +185,7 @@ proptest! {
     fn prop_selection_number_limit(suggestion_count in 6usize..15) {
         use crate::ai::ai_state::{Suggestion, SuggestionType};
 
-        let mut state = AiState::new_with_config(true, true, 1000);
+        let mut state = AiState::new_with_config(true, true);
         state.visible = true;
         state.response = "AI response".to_string();
 
@@ -241,7 +241,7 @@ proptest! {
 
         prop_assume!(selected_index < suggestion_count);
 
-        let mut state = AiState::new_with_config(true, true, 1000);
+        let mut state = AiState::new_with_config(true, true);
         state.visible = true;
         state.response = "AI response".to_string();
 

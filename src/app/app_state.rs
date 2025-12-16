@@ -58,7 +58,6 @@ impl App {
         let ai_state = AiState::new_with_config(
             config.ai.enabled,
             config.ai.anthropic.api_key.is_some() && config.ai.anthropic.model.is_some(),
-            config.ai.debounce_ms,
         );
 
         // Requirements 9.5: When AI is enabled and visible by default, tooltip starts hidden

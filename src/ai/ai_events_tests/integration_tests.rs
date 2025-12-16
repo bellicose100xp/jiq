@@ -6,7 +6,7 @@ use super::*;
 /// Validates the full flow for error results
 #[test]
 fn test_full_flow_error_result() {
-    let mut ai_state = AiState::new(true, 1000);
+    let mut ai_state = AiState::new(true);
     ai_state.enabled = true;
     ai_state.visible = true; // Popup must be visible for requests to be sent
     let (tx, rx) = mpsc::channel();
@@ -72,7 +72,7 @@ fn test_full_flow_error_result() {
 /// Validates the full flow for success results
 #[test]
 fn test_full_flow_success_result() {
-    let mut ai_state = AiState::new(true, 1000);
+    let mut ai_state = AiState::new(true);
     ai_state.enabled = true;
     ai_state.visible = true; // Popup must be visible for requests to be sent
     let (tx, rx) = mpsc::channel();
@@ -137,7 +137,7 @@ fn test_full_flow_success_result() {
 /// Validates that rapid query changes result in proper cancellation
 #[test]
 fn test_rapid_typing_only_last_result_triggers() {
-    let mut ai_state = AiState::new(true, 1000);
+    let mut ai_state = AiState::new(true);
     ai_state.enabled = true;
     ai_state.visible = true; // Popup must be visible for requests to be sent
     let (tx, rx) = mpsc::channel();

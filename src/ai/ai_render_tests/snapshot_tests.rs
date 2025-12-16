@@ -34,7 +34,7 @@ fn render_ai_popup_to_string(ai_state: &mut AiState, width: u16, height: u16) ->
 
 #[test]
 fn snapshot_ai_popup_empty_state() {
-    let mut state = AiState::new_with_config(true, true, 1000);
+    let mut state = AiState::new_with_config(true, true);
     state.visible = true;
 
     let output = render_ai_popup_to_string(&mut state, 100, 30);
@@ -43,7 +43,7 @@ fn snapshot_ai_popup_empty_state() {
 
 #[test]
 fn snapshot_ai_popup_loading_state() {
-    let mut state = AiState::new_with_config(true, true, 1000);
+    let mut state = AiState::new_with_config(true, true);
     state.visible = true;
     state.loading = true;
 
@@ -53,7 +53,7 @@ fn snapshot_ai_popup_loading_state() {
 
 #[test]
 fn snapshot_ai_popup_error_state() {
-    let mut state = AiState::new_with_config(true, true, 1000);
+    let mut state = AiState::new_with_config(true, true);
     state.visible = true;
     state.error = Some("API Error: Rate limit exceeded. Please try again later.".to_string());
 
@@ -63,7 +63,7 @@ fn snapshot_ai_popup_error_state() {
 
 #[test]
 fn snapshot_ai_popup_response_state() {
-    let mut state = AiState::new_with_config(true, true, 1000);
+    let mut state = AiState::new_with_config(true, true);
     state.visible = true;
     state.response = "The error in your query `.foo[` is a missing closing bracket.\n\nTry using `.foo[]` to iterate over the array, or `.foo[0]` to access the first element.".to_string();
 
@@ -73,7 +73,7 @@ fn snapshot_ai_popup_response_state() {
 
 #[test]
 fn snapshot_ai_popup_loading_with_previous() {
-    let mut state = AiState::new_with_config(true, true, 1000);
+    let mut state = AiState::new_with_config(true, true);
     state.visible = true;
     state.loading = true;
     state.previous_response = Some("Previous suggestion: Use .foo instead of .bar".to_string());
@@ -84,7 +84,7 @@ fn snapshot_ai_popup_loading_with_previous() {
 
 #[test]
 fn snapshot_ai_popup_not_visible() {
-    let mut state = AiState::new_with_config(true, true, 1000);
+    let mut state = AiState::new_with_config(true, true);
     // Phase 2: Explicitly set visible to false to test hidden state
     state.visible = false;
 
@@ -94,7 +94,7 @@ fn snapshot_ai_popup_not_visible() {
 
 #[test]
 fn snapshot_ai_popup_not_configured() {
-    let mut state = AiState::new_with_config(true, false, 1000);
+    let mut state = AiState::new_with_config(true, false);
     state.visible = true;
 
     let output = render_ai_popup_to_string(&mut state, 100, 30);
@@ -109,7 +109,7 @@ fn snapshot_ai_popup_not_configured() {
 fn snapshot_ai_popup_with_suggestions() {
     use crate::ai::ai_state::{Suggestion, SuggestionType};
 
-    let mut state = AiState::new_with_config(true, true, 1000);
+    let mut state = AiState::new_with_config(true, true);
     state.visible = true;
     state.response =
         "1. [Fix] .users[] | select(.active)\n   Filters to only active users".to_string();
@@ -137,7 +137,7 @@ fn snapshot_ai_popup_with_suggestions() {
 
 #[test]
 fn snapshot_ai_popup_raw_response_fallback() {
-    let mut state = AiState::new_with_config(true, true, 1000);
+    let mut state = AiState::new_with_config(true, true);
     state.visible = true;
     // Response without parseable suggestions - should fall back to raw display
     state.response = "This is a plain text response without structured suggestions.\n\nIt should be displayed as-is.".to_string();
@@ -155,7 +155,7 @@ fn snapshot_ai_popup_raw_response_fallback() {
 fn snapshot_ai_popup_long_query_wrapping() {
     use crate::ai::ai_state::{Suggestion, SuggestionType};
 
-    let mut state = AiState::new_with_config(true, true, 1000);
+    let mut state = AiState::new_with_config(true, true);
     state.visible = true;
     // Set response to non-empty so suggestions are displayed
     state.response = "AI response with suggestions".to_string();
@@ -186,7 +186,7 @@ fn snapshot_ai_popup_long_query_wrapping() {
 fn snapshot_ai_popup_with_selection_numbers() {
     use crate::ai::ai_state::{Suggestion, SuggestionType};
 
-    let mut state = AiState::new_with_config(true, true, 1000);
+    let mut state = AiState::new_with_config(true, true);
     state.visible = true;
     state.response = "AI response with suggestions".to_string();
     state.suggestions = vec![
@@ -215,7 +215,7 @@ fn snapshot_ai_popup_with_selection_numbers() {
 fn snapshot_ai_popup_with_selected_suggestion() {
     use crate::ai::ai_state::{Suggestion, SuggestionType};
 
-    let mut state = AiState::new_with_config(true, true, 1000);
+    let mut state = AiState::new_with_config(true, true);
     state.visible = true;
     state.response = "AI response with suggestions".to_string();
     state.suggestions = vec![
@@ -248,7 +248,7 @@ fn snapshot_ai_popup_with_selected_suggestion() {
 fn snapshot_ai_popup_with_selection_hints() {
     use crate::ai::ai_state::{Suggestion, SuggestionType};
 
-    let mut state = AiState::new_with_config(true, true, 1000);
+    let mut state = AiState::new_with_config(true, true);
     state.visible = true;
     state.response = "AI response with suggestions".to_string();
     state.suggestions = vec![Suggestion {
@@ -265,7 +265,7 @@ fn snapshot_ai_popup_with_selection_hints() {
 fn snapshot_ai_popup_more_than_five_suggestions() {
     use crate::ai::ai_state::{Suggestion, SuggestionType};
 
-    let mut state = AiState::new_with_config(true, true, 1000);
+    let mut state = AiState::new_with_config(true, true);
     state.visible = true;
     state.response = "AI response with many suggestions".to_string();
     state.suggestions = vec![

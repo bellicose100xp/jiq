@@ -5,7 +5,6 @@
 
 use std::sync::mpsc::{Receiver, Sender};
 
-use super::ai_debouncer::AiDebouncer;
 use super::selection::SelectionState;
 
 // Re-export for backward compatibility
@@ -80,10 +79,6 @@ pub struct AiState {
     pub response: String,
     /// Previous response (preserved when starting a new request)
     pub previous_response: Option<String>,
-    /// Debouncer for API requests
-    // TODO: Remove #[allow(dead_code)] when debouncer is integrated
-    #[allow(dead_code)] // Phase 1: Reserved for future debouncing
-    pub debouncer: AiDebouncer,
     /// Channel to send requests to the worker thread
     pub request_tx: Option<Sender<AiRequest>>,
     /// Channel to receive responses from the worker thread
@@ -110,6 +105,6 @@ pub struct AiState {
 
 impl Default for AiState {
     fn default() -> Self {
-        Self::new_with_config(false, false, 1000)
+        Self::new_with_config(false, false)
     }
 }
