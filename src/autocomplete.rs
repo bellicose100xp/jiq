@@ -7,6 +7,10 @@ pub mod jq_functions;
 mod result_analyzer;
 mod scan_state;
 
+#[cfg(test)]
+#[path = "autocomplete/insertion_tests.rs"]
+mod insertion_tests;
+
 pub use brace_tracker::BraceTracker;
 
 pub use context::{

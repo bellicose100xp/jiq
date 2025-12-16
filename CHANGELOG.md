@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Changed
+- **Code Organization**: Refactored large source files (>1000 lines) into smaller, focused modules
+  - Split `ai_events_tests.rs` (1064 lines) into 8 test modules
+  - Split `ai_state.rs` (1036 lines) into lifecycle, suggestions, and response modules
+  - Split `ai_render.rs` (1265 lines) into layout, content, and text modules
+  - Split `search_events.rs` (1432 lines) into navigation and scroll modules
+  - Split `autocomplete/insertion.rs` (1619 lines) into query manipulation, cursor, and execution modules
+  - All source files now under 1000 lines for improved maintainability
+  - Maintained existing module structure pattern (no mod.rs files)
+  - All tests pass, no functionality changes
+
 ## [2.21.2] - 2025-12-12
 
 ### Changed

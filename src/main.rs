@@ -191,11 +191,11 @@ fn run(
 ///
 /// # Requirements
 /// - 1.1: WHEN a user adds an `[ai]` section with `enabled = true` and valid credentials
-///        THEN the AI_Assistant SHALL initialize successfully
+///   THEN the AI_Assistant SHALL initialize successfully
 /// - 1.3: WHEN the `[ai.anthropic]` section has a missing or empty `api_key` field
-///        THEN the AI_Assistant SHALL display a configuration error message
+///   THEN the AI_Assistant SHALL display a configuration error message
 /// - 4.1: WHEN the AI provider sends a streaming response THEN the AI_Popup
-///        SHALL display text incrementally as chunks arrive
+///   SHALL display text incrementally as chunks arrive
 fn setup_ai_worker(app: &mut App, config: &config::Config) {
     // Only set up worker if AI is enabled
     if !config.ai.enabled {

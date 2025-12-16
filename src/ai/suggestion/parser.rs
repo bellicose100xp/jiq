@@ -42,7 +42,7 @@ impl SuggestionType {
     }
 
     /// Parse suggestion type from string
-    pub fn from_str(s: &str) -> Option<Self> {
+    pub fn parse_type(s: &str) -> Option<Self> {
         match s.to_lowercase().as_str() {
             "fix" => Some(SuggestionType::Fix),
             "optimize" => Some(SuggestionType::Optimize),
@@ -134,7 +134,7 @@ fn parse_suggestion_line(line: &str, remaining_lines: &[&str]) -> Option<(Sugges
     let type_start = dot_pos + 3; // Skip ". ["
     let type_end = line[type_start..].find(']')? + type_start;
     let type_str = &line[type_start..type_end];
-    let suggestion_type = SuggestionType::from_str(type_str)?;
+    let suggestion_type = SuggestionType::parse_type(type_str)?;
 
     // Query is everything after "] "
     let query_start = type_end + 1;
@@ -207,15 +207,18 @@ mod tests {
 
     #[test]
     fn test_suggestion_type_from_str() {
-        assert_eq!(SuggestionType::from_str("Fix"), Some(SuggestionType::Fix));
-        assert_eq!(SuggestionType::from_str("fix"), Some(SuggestionType::Fix));
-        assert_eq!(SuggestionType::from_str("FIX"), Some(SuggestionType::Fix));
+        assert_eq!(SuggestionType::parse_type("Fix"), Some(SuggestionType::Fix));
+        assert_eq!(SuggestionType::parse_type("fix"), Some(SuggestionType::Fix));
+        assert_eq!(SuggestionType::parse_type("FIX"), Some(SuggestionType::Fix));
         assert_eq!(
-            SuggestionType::from_str("Optimize"),
+            SuggestionType::parse_type("Optimize"),
             Some(SuggestionType::Optimize)
         );
-        assert_eq!(SuggestionType::from_str("Next"), Some(SuggestionType::Next));
-        assert_eq!(SuggestionType::from_str("Invalid"), None);
+        assert_eq!(
+            SuggestionType::parse_type("Next"),
+            Some(SuggestionType::Next)
+        );
+        assert_eq!(SuggestionType::parse_type("Invalid"), None);
     }
 
     #[test]

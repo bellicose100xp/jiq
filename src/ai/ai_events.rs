@@ -113,12 +113,12 @@ pub fn handle_suggestion_selection(
     }
 
     // 3. Try Enter to apply navigated selection
-    if let Some(index) = keybindings::handle_apply_selection(key, &ai_state.selection) {
-        if let Some(suggestion) = ai_state.suggestions.get(index) {
-            apply_suggestion(suggestion, input_state, query_state, autocomplete_state);
-            ai_state.selection.clear_selection();
-            return true;
-        }
+    if let Some(index) = keybindings::handle_apply_selection(key, &ai_state.selection)
+        && let Some(suggestion) = ai_state.suggestions.get(index)
+    {
+        apply_suggestion(suggestion, input_state, query_state, autocomplete_state);
+        ai_state.selection.clear_selection();
+        return true;
     }
 
     false

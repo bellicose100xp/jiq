@@ -24,7 +24,7 @@ use crate::config::ai_types::AiConfig;
 ///
 /// # Requirements
 /// - 4.1: WHEN the AI provider sends a streaming response THEN the AI_Popup
-///        SHALL display text incrementally as chunks arrive
+///   SHALL display text incrementally as chunks arrive
 pub fn spawn_worker(
     config: &AiConfig,
     request_rx: Receiver<AiRequest>,
@@ -79,9 +79,9 @@ fn worker_loop(
 ///
 /// # Requirements
 /// - 5.4: WHEN a query change occurs while an API request is in-flight THEN
-///        the AI_Assistant SHALL send a cancel signal to abort the previous request
+///   the AI_Assistant SHALL send a cancel signal to abort the previous request
 /// - 5.5: WHEN a cancel signal is received THEN the Worker_Thread SHALL abort
-///        the HTTP request and discard any pending response chunks
+///   the HTTP request and discard any pending response chunks
 fn handle_query(
     provider: &Option<AiProvider>,
     prompt: &str,

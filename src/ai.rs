@@ -19,6 +19,12 @@ pub mod worker;
 #[cfg(test)]
 mod ai_events_tests;
 
+#[cfg(test)]
+mod ai_render_tests;
+
+#[cfg(test)]
+mod ai_state_tests;
+
 // Re-export main types (others are internal for Phase 1)
 pub use ai_state::AiState;
 // TODO: Remove #[allow(unused_imports)] when AiRequest/AiResponse are used externally

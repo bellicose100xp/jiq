@@ -123,7 +123,7 @@ impl JsonTypeInfo {
                     let rest = &chars[i + 1..];
                     let has_colon = rest.iter().take_while(|c| c.is_whitespace()).count()
                         < rest.len()
-                        && rest.iter().skip_while(|c| c.is_whitespace()).next() == Some(&':');
+                        && rest.iter().find(|c| !c.is_whitespace()) == Some(&':');
                     if has_colon && let Some(start) = key_start {
                         let key: String = chars[start..key_end].iter().collect();
                         keys.push(key);
