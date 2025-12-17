@@ -81,8 +81,10 @@ impl AsyncAnthropicClient {
             ]
         });
 
-        let body =
-            serde_json::to_string(&request_body).map_err(|e| AiError::Parse(e.to_string()))?;
+        let body = serde_json::to_string(&request_body).map_err(|e| AiError::Parse {
+            provider: "Anthropic".to_string(),
+            message: e.to_string(),
+        })?;
 
         // Make the request
         let response = self
@@ -94,7 +96,10 @@ impl AsyncAnthropicClient {
             .body(body)
             .send()
             .await
-            .map_err(|e| AiError::Network(e.to_string()))?;
+            .map_err(|e| AiError::Network {
+                provider: "Anthropic".to_string(),
+                message: e.to_string(),
+            })?;
 
         // Check for HTTP errors
         if !response.status().is_success() {
@@ -103,7 +108,11 @@ impl AsyncAnthropicClient {
                 .text()
                 .await
                 .unwrap_or_else(|_| "Unknown error".to_string());
-            return Err(AiError::Api { code, message });
+            return Err(AiError::Api {
+                provider: "Anthropic".to_string(),
+                code,
+                message,
+            });
         }
 
         // Get the byte stream
@@ -140,7 +149,10 @@ impl AsyncAnthropicClient {
                             }
                         }
                         Some(Err(e)) => {
-                            return Err(AiError::Network(e.to_string()));
+                            return Err(AiError::Network {
+                                provider: "Anthropic".to_string(),
+                                message: e.to_string(),
+                            });
                         }
                         None => {
                             // Stream ended

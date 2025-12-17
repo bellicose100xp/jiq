@@ -27,7 +27,10 @@ fn test_worker_handles_query_without_provider() {
             .build()
             .expect("Failed to create tokio runtime");
         rt.block_on(worker_loop(
-            Err(AiError::NotConfigured("test".to_string())),
+            Err(AiError::NotConfigured {
+                provider: "Test".to_string(),
+                message: "test".to_string(),
+            }),
             request_rx,
             response_tx,
         ));
@@ -65,7 +68,10 @@ fn test_worker_handles_pre_cancelled_request() {
             .build()
             .expect("Failed to create tokio runtime");
         rt.block_on(worker_loop(
-            Err(AiError::NotConfigured("test".to_string())),
+            Err(AiError::NotConfigured {
+                provider: "Test".to_string(),
+                message: "test".to_string(),
+            }),
             request_rx,
             response_tx,
         ));
@@ -99,7 +105,10 @@ fn test_worker_shuts_down_when_channel_closed() {
             .build()
             .expect("Failed to create tokio runtime");
         rt.block_on(worker_loop(
-            Err(AiError::NotConfigured("test".to_string())),
+            Err(AiError::NotConfigured {
+                provider: "Test".to_string(),
+                message: "test".to_string(),
+            }),
             request_rx,
             response_tx,
         ));

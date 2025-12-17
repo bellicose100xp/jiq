@@ -17,22 +17,27 @@ pub use async_anthropic::AsyncAnthropicClient;
 
 /// Errors that can occur during AI operations
 #[derive(Debug, Error)]
+#[non_exhaustive]
 pub enum AiError {
     /// AI is not configured (missing API key or disabled)
-    #[error("AI not configured: {0}")]
-    NotConfigured(String),
+    #[error("[{provider}] AI not configured: {message}")]
+    NotConfigured { provider: String, message: String },
 
     /// Network error during API request
-    #[error("Network error: {0}")]
-    Network(String),
+    #[error("[{provider}] Network error: {message}")]
+    Network { provider: String, message: String },
 
     /// API returned an error response
-    #[error("API error ({code}): {message}")]
-    Api { code: u16, message: String },
+    #[error("[{provider}] API error ({code}): {message}")]
+    Api {
+        provider: String,
+        code: u16,
+        message: String,
+    },
 
     /// Failed to parse API response
-    #[error("Parse error: {0}")]
-    Parse(String),
+    #[error("[{provider}] Parse error: {message}")]
+    Parse { provider: String, message: String },
 
     /// Request was cancelled
     #[error("Request cancelled")]
@@ -50,14 +55,22 @@ pub enum AsyncAiProvider {
 }
 
 impl AsyncAiProvider {
+    /// Returns the display name of the provider
+    pub fn provider_name(&self) -> &'static str {
+        match self {
+            AsyncAiProvider::Anthropic(_) => "Anthropic",
+        }
+    }
+
     /// Create an async AI provider from configuration
     ///
     /// Returns an error if the configuration is invalid (e.g., missing API key)
     pub fn from_config(config: &AiConfig) -> Result<Self, AiError> {
         if !config.enabled {
-            return Err(AiError::NotConfigured(
-                "AI is disabled in config".to_string(),
-            ));
+            return Err(AiError::NotConfigured {
+                provider: "Anthropic".to_string(),
+                message: "AI is disabled in config".to_string(),
+            });
         }
 
         match config.provider {
@@ -67,10 +80,9 @@ impl AsyncAiProvider {
                     .api_key
                     .as_ref()
                     .filter(|k| !k.trim().is_empty())
-                    .ok_or_else(|| {
-                        AiError::NotConfigured(
-                            "Missing or empty API key in [ai.anthropic] config".to_string(),
-                        )
+                    .ok_or_else(|| AiError::NotConfigured {
+                        provider: "Anthropic".to_string(),
+                        message: "Missing or empty API key in [ai.anthropic] config".to_string(),
                     })?;
 
                 let model = config
@@ -78,10 +90,9 @@ impl AsyncAiProvider {
                     .model
                     .as_ref()
                     .filter(|m| !m.trim().is_empty())
-                    .ok_or_else(|| {
-                        AiError::NotConfigured(
-                            "Missing or empty model in [ai.anthropic] config".to_string(),
-                        )
+                    .ok_or_else(|| AiError::NotConfigured {
+                        provider: "Anthropic".to_string(),
+                        message: "Missing or empty model in [ai.anthropic] config".to_string(),
                     })?;
 
                 Ok(AsyncAiProvider::Anthropic(AsyncAnthropicClient::new(
