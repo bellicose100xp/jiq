@@ -13,6 +13,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Reverted manual workflow changes to use cargo-dist generated workflow
   - Manual edits to release.yml are not supported by cargo-dist
   - Original workflow configuration restored for proper CI/CD operation
+- Coverage generation now uses single-threaded test execution
+  - Prevents jq process race conditions during parallel test execution
+  - Matches test job configuration for consistency
 
 ## [3.0.2] - 2025-12-16
 

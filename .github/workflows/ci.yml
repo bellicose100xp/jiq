@@ -68,7 +68,7 @@ jobs:
         run: cargo install cargo-tarpaulin
 
       - name: Generate coverage report
-        run: cargo tarpaulin --out xml --out html --output-dir coverage
+        run: cargo tarpaulin --out xml --out html --output-dir coverage -- --test-threads=1
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v5
