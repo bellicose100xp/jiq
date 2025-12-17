@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.0.0] - 2025-12-16
+
+### Added
+- **[EXPERIMENTAL] AI Assistant** - Context-aware query suggestions powered by Anthropic Claude API
+  - `Ctrl+A` to toggle AI assistant popup
+  - Intelligent suggestions for query fixes, optimizations, and natural language interpretation
+  - Streaming responses with real-time token-by-token display
+  - Direct suggestion selection with `Alt+1-5` or navigation with `Alt+↑↓`/`Alt+j/k`
+  - Token-based request cancellation for instant abort
+  - Configuration support in `~/.config/jiq/config.toml`:
+    ```toml
+    [ai]
+    enabled = true
+
+    [ai.anthropic]
+    api_key = "your-api-key-here"
+    model = "claude-haiku-4-5-20251001"
+    ```
+  - Comprehensive test coverage with 100+ property-based tests and snapshot tests
+  - Query-change-only triggering to prevent excessive API calls
+  - Graceful fallback to raw responses when structured parsing fails
+
 ### Changed
 - **Code Organization**: Refactored large source files (>1000 lines) into smaller, focused modules
   - Split `ai_events_tests.rs` (1064 lines) into 8 test modules
@@ -17,6 +39,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - All source files now under 1000 lines for improved maintainability
   - Maintained existing module structure pattern (no mod.rs files)
   - All tests pass, no functionality changes
+
+### Documentation
+- Updated README with AI assistant section, keybindings, and configuration examples
+- Added AI keybindings to help popup (`Ctrl+A`, `Alt+1-5`, `Alt+↑↓`)
 
 ## [2.21.2] - 2025-12-12
 
