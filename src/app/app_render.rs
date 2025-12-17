@@ -714,40 +714,40 @@ mod snapshot_tests {
         }
 
         app.search.confirm();
-        if let Some(line) = app.search.next_match() {
-            if let Some(current_match) = app.search.current_match() {
-                let target_col = current_match.col;
-                let match_len = current_match.len;
-                let h_offset = app.results_scroll.h_offset;
-                let max_h_offset = app.results_scroll.max_h_offset;
-                let viewport_width = app.results_scroll.viewport_width;
+        if let Some(line) = app.search.next_match()
+            && let Some(current_match) = app.search.current_match()
+        {
+            let target_col = current_match.col;
+            let match_len = current_match.len;
+            let h_offset = app.results_scroll.h_offset;
+            let max_h_offset = app.results_scroll.max_h_offset;
+            let viewport_width = app.results_scroll.viewport_width;
 
-                if max_h_offset > 0 && viewport_width > 0 {
-                    let match_end = target_col.saturating_add(match_len);
-                    let visible_h_start = h_offset;
-                    let visible_h_end = h_offset.saturating_add(viewport_width);
+            if max_h_offset > 0 && viewport_width > 0 {
+                let match_end = target_col.saturating_add(match_len);
+                let visible_h_start = h_offset;
+                let visible_h_end = h_offset.saturating_add(viewport_width);
 
-                    if target_col < visible_h_start || match_end > visible_h_end {
-                        let left_margin: u16 = 10;
-                        let new_h_offset = target_col.saturating_sub(left_margin);
-                        app.results_scroll.h_offset = new_h_offset.min(max_h_offset);
-                    }
+                if target_col < visible_h_start || match_end > visible_h_end {
+                    let left_margin: u16 = 10;
+                    let new_h_offset = target_col.saturating_sub(left_margin);
+                    app.results_scroll.h_offset = new_h_offset.min(max_h_offset);
                 }
+            }
 
-                let target_line = line.min(u16::MAX as u32) as u16;
-                let viewport_height = app.results_scroll.viewport_height;
-                let current_offset = app.results_scroll.offset;
-                let max_offset = app.results_scroll.max_offset;
+            let target_line = line.min(u16::MAX as u32) as u16;
+            let viewport_height = app.results_scroll.viewport_height;
+            let current_offset = app.results_scroll.offset;
+            let max_offset = app.results_scroll.max_offset;
 
-                if viewport_height > 0 && max_offset > 0 {
-                    let visible_start = current_offset;
-                    let visible_end = current_offset.saturating_add(viewport_height);
+            if viewport_height > 0 && max_offset > 0 {
+                let visible_start = current_offset;
+                let visible_end = current_offset.saturating_add(viewport_height);
 
-                    if target_line < visible_start || target_line >= visible_end {
-                        let half_viewport = viewport_height / 2;
-                        let new_offset = target_line.saturating_sub(half_viewport);
-                        app.results_scroll.offset = new_offset.min(max_offset);
-                    }
+                if target_line < visible_start || target_line >= visible_end {
+                    let half_viewport = viewport_height / 2;
+                    let new_offset = target_line.saturating_sub(half_viewport);
+                    app.results_scroll.offset = new_offset.min(max_offset);
                 }
             }
         }

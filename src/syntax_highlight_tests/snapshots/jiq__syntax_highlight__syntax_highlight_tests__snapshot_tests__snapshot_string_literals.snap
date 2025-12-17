@@ -1,0 +1,16 @@
+---
+source: src/syntax/mod.rs
+expression: results
+---
+- - "\"hello\""
+  - - content: "\"hello\""
+      fg: green
+- - "\"hello world\""
+  - - content: "\"hello world\""
+      fg: green
+- - "\"hello \\\"escaped\\\" world\""
+  - - content: "\"hello \\\"escaped\\\" world\""
+      fg: green
+- - "\"unicode: 世界\""
+  - - content: "\"unicode: 世界\""
+      fg: green

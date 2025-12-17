@@ -1,0 +1,6 @@
+---
+source: src/syntax/mod.rs
+expression: serialize_spans(&spans)
+---
+- content: "\"if then else are keywords\""
+  fg: green

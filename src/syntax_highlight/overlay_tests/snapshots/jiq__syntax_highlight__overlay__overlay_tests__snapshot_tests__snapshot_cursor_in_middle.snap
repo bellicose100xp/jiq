@@ -1,0 +1,12 @@
+---
+source: src/app/syntax_overlay.rs
+expression: serialize_spans(&result)
+---
+- content: He
+  fg: red
+- content: l
+  fg: red
+  modifiers:
+    - reversed
+- content: lo
+  fg: red

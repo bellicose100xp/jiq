@@ -11,12 +11,5 @@ pub fn copy(text: &str) -> ClipboardResult {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_copy_returns_result() {
-        let result = copy("test");
-        assert!(result.is_ok() || matches!(result, Err(ClipboardError::SystemUnavailable)));
-    }
-}
+#[path = "system_tests.rs"]
+mod system_tests;
