@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.0.4] - 2025-12-17
+
+### Added
+- **AI Context Enhancement**: Full nested JSON schema and last working query context
+  - Created `json` module with `extract_json_schema()` for recursive type extraction
+  - Schema extracted once at startup and reused for all AI requests
+  - Example: `{"users": [{"name": "John"}]}` → `{"users": [{"name": "string"}]}`
+  - On error: AI now receives last successful query + its output for better suggestions
+  - Increased JSON sample size from 1000 to 2000 characters
+  - Added `ContextParams` struct to group AI context parameters
+
+### Changed
+- AI prompts now include full nested JSON structure instead of shallow top-level keys
+- Error prompts include "Last Working Query" and "Its Output" sections when available
+- Success prompts only include schema enhancement (base query not relevant)
+
 ## [3.0.3] - 2025-12-16
 
 ### Fixed
