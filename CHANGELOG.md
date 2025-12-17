@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.0.2] - 2025-12-16
+
+### Fixed
+- Release workflow: Download cached dist binary in build-local-artifacts job
+  - Fixes "dist: command not found" error in musl container builds
+  - Ensures dist is available before running build commands
+
 ## [3.0.1] - 2025-12-16
 
 ### Fixed
@@ -14,6 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Resolves static linking issues with OpenSSL on musl targets
   - Enables successful cross-platform binary distribution
   - No functional changes - same HTTP/TLS behavior with better compatibility
+- Release badge added to README
 
 ## [3.0.0] - 2025-12-16
 
