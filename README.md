@@ -8,6 +8,7 @@
 ## Features
 
 - **Real-time query execution** - See results as you type
+- **[EXPERIMENTAL] AI assistant** - Get intelligent query suggestions, error fixes, and natural language interpretation
 - **[EXPERIMENTAL] Context-aware autocomplete** - Intelligent suggestions with JSON type information for fields and functions
 - **Function tooltip** - Quick reference help for jq functions with examples
 - **Search in results** - Find and navigate text in JSON output with highlighting
@@ -93,6 +94,7 @@ curl https://api.example.com/data | jiq
 | `yy` | Copy current query or results to clipboard (NORMAL mode) |
 | `Ctrl+T` | Toggle function tooltip (when cursor is on a function) |
 | `Ctrl+E` | Toggle error overlay (when syntax error exists) |
+| `Ctrl+A` | Toggle AI assistant popup |
 | `Enter` | Exit and output filtered JSON |
 | `Ctrl+Q` | Exit and output query string only (`Shift+Enter` may also work in some modern terminal emulators) |
 | `q` / `Ctrl+C` | Quit without output |
@@ -217,6 +219,24 @@ Successful queries are saved to your platform's application data directory:
 
 </details>
 
+<details>
+<summary><b>AI Assistant</b> (context-aware query suggestions)</summary>
+
+The AI assistant analyzes your query and data to provide intelligent suggestions for fixing errors, improving queries, or interpreting natural language.
+
+**Requires configuration** (see Configuration section below)
+
+| Key | Action |
+|-----|--------|
+| `Ctrl+A` | Toggle AI assistant popup |
+| `Alt+1-5` | Apply suggestion 1-5 directly |
+| `Alt+↑` / `Alt+↓` | Navigate suggestions |
+| `Alt+j` / `Alt+k` | Navigate suggestions (vim style) |
+| `Enter` | Apply selected suggestion |
+| `Ctrl+A` | Close popup |
+
+</details>
+
 ## Examples
 
 **Filter active users:**
@@ -257,6 +277,16 @@ jiq looks for a configuration file at `~/.config/jiq/config.toml` (or the platfo
 # - system: use only OS clipboard (may not work in SSH/tmux)
 # - osc52: use terminal escape sequences (works in most modern terminals over SSH)
 backend = "auto"
+
+[ai]
+# Enable AI assistant (requires api_key and model in [ai.anthropic] section)
+enabled = true
+
+[ai.anthropic]
+# Get your API key from: https://console.anthropic.com/settings/keys
+api_key = "your-api-key-here"
+# Anthropic model to use (e.g., "claude-haiku-4-5-20251001", "claude-sonnet-4-5-20250514")
+model = "claude-haiku-4-5-20251001"
 ```
 
 ## Known Limitations
