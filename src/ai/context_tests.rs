@@ -3,6 +3,14 @@
 use super::*;
 use proptest::prelude::*;
 
+fn empty_params() -> ContextParams<'static> {
+    ContextParams {
+        input_schema: None,
+        base_query: None,
+        base_query_result: None,
+    }
+}
+
 #[test]
 fn test_json_type_info_from_object() {
     let json = r#"{"name": "test", "age": 30, "active": true}"#;
@@ -87,7 +95,14 @@ fn test_truncate_json_long() {
 fn test_query_context_new() {
     let query = ".name".to_string();
     let json = r#"{"name": "test"}"#;
-    let ctx = QueryContext::new(query.clone(), 5, json, None, Some("error".to_string()));
+    let ctx = QueryContext::new(
+        query.clone(),
+        5,
+        json,
+        None,
+        Some("error".to_string()),
+        empty_params(),
+    );
 
     assert_eq!(ctx.query, query);
     assert_eq!(ctx.cursor_pos, 5);
@@ -97,7 +112,7 @@ fn test_query_context_new() {
 
 #[test]
 fn test_query_context_is_complete() {
-    let ctx = QueryContext::new(".".to_string(), 1, "{}", None, None);
+    let ctx = QueryContext::new(".".to_string(), 1, "{}", None, None, empty_params());
     assert!(ctx.is_complete());
 
     let ctx_empty_query = QueryContext {
@@ -109,6 +124,9 @@ fn test_query_context_is_complete() {
         error: None,
         json_type_info: JsonTypeInfo::default(),
         is_success: true,
+        input_schema: None,
+        base_query: None,
+        base_query_result: None,
     };
     assert!(!ctx_empty_query.is_complete());
 }
@@ -159,6 +177,7 @@ proptest! {
             &json,
             None,
             error.clone(),
+            empty_params(),
         );
 
         // Verify all required fields are present
@@ -235,6 +254,7 @@ proptest! {
             &json,
             None,  // No output on error
             Some(error_msg.clone()),
+            empty_params(),
         );
 
         // Verify error context is properly set
@@ -274,6 +294,7 @@ proptest! {
             &json,
             Some(output.clone()),
             None,  // No error on success
+            empty_params(),
         );
 
         // Verify success context is properly set
@@ -303,6 +324,7 @@ proptest! {
             json,
             Some(output.clone()),
             None,
+            empty_params(),
         );
 
         // Verify output_sample is bounded

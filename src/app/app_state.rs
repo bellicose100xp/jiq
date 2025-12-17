@@ -42,6 +42,7 @@ pub struct App {
     pub search: SearchState,
     pub ai: AiState,
     pub saved_tooltip_visibility: bool,
+    pub input_json_schema: Option<String>,
 }
 
 impl App {
@@ -56,6 +57,10 @@ impl App {
         } else {
             config.tooltip.auto_show
         };
+
+        // Extract JSON schema once at startup for AI context
+        let input_json_schema =
+            crate::json::extract_json_schema(&json_input, crate::json::DEFAULT_SCHEMA_MAX_DEPTH);
 
         Self {
             input: InputState::new(),
@@ -76,6 +81,7 @@ impl App {
             search: SearchState::new(),
             ai: ai_state,
             saved_tooltip_visibility: config.tooltip.auto_show,
+            input_json_schema,
         }
     }
 

@@ -12,6 +12,7 @@ pub mod error;
 pub mod help;
 pub mod history;
 pub mod input;
+pub mod json;
 pub mod notification;
 pub mod query;
 pub mod results;

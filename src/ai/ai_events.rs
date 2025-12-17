@@ -10,7 +10,7 @@ use ratatui::crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use std::sync::mpsc::TryRecvError;
 
 use super::ai_state::{AiResponse, AiState};
-use super::context::QueryContext;
+use super::context::{ContextParams, QueryContext};
 use super::prompt::build_prompt;
 use super::selection::{apply::apply_suggestion, keybindings};
 use crate::autocomplete::AutocompleteState;
@@ -155,12 +155,14 @@ pub fn poll_response_channel(ai_state: &mut AiState) {
 /// * `query` - The current query text
 /// * `cursor_pos` - The cursor position in the query
 /// * `json_input` - The JSON input being queried
+/// * `params` - Additional context parameters (schema, base query, etc.)
 pub fn handle_execution_result(
     ai_state: &mut AiState,
     query_result: &Result<String, String>,
     query: &str,
     cursor_pos: usize,
     json_input: &str,
+    params: ContextParams,
 ) {
     let query_changed = ai_state.is_query_changed(query);
 
@@ -181,6 +183,7 @@ pub fn handle_execution_result(
                     json_input,
                     None,
                     Some(error.to_string()),
+                    params,
                 );
                 let word_limit = ai_state.word_limit;
                 let prompt = build_prompt(&context, word_limit);
@@ -195,6 +198,11 @@ pub fn handle_execution_result(
                     json_input,
                     Some(output.clone()),
                     None,
+                    ContextParams {
+                        input_schema: params.input_schema,
+                        base_query: None, // Not needed on success
+                        base_query_result: None,
+                    },
                 );
                 let word_limit = ai_state.word_limit;
                 let prompt = build_prompt(&context, word_limit);
@@ -217,6 +225,7 @@ pub fn handle_query_result<T: ToString>(
     query: &str,
     cursor_pos: usize,
     json_input: &str,
+    params: ContextParams,
 ) {
     // Convert to Result<String, String> for the unified handler
     let result: Result<String, String> = match query_result {
@@ -224,7 +233,7 @@ pub fn handle_query_result<T: ToString>(
         Err(e) => Err(e.clone()),
     };
 
-    handle_execution_result(ai_state, &result, query, cursor_pos, json_input);
+    handle_execution_result(ai_state, &result, query, cursor_pos, json_input, params);
 }
 
 /// Process a single AI response message

@@ -572,6 +572,11 @@ fn test_handle_execution_result_does_not_change_visibility_on_error() {
         ".invalid",
         0,
         r#"{"test": "data"}"#,
+        jiq::ai::context::ContextParams {
+            input_schema: None,
+            base_query: None,
+            base_query_result: None,
+        },
     );
 
     assert_eq!(
@@ -591,6 +596,11 @@ fn test_handle_execution_result_does_not_change_visibility_on_error() {
         ".invalid2",
         0,
         r#"{"test": "data"}"#,
+        jiq::ai::context::ContextParams {
+            input_schema: None,
+            base_query: None,
+            base_query_result: None,
+        },
     );
 
     assert_eq!(
@@ -621,6 +631,11 @@ fn test_handle_execution_result_does_not_change_visibility_on_success() {
         ".test",
         0,
         r#"{"test": "data"}"#,
+        jiq::ai::context::ContextParams {
+            input_schema: None,
+            base_query: None,
+            base_query_result: None,
+        },
     );
 
     assert_eq!(
@@ -640,6 +655,11 @@ fn test_handle_execution_result_does_not_change_visibility_on_success() {
         ".test2",
         0,
         r#"{"test": "data"}"#,
+        jiq::ai::context::ContextParams {
+            input_schema: None,
+            base_query: None,
+            base_query_result: None,
+        },
     );
 
     assert_eq!(
@@ -705,7 +725,18 @@ fn test_visibility_control_mechanisms_complete() {
 
     // Try error result
     let error_result: Result<String, String> = Err("error".to_string());
-    handle_execution_result(&mut ai_state, &error_result, ".err", 0, r#"{}"#);
+    handle_execution_result(
+        &mut ai_state,
+        &error_result,
+        ".err",
+        0,
+        r#"{}"#,
+        jiq::ai::context::ContextParams {
+            input_schema: None,
+            base_query: None,
+            base_query_result: None,
+        },
+    );
     assert!(
         !ai_state.visible,
         "Error result should NOT change visibility"
@@ -713,7 +744,18 @@ fn test_visibility_control_mechanisms_complete() {
 
     // Try success result
     let success_result: Result<String, String> = Ok(r#"{"ok": true}"#.to_string());
-    handle_execution_result(&mut ai_state, &success_result, ".ok", 0, r#"{}"#);
+    handle_execution_result(
+        &mut ai_state,
+        &success_result,
+        ".ok",
+        0,
+        r#"{}"#,
+        jiq::ai::context::ContextParams {
+            input_schema: None,
+            base_query: None,
+            base_query_result: None,
+        },
+    );
     assert!(
         !ai_state.visible,
         "Success result should NOT change visibility"

@@ -19,6 +19,7 @@ mod error;
 mod help;
 mod history;
 mod input;
+mod json;
 mod notification;
 mod query;
 mod results;
@@ -165,6 +166,11 @@ fn run(
             &query,
             cursor_pos,
             &json_input,
+            ai::context::ContextParams {
+                input_schema: app.input_json_schema.as_deref(),
+                base_query: app.query.base_query_for_suggestions.as_deref(),
+                base_query_result: app.query.last_successful_result.as_deref(),
+            },
         );
     }
 

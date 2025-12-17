@@ -1,7 +1,7 @@
 //! Tests for prompt template generation
 
 use super::*;
-use crate::ai::context::JsonTypeInfo;
+use crate::ai::context::{ContextParams, JsonTypeInfo};
 
 #[test]
 fn test_build_error_prompt_includes_query() {
@@ -14,6 +14,9 @@ fn test_build_error_prompt_includes_query() {
         error: Some("syntax error".to_string()),
         json_type_info: JsonTypeInfo::default(),
         is_success: false,
+        input_schema: None,
+        base_query: None,
+        base_query_result: None,
     };
 
     let prompt = build_error_prompt(&ctx, 200);
@@ -33,6 +36,9 @@ fn test_build_error_prompt_includes_json_sample() {
         error: Some("error".to_string()),
         json_type_info: JsonTypeInfo::default(),
         is_success: false,
+        input_schema: None,
+        base_query: None,
+        base_query_result: None,
     };
 
     let prompt = build_error_prompt(&ctx, 200);
@@ -40,7 +46,7 @@ fn test_build_error_prompt_includes_json_sample() {
 }
 
 #[test]
-fn test_build_error_prompt_includes_type_info() {
+fn test_build_error_prompt_includes_schema() {
     let ctx = QueryContext {
         query: ".".to_string(),
         cursor_pos: 1,
@@ -48,19 +54,16 @@ fn test_build_error_prompt_includes_type_info() {
         output: None,
         output_sample: None,
         error: Some("error".to_string()),
-        json_type_info: JsonTypeInfo {
-            root_type: "Object".to_string(),
-            element_type: None,
-            element_count: None,
-            top_level_keys: vec!["name".to_string(), "age".to_string()],
-            schema_hint: "Object with keys: name, age".to_string(),
-        },
+        json_type_info: JsonTypeInfo::default(),
         is_success: false,
+        input_schema: Some(r#"{"name":"string","age":"number"}"#.to_string()),
+        base_query: None,
+        base_query_result: None,
     };
 
     let prompt = build_error_prompt(&ctx, 200);
-    assert!(prompt.contains("Type: Object"));
-    assert!(prompt.contains("name, age"));
+    assert!(prompt.contains("## Input JSON Schema"));
+    assert!(prompt.contains(r#"{"name":"string","age":"number"}"#));
 }
 
 #[test]
@@ -80,6 +83,9 @@ fn test_build_help_prompt_basic() {
             schema_hint: "Array of 3 numbers".to_string(),
         },
         is_success: true,
+        input_schema: None,
+        base_query: None,
+        base_query_result: None,
     };
 
     let prompt = build_help_prompt(&ctx);
@@ -100,6 +106,9 @@ fn test_build_help_prompt_uses_output_sample() {
         error: None,
         json_type_info: JsonTypeInfo::default(),
         is_success: true,
+        input_schema: None,
+        base_query: None,
+        base_query_result: None,
     };
 
     let prompt = build_help_prompt(&ctx);
@@ -119,6 +128,9 @@ fn test_build_help_prompt_truncates_output_when_no_sample() {
         error: None,
         json_type_info: JsonTypeInfo::default(),
         is_success: true,
+        input_schema: None,
+        base_query: None,
+        base_query_result: None,
     };
 
     let prompt = build_help_prompt(&ctx);
@@ -136,6 +148,9 @@ fn test_build_success_prompt_includes_query() {
         error: None,
         json_type_info: JsonTypeInfo::default(),
         is_success: true,
+        input_schema: None,
+        base_query: None,
+        base_query_result: None,
     };
 
     let prompt = build_success_prompt(&ctx, 200);
@@ -154,6 +169,9 @@ fn test_build_success_prompt_includes_output_sample() {
         error: None,
         json_type_info: JsonTypeInfo::default(),
         is_success: true,
+        input_schema: None,
+        base_query: None,
+        base_query_result: None,
     };
 
     let prompt = build_success_prompt(&ctx, 200);
@@ -162,7 +180,7 @@ fn test_build_success_prompt_includes_output_sample() {
 }
 
 #[test]
-fn test_build_success_prompt_includes_type_info() {
+fn test_build_success_prompt_includes_schema() {
     let ctx = QueryContext {
         query: ".[]".to_string(),
         cursor_pos: 3,
@@ -170,20 +188,16 @@ fn test_build_success_prompt_includes_type_info() {
         output: Some("1\n2\n3".to_string()),
         output_sample: Some("1\n2\n3".to_string()),
         error: None,
-        json_type_info: JsonTypeInfo {
-            root_type: "Array".to_string(),
-            element_type: Some("numbers".to_string()),
-            element_count: Some(3),
-            top_level_keys: vec![],
-            schema_hint: "Array of 3 numbers".to_string(),
-        },
+        json_type_info: JsonTypeInfo::default(),
         is_success: true,
+        input_schema: Some(r#"["number"]"#.to_string()),
+        base_query: None,
+        base_query_result: None,
     };
 
     let prompt = build_success_prompt(&ctx, 200);
-    assert!(prompt.contains("Type: Array"));
-    assert!(prompt.contains("Element type: numbers"));
-    assert!(prompt.contains("Element count: 3"));
+    assert!(prompt.contains("## Input JSON Schema"));
+    assert!(prompt.contains(r#"["number"]"#));
 }
 
 #[test]
@@ -197,6 +211,9 @@ fn test_build_prompt_dispatches_to_error_prompt() {
         error: Some("syntax error".to_string()),
         json_type_info: JsonTypeInfo::default(),
         is_success: false,
+        input_schema: None,
+        base_query: None,
+        base_query_result: None,
     };
 
     let prompt = build_prompt(&ctx, 200);
@@ -216,6 +233,9 @@ fn test_build_prompt_dispatches_to_success_prompt() {
         error: None,
         json_type_info: JsonTypeInfo::default(),
         is_success: true,
+        input_schema: None,
+        base_query: None,
+        base_query_result: None,
     };
 
     let prompt = build_prompt(&ctx, 200);
@@ -235,6 +255,9 @@ fn test_build_prompt_includes_word_limit() {
         error: Some("error".to_string()),
         json_type_info: JsonTypeInfo::default(),
         is_success: false,
+        input_schema: None,
+        base_query: None,
+        base_query_result: None,
     };
 
     let prompt = build_prompt(&ctx, 300);
@@ -252,6 +275,9 @@ fn test_build_error_prompt_includes_structured_format() {
         error: Some("error".to_string()),
         json_type_info: JsonTypeInfo::default(),
         is_success: false,
+        input_schema: None,
+        base_query: None,
+        base_query_result: None,
     };
 
     let prompt = build_error_prompt(&ctx, 200);
@@ -272,6 +298,9 @@ fn test_build_success_prompt_includes_structured_format() {
         error: None,
         json_type_info: JsonTypeInfo::default(),
         is_success: true,
+        input_schema: None,
+        base_query: None,
+        base_query_result: None,
     };
 
     let prompt = build_success_prompt(&ctx, 200);
@@ -291,9 +320,100 @@ fn test_build_prompt_includes_natural_language_instructions() {
         error: Some("error".to_string()),
         json_type_info: JsonTypeInfo::default(),
         is_success: false,
+        input_schema: None,
+        base_query: None,
+        base_query_result: None,
     };
 
     let prompt = build_error_prompt(&ctx, 200);
     assert!(prompt.contains("Natural Language"));
     assert!(prompt.contains("natural language"));
+}
+
+#[test]
+fn test_error_prompt_includes_base_query() {
+    let ctx = QueryContext {
+        query: ".invalid".to_string(),
+        cursor_pos: 8,
+        input_sample: "{}".to_string(),
+        output: None,
+        output_sample: None,
+        error: Some("field not found".to_string()),
+        json_type_info: JsonTypeInfo::default(),
+        is_success: false,
+        input_schema: None,
+        base_query: Some(".name".to_string()),
+        base_query_result: Some(r#""test""#.to_string()),
+    };
+
+    let prompt = build_error_prompt(&ctx, 200);
+    assert!(prompt.contains("## Last Working Query"));
+    assert!(prompt.contains(".name"));
+    assert!(prompt.contains("## Its Output"));
+    assert!(prompt.contains(r#""test""#));
+}
+
+#[test]
+fn test_error_prompt_without_base_query() {
+    let ctx = QueryContext {
+        query: ".invalid".to_string(),
+        cursor_pos: 8,
+        input_sample: "{}".to_string(),
+        output: None,
+        output_sample: None,
+        error: Some("error".to_string()),
+        json_type_info: JsonTypeInfo::default(),
+        is_success: false,
+        input_schema: None,
+        base_query: None,
+        base_query_result: None,
+    };
+
+    let prompt = build_error_prompt(&ctx, 200);
+    assert!(!prompt.contains("Last Working Query"));
+}
+
+#[test]
+fn test_success_prompt_excludes_base_query() {
+    let ctx = QueryContext {
+        query: ".name".to_string(),
+        cursor_pos: 5,
+        input_sample: "{}".to_string(),
+        output: Some("output".to_string()),
+        output_sample: Some("output".to_string()),
+        error: None,
+        json_type_info: JsonTypeInfo::default(),
+        is_success: true,
+        input_schema: None,
+        base_query: Some(".old".to_string()), // Even if set
+        base_query_result: Some("old result".to_string()),
+    };
+
+    let prompt = build_success_prompt(&ctx, 200);
+    assert!(!prompt.contains("Last Working Query"));
+    assert!(!prompt.contains(".old"));
+}
+
+#[test]
+fn test_base_query_result_truncation_in_context() {
+    use crate::ai::context::MAX_JSON_SAMPLE_LENGTH;
+
+    let long_result = "x".repeat(5000);
+    let ctx = QueryContext::new(
+        ".invalid".to_string(),
+        8,
+        "{}",
+        None,
+        Some("error".to_string()),
+        ContextParams {
+            input_schema: None,
+            base_query: Some(".base"),
+            base_query_result: Some(&long_result),
+        },
+    );
+
+    assert!(ctx.base_query_result.is_some());
+    let truncated = ctx.base_query_result.unwrap();
+    assert!(truncated.len() <= MAX_JSON_SAMPLE_LENGTH + 15);
+    assert!(truncated.ends_with("... [truncated]"));
 }

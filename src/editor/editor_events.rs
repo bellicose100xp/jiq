@@ -223,6 +223,11 @@ pub fn execute_query_with_auto_show(app: &mut App) {
         query,
         cursor_pos,
         app.query.executor.json_input(),
+        crate::ai::context::ContextParams {
+            input_schema: app.input_json_schema.as_deref(),
+            base_query: app.query.base_query_for_suggestions.as_deref(),
+            base_query_result: app.query.last_successful_result.as_deref(),
+        },
     );
 }
 

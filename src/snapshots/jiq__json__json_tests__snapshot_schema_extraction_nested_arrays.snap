@@ -1,0 +1,5 @@
+---
+source: src/json_tests.rs
+expression: schema
+---
+{"labels":["string"],"matrix":[["number"]]}

@@ -41,27 +41,23 @@ pub fn build_error_prompt(context: &QueryContext, word_limit: u16) -> String {
         prompt.push_str(&format!("```\n{}\n```\n\n", error));
     }
 
-    prompt.push_str("## Input JSON Structure\n");
-    prompt.push_str(&format!("Type: {}\n", context.json_type_info.root_type));
-    if let Some(ref elem_type) = context.json_type_info.element_type {
-        prompt.push_str(&format!("Element type: {}\n", elem_type));
+    if let Some(ref schema) = context.input_schema {
+        prompt.push_str("## Input JSON Schema\n");
+        prompt.push_str(&format!("```json\n{}\n```\n\n", schema));
     }
-    if let Some(count) = context.json_type_info.element_count {
-        prompt.push_str(&format!("Element count: {}\n", count));
-    }
-    if !context.json_type_info.top_level_keys.is_empty() {
-        prompt.push_str(&format!(
-            "Top-level keys: {}\n",
-            context.json_type_info.top_level_keys.join(", ")
-        ));
-    }
-    prompt.push_str(&format!(
-        "Summary: {}\n\n",
-        context.json_type_info.schema_hint
-    ));
 
     prompt.push_str("## Input JSON Sample\n");
     prompt.push_str(&format!("```json\n{}\n```\n\n", context.input_sample));
+
+    if let Some(ref base_query) = context.base_query {
+        prompt.push_str("## Last Working Query\n");
+        prompt.push_str(&format!("```\n{}\n```\n\n", base_query));
+
+        if let Some(ref result) = context.base_query_result {
+            prompt.push_str("## Its Output\n");
+            prompt.push_str(&format!("```json\n{}\n```\n\n", result));
+        }
+    }
 
     prompt.push_str("## Response Format\n");
     prompt.push_str("Provide 3-5 numbered suggestions in this EXACT format:\n\n");
@@ -108,24 +104,10 @@ pub fn build_success_prompt(context: &QueryContext, word_limit: u16) -> String {
     prompt.push_str("## Current Query\n");
     prompt.push_str(&format!("```\n{}\n```\n\n", context.query));
 
-    prompt.push_str("## Input JSON Structure\n");
-    prompt.push_str(&format!("Type: {}\n", context.json_type_info.root_type));
-    if let Some(ref elem_type) = context.json_type_info.element_type {
-        prompt.push_str(&format!("Element type: {}\n", elem_type));
+    if let Some(ref schema) = context.input_schema {
+        prompt.push_str("## Input JSON Schema\n");
+        prompt.push_str(&format!("```json\n{}\n```\n\n", schema));
     }
-    if let Some(count) = context.json_type_info.element_count {
-        prompt.push_str(&format!("Element count: {}\n", count));
-    }
-    if !context.json_type_info.top_level_keys.is_empty() {
-        prompt.push_str(&format!(
-            "Top-level keys: {}\n",
-            context.json_type_info.top_level_keys.join(", ")
-        ));
-    }
-    prompt.push_str(&format!(
-        "Summary: {}\n\n",
-        context.json_type_info.schema_hint
-    ));
 
     if let Some(ref output_sample) = context.output_sample {
         prompt.push_str("## Query Output Sample\n");
