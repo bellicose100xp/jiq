@@ -1,6 +1,15 @@
 //! Tests for query result handling
 
 use super::*;
+use crate::ai::context::ContextParams;
+
+fn empty_params() -> ContextParams<'static> {
+    ContextParams {
+        input_schema: None,
+        base_query: None,
+        base_query_result: None,
+    }
+}
 
 #[test]
 fn test_poll_without_channel_does_nothing() {
@@ -219,7 +228,7 @@ fn test_query_error_to_success_clears_response() {
 
     // Simulate successful query result with different query
     let result: Result<String, String> = Ok("success output".to_string());
-    handle_execution_result(&mut ai_state, &result, ".valid", 6, "{}");
+    handle_execution_result(&mut ai_state, &result, ".valid", 6, "{}", empty_params());
 
     // Stale response should be cleared (query changed)
     // Note: response is cleared by clear_stale_response, then new request starts
@@ -240,7 +249,7 @@ fn test_query_error_to_different_error_clears_response() {
 
     // Simulate new error result with different query
     let result: Result<String, String> = Err("new error".to_string());
-    handle_execution_result(&mut ai_state, &result, ".new", 4, "{}");
+    handle_execution_result(&mut ai_state, &result, ".new", 4, "{}", empty_params());
 
     // Old response should be cleared (query changed)
     assert!(ai_state.response.is_empty());
@@ -256,7 +265,7 @@ fn test_different_query_same_error_triggers_new_request() {
 
     // Different query should clear stale response (even with same error)
     let result: Result<String, String> = Err("same error".to_string());
-    handle_execution_result(&mut ai_state, &result, ".query2", 7, "{}");
+    handle_execution_result(&mut ai_state, &result, ".query2", 7, "{}", empty_params());
 
     // Response should be cleared because query changed
     assert!(ai_state.response.is_empty());
@@ -272,7 +281,7 @@ fn test_same_query_same_error_no_change() {
 
     // Same query should NOT clear response (regardless of error)
     let result: Result<String, String> = Err("same error".to_string());
-    handle_execution_result(&mut ai_state, &result, ".same", 5, "{}");
+    handle_execution_result(&mut ai_state, &result, ".same", 5, "{}", empty_params());
 
     // Response should be preserved (query didn't change)
     assert_eq!(ai_state.response, "Existing explanation");
@@ -288,7 +297,7 @@ fn test_same_query_different_error_no_change() {
 
     // Same query should NOT clear response even with different error
     let result: Result<String, String> = Err("different error".to_string());
-    handle_execution_result(&mut ai_state, &result, ".same", 5, "{}");
+    handle_execution_result(&mut ai_state, &result, ".same", 5, "{}", empty_params());
 
     // Response should be preserved (query didn't change)
     assert_eq!(ai_state.response, "Existing explanation");
@@ -304,7 +313,7 @@ fn test_different_query_different_error_triggers_new_request() {
 
     // Different query should trigger new request
     let result: Result<String, String> = Err("different error".to_string());
-    handle_execution_result(&mut ai_state, &result, ".query2", 7, "{}");
+    handle_execution_result(&mut ai_state, &result, ".query2", 7, "{}", empty_params());
 
     // Response should be cleared because query changed
     assert!(ai_state.response.is_empty());
@@ -321,7 +330,14 @@ fn test_success_triggers_ai_request() {
 
     // Simulate successful query result
     let result: Result<String, String> = Ok("output data".to_string());
-    handle_execution_result(&mut ai_state, &result, ".name", 5, r#"{"name": "test"}"#);
+    handle_execution_result(
+        &mut ai_state,
+        &result,
+        ".name",
+        5,
+        r#"{"name": "test"}"#,
+        empty_params(),
+    );
 
     // Should have sent a request
     let request = rx.try_recv();
@@ -347,7 +363,14 @@ fn test_error_triggers_ai_request() {
 
     // Simulate error query result
     let result: Result<String, String> = Err("syntax error".to_string());
-    handle_execution_result(&mut ai_state, &result, ".invalid", 8, r#"{"name": "test"}"#);
+    handle_execution_result(
+        &mut ai_state,
+        &result,
+        ".invalid",
+        8,
+        r#"{"name": "test"}"#,
+        empty_params(),
+    );
 
     // Should have sent a request
     let request = rx.try_recv();
@@ -388,7 +411,7 @@ fn test_query_change_clears_in_flight_request() {
 
     // Simulate new query result (different query)
     let result: Result<String, String> = Ok("output".to_string());
-    handle_execution_result(&mut ai_state, &result, ".new", 4, "{}");
+    handle_execution_result(&mut ai_state, &result, ".new", 4, "{}", empty_params());
 
     // Should have sent Query for new request
     // (cancellation is now handled via CancellationToken, not Cancel message)
@@ -414,7 +437,7 @@ fn test_handle_query_result_wrapper() {
 
     // Test with generic type that implements ToString
     let result: Result<&str, String> = Ok("output");
-    handle_query_result(&mut ai_state, &result, ".new", 4, "{}");
+    handle_query_result(&mut ai_state, &result, ".new", 4, "{}", empty_params());
 
     // Should have updated query hash
     assert!(!ai_state.is_query_changed(".new"));
@@ -430,7 +453,14 @@ fn test_same_query_no_duplicate_requests() {
 
     // First execution
     let result: Result<String, String> = Ok(r#""test""#.to_string());
-    handle_execution_result(&mut ai_state, &result, ".name", 5, r#"{"name": "test"}"#);
+    handle_execution_result(
+        &mut ai_state,
+        &result,
+        ".name",
+        5,
+        r#"{"name": "test"}"#,
+        empty_params(),
+    );
 
     // Drain channel
     while rx.try_recv().is_ok() {}
@@ -442,6 +472,7 @@ fn test_same_query_no_duplicate_requests() {
         ".name", // Same query
         5,
         r#"{"name": "test"}"#,
+        empty_params(),
     );
 
     // Should NOT have sent any new requests
@@ -462,7 +493,14 @@ fn test_ai_disabled_no_requests() {
 
     // Execute query
     let result: Result<String, String> = Ok(r#""test""#.to_string());
-    handle_execution_result(&mut ai_state, &result, ".name", 5, r#"{"name": "test"}"#);
+    handle_execution_result(
+        &mut ai_state,
+        &result,
+        ".name",
+        5,
+        r#"{"name": "test"}"#,
+        empty_params(),
+    );
 
     // Should NOT have sent any requests
     let request = rx.try_recv();
@@ -483,7 +521,14 @@ fn test_visible_sends_requests_on_error() {
 
     // Execute query with error
     let result: Result<String, String> = Err("syntax error".to_string());
-    handle_execution_result(&mut ai_state, &result, ".invalid", 8, r#"{"name": "test"}"#);
+    handle_execution_result(
+        &mut ai_state,
+        &result,
+        ".invalid",
+        8,
+        r#"{"name": "test"}"#,
+        empty_params(),
+    );
 
     // Should have sent AI request
     let request = rx.try_recv();
@@ -515,7 +560,14 @@ fn test_hidden_no_requests_on_error() {
 
     // Execute query with error
     let result: Result<String, String> = Err("syntax error".to_string());
-    handle_execution_result(&mut ai_state, &result, ".invalid", 8, r#"{"name": "test"}"#);
+    handle_execution_result(
+        &mut ai_state,
+        &result,
+        ".invalid",
+        8,
+        r#"{"name": "test"}"#,
+        empty_params(),
+    );
 
     // Should NOT have sent AI request
     let request = rx.try_recv();
@@ -542,6 +594,7 @@ fn test_visible_sends_requests_on_success() {
         ".name",
         5,
         r#"{"name": "test_value"}"#,
+        empty_params(),
     );
 
     // Should have sent AI request
@@ -576,6 +629,7 @@ fn test_hidden_no_requests_on_success() {
         ".name",
         5,
         r#"{"name": "test_value"}"#,
+        empty_params(),
     );
 
     // Should NOT have sent AI request

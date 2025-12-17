@@ -7,7 +7,18 @@ use crate::stats::parser::StatsParser;
 use crate::stats::types::ResultStats;
 
 /// Maximum length for JSON sample in context (characters)
-pub const MAX_JSON_SAMPLE_LENGTH: usize = 1000;
+pub const MAX_JSON_SAMPLE_LENGTH: usize = 2000;
+
+/// Additional context parameters for AI queries
+#[derive(Debug, Clone)]
+pub struct ContextParams<'a> {
+    /// Pre-computed JSON schema
+    pub input_schema: Option<&'a str>,
+    /// Last successful query (for error context)
+    pub base_query: Option<&'a str>,
+    /// Result of last successful query (for error context)
+    pub base_query_result: Option<&'a str>,
+}
 
 /// Information about the JSON structure for AI context
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -156,11 +167,11 @@ pub struct QueryContext {
     pub query: String,
     /// Cursor position in the query
     pub cursor_pos: usize,
-    /// Truncated sample of input JSON (max 1000 chars)
+    /// Truncated sample of input JSON (max 2000 chars)
     pub input_sample: String,
     /// Current output (if successful)
     pub output: Option<String>,
-    /// Truncated sample of output JSON (max 1000 chars) for successful queries
+    /// Truncated sample of output JSON (max 2000 chars) for successful queries
     pub output_sample: Option<String>,
     /// Error message (if query failed)
     pub error: Option<String>,
@@ -168,6 +179,12 @@ pub struct QueryContext {
     pub json_type_info: JsonTypeInfo,
     /// Whether the query executed successfully
     pub is_success: bool,
+    /// Full nested JSON schema (pre-computed, passed in)
+    pub input_schema: Option<String>,
+    /// Last working query before this one (failure context only)
+    pub base_query: Option<String>,
+    /// Output of the base query (failure context only, truncated to max 2000 chars)
+    pub base_query_result: Option<String>,
 }
 
 impl QueryContext {
@@ -178,6 +195,7 @@ impl QueryContext {
         json_input: &str,
         output: Option<String>,
         error: Option<String>,
+        params: ContextParams,
     ) -> Self {
         let input_sample = truncate_json(json_input, MAX_JSON_SAMPLE_LENGTH);
         let json_type_info = JsonTypeInfo::from_json(json_input);
@@ -185,6 +203,11 @@ impl QueryContext {
         let output_sample = output
             .as_ref()
             .map(|o| truncate_json(o, MAX_JSON_SAMPLE_LENGTH));
+
+        // Truncate base_query_result if provided
+        let base_query_result = params
+            .base_query_result
+            .map(|r| truncate_json(r, MAX_JSON_SAMPLE_LENGTH));
 
         Self {
             query,
@@ -195,6 +218,9 @@ impl QueryContext {
             error,
             json_type_info,
             is_success,
+            input_schema: params.input_schema.map(|s| s.to_string()),
+            base_query: params.base_query.map(|s| s.to_string()),
+            base_query_result,
         }
     }
 
