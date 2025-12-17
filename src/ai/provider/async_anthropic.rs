@@ -202,10 +202,10 @@ impl SseParser {
                 }
 
                 // Try to parse as content_block_delta
-                if let Some(text) = Self::parse_delta_text(data) {
-                    if !text.is_empty() {
-                        results.push(text);
-                    }
+                if let Some(text) = Self::parse_delta_text(data)
+                    && !text.is_empty()
+                {
+                    results.push(text);
                 }
             }
         }
