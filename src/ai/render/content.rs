@@ -120,19 +120,5 @@ pub fn build_content(ai_state: &AiState, max_width: u16) -> Text<'static> {
         return Text::from(lines);
     }
 
-    lines.push(Line::from(Span::styled(
-        "Ready to help with your jq queries.",
-        Style::default().fg(Color::Gray),
-    )));
-    lines.push(Line::from(""));
-    lines.push(Line::from(Span::styled(
-        "When you encounter an error, I'll",
-        Style::default().fg(Color::Gray),
-    )));
-    lines.push(Line::from(Span::styled(
-        "provide suggestions to fix it.",
-        Style::default().fg(Color::Gray),
-    )));
-
     Text::from(lines)
 }

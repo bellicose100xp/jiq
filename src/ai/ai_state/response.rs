@@ -6,6 +6,8 @@ use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
 use std::sync::mpsc::{Receiver, Sender};
 
+use tokio_util::sync::CancellationToken;
+
 use crate::ai::ai_state::{AiRequest, AiResponse, AiState};
 
 impl AiState {
@@ -18,23 +20,46 @@ impl AiState {
     ///
     /// Returns true if the request was sent successfully, false otherwise.
     /// The request includes the current request_id which is incremented
-    /// by start_request() to filter stale responses.
+    /// by start_request() to filter stale responses, and a CancellationToken
+    /// for aborting the request.
+    ///
+    /// This method:
+    /// 1. Cancels any existing in-flight request first
+    /// 2. Creates a new CancellationToken
+    /// 3. Stores the token in current_cancel_token
+    /// 4. Sends the request with the token
     pub fn send_request(&mut self, prompt: String) -> bool {
         // Check if we have a channel first
         if self.request_tx.is_none() {
             return false;
         }
 
-        // Start request first to increment request_id
+        // Cancel any existing in-flight request first
+        self.cancel_in_flight_request();
+
+        // Start request to increment request_id and set up state
         self.start_request();
         let request_id = self.request_id;
 
+        // Create a new cancellation token for this request
+        let cancel_token = CancellationToken::new();
+        // Store the token so we can cancel it later
+        self.current_cancel_token = Some(cancel_token.clone());
+
         // Now send the request
         if let Some(ref tx) = self.request_tx
-            && tx.send(AiRequest::Query { prompt, request_id }).is_ok()
+            && tx
+                .send(AiRequest::Query {
+                    prompt,
+                    request_id,
+                    cancel_token,
+                })
+                .is_ok()
         {
             return true;
         }
+        // If send failed, clear the token
+        self.current_cancel_token = None;
         false
     }
 
@@ -86,14 +111,16 @@ impl AiState {
 
     /// Cancel any in-flight request
     ///
-    /// Sends a Cancel message to the worker thread if there's an active request.
-    /// Returns true if a cancel was sent, false otherwise.
+    /// Calls cancel() on the CancellationToken to immediately abort the HTTP request,
+    /// then clears both the token and in-flight request tracking.
+    /// Returns true if there was an in-flight request to cancel, false otherwise.
     pub fn cancel_in_flight_request(&mut self) -> bool {
-        if let Some(request_id) = self.in_flight_request_id
-            && let Some(ref tx) = self.request_tx
-            && tx.send(AiRequest::Cancel { request_id }).is_ok()
-        {
-            log::debug!("Sent cancel for request {}", request_id);
+        if let Some(token) = self.current_cancel_token.take() {
+            log::debug!(
+                "Cancelling in-flight request {:?}",
+                self.in_flight_request_id
+            );
+            token.cancel();
             self.in_flight_request_id = None;
             return true;
         }

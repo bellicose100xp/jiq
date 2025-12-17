@@ -59,8 +59,12 @@ toml = "0.8"
 # Fuzzy matching (fzf-style)
 fuzzy-matcher = "0.3"
 
-# HTTP client for AI API calls (synchronous with streaming support)
-ureq = "2.9"
+# Async HTTP client for AI API calls with streaming and cancellation support
+reqwest = { version = "0.12", features = ["stream", "json"] }
+tokio = { version = "1", features = ["rt", "sync", "macros"] }
+tokio-util = "0.7"
+futures = "0.3"
+bytes = "1.5"
 
 # Logging (code only active in debug builds via #[cfg(debug_assertions)])
 log = "0.4"

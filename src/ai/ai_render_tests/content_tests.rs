@@ -38,8 +38,8 @@ fn test_build_content_empty_state() {
     let state = AiState::new_with_config(true, true);
     let content = build_content(&state, 60);
 
-    // Should have help text
-    assert!(!content.lines.is_empty());
+    // Empty state shows nothing - "Thinking..." appears when loading
+    assert!(content.lines.is_empty());
 }
 
 #[test]

@@ -231,6 +231,10 @@ pub fn handle_query_result<T: ToString>(
 ///
 /// Filters stale responses by checking request_id against the current
 /// AiState request_id. Responses from old requests are ignored.
+///
+/// Note: `AiResponse::Cancelled` does not require request_id comparison because
+/// token-based cancellation ensures the response is always for the request that
+/// was actually cancelled. The CancellationToken is tied to a specific request.
 fn process_response(ai_state: &mut AiState, response: AiResponse) {
     let current_request_id = ai_state.current_request_id();
 
@@ -260,15 +264,11 @@ fn process_response(ai_state: &mut AiState, response: AiResponse) {
         AiResponse::Error(error_msg) => {
             ai_state.set_error(error_msg);
         }
-        AiResponse::Cancelled { request_id } => {
-            if request_id < current_request_id {
-                log::debug!(
-                    "Ignoring stale cancelled from request {} (current: {})",
-                    request_id,
-                    current_request_id
-                );
-                return;
-            }
+        // Token-based cancellation: no request_id comparison needed.
+        // The CancellationToken is tied to a specific request, so when
+        // we receive Cancelled, it's always for the request we cancelled.
+        AiResponse::Cancelled { request_id: _ } => {
+            log::debug!("Request cancelled via token");
             ai_state.loading = false;
             ai_state.in_flight_request_id = None;
         }

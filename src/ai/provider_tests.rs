@@ -5,12 +5,12 @@ use crate::config::ai_types::{AiConfig, AiProviderType, AnthropicConfig};
 use proptest::prelude::*;
 
 // =========================================================================
-// Property-Based Tests
+// Property-Based Tests for AsyncAiProvider
 // =========================================================================
 
 // **Feature: ai-assistant, Property 3: Missing API key produces error state**
 // *For any* AiConfig with `enabled = true` but missing or empty `api_key`,
-// attempting to create an AiProvider should return an error.
+// attempting to create an AsyncAiProvider should return an error.
 // **Validates: Requirements 1.3**
 proptest! {
     #![proptest_config(ProptestConfig::with_cases(100))]
@@ -31,7 +31,7 @@ proptest! {
             },
         };
 
-        let result = AiProvider::from_config(&config);
+        let result = AsyncAiProvider::from_config(&config);
 
         prop_assert!(
             result.is_err(),
@@ -66,7 +66,7 @@ proptest! {
             },
         };
 
-        let result = AiProvider::from_config(&config);
+        let result = AsyncAiProvider::from_config(&config);
 
         prop_assert!(
             result.is_err(),
@@ -101,7 +101,7 @@ proptest! {
             },
         };
 
-        let result = AiProvider::from_config(&config);
+        let result = AsyncAiProvider::from_config(&config);
 
         prop_assert!(
             result.is_ok(),
@@ -126,7 +126,7 @@ proptest! {
             },
         };
 
-        let result = AiProvider::from_config(&config);
+        let result = AsyncAiProvider::from_config(&config);
 
         prop_assert!(
             result.is_err(),
@@ -146,11 +146,11 @@ proptest! {
 }
 
 // =========================================================================
-// Unit Tests
+// Unit Tests for AsyncAiProvider
 // =========================================================================
 
 #[test]
-fn test_from_config_missing_api_key() {
+fn test_async_from_config_missing_api_key() {
     let config = AiConfig {
         enabled: true,
         provider: AiProviderType::Anthropic,
@@ -160,13 +160,13 @@ fn test_from_config_missing_api_key() {
         },
     };
 
-    let result = AiProvider::from_config(&config);
+    let result = AsyncAiProvider::from_config(&config);
     assert!(result.is_err());
     assert!(matches!(result, Err(AiError::NotConfigured(_))));
 }
 
 #[test]
-fn test_from_config_empty_api_key() {
+fn test_async_from_config_empty_api_key() {
     let config = AiConfig {
         enabled: true,
         provider: AiProviderType::Anthropic,
@@ -176,13 +176,13 @@ fn test_from_config_empty_api_key() {
         },
     };
 
-    let result = AiProvider::from_config(&config);
+    let result = AsyncAiProvider::from_config(&config);
     assert!(result.is_err());
     assert!(matches!(result, Err(AiError::NotConfigured(_))));
 }
 
 #[test]
-fn test_from_config_whitespace_api_key() {
+fn test_async_from_config_whitespace_api_key() {
     let config = AiConfig {
         enabled: true,
         provider: AiProviderType::Anthropic,
@@ -192,13 +192,13 @@ fn test_from_config_whitespace_api_key() {
         },
     };
 
-    let result = AiProvider::from_config(&config);
+    let result = AsyncAiProvider::from_config(&config);
     assert!(result.is_err());
     assert!(matches!(result, Err(AiError::NotConfigured(_))));
 }
 
 #[test]
-fn test_from_config_valid_api_key() {
+fn test_async_from_config_valid_api_key() {
     let config = AiConfig {
         enabled: true,
         provider: AiProviderType::Anthropic,
@@ -209,12 +209,12 @@ fn test_from_config_valid_api_key() {
         },
     };
 
-    let result = AiProvider::from_config(&config);
+    let result = AsyncAiProvider::from_config(&config);
     assert!(result.is_ok());
 }
 
 #[test]
-fn test_from_config_disabled() {
+fn test_async_from_config_disabled() {
     let config = AiConfig {
         enabled: false,
         provider: AiProviderType::Anthropic,
@@ -224,7 +224,7 @@ fn test_from_config_disabled() {
         },
     };
 
-    let result = AiProvider::from_config(&config);
+    let result = AsyncAiProvider::from_config(&config);
     assert!(result.is_err());
     assert!(matches!(result, Err(AiError::NotConfigured(_))));
 }

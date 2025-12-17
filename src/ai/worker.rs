@@ -3,18 +3,22 @@
 //! Handles AI requests in a background thread to avoid blocking the UI.
 //! Receives requests via channel, makes HTTP calls to the AI provider,
 //! and streams responses back to the main thread.
+//!
+//! Uses a tokio runtime for async HTTP streaming with cancellation support.
 
 use std::sync::mpsc::{Receiver, Sender};
 
+use tokio_util::sync::CancellationToken;
+
 use super::ai_state::{AiRequest, AiResponse};
-use super::provider::{AiError, AiProvider};
+use super::provider::{AiError, AsyncAiProvider};
 use crate::config::ai_types::AiConfig;
 
 /// Spawn the AI worker thread
 ///
-/// Creates a background thread that:
+/// Creates a background thread with a tokio runtime that:
 /// 1. Listens for requests on the request channel
-/// 2. Makes HTTP calls to the AI provider
+/// 2. Makes async HTTP calls to the AI provider with cancellation support
 /// 3. Streams responses back via the response channel
 ///
 /// # Arguments
@@ -25,22 +29,38 @@ use crate::config::ai_types::AiConfig;
 /// # Requirements
 /// - 4.1: WHEN the AI provider sends a streaming response THEN the AI_Popup
 ///   SHALL display text incrementally as chunks arrive
+/// - 4.2: WHEN the worker thread is spawned THEN it SHALL create a tokio runtime
+///   for async operations
 pub fn spawn_worker(
     config: &AiConfig,
     request_rx: Receiver<AiRequest>,
     response_tx: Sender<AiResponse>,
 ) {
-    // Try to create the provider from config
-    let provider_result = AiProvider::from_config(config);
+    // Try to create the async provider from config
+    let provider_result = AsyncAiProvider::from_config(config);
 
     std::thread::spawn(move || {
-        worker_loop(provider_result, request_rx, response_tx);
+        // Create a single-threaded tokio runtime for this worker thread
+        let rt = tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .expect("Failed to create tokio runtime");
+
+        // Run the async worker loop on the runtime
+        rt.block_on(worker_loop(provider_result, request_rx, response_tx));
     });
 }
 
-/// Main worker loop - processes requests until the channel is closed
-fn worker_loop(
-    provider_result: Result<AiProvider, AiError>,
+/// Main async worker loop - processes requests until the channel is closed
+///
+/// Uses blocking `recv()` on the request channel (fine in dedicated thread)
+/// and processes each query with the async handler.
+///
+/// # Requirements
+/// - 4.2: WHEN the worker thread is spawned THEN it SHALL create a tokio runtime
+///   for async operations
+async fn worker_loop(
+    provider_result: Result<AsyncAiProvider, AiError>,
     request_rx: Receiver<AiRequest>,
     response_tx: Sender<AiResponse>,
 ) {
@@ -55,15 +75,16 @@ fn worker_loop(
     };
 
     // Process requests until the channel is closed
+    // Using blocking recv() is fine here since we're in a dedicated thread
     while let Ok(request) = request_rx.recv() {
         match request {
-            AiRequest::Query { prompt, request_id } => {
-                handle_query(&provider, &prompt, request_id, &request_rx, &response_tx);
-            }
-            AiRequest::Cancel { request_id } => {
-                // Cancel received when no request is in-flight - just acknowledge
-                let _ = response_tx.send(AiResponse::Cancelled { request_id });
-                log::debug!("Cancelled request {} (no active request)", request_id);
+            AiRequest::Query {
+                prompt,
+                request_id,
+                cancel_token,
+            } => {
+                handle_query_async(&provider, &prompt, request_id, cancel_token, &response_tx)
+                    .await;
             }
         }
     }
@@ -71,24 +92,29 @@ fn worker_loop(
     log::debug!("AI worker thread shutting down");
 }
 
-/// Handle a query request
+/// Handle a query request asynchronously
 ///
-/// Streams the response from the AI provider, checking for cancellation
-/// between chunks. With synchronous HTTP, we can only check between chunks,
-/// not mid-chunk.
+/// Uses `tokio::select!` with biased mode to check cancellation first,
+/// then processes the async stream from the AI provider.
 ///
 /// # Requirements
-/// - 5.4: WHEN a query change occurs while an API request is in-flight THEN
-///   the AI_Assistant SHALL send a cancel signal to abort the previous request
-/// - 5.5: WHEN a cancel signal is received THEN the Worker_Thread SHALL abort
-///   the HTTP request and discard any pending response chunks
-fn handle_query(
-    provider: &Option<AiProvider>,
+/// - 1.2: WHEN a cancel signal is received THEN the Worker_Thread SHALL abort
+///   the HTTP request immediately
+/// - 3.2: WHEN a request is cancelled THEN the system SHALL send AiResponse::Cancelled
+async fn handle_query_async(
+    provider: &Option<AsyncAiProvider>,
     prompt: &str,
     request_id: u64,
-    request_rx: &Receiver<AiRequest>,
+    cancel_token: CancellationToken,
     response_tx: &Sender<AiResponse>,
 ) {
+    // Check if already cancelled before starting
+    if cancel_token.is_cancelled() {
+        let _ = response_tx.send(AiResponse::Cancelled { request_id });
+        log::debug!("Request {} cancelled before starting", request_id);
+        return;
+    }
+
     // Check if provider is available
     let provider = match provider {
         Some(p) => p,
@@ -100,80 +126,23 @@ fn handle_query(
         }
     };
 
-    // Stream the response
-    match provider.stream(prompt) {
-        Ok(stream) => {
-            for chunk_result in stream {
-                // Check for cancellation between chunks
-                if check_for_cancellation(request_rx, request_id, response_tx) {
-                    return;
-                }
-
-                match chunk_result {
-                    Ok(text) => {
-                        if response_tx
-                            .send(AiResponse::Chunk { text, request_id })
-                            .is_err()
-                        {
-                            // Main thread disconnected, stop streaming
-                            return;
-                        }
-                    }
-                    Err(e) => {
-                        let _ = response_tx.send(AiResponse::Error(e.to_string()));
-                        return;
-                    }
-                }
-            }
+    // Stream the response with cancellation support
+    // The async provider handles cancellation internally via tokio::select!
+    match provider
+        .stream_with_cancel(prompt, request_id, cancel_token, response_tx.clone())
+        .await
+    {
+        Ok(()) => {
             // Stream completed successfully
             let _ = response_tx.send(AiResponse::Complete { request_id });
         }
+        Err(AiError::Cancelled) => {
+            // Request was cancelled - send Cancelled response
+            let _ = response_tx.send(AiResponse::Cancelled { request_id });
+            log::debug!("Request {} cancelled", request_id);
+        }
         Err(e) => {
             let _ = response_tx.send(AiResponse::Error(e.to_string()));
-        }
-    }
-}
-
-/// Check for cancellation requests between streaming chunks
-///
-/// Uses try_recv() to non-blocking check for Cancel messages.
-/// Returns true if the current request should be cancelled.
-fn check_for_cancellation(
-    request_rx: &Receiver<AiRequest>,
-    current_request_id: u64,
-    response_tx: &Sender<AiResponse>,
-) -> bool {
-    use std::sync::mpsc::TryRecvError;
-
-    loop {
-        match request_rx.try_recv() {
-            Ok(AiRequest::Cancel { request_id }) => {
-                if request_id == current_request_id {
-                    // Cancel matches current request - abort
-                    let _ = response_tx.send(AiResponse::Cancelled { request_id });
-                    log::debug!("Cancelled request {} during streaming", request_id);
-                    return true;
-                }
-                // Cancel for different request - ignore and continue
-                log::debug!(
-                    "Ignoring cancel for request {} (current: {})",
-                    request_id,
-                    current_request_id
-                );
-            }
-            Ok(AiRequest::Query { .. }) => {
-                // New query arrived - this shouldn't happen during streaming
-                // but if it does, we'll process it after current request completes
-                log::warn!("Received new query during streaming - will be lost");
-            }
-            Err(TryRecvError::Empty) => {
-                // No messages waiting - continue streaming
-                return false;
-            }
-            Err(TryRecvError::Disconnected) => {
-                // Channel closed - stop streaming
-                return true;
-            }
         }
     }
 }

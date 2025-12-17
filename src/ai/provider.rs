@@ -1,14 +1,19 @@
 //! AI provider abstraction
 //!
-//! Defines the AiProvider enum, AiError types, and factory for creating provider instances.
+//! Defines the AsyncAiProvider enum, AiError types, and factory for creating provider instances.
+//! Uses async/await with tokio for non-blocking streaming and CancellationToken for request cancellation.
+
+use std::sync::mpsc::Sender;
 
 use thiserror::Error;
+use tokio_util::sync::CancellationToken;
 
+use crate::ai::ai_state::AiResponse;
 use crate::config::ai_types::{AiConfig, AiProviderType};
 
-mod anthropic;
+mod async_anthropic;
 
-pub use anthropic::AnthropicClient;
+pub use async_anthropic::AsyncAnthropicClient;
 
 /// Errors that can occur during AI operations
 #[derive(Debug, Error)]
@@ -31,20 +36,21 @@ pub enum AiError {
 
     /// Request was cancelled
     #[error("Request cancelled")]
-    // TODO: Remove #[allow(dead_code)] when cancellation is implemented
-    #[allow(dead_code)] // Phase 1: Reserved for future cancellation support
     Cancelled,
 }
 
-/// AI provider implementations
-#[derive(Debug)]
-pub enum AiProvider {
-    /// Anthropic Claude API
-    Anthropic(AnthropicClient),
+/// Async AI provider implementations with cancellation support
+///
+/// Uses async/await with tokio for non-blocking streaming and
+/// CancellationToken for request cancellation.
+#[derive(Debug, Clone)]
+pub enum AsyncAiProvider {
+    /// Anthropic Claude API (async)
+    Anthropic(AsyncAnthropicClient),
 }
 
-impl AiProvider {
-    /// Create an AI provider from configuration
+impl AsyncAiProvider {
+    /// Create an async AI provider from configuration
     ///
     /// Returns an error if the configuration is invalid (e.g., missing API key)
     pub fn from_config(config: &AiConfig) -> Result<Self, AiError> {
@@ -78,7 +84,7 @@ impl AiProvider {
                         )
                     })?;
 
-                Ok(AiProvider::Anthropic(AnthropicClient::new(
+                Ok(AsyncAiProvider::Anthropic(AsyncAnthropicClient::new(
                     api_key.clone(),
                     model.clone(),
                     config.anthropic.max_tokens,
@@ -87,15 +93,34 @@ impl AiProvider {
         }
     }
 
-    /// Stream a response from the AI provider
+    /// Stream a response from the AI provider with cancellation support
     ///
-    /// Returns an iterator that yields text chunks as they arrive
-    pub fn stream(
+    /// Uses async streaming and sends chunks via the response channel.
+    /// Can be cancelled via the CancellationToken.
+    ///
+    /// # Arguments
+    /// * `prompt` - The prompt to send to the API
+    /// * `request_id` - Unique ID for this request
+    /// * `cancel_token` - Token to cancel the request
+    /// * `response_tx` - Channel to send response chunks
+    ///
+    /// # Returns
+    /// * `Ok(())` - Stream completed successfully
+    /// * `Err(AiError::Cancelled)` - Request was cancelled
+    /// * `Err(AiError::*)` - Other errors
+    pub async fn stream_with_cancel(
         &self,
         prompt: &str,
-    ) -> Result<Box<dyn Iterator<Item = Result<String, AiError>> + '_>, AiError> {
+        request_id: u64,
+        cancel_token: CancellationToken,
+        response_tx: Sender<AiResponse>,
+    ) -> Result<(), AiError> {
         match self {
-            AiProvider::Anthropic(client) => client.stream(prompt),
+            AsyncAiProvider::Anthropic(client) => {
+                client
+                    .stream_with_cancel(prompt, request_id, cancel_token, response_tx)
+                    .await
+            }
         }
     }
 }

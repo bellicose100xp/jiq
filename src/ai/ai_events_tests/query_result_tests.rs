@@ -327,17 +327,13 @@ fn test_success_triggers_ai_request() {
     let request = rx.try_recv();
     assert!(request.is_ok(), "Should have sent AI request for success");
 
-    // Verify it's a Query request
-    match request.unwrap() {
-        AiRequest::Query { prompt, .. } => {
-            // Success prompt should contain "optimize" (from build_success_prompt)
-            assert!(
-                prompt.contains("optimize"),
-                "Success prompt should mention optimization"
-            );
-        }
-        _ => panic!("Expected Query request"),
-    }
+    // Verify it's a Query request with success context
+    let AiRequest::Query { prompt, .. } = request.unwrap();
+    // Success prompt should contain "optimize" (from build_success_prompt)
+    assert!(
+        prompt.contains("optimize"),
+        "Success prompt should mention optimization"
+    );
 }
 
 // Test: error query triggers AI request with error context
@@ -357,26 +353,22 @@ fn test_error_triggers_ai_request() {
     let request = rx.try_recv();
     assert!(request.is_ok(), "Should have sent AI request for error");
 
-    // Verify it's a Query request
-    match request.unwrap() {
-        AiRequest::Query { prompt, .. } => {
-            // Error prompt should contain "troubleshoot" (from build_error_prompt)
-            assert!(
-                prompt.contains("troubleshoot"),
-                "Error prompt should mention troubleshooting"
-            );
-            assert!(
-                prompt.contains("syntax error"),
-                "Error prompt should contain error message"
-            );
-        }
-        _ => panic!("Expected Query request"),
-    }
+    // Verify it's a Query request with error context
+    let AiRequest::Query { prompt, .. } = request.unwrap();
+    // Error prompt should contain "troubleshoot" (from build_error_prompt)
+    assert!(
+        prompt.contains("troubleshoot"),
+        "Error prompt should mention troubleshooting"
+    );
+    assert!(
+        prompt.contains("syntax error"),
+        "Error prompt should contain error message"
+    );
 }
 
-// Test: query change cancels in-flight request
+// Test: query change clears in-flight request tracking
 #[test]
-fn test_query_change_cancels_in_flight_request() {
+fn test_query_change_clears_in_flight_request() {
     let mut ai_state = AiState::new(true);
     ai_state.enabled = true;
     ai_state.visible = true; // Popup must be visible for requests to be sent
@@ -385,7 +377,7 @@ fn test_query_change_cancels_in_flight_request() {
 
     // Start an in-flight request
     ai_state.start_request();
-    let old_request_id = ai_state.current_request_id();
+    let _old_request_id = ai_state.current_request_id();
     assert!(ai_state.has_in_flight_request());
 
     // Clear the channel
@@ -398,26 +390,18 @@ fn test_query_change_cancels_in_flight_request() {
     let result: Result<String, String> = Ok("output".to_string());
     handle_execution_result(&mut ai_state, &result, ".new", 4, "{}");
 
-    // Should have sent Cancel for old request, then Query for new
-    let mut found_cancel = false;
+    // Should have sent Query for new request
+    // (cancellation is now handled via CancellationToken, not Cancel message)
     let mut found_query = false;
 
     while let Ok(msg) = rx.try_recv() {
         match msg {
-            AiRequest::Cancel { request_id } => {
-                assert_eq!(request_id, old_request_id);
-                found_cancel = true;
-            }
             AiRequest::Query { .. } => {
                 found_query = true;
             }
         }
     }
 
-    assert!(
-        found_cancel,
-        "Should have sent Cancel for in-flight request"
-    );
     assert!(found_query, "Should have sent new Query request");
 }
 
@@ -509,19 +493,15 @@ fn test_visible_sends_requests_on_error() {
     );
 
     // Verify it's a Query request with error context
-    match request.unwrap() {
-        AiRequest::Query { prompt, .. } => {
-            assert!(
-                prompt.contains("troubleshoot"),
-                "Error prompt should mention troubleshooting"
-            );
-            assert!(
-                prompt.contains("syntax error"),
-                "Error prompt should contain error message"
-            );
-        }
-        _ => panic!("Expected Query request"),
-    }
+    let AiRequest::Query { prompt, .. } = request.unwrap();
+    assert!(
+        prompt.contains("troubleshoot"),
+        "Error prompt should mention troubleshooting"
+    );
+    assert!(
+        prompt.contains("syntax error"),
+        "Error prompt should contain error message"
+    );
 }
 
 /// Test: visible=false → no AI requests on error
@@ -572,15 +552,11 @@ fn test_visible_sends_requests_on_success() {
     );
 
     // Verify it's a Query request with success context
-    match request.unwrap() {
-        AiRequest::Query { prompt, .. } => {
-            assert!(
-                prompt.contains("optimize"),
-                "Success prompt should mention optimization"
-            );
-        }
-        _ => panic!("Expected Query request"),
-    }
+    let AiRequest::Query { prompt, .. } = request.unwrap();
+    assert!(
+        prompt.contains("optimize"),
+        "Success prompt should mention optimization"
+    );
 }
 
 /// Test: visible=false with success → no AI request sent

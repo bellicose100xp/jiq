@@ -2,7 +2,7 @@
 
 use super::*;
 
-/// Test: query change → jq executes → error result → cancel → AI request with error
+/// Test: query change → jq executes → error result → AI request with error
 /// Validates the full flow for error results
 #[test]
 fn test_full_flow_error_result() {
@@ -17,7 +17,7 @@ fn test_full_flow_error_result() {
 
     // Start an in-flight request (simulating previous query)
     ai_state.start_request();
-    let old_request_id = ai_state.current_request_id();
+    let _old_request_id = ai_state.current_request_id();
 
     // Clear channel
     while rx.try_recv().is_ok() {}
@@ -34,21 +34,13 @@ fn test_full_flow_error_result() {
     );
 
     // Verify the flow:
-    // 1. Cancel was sent for old request
+    // 1. In-flight request was cleared (cancellation handled via token)
     // 2. New Query request was sent with error context
-    let mut found_cancel = false;
     let mut found_query = false;
     let mut query_prompt = String::new();
 
     while let Ok(msg) = rx.try_recv() {
         match msg {
-            AiRequest::Cancel { request_id } => {
-                assert_eq!(
-                    request_id, old_request_id,
-                    "Cancel should be for old request"
-                );
-                found_cancel = true;
-            }
             AiRequest::Query { prompt, .. } => {
                 found_query = true;
                 query_prompt = prompt;
@@ -56,7 +48,6 @@ fn test_full_flow_error_result() {
         }
     }
 
-    assert!(found_cancel, "Should have cancelled in-flight request");
     assert!(found_query, "Should have sent new Query request");
     assert!(
         query_prompt.contains("troubleshoot"),
@@ -68,7 +59,7 @@ fn test_full_flow_error_result() {
     );
 }
 
-/// Test: query change → jq executes → success result → cancel → AI request with output
+/// Test: query change → jq executes → success result → AI request with output
 /// Validates the full flow for success results
 #[test]
 fn test_full_flow_success_result() {
@@ -83,7 +74,7 @@ fn test_full_flow_success_result() {
 
     // Start an in-flight request (simulating previous query)
     ai_state.start_request();
-    let old_request_id = ai_state.current_request_id();
+    let _old_request_id = ai_state.current_request_id();
 
     // Clear channel
     while rx.try_recv().is_ok() {}
@@ -99,21 +90,13 @@ fn test_full_flow_success_result() {
     );
 
     // Verify the flow:
-    // 1. Cancel was sent for old request
+    // 1. In-flight request was cleared (cancellation handled via token)
     // 2. New Query request was sent with success context
-    let mut found_cancel = false;
     let mut found_query = false;
     let mut query_prompt = String::new();
 
     while let Ok(msg) = rx.try_recv() {
         match msg {
-            AiRequest::Cancel { request_id } => {
-                assert_eq!(
-                    request_id, old_request_id,
-                    "Cancel should be for old request"
-                );
-                found_cancel = true;
-            }
             AiRequest::Query { prompt, .. } => {
                 found_query = true;
                 query_prompt = prompt;
@@ -121,7 +104,6 @@ fn test_full_flow_success_result() {
         }
     }
 
-    assert!(found_cancel, "Should have cancelled in-flight request");
     assert!(found_query, "Should have sent new Query request");
     assert!(
         query_prompt.contains("optimize"),
@@ -133,10 +115,10 @@ fn test_full_flow_success_result() {
     );
 }
 
-/// Test: rapid typing → multiple jq executions → only last result triggers AI request
-/// Validates that rapid query changes result in proper cancellation
+/// Test: rapid typing → multiple jq executions → multiple AI requests
+/// Validates that rapid query changes result in multiple requests with proper tracking
 #[test]
-fn test_rapid_typing_only_last_result_triggers() {
+fn test_rapid_typing_sends_multiple_requests() {
     let mut ai_state = AiState::new(true);
     ai_state.enabled = true;
     ai_state.visible = true; // Popup must be visible for requests to be sent
@@ -169,15 +151,11 @@ fn test_rapid_typing_only_last_result_triggers() {
     }
 
     // Drain the channel and count messages
-    let mut cancel_count = 0;
     let mut query_count = 0;
     let mut last_query_request_id = 0;
 
     while let Ok(msg) = rx.try_recv() {
         match msg {
-            AiRequest::Cancel { .. } => {
-                cancel_count += 1;
-            }
             AiRequest::Query { request_id, .. } => {
                 query_count += 1;
                 last_query_request_id = request_id;
@@ -190,9 +168,6 @@ fn test_rapid_typing_only_last_result_triggers() {
         query_count, 4,
         "Should have sent 4 Query requests (one per query)"
     );
-
-    // Should have 3 Cancel requests (for the first 3 queries)
-    assert_eq!(cancel_count, 3, "Should have sent 3 Cancel requests");
 
     // The last Query request should have the latest request_id
     assert_eq!(

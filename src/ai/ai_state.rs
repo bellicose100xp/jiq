@@ -6,6 +6,7 @@
 use std::sync::mpsc::{Receiver, Sender};
 
 use super::selection::SelectionState;
+use tokio_util::sync::CancellationToken;
 
 // Re-export for backward compatibility
 #[allow(unused_imports)]
@@ -25,18 +26,14 @@ mod suggestions;
 mod ai_state_tests;
 
 /// Request messages sent to the AI worker thread
-#[derive(Debug)]
 pub enum AiRequest {
     /// Query the AI with the given context
     Query {
         prompt: String,
         /// Unique ID for this request, used to filter stale responses
         request_id: u64,
-    },
-    /// Cancel the request with the given ID
-    Cancel {
-        /// ID of the request to cancel
-        request_id: u64,
+        /// Cancellation token for aborting the request
+        cancel_token: CancellationToken,
     },
 }
 
@@ -59,6 +56,9 @@ pub enum AiResponse {
     /// The request was cancelled
     Cancelled {
         /// Request ID that was cancelled
+        /// Note: Not used in production code (token-based cancellation doesn't need it)
+        /// but kept for debugging, logging, and test assertions
+        #[allow(dead_code)]
         request_id: u64,
     },
 }
@@ -92,6 +92,9 @@ pub struct AiState {
     /// ID of the currently in-flight request, if any
     /// Used to track active requests for cancellation
     pub in_flight_request_id: Option<u64>,
+    /// Current cancellation token for the in-flight request
+    /// Calling cancel() on this immediately aborts the HTTP request
+    pub current_cancel_token: Option<CancellationToken>,
     /// Parsed suggestions from AI response
     /// Empty if response couldn't be parsed into structured suggestions
     pub suggestions: Vec<Suggestion>,

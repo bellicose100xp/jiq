@@ -3,6 +3,16 @@
 use super::*;
 use proptest::prelude::*;
 use std::sync::mpsc;
+use tokio_util::sync::CancellationToken;
+
+/// Helper to run async tests with a tokio runtime
+fn run_async<F: std::future::Future>(f: F) -> F::Output {
+    let rt = tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()
+        .expect("Failed to create tokio runtime");
+    rt.block_on(f)
+}
 
 #[test]
 fn test_worker_handles_query_without_provider() {
@@ -10,19 +20,26 @@ fn test_worker_handles_query_without_provider() {
     let (response_tx, response_rx) = mpsc::channel();
 
     // Spawn worker with no provider (simulating missing config)
+    // The worker now creates its own tokio runtime internally
     std::thread::spawn(move || {
-        worker_loop(
+        let rt = tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .expect("Failed to create tokio runtime");
+        rt.block_on(worker_loop(
             Err(AiError::NotConfigured("test".to_string())),
             request_rx,
             response_tx,
-        );
+        ));
     });
 
-    // Send a query with request_id
+    // Send a query with request_id and cancel_token
+    let cancel_token = CancellationToken::new();
     request_tx
         .send(AiRequest::Query {
             prompt: "test".to_string(),
             request_id: 1,
+            cancel_token,
         })
         .unwrap();
 
@@ -37,22 +54,33 @@ fn test_worker_handles_query_without_provider() {
 }
 
 #[test]
-fn test_worker_handles_cancel() {
+fn test_worker_handles_pre_cancelled_request() {
     let (request_tx, request_rx) = mpsc::channel();
     let (response_tx, response_rx) = mpsc::channel();
 
-    // Spawn worker
+    // Spawn worker with no provider
     std::thread::spawn(move || {
-        worker_loop(
+        let rt = tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .expect("Failed to create tokio runtime");
+        rt.block_on(worker_loop(
             Err(AiError::NotConfigured("test".to_string())),
             request_rx,
             response_tx,
-        );
+        ));
     });
 
-    // Send cancel with request_id
+    // Create a token and cancel it before sending
+    let cancel_token = CancellationToken::new();
+    cancel_token.cancel();
+
     request_tx
-        .send(AiRequest::Cancel { request_id: 1 })
+        .send(AiRequest::Query {
+            prompt: "test".to_string(),
+            request_id: 1,
+            cancel_token,
+        })
         .unwrap();
 
     // Should receive cancelled response with request_id
@@ -66,11 +94,15 @@ fn test_worker_shuts_down_when_channel_closed() {
     let (response_tx, _response_rx) = mpsc::channel();
 
     let handle = std::thread::spawn(move || {
-        worker_loop(
+        let rt = tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .expect("Failed to create tokio runtime");
+        rt.block_on(worker_loop(
             Err(AiError::NotConfigured("test".to_string())),
             request_rx,
             response_tx,
-        );
+        ));
     });
 
     // Drop the sender to close the channel
@@ -81,95 +113,63 @@ fn test_worker_shuts_down_when_channel_closed() {
 }
 
 // =========================================================================
-// Cancellation Tests
+// CancellationToken Tests
 // =========================================================================
 
 #[test]
-fn test_check_for_cancellation_no_messages() {
-    let (request_tx, request_rx) = mpsc::channel();
-    let (response_tx, _response_rx) = mpsc::channel();
-
-    // Don't send any messages
-    drop(request_tx);
-
-    // Empty channel should return true (disconnected)
-    let result = check_for_cancellation(&request_rx, 1, &response_tx);
-    assert!(result);
+fn test_cancellation_token_not_cancelled_initially() {
+    let token = CancellationToken::new();
+    assert!(!token.is_cancelled());
 }
 
 #[test]
-fn test_check_for_cancellation_matching_cancel() {
-    let (request_tx, request_rx) = mpsc::channel();
-    let (response_tx, response_rx) = mpsc::channel();
-
-    // Send cancel with matching request_id
-    request_tx
-        .send(AiRequest::Cancel { request_id: 1 })
-        .unwrap();
-
-    // Should return true (cancelled)
-    let result = check_for_cancellation(&request_rx, 1, &response_tx);
-    assert!(result);
-
-    // Should have sent Cancelled response
-    let response = response_rx.recv().unwrap();
-    assert!(matches!(response, AiResponse::Cancelled { request_id: 1 }));
+fn test_cancellation_token_cancelled_after_cancel() {
+    let token = CancellationToken::new();
+    token.cancel();
+    assert!(token.is_cancelled());
 }
 
-#[test]
-fn test_check_for_cancellation_non_matching_cancel() {
-    let (request_tx, request_rx) = mpsc::channel();
-    let (response_tx, response_rx) = mpsc::channel();
-
-    // Send cancel with different request_id
-    request_tx
-        .send(AiRequest::Cancel { request_id: 99 })
-        .unwrap();
-
-    // Should return false (cancel was for different request)
-    let result = check_for_cancellation(&request_rx, 1, &response_tx);
-    assert!(!result);
-
-    // Should NOT have sent any response
-    assert!(response_rx.try_recv().is_err());
-}
-
-#[test]
-fn test_check_for_cancellation_empty_channel() {
-    let (_request_tx, request_rx) = mpsc::channel::<AiRequest>();
-    let (response_tx, _response_rx) = mpsc::channel();
-
-    // Empty channel (but not disconnected) should return false
-    let result = check_for_cancellation(&request_rx, 1, &response_tx);
-    assert!(!result);
-}
-
-// **Feature: ai-assistant, Property 22: Cancel signal aborts HTTP request**
-// *For any* Cancel message received by the worker thread with matching request_id,
-// the current HTTP request should be aborted and Cancelled response sent.
-// **Validates: Requirements 5.5**
-//
-// Note: This property test validates the check_for_cancellation function which
-// is called between streaming chunks. With synchronous HTTP, we can only check
-// between chunks, not mid-chunk.
+// **Feature: ai-request-cancellation, Property 6: Idempotent cancellation**
+// *For any* CancellationToken, calling cancel() multiple times should have the same
+// effect as calling it once - the token remains cancelled.
+// **Validates: Requirements 3.3**
 proptest! {
     #![proptest_config(ProptestConfig::with_cases(100))]
+
+    #[test]
+    fn prop_cancellation_is_idempotent(
+        cancel_count in 1usize..10usize,
+    ) {
+        let token = CancellationToken::new();
+
+        // Initially not cancelled
+        prop_assert!(!token.is_cancelled(), "Token should not be cancelled initially");
+
+        // Cancel multiple times
+        for _ in 0..cancel_count {
+            token.cancel();
+        }
+
+        // Should still be cancelled
+        prop_assert!(token.is_cancelled(), "Token should be cancelled after cancel()");
+
+        // Cancel again to verify idempotence
+        token.cancel();
+        prop_assert!(token.is_cancelled(), "Token should remain cancelled after additional cancel()");
+    }
 
     #[test]
     fn prop_cancel_signal_aborts_request(
         request_id in 1u64..1000u64,
     ) {
-        let (request_tx, request_rx) = mpsc::channel();
         let (response_tx, response_rx) = mpsc::channel();
+        let cancel_token = CancellationToken::new();
 
-        // Send cancel with matching request_id
-        request_tx
-            .send(AiRequest::Cancel { request_id })
-            .unwrap();
+        // Cancel the token
+        cancel_token.cancel();
 
-        // check_for_cancellation should return true (abort)
-        let result = check_for_cancellation(&request_rx, request_id, &response_tx);
-        prop_assert!(result, "Should abort when cancel matches request_id");
+        // handle_query_async should detect cancellation and send Cancelled response
+        run_async(handle_query_async(&None, "test prompt", request_id, cancel_token, &response_tx));
 
         // Should have sent Cancelled response with correct request_id
         let response = response_rx.recv().unwrap();
@@ -177,28 +177,7 @@ proptest! {
             AiResponse::Cancelled { request_id: resp_id } => {
                 prop_assert_eq!(resp_id, request_id, "Cancelled response should have correct request_id");
             }
-            _ => prop_assert!(false, "Should have sent Cancelled response"),
+            _ => prop_assert!(false, "Should have sent Cancelled response, got {:?}", response),
         }
-    }
-
-    #[test]
-    fn prop_cancel_for_different_request_continues(
-        current_id in 1u64..500u64,
-        cancel_id in 501u64..1000u64,
-    ) {
-        let (request_tx, request_rx) = mpsc::channel();
-        let (response_tx, response_rx) = mpsc::channel();
-
-        // Send cancel with different request_id
-        request_tx
-            .send(AiRequest::Cancel { request_id: cancel_id })
-            .unwrap();
-
-        // check_for_cancellation should return false (continue streaming)
-        let result = check_for_cancellation(&request_rx, current_id, &response_tx);
-        prop_assert!(!result, "Should continue when cancel is for different request");
-
-        // Should NOT have sent any response
-        prop_assert!(response_rx.try_recv().is_err(), "Should not send response for non-matching cancel");
     }
 }
