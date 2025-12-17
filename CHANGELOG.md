@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.0.1] - 2025-12-16
+
+### Fixed
+- Build failures on x86_64-unknown-linux-musl target by switching from native-tls to rustls-tls
+  - Resolves static linking issues with OpenSSL on musl targets
+  - Enables successful cross-platform binary distribution
+  - No functional changes - same HTTP/TLS behavior with better compatibility
+
 ## [3.0.0] - 2025-12-16
 
 ### Added
