@@ -1,0 +1,19 @@
+---
+source: src/syntax/mod.rs
+expression: results
+---
+- - "0"
+  - - content: "0"
+      fg: cyan
+- - "42"
+  - - content: "42"
+      fg: cyan
+- - "-123"
+  - - content: "-123"
+      fg: cyan
+- - "3.14"
+  - - content: "3.14"
+      fg: cyan
+- - "-0.5"
+  - - content: "-0.5"
+      fg: cyan

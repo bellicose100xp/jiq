@@ -36,17 +36,15 @@ pub fn handle_search_key(app: &mut App, key: KeyEvent) -> bool {
                     );
                     scroll_to_line(app, current_match.line);
                 }
-            } else {
-                if let Some(line) = app.search.next_match() {
-                    #[cfg(debug_assertions)]
-                    debug!(
-                        "Search: next match (Enter) -> line {}, index {}/{}",
-                        line,
-                        app.search.current_index() + 1,
-                        app.search.matches().len()
-                    );
-                    scroll_to_line(app, line);
-                }
+            } else if let Some(line) = app.search.next_match() {
+                #[cfg(debug_assertions)]
+                debug!(
+                    "Search: next match (Enter) -> line {}, index {}/{}",
+                    line,
+                    app.search.current_index() + 1,
+                    app.search.matches().len()
+                );
+                scroll_to_line(app, line);
             }
             true
         }
@@ -65,17 +63,15 @@ pub fn handle_search_key(app: &mut App, key: KeyEvent) -> bool {
                     );
                     scroll_to_line(app, current_match.line);
                 }
-            } else {
-                if let Some(line) = app.search.prev_match() {
-                    #[cfg(debug_assertions)]
-                    debug!(
-                        "Search: prev match (Shift+Enter) -> line {}, index {}/{}",
-                        line,
-                        app.search.current_index() + 1,
-                        app.search.matches().len()
-                    );
-                    scroll_to_line(app, line);
-                }
+            } else if let Some(line) = app.search.prev_match() {
+                #[cfg(debug_assertions)]
+                debug!(
+                    "Search: prev match (Shift+Enter) -> line {}, index {}/{}",
+                    line,
+                    app.search.current_index() + 1,
+                    app.search.matches().len()
+                );
+                scroll_to_line(app, line);
             }
             true
         }

@@ -1,0 +1,67 @@
+---
+source: src/syntax/mod.rs
+expression: results
+---
+- - "|"
+  - - content: "|"
+      fg: magenta
+- - "=="
+  - - content: "=="
+      fg: magenta
+- - "!="
+  - - content: "!="
+      fg: magenta
+- - "<="
+  - - content: "<="
+      fg: magenta
+- - ">="
+  - - content: ">="
+      fg: magenta
+- - //
+  - - content: //
+      fg: magenta
+- - +
+  - - content: +
+      fg: magenta
+- - "-"
+  - - content: "-"
+      fg: magenta
+- - "*"
+  - - content: "*"
+      fg: magenta
+- - /
+  - - content: /
+      fg: magenta
+- - "%"
+  - - content: "%"
+      fg: magenta
+- - (
+  - - content: (
+      fg: magenta
+- - )
+  - - content: )
+      fg: magenta
+- - "["
+  - - content: "["
+      fg: magenta
+- - "]"
+  - - content: "]"
+      fg: magenta
+- - "{"
+  - - content: "{"
+      fg: magenta
+- - "}"
+  - - content: "}"
+      fg: magenta
+- - ","
+  - - content: ","
+      fg: magenta
+- - ;
+  - - content: ;
+      fg: magenta
+- - ":"
+  - - content: ":"
+      fg: magenta
+- - "?"
+  - - content: "?"
+      fg: magenta

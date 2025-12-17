@@ -1,0 +1,8 @@
+---
+source: src/app/syntax_overlay.rs
+expression: serialize_spans(&visible)
+---
+- content: "56789"
+  fg: red
+- content: ABCDE
+  fg: blue

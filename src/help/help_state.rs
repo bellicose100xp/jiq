@@ -21,13 +21,5 @@ impl Default for HelpPopupState {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_new_help_state() {
-        let state = HelpPopupState::new();
-        assert!(!state.visible);
-        assert_eq!(state.scroll.offset, 0);
-    }
-}
+#[path = "help_state_tests.rs"]
+mod help_state_tests;
