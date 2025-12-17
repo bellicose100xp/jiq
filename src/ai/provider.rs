@@ -12,8 +12,10 @@ use crate::ai::ai_state::AiResponse;
 use crate::config::ai_types::{AiConfig, AiProviderType};
 
 mod async_anthropic;
+mod async_bedrock;
 
 pub use async_anthropic::AsyncAnthropicClient;
+pub use async_bedrock::AsyncBedrockClient;
 
 /// Errors that can occur during AI operations
 #[derive(Debug, Error)]
@@ -39,6 +41,10 @@ pub enum AiError {
     #[error("[{provider}] Parse error: {message}")]
     Parse { provider: String, message: String },
 
+    /// AWS SDK error (Bedrock-specific)
+    #[error("[Bedrock] AWS SDK error: {0}")]
+    AwsSdk(String),
+
     /// Request was cancelled
     #[error("Request cancelled")]
     Cancelled,
@@ -52,6 +58,8 @@ pub enum AiError {
 pub enum AsyncAiProvider {
     /// Anthropic Claude API (async)
     Anthropic(AsyncAnthropicClient),
+    /// AWS Bedrock API (async)
+    Bedrock(AsyncBedrockClient),
 }
 
 impl AsyncAiProvider {
@@ -59,6 +67,7 @@ impl AsyncAiProvider {
     pub fn provider_name(&self) -> &'static str {
         match self {
             AsyncAiProvider::Anthropic(_) => "Anthropic",
+            AsyncAiProvider::Bedrock(_) => "Bedrock",
         }
     }
 
@@ -67,9 +76,16 @@ impl AsyncAiProvider {
     /// Returns an error if the configuration is invalid (e.g., missing API key)
     pub fn from_config(config: &AiConfig) -> Result<Self, AiError> {
         if !config.enabled {
+            let provider_name = match config.provider {
+                AiProviderType::Anthropic => "Anthropic",
+                AiProviderType::Bedrock => "Bedrock",
+            };
             return Err(AiError::NotConfigured {
-                provider: "Anthropic".to_string(),
-                message: "AI is disabled in config".to_string(),
+                provider: provider_name.to_string(),
+                message: format!(
+                    "AI is disabled. Set 'enabled = true' in [ai] section with provider = \"{}\". See https://github.com/bellicose100xp/jiq#configuration for setup instructions.",
+                    provider_name.to_lowercase()
+                ),
             });
         }
 
@@ -82,7 +98,7 @@ impl AsyncAiProvider {
                     .filter(|k| !k.trim().is_empty())
                     .ok_or_else(|| AiError::NotConfigured {
                         provider: "Anthropic".to_string(),
-                        message: "Missing or empty API key in [ai.anthropic] config".to_string(),
+                        message: "Missing API key. Add 'api_key' in [ai.anthropic] section. Get your key from https://console.anthropic.com/settings/keys. See https://github.com/bellicose100xp/jiq#configuration for full setup.".to_string(),
                     })?;
 
                 let model = config
@@ -92,14 +108,49 @@ impl AsyncAiProvider {
                     .filter(|m| !m.trim().is_empty())
                     .ok_or_else(|| AiError::NotConfigured {
                         provider: "Anthropic".to_string(),
-                        message: "Missing or empty model in [ai.anthropic] config".to_string(),
+                        message: "Missing model. Add 'model' in [ai.anthropic] section (e.g., 'claude-haiku-4-5-20251001'). See https://github.com/bellicose100xp/jiq#configuration for examples.".to_string(),
                     })?;
 
-                Ok(AsyncAiProvider::Anthropic(AsyncAnthropicClient::new(
+                let provider = AsyncAiProvider::Anthropic(AsyncAnthropicClient::new(
                     api_key.clone(),
                     model.clone(),
                     config.anthropic.max_tokens,
-                )))
+                ));
+
+                // Use provider_name to avoid dead code warning
+                let _ = provider.provider_name();
+                Ok(provider)
+            }
+            AiProviderType::Bedrock => {
+                let region = config
+                    .bedrock
+                    .region
+                    .as_ref()
+                    .filter(|r| !r.trim().is_empty())
+                    .ok_or_else(|| AiError::NotConfigured {
+                        provider: "Bedrock".to_string(),
+                        message: "Missing region. Add 'region' in [ai.bedrock] section (e.g., 'us-east-1'). Ensure AWS credentials are configured via environment variables or ~/.aws/credentials. See https://github.com/bellicose100xp/jiq#configuration for setup.".to_string(),
+                    })?;
+
+                let model = config
+                    .bedrock
+                    .model
+                    .as_ref()
+                    .filter(|m| !m.trim().is_empty())
+                    .ok_or_else(|| AiError::NotConfigured {
+                        provider: "Bedrock".to_string(),
+                        message: "Missing model. Add 'model' in [ai.bedrock] section (e.g., 'anthropic.claude-3-haiku-20240307-v1:0'). See https://github.com/bellicose100xp/jiq#configuration for examples.".to_string(),
+                    })?;
+
+                let provider = AsyncAiProvider::Bedrock(AsyncBedrockClient::new(
+                    region.clone(),
+                    model.clone(),
+                    config.bedrock.profile.clone(),
+                ));
+
+                // Use provider_name to avoid dead code warning
+                let _ = provider.provider_name();
+                Ok(provider)
             }
         }
     }
@@ -128,6 +179,11 @@ impl AsyncAiProvider {
     ) -> Result<(), AiError> {
         match self {
             AsyncAiProvider::Anthropic(client) => {
+                client
+                    .stream_with_cancel(prompt, request_id, cancel_token, response_tx)
+                    .await
+            }
+            AsyncAiProvider::Bedrock(client) => {
                 client
                     .stream_with_cancel(prompt, request_id, cancel_token, response_tx)
                     .await

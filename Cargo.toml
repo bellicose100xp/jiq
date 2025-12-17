@@ -67,6 +67,12 @@ tokio-util = "0.7"
 futures = "0.3"
 bytes = "1.5"
 
+# AWS SDK for Bedrock AI provider
+# Uses default features which include the HTTP client and tokio runtime
+# rustls feature provides TLS without OpenSSL dependency for musl compatibility
+aws-config = { version = "1", features = ["rustls"] }
+aws-sdk-bedrockruntime = { version = "1", features = ["rustls"] }
+
 # Logging (code only active in debug builds via #[cfg(debug_assertions)])
 log = "0.4"
 env_logger = "0.11"

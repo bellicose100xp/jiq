@@ -15,6 +15,7 @@ fn default_max_tokens() -> u32 {
 pub enum AiProviderType {
     #[default]
     Anthropic,
+    Bedrock,
 }
 
 /// Anthropic-specific configuration
@@ -39,6 +40,17 @@ impl Default for AnthropicConfig {
     }
 }
 
+/// Bedrock provider configuration
+#[derive(Debug, Clone, Deserialize, Default)]
+pub struct BedrockConfig {
+    /// AWS region for Bedrock API calls (required)
+    pub region: Option<String>,
+    /// Bedrock model ID (required, e.g., "anthropic.claude-3-haiku-20240307-v1:0")
+    pub model: Option<String>,
+    /// AWS profile name (optional - if not specified, uses default credential chain)
+    pub profile: Option<String>,
+}
+
 /// AI assistant configuration section
 #[derive(Debug, Clone, Default, Deserialize)]
 pub struct AiConfig {
@@ -51,6 +63,9 @@ pub struct AiConfig {
     /// Anthropic-specific configuration
     #[serde(default)]
     pub anthropic: AnthropicConfig,
+    /// Bedrock-specific configuration
+    #[serde(default)]
+    pub bedrock: BedrockConfig,
 }
 
 #[cfg(test)]

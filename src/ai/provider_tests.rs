@@ -1,7 +1,7 @@
 //! Tests for AI provider abstraction
 
 use super::*;
-use crate::config::ai_types::{AiConfig, AiProviderType, AnthropicConfig};
+use crate::config::ai_types::{AiConfig, AiProviderType, AnthropicConfig, BedrockConfig};
 use proptest::prelude::*;
 
 // =========================================================================
@@ -29,6 +29,7 @@ proptest! {
                 model: Some(model),
                 max_tokens,
             },
+            bedrock: BedrockConfig::default(),
         };
 
         let result = AsyncAiProvider::from_config(&config);
@@ -64,6 +65,7 @@ proptest! {
                 model: Some(model),
                 max_tokens,
             },
+            bedrock: BedrockConfig::default(),
         };
 
         let result = AsyncAiProvider::from_config(&config);
@@ -99,6 +101,7 @@ proptest! {
                 model: Some(model),
                 max_tokens,
             },
+            bedrock: BedrockConfig::default(),
         };
 
         let result = AsyncAiProvider::from_config(&config);
@@ -124,6 +127,7 @@ proptest! {
                 model: Some(model),
                 max_tokens,
             },
+            bedrock: BedrockConfig::default(),
         };
 
         let result = AsyncAiProvider::from_config(&config);
@@ -158,6 +162,7 @@ fn test_async_from_config_missing_api_key() {
             api_key: None,
             ..Default::default()
         },
+        bedrock: BedrockConfig::default(),
     };
 
     let result = AsyncAiProvider::from_config(&config);
@@ -174,6 +179,7 @@ fn test_async_from_config_empty_api_key() {
             api_key: Some("".to_string()),
             ..Default::default()
         },
+        bedrock: BedrockConfig::default(),
     };
 
     let result = AsyncAiProvider::from_config(&config);
@@ -190,6 +196,7 @@ fn test_async_from_config_whitespace_api_key() {
             api_key: Some("   ".to_string()),
             ..Default::default()
         },
+        bedrock: BedrockConfig::default(),
     };
 
     let result = AsyncAiProvider::from_config(&config);
@@ -207,6 +214,7 @@ fn test_async_from_config_valid_api_key() {
             model: Some("claude-3-haiku".to_string()),
             max_tokens: 1024,
         },
+        bedrock: BedrockConfig::default(),
     };
 
     let result = AsyncAiProvider::from_config(&config);
@@ -222,6 +230,7 @@ fn test_async_from_config_disabled() {
             api_key: Some("sk-ant-test-key".to_string()),
             ..Default::default()
         },
+        bedrock: BedrockConfig::default(),
     };
 
     let result = AsyncAiProvider::from_config(&config);
@@ -434,6 +443,7 @@ proptest! {
                 model: Some(model),
                 max_tokens,
             },
+            bedrock: BedrockConfig::default(),
         };
 
         let provider = AsyncAiProvider::from_config(&config).unwrap();
@@ -446,6 +456,9 @@ proptest! {
         match provider {
             AsyncAiProvider::Anthropic(_) => {
                 prop_assert_eq!(name, "Anthropic", "Anthropic provider should return 'Anthropic'");
+            }
+            AsyncAiProvider::Bedrock(_) => {
+                prop_assert_eq!(name, "Bedrock", "Bedrock provider should return 'Bedrock'");
             }
         }
     }
@@ -476,6 +489,7 @@ proptest! {
                 model: Some(model.clone()),
                 max_tokens,
             },
+            bedrock: BedrockConfig::default(),
         };
 
         let result = AsyncAiProvider::from_config(&config);
@@ -499,6 +513,7 @@ proptest! {
                 model: Some(model.clone()),
                 max_tokens,
             },
+            bedrock: BedrockConfig::default(),
         };
 
         let result = AsyncAiProvider::from_config(&config);
@@ -522,6 +537,7 @@ proptest! {
                 model: Some(model),
                 max_tokens,
             },
+            bedrock: BedrockConfig::default(),
         };
 
         let result = AsyncAiProvider::from_config(&config);
@@ -535,5 +551,319 @@ proptest! {
         } else {
             prop_assert!(false, "Expected NotConfigured error, got {:?}", result);
         }
+    }
+}
+
+// =========================================================================
+// Property-Based Tests for Bedrock Provider Validation
+// =========================================================================
+
+// **Feature: bedrock-provider, Property 2: Model validation rejects invalid values**
+// *For any* Bedrock configuration where `model` is None, empty, or contains only whitespace
+// characters, `from_config` SHALL return a `NotConfigured` error with provider "Bedrock".
+// **Validates: Requirements 1.3, 1.4**
+proptest! {
+    #![proptest_config(ProptestConfig::with_cases(100))]
+
+    #[test]
+    fn prop_bedrock_missing_model_produces_error(
+        region in "[a-z]{2}-[a-z]+-[0-9]",
+        profile in proptest::option::of("[a-zA-Z0-9_-]{3,20}"),
+    ) {
+        let config = AiConfig {
+            enabled: true,
+            provider: AiProviderType::Bedrock,
+            anthropic: AnthropicConfig::default(),
+            bedrock: BedrockConfig {
+                region: Some(region),
+                model: None,
+                profile,
+            },
+        };
+
+        let result = AsyncAiProvider::from_config(&config);
+
+        prop_assert!(
+            result.is_err(),
+            "Creating Bedrock provider with missing model should fail"
+        );
+
+        if let Err(AiError::NotConfigured { provider, message }) = result {
+            prop_assert_eq!(
+                provider, "Bedrock",
+                "Error provider should be 'Bedrock'"
+            );
+            prop_assert!(
+                message.contains("model"),
+                "Error message should mention model: {}",
+                message
+            );
+        } else {
+            prop_assert!(false, "Expected NotConfigured error, got {:?}", result);
+        }
+    }
+
+    #[test]
+    fn prop_bedrock_empty_model_produces_error(
+        region in "[a-z]{2}-[a-z]+-[0-9]",
+        profile in proptest::option::of("[a-zA-Z0-9_-]{3,20}"),
+        // Generate empty or whitespace-only strings
+        empty_model in prop::string::string_regex("[ \t]*").unwrap(),
+    ) {
+        let config = AiConfig {
+            enabled: true,
+            provider: AiProviderType::Bedrock,
+            anthropic: AnthropicConfig::default(),
+            bedrock: BedrockConfig {
+                region: Some(region),
+                model: Some(empty_model),
+                profile,
+            },
+        };
+
+        let result = AsyncAiProvider::from_config(&config);
+
+        prop_assert!(
+            result.is_err(),
+            "Creating Bedrock provider with empty model should fail"
+        );
+
+        if let Err(AiError::NotConfigured { provider, message }) = result {
+            prop_assert_eq!(
+                provider, "Bedrock",
+                "Error provider should be 'Bedrock'"
+            );
+            prop_assert!(
+                message.contains("model"),
+                "Error message should mention model: {}",
+                message
+            );
+        } else {
+            prop_assert!(false, "Expected NotConfigured error, got {:?}", result);
+        }
+    }
+}
+
+// **Feature: bedrock-provider, Property 3: Region is required**
+// *For any* Bedrock configuration where `region` is None or empty, `from_config` SHALL
+// return a `NotConfigured` error with provider "Bedrock".
+// **Validates: Requirements 2.3**
+proptest! {
+    #![proptest_config(ProptestConfig::with_cases(100))]
+
+    #[test]
+    fn prop_bedrock_missing_region_produces_error(
+        model in "[a-z0-9.-]{10,50}",
+        profile in proptest::option::of("[a-zA-Z0-9_-]{3,20}"),
+    ) {
+        let config = AiConfig {
+            enabled: true,
+            provider: AiProviderType::Bedrock,
+            anthropic: AnthropicConfig::default(),
+            bedrock: BedrockConfig {
+                region: None,
+                model: Some(model),
+                profile,
+            },
+        };
+
+        let result = AsyncAiProvider::from_config(&config);
+
+        prop_assert!(
+            result.is_err(),
+            "Creating Bedrock provider with missing region should fail"
+        );
+
+        if let Err(AiError::NotConfigured { provider, message }) = result {
+            prop_assert_eq!(
+                provider, "Bedrock",
+                "Error provider should be 'Bedrock'"
+            );
+            prop_assert!(
+                message.contains("region"),
+                "Error message should mention region: {}",
+                message
+            );
+        } else {
+            prop_assert!(false, "Expected NotConfigured error, got {:?}", result);
+        }
+    }
+
+    #[test]
+    fn prop_bedrock_empty_region_produces_error(
+        model in "[a-z0-9.-]{10,50}",
+        profile in proptest::option::of("[a-zA-Z0-9_-]{3,20}"),
+        // Generate empty or whitespace-only strings
+        empty_region in prop::string::string_regex("[ \t]*").unwrap(),
+    ) {
+        let config = AiConfig {
+            enabled: true,
+            provider: AiProviderType::Bedrock,
+            anthropic: AnthropicConfig::default(),
+            bedrock: BedrockConfig {
+                region: Some(empty_region),
+                model: Some(model),
+                profile,
+            },
+        };
+
+        let result = AsyncAiProvider::from_config(&config);
+
+        prop_assert!(
+            result.is_err(),
+            "Creating Bedrock provider with empty region should fail"
+        );
+
+        if let Err(AiError::NotConfigured { provider, message }) = result {
+            prop_assert_eq!(
+                provider, "Bedrock",
+                "Error provider should be 'Bedrock'"
+            );
+            prop_assert!(
+                message.contains("region"),
+                "Error message should mention region: {}",
+                message
+            );
+        } else {
+            prop_assert!(false, "Expected NotConfigured error, got {:?}", result);
+        }
+    }
+
+    #[test]
+    fn prop_bedrock_valid_config_creates_provider(
+        region in "[a-z]{2}-[a-z]+-[0-9]",
+        model in "[a-z0-9.-]{10,50}",
+        profile in proptest::option::of("[a-zA-Z0-9_-]{3,20}"),
+    ) {
+        let config = AiConfig {
+            enabled: true,
+            provider: AiProviderType::Bedrock,
+            anthropic: AnthropicConfig::default(),
+            bedrock: BedrockConfig {
+                region: Some(region),
+                model: Some(model),
+                profile,
+            },
+        };
+
+        let result = AsyncAiProvider::from_config(&config);
+
+        prop_assert!(
+            result.is_ok(),
+            "Creating Bedrock provider with valid config should succeed: {:?}",
+            result
+        );
+
+        if let Ok(AsyncAiProvider::Bedrock(_)) = result {
+            // Success - correct variant created
+        } else {
+            prop_assert!(false, "Expected Bedrock variant, got {:?}", result);
+        }
+    }
+}
+
+// =========================================================================
+// Property-Based Tests for Bedrock Error Handling
+// =========================================================================
+
+// **Feature: bedrock-provider, Property 5: Non-cancelled errors include Bedrock provider context**
+// *For any* error returned from Bedrock operations (except `Cancelled`), the error message
+// SHALL contain "Bedrock" as the provider identifier.
+// **Validates: Requirements 4.4, 6.1, 6.2, 6.3**
+proptest! {
+    #![proptest_config(ProptestConfig::with_cases(100))]
+
+    #[test]
+    fn prop_bedrock_errors_include_provider_context(
+        message in "[a-zA-Z0-9 .,!?_-]{1,100}",
+        code in 100u16..600u16,
+    ) {
+        // Test NotConfigured with Bedrock provider
+        let err = AiError::NotConfigured {
+            provider: "Bedrock".to_string(),
+            message: message.clone(),
+        };
+        let display = format!("{}", err);
+        prop_assert!(
+            display.contains("Bedrock"),
+            "NotConfigured error should contain 'Bedrock': {}",
+            display
+        );
+
+        // Test Network with Bedrock provider
+        let err = AiError::Network {
+            provider: "Bedrock".to_string(),
+            message: message.clone(),
+        };
+        let display = format!("{}", err);
+        prop_assert!(
+            display.contains("Bedrock"),
+            "Network error should contain 'Bedrock': {}",
+            display
+        );
+
+        // Test Api with Bedrock provider
+        let err = AiError::Api {
+            provider: "Bedrock".to_string(),
+            code,
+            message: message.clone(),
+        };
+        let display = format!("{}", err);
+        prop_assert!(
+            display.contains("Bedrock"),
+            "Api error should contain 'Bedrock': {}",
+            display
+        );
+
+        // Test AwsSdk (Bedrock-specific error variant)
+        let err = AiError::AwsSdk(message.clone());
+        let display = format!("{}", err);
+        prop_assert!(
+            display.contains("Bedrock"),
+            "AwsSdk error should contain 'Bedrock': {}",
+            display
+        );
+    }
+}
+
+// **Feature: bedrock-provider, Property 6: Cancellation returns error without provider context**
+// *For any* cancelled Bedrock request, the returned error SHALL be `AiError::Cancelled`
+// without provider-specific context.
+// **Validates: Requirements 5.2**
+proptest! {
+    #![proptest_config(ProptestConfig::with_cases(100))]
+
+    #[test]
+    fn prop_cancelled_error_has_no_provider_context(
+        // Generate random data to ensure property holds regardless of context
+        _dummy in 0u32..1000u32,
+    ) {
+        let err = AiError::Cancelled;
+        let display = format!("{}", err);
+
+        // Cancelled error should NOT contain any provider name
+        prop_assert!(
+            !display.contains("Bedrock"),
+            "Cancelled error should not contain 'Bedrock': {}",
+            display
+        );
+        prop_assert!(
+            !display.contains("Anthropic"),
+            "Cancelled error should not contain 'Anthropic': {}",
+            display
+        );
+
+        // Cancelled error should have a simple message
+        prop_assert!(
+            display.contains("cancelled") || display.contains("Cancelled"),
+            "Cancelled error should mention cancellation: {}",
+            display
+        );
+
+        // Verify it's the Cancelled variant
+        prop_assert!(
+            matches!(err, AiError::Cancelled),
+            "Error should be Cancelled variant"
+        );
     }
 }

@@ -5,7 +5,9 @@
 //! and streams responses back to the main thread.
 //!
 //! Uses a tokio runtime for async HTTP streaming with cancellation support.
+//! Includes panic handling to prevent TUI corruption from AWS SDK panics.
 
+use std::panic::{self, AssertUnwindSafe};
 use std::sync::mpsc::{Receiver, Sender};
 
 use tokio_util::sync::CancellationToken;
@@ -20,6 +22,9 @@ use crate::config::ai_types::AiConfig;
 /// 1. Listens for requests on the request channel
 /// 2. Makes async HTTP calls to the AI provider with cancellation support
 /// 3. Streams responses back via the response channel
+///
+/// The worker thread includes panic handling to prevent panics (e.g., from
+/// AWS SDK credential loading) from corrupting the TUI.
 ///
 /// # Arguments
 /// * `config` - AI configuration (for creating the provider)
@@ -40,14 +45,60 @@ pub fn spawn_worker(
     let provider_result = AsyncAiProvider::from_config(config);
 
     std::thread::spawn(move || {
-        // Create a single-threaded tokio runtime for this worker thread
-        let rt = tokio::runtime::Builder::new_current_thread()
-            .enable_all()
-            .build()
-            .expect("Failed to create tokio runtime");
+        // Set a custom panic hook for this thread to suppress output
+        // The default panic hook prints to stderr which corrupts the TUI
+        let response_tx_clone = response_tx.clone();
+        let prev_hook = panic::take_hook();
+        panic::set_hook(Box::new(move |panic_info| {
+            // Extract panic message
+            let panic_msg = if let Some(s) = panic_info.payload().downcast_ref::<&str>() {
+                s.to_string()
+            } else if let Some(s) = panic_info.payload().downcast_ref::<String>() {
+                s.clone()
+            } else {
+                "Unknown panic in AI worker".to_string()
+            };
 
-        // Run the async worker loop on the runtime
-        rt.block_on(worker_loop(provider_result, request_rx, response_tx));
+            // Log the panic instead of printing to stderr
+            log::error!(
+                "AI worker panic: {} at {:?}",
+                panic_msg,
+                panic_info.location()
+            );
+
+            // Try to send error to main thread
+            let _ = response_tx_clone.send(AiResponse::Error(format!(
+                "AI worker crashed: {}",
+                panic_msg
+            )));
+        }));
+
+        // Wrap the entire worker in catch_unwind to handle panics gracefully
+        let result = panic::catch_unwind(AssertUnwindSafe(|| {
+            // Create a single-threaded tokio runtime for this worker thread
+            let rt = tokio::runtime::Builder::new_current_thread()
+                .enable_all()
+                .build()
+                .expect("Failed to create tokio runtime");
+
+            // Run the async worker loop on the runtime
+            rt.block_on(worker_loop(provider_result, request_rx, response_tx));
+        }));
+
+        // Restore the previous panic hook
+        panic::set_hook(prev_hook);
+
+        if let Err(e) = result {
+            // Extract panic message for logging
+            let panic_msg = if let Some(s) = e.downcast_ref::<&str>() {
+                s.to_string()
+            } else if let Some(s) = e.downcast_ref::<String>() {
+                s.clone()
+            } else {
+                "Unknown panic".to_string()
+            };
+            log::error!("AI worker thread panicked: {}", panic_msg);
+        }
     });
 }
 
@@ -120,11 +171,18 @@ async fn handle_query_async(
         Some(p) => p,
         None => {
             let _ = response_tx.send(AiResponse::Error(
-                "AI not configured. Add [ai.anthropic] section with api_key to config.".to_string(),
+                "AI not configured. Enable AI in your config file with 'enabled = true' and configure a provider. See https://github.com/bellicose100xp/jiq#configuration for setup instructions.".to_string(),
             ));
             return;
         }
     };
+
+    // Log which provider is being used
+    log::debug!(
+        "Using {} provider for request {}",
+        provider.provider_name(),
+        request_id
+    );
 
     // Stream the response with cancellation support
     // The async provider handles cancellation internally via tokio::select!

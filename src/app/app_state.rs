@@ -47,10 +47,14 @@ pub struct App {
 
 impl App {
     pub fn new(json_input: String, config: &Config) -> Self {
-        let ai_state = AiState::new_with_config(
-            config.ai.enabled,
-            config.ai.anthropic.api_key.is_some() && config.ai.anthropic.model.is_some(),
-        );
+        // Check if AI is configured for either Anthropic or Bedrock
+        let anthropic_configured =
+            config.ai.anthropic.api_key.is_some() && config.ai.anthropic.model.is_some();
+        let bedrock_configured =
+            config.ai.bedrock.region.is_some() && config.ai.bedrock.model.is_some();
+        let ai_configured = anthropic_configured || bedrock_configured;
+
+        let ai_state = AiState::new_with_config(config.ai.enabled, ai_configured);
 
         let tooltip_enabled = if ai_state.visible {
             false
