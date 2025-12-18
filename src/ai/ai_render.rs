@@ -60,6 +60,23 @@ pub fn render_popup(ai_state: &mut AiState, frame: &mut Frame, input_area: Rect)
         Span::raw(" "),
     ]);
 
+    // Calculate max width for model name (50% of border width)
+    let max_model_width = (popup_area.width / 2).saturating_sub(2);
+    let model_display = if ai_state.model_name.len() > max_model_width as usize {
+        format!(
+            "{}...",
+            &ai_state.model_name[..max_model_width.saturating_sub(3) as usize]
+        )
+    } else {
+        ai_state.model_name.clone()
+    };
+
+    let model_name_title = Line::from(vec![
+        Span::raw(" "),
+        Span::styled(model_display, Style::default().fg(Color::Blue)),
+        Span::raw(" "),
+    ]);
+
     let hints = if !ai_state.suggestions.is_empty() {
         Line::from(vec![Span::styled(
             " Alt+1-5 or Alt+↑↓+Enter to apply | Ctrl+A to close ",
@@ -76,7 +93,8 @@ pub fn render_popup(ai_state: &mut AiState, frame: &mut Frame, input_area: Rect)
         Block::default()
             .borders(Borders::ALL)
             .title(title)
-            .title_top(hints.alignment(ratatui::layout::Alignment::Right))
+            .title_top(model_name_title.alignment(ratatui::layout::Alignment::Right))
+            .title_bottom(hints.alignment(ratatui::layout::Alignment::Center))
             .border_style(Style::default().fg(Color::Green))
             .style(Style::default().bg(Color::Black)),
     );
