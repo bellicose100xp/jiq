@@ -54,42 +54,34 @@ where
             if has_selection_number {
                 let mut style = Style::default().fg(Color::DarkGray);
                 if is_selected {
-                    style = style.bg(Color::DarkGray).fg(Color::Black);
+                    style = style.fg(Color::Black);
                 }
                 spans.push(Span::styled(format!("{}. ", i + 1), style));
             }
 
-            let mut type_style = Style::default().fg(type_color).add_modifier(Modifier::BOLD);
-            if is_selected {
-                type_style = type_style.bg(Color::DarkGray);
-            }
+            let type_style = Style::default().fg(type_color).add_modifier(Modifier::BOLD);
             spans.push(Span::styled(type_label.to_string(), type_style));
 
-            let mut space_style = Style::default();
-            if is_selected {
-                space_style = space_style.bg(Color::DarkGray);
-            }
-            spans.push(Span::styled(" ", space_style));
+            spans.push(Span::styled(" ", Style::default()));
 
-            let mut query_style = Style::default().fg(Color::Cyan);
-            if is_selected {
-                query_style = query_style.bg(Color::DarkGray);
-            }
+            let query_style = Style::default().fg(Color::Cyan);
             spans.push(Span::styled(first_query_line.clone(), query_style));
 
-            lines.push(Line::from(spans));
+            let mut line = Line::from(spans);
+            if is_selected {
+                line = line.style(Style::default().bg(Color::DarkGray));
+            }
+            lines.push(line);
         }
 
         for query_line in query_lines.iter().skip(1) {
             let indent = " ".repeat(prefix_len);
-            let mut style = Style::default().fg(Color::Cyan);
+            let style = Style::default().fg(Color::Cyan);
+            let mut line = Line::from(Span::styled(format!("{}{}", indent, query_line), style));
             if is_selected {
-                style = style.bg(Color::DarkGray);
+                line = line.style(Style::default().bg(Color::DarkGray));
             }
-            lines.push(Line::from(Span::styled(
-                format!("{}{}", indent, query_line),
-                style,
-            )));
+            lines.push(line);
         }
 
         if !suggestion.description.is_empty() {
@@ -97,9 +89,13 @@ where
             for desc_line in wrap_text_fn(&suggestion.description, desc_max_width) {
                 let mut style = Style::default().fg(Color::DarkGray);
                 if is_selected {
-                    style = style.bg(Color::DarkGray).fg(Color::Gray);
+                    style = style.fg(Color::Gray);
                 }
-                lines.push(Line::from(Span::styled(format!("   {}", desc_line), style)));
+                let mut line = Line::from(Span::styled(format!("   {}", desc_line), style));
+                if is_selected {
+                    line = line.style(Style::default().bg(Color::DarkGray));
+                }
+                lines.push(line);
             }
         }
 
