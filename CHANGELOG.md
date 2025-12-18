@@ -7,6 +7,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.2.0] - 2025-12-17
+
+### Added
+- **OpenAI AI Provider** - OpenAI as an alternative AI provider for query suggestions
+  - Support for OpenAI models (e.g., GPT-4, GPT-3.5) with API key authentication
+  - Streaming support via Server-Sent Events (SSE) for real-time token-by-token responses
+  - SSE parser supporting both OpenAI and Anthropic streaming formats
+  - Comprehensive error handling with detailed messages for:
+    - Missing/invalid API keys
+    - Network errors
+    - Model access issues
+    - Rate limiting
+    - Configuration validation
+  - Configuration in `~/.config/jiq/config.toml`:
+    ```toml
+    [ai]
+    enabled = true
+    provider = "openai"
+
+    [ai.openai]
+    api_key = "sk-..."
+    model = "gpt-4o"
+    ```
+  - Provider information displayed in AI popup header
+  - Full test coverage with snapshot tests and error handling tests
+
+### Changed
+- AI provider system now supports multiple streaming formats (OpenAI and Anthropic)
+- Provider-specific UI rendering shows which AI provider is in use
+
 ## [3.1.0] - 2025-12-17
 
 ### Added
