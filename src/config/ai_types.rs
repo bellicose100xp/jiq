@@ -16,6 +16,7 @@ pub enum AiProviderType {
     #[default]
     Anthropic,
     Bedrock,
+    Openai,
 }
 
 /// Anthropic-specific configuration
@@ -51,6 +52,15 @@ pub struct BedrockConfig {
     pub profile: Option<String>,
 }
 
+/// OpenAI-specific configuration
+#[derive(Debug, Clone, Deserialize, Default)]
+pub struct OpenAiConfig {
+    /// API key for OpenAI (required when AI is enabled with OpenAI provider)
+    pub api_key: Option<String>,
+    /// Model to use (required, e.g., "gpt-4o-mini")
+    pub model: Option<String>,
+}
+
 /// AI assistant configuration section
 #[derive(Debug, Clone, Default, Deserialize)]
 pub struct AiConfig {
@@ -66,6 +76,9 @@ pub struct AiConfig {
     /// Bedrock-specific configuration
     #[serde(default)]
     pub bedrock: BedrockConfig,
+    /// OpenAI-specific configuration
+    #[serde(default)]
+    pub openai: OpenAiConfig,
 }
 
 #[cfg(test)]

@@ -1,0 +1,5 @@
+---
+source: src/ai/provider_tests.rs
+expression: error_message
+---
+[OpenAI] API error (401): Invalid API key provided

@@ -1,48 +1,85 @@
-//! Async Anthropic Claude API client
+//! Async OpenAI API client
 //!
-//! Implements async SSE streaming for the Anthropic Messages API with cancellation support.
+//! Implements async SSE streaming for the OpenAI Chat Completions API with cancellation support.
 //! Uses reqwest for HTTP and tokio for async runtime.
 
 use std::sync::mpsc::Sender;
 
 use futures::StreamExt;
 use reqwest::Client;
+use serde::Serialize;
+use serde_json;
 use tokio_util::sync::CancellationToken;
 
 use super::AiError;
-use super::sse::{AnthropicEventParser, SseParser};
+use super::sse::{OpenAiEventParser, SseParser};
 use crate::ai::ai_state::AiResponse;
 
-/// Anthropic API endpoint
-const ANTHROPIC_API_URL: &str = "https://api.anthropic.com/v1/messages";
+/// OpenAI API endpoint
+const OPENAI_API_URL: &str = "https://api.openai.com/v1/chat/completions";
 
-/// Anthropic API version header
-const ANTHROPIC_VERSION: &str = "2023-06-01";
-
-/// Async Anthropic Claude API client
+/// Async OpenAI API client
 ///
 /// Uses reqwest for async HTTP requests with streaming support.
 /// Supports cancellation via CancellationToken.
 #[derive(Debug, Clone)]
-pub struct AsyncAnthropicClient {
+pub struct AsyncOpenAiClient {
     client: Client,
     api_key: String,
     model: String,
-    max_tokens: u32,
 }
 
-impl AsyncAnthropicClient {
-    /// Create a new async Anthropic client
-    pub fn new(api_key: String, model: String, max_tokens: u32) -> Self {
+impl AsyncOpenAiClient {
+    /// Create a new async OpenAI client
+    pub fn new(api_key: String, model: String) -> Self {
         Self {
             client: Client::new(),
             api_key,
             model,
-            max_tokens,
         }
     }
 
-    /// Stream a response from the Anthropic API with cancellation support
+    /// Build the request body JSON for OpenAI Chat Completions API
+    ///
+    /// Creates a JSON request body with the model, messages array, and streaming enabled.
+    /// Does not set max_tokens, allowing OpenAI to use its default.
+    ///
+    /// # Arguments
+    /// * `prompt` - The user prompt to send to the API
+    ///
+    /// # Returns
+    /// * `Ok(String)` - Serialized JSON request body
+    /// * `Err(AiError::Parse)` - If serialization fails
+    fn build_request_body(&self, prompt: &str) -> Result<String, AiError> {
+        #[derive(Serialize)]
+        struct Message {
+            role: String,
+            content: String,
+        }
+
+        #[derive(Serialize)]
+        struct RequestBody {
+            model: String,
+            messages: Vec<Message>,
+            stream: bool,
+        }
+
+        let body = RequestBody {
+            model: self.model.clone(),
+            messages: vec![Message {
+                role: "user".to_string(),
+                content: prompt.to_string(),
+            }],
+            stream: true,
+        };
+
+        serde_json::to_string(&body).map_err(|e| AiError::Parse {
+            provider: "OpenAI".to_string(),
+            message: format!("Failed to serialize request body: {}", e),
+        })
+    }
+
+    /// Stream a response from the OpenAI API with cancellation support
     ///
     /// Uses `tokio::select!` to race the stream against the cancellation token.
     /// Sends chunks via the response channel as they arrive.
@@ -69,39 +106,24 @@ impl AsyncAnthropicClient {
             return Err(AiError::Cancelled);
         }
 
-        let request_body = serde_json::json!({
-            "model": self.model,
-            "max_tokens": self.max_tokens,
-            "stream": true,
-            "messages": [
-                {
-                    "role": "user",
-                    "content": prompt
-                }
-            ]
-        });
+        // Build request body
+        let body = self.build_request_body(prompt)?;
 
-        let body = serde_json::to_string(&request_body).map_err(|e| AiError::Parse {
-            provider: "Anthropic".to_string(),
-            message: e.to_string(),
-        })?;
-
-        // Make the request
+        // Make the POST request to OpenAI API
         let response = self
             .client
-            .post(ANTHROPIC_API_URL)
-            .header("x-api-key", &self.api_key)
-            .header("anthropic-version", ANTHROPIC_VERSION)
-            .header("content-type", "application/json")
+            .post(OPENAI_API_URL)
+            .header("Authorization", format!("Bearer {}", self.api_key))
+            .header("Content-Type", "application/json")
             .body(body)
             .send()
             .await
             .map_err(|e| AiError::Network {
-                provider: "Anthropic".to_string(),
+                provider: "OpenAI".to_string(),
                 message: e.to_string(),
             })?;
 
-        // Check for HTTP errors
+        // Check HTTP status and return AiError::Api for errors
         if !response.status().is_success() {
             let code = response.status().as_u16();
             let message = response
@@ -109,22 +131,22 @@ impl AsyncAnthropicClient {
                 .await
                 .unwrap_or_else(|_| "Unknown error".to_string());
             return Err(AiError::Api {
-                provider: "Anthropic".to_string(),
+                provider: "OpenAI".to_string(),
                 code,
                 message,
             });
         }
 
-        // Get the byte stream
+        // Get byte stream from response
         let mut stream = response.bytes_stream();
-        let mut sse_parser = SseParser::new(AnthropicEventParser);
+        let mut sse_parser = SseParser::new(OpenAiEventParser);
 
-        // Process stream with cancellation support
+        // Use tokio::select! with biased mode to race stream against cancellation
         loop {
             tokio::select! {
                 biased;
 
-                // Check cancellation first (biased mode)
+                // Check cancellation first (biased mode prioritizes this)
                 _ = cancel_token.cancelled() => {
                     log::debug!("Request {} cancelled during streaming", request_id);
                     return Err(AiError::Cancelled);
@@ -134,7 +156,7 @@ impl AsyncAnthropicClient {
                 chunk = stream.next() => {
                     match chunk {
                         Some(Ok(bytes)) => {
-                            // Parse SSE events from bytes
+                            // Parse chunks and send via response_tx as AiResponse::Chunk
                             for text in sse_parser.parse_chunk(&bytes) {
                                 if response_tx
                                     .send(AiResponse::Chunk {
@@ -143,19 +165,20 @@ impl AsyncAnthropicClient {
                                     })
                                     .is_err()
                                 {
-                                    // Main thread disconnected
+                                    // Main thread disconnected - stop streaming gracefully
                                     return Ok(());
                                 }
                             }
                         }
                         Some(Err(e)) => {
+                            // Return AiError::Network for stream errors
                             return Err(AiError::Network {
-                                provider: "Anthropic".to_string(),
+                                provider: "OpenAI".to_string(),
                                 message: e.to_string(),
                             });
                         }
                         None => {
-                            // Stream ended
+                            // Stream ended - return Ok(()) on successful completion
                             break;
                         }
                     }
@@ -168,5 +191,5 @@ impl AsyncAnthropicClient {
 }
 
 #[cfg(test)]
-#[path = "async_anthropic_tests.rs"]
-mod async_anthropic_tests;
+#[path = "async_openai_tests.rs"]
+mod async_openai_tests;

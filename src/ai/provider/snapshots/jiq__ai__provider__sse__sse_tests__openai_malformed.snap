@@ -1,0 +1,9 @@
+---
+source: src/ai/provider/sse_tests.rs
+expression: openai_results
+---
+[
+    "Valid",
+    "Also valid",
+    "Still works",
+]

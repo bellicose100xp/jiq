@@ -1,0 +1,5 @@
+---
+source: src/ai/provider_tests.rs
+expression: error_message
+---
+[OpenAI] AI not configured: Missing API key. Add 'api_key' in [ai.openai] section.

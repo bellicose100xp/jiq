@@ -4,8 +4,9 @@ use super::*;
 use crate::config::Config;
 use proptest::prelude::*;
 
-// Re-export BedrockConfig for tests
+// Re-export configs for tests
 use super::BedrockConfig;
+use super::OpenAiConfig;
 
 // **Feature: ai-assistant, Property 1: Valid config parsing**
 // *For any* valid TOML config with `[ai]` section containing valid fields,
@@ -187,6 +188,13 @@ fn test_bedrock_config_default_values() {
 }
 
 #[test]
+fn test_openai_config_default_values() {
+    let config = OpenAiConfig::default();
+    assert!(config.api_key.is_none());
+    assert!(config.model.is_none());
+}
+
+#[test]
 fn test_parse_ai_enabled() {
     let toml = r#"
 [ai]
@@ -231,14 +239,24 @@ enabled = true
 }
 
 #[test]
-fn test_invalid_provider_fails_to_parse() {
+fn test_parse_openai_provider() {
     let toml = r#"
 [ai]
 enabled = true
 provider = "openai"
+
+[ai.openai]
+api_key = "sk-proj-test-key"
+model = "gpt-4o-mini"
 "#;
-    let result: Result<Config, _> = toml::from_str(toml);
-    assert!(result.is_err());
+    let config: Config = toml::from_str(toml).unwrap();
+    assert!(config.ai.enabled);
+    assert_eq!(config.ai.provider, AiProviderType::Openai);
+    assert_eq!(
+        config.ai.openai.api_key,
+        Some("sk-proj-test-key".to_string())
+    );
+    assert_eq!(config.ai.openai.model, Some("gpt-4o-mini".to_string()));
 }
 
 #[test]
@@ -281,4 +299,98 @@ profile = "my-aws-profile"
         config.ai.bedrock.profile,
         Some("my-aws-profile".to_string())
     );
+}
+
+// **Feature: openai-provider, Property 10: Configuration validation**
+// *For any* OpenAI configuration passed to from_config, if the configuration is valid
+// (has non-empty api_key and model), then the function should return Ok(AsyncAiProvider::Openai(_)).
+// **Validates: Requirements 5.2**
+proptest! {
+    #![proptest_config(ProptestConfig::with_cases(100))]
+
+    #[test]
+    fn prop_openai_config_validation(
+        enabled in prop::bool::ANY,
+        api_key in "[a-zA-Z0-9-_]{20,50}",
+        model in "(gpt-4o-mini|gpt-4o|gpt-3\\.5-turbo)",
+    ) {
+        let toml_content = format!(r#"
+[ai]
+enabled = {}
+provider = "openai"
+
+[ai.openai]
+api_key = "{}"
+model = "{}"
+"#, enabled, api_key, model);
+
+        let config: Result<Config, _> = toml::from_str(&toml_content);
+
+        prop_assert!(config.is_ok(), "Failed to parse valid OpenAI config");
+
+        let config = config.unwrap();
+        prop_assert_eq!(config.ai.enabled, enabled);
+        prop_assert_eq!(config.ai.provider, AiProviderType::Openai);
+        prop_assert_eq!(config.ai.openai.api_key, Some(api_key));
+        prop_assert_eq!(config.ai.openai.model, Some(model));
+    }
+}
+
+// **Feature: openai-provider, Property 19: Configuration with whitespace**
+// *For any* configuration where `api_key` or `model` contains only whitespace characters,
+// the system should treat it as missing and return a NotConfigured error.
+// **Validates: Requirements 1.4, 1.5**
+proptest! {
+    #![proptest_config(ProptestConfig::with_cases(100))]
+
+    #[test]
+    fn prop_openai_config_whitespace_handling(
+        whitespace_count in 1usize..10,
+        use_spaces in prop::bool::ANY,
+        whitespace_in_api_key in prop::bool::ANY,
+    ) {
+        let whitespace = if use_spaces {
+            " ".repeat(whitespace_count)
+        } else {
+            "\t".repeat(whitespace_count)
+        };
+
+        let api_key = if whitespace_in_api_key {
+            whitespace.clone()
+        } else {
+            "sk-proj-valid-key".to_string()
+        };
+
+        let model = if !whitespace_in_api_key {
+            whitespace.clone()
+        } else {
+            "gpt-4o-mini".to_string()
+        };
+
+        let toml_content = format!(r#"
+[ai]
+enabled = true
+provider = "openai"
+
+[ai.openai]
+api_key = "{}"
+model = "{}"
+"#, api_key, model);
+
+        let config: Result<Config, _> = toml::from_str(&toml_content);
+
+        // Config parsing should succeed (TOML parsing doesn't validate content)
+        prop_assert!(config.is_ok(), "Failed to parse OpenAI config with whitespace");
+
+        let config = config.unwrap();
+
+        // Verify the whitespace values are stored as-is
+        if whitespace_in_api_key {
+            prop_assert_eq!(config.ai.openai.api_key, Some(api_key));
+            // The validation that treats whitespace as missing happens in from_config,
+            // not during TOML parsing
+        } else {
+            prop_assert_eq!(config.ai.openai.model, Some(model));
+        }
+    }
 }

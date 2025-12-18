@@ -27,7 +27,7 @@ fn test_new_ai_state_enabled() {
 
 #[test]
 fn test_new_with_config_configured() {
-    let state = AiState::new_with_config(true, true);
+    let state = AiState::new_with_config(true, true, "Anthropic".to_string());
     assert!(state.visible);
     assert!(state.enabled);
     assert!(state.configured);
@@ -36,7 +36,7 @@ fn test_new_with_config_configured() {
 
 #[test]
 fn test_new_with_config_not_configured() {
-    let state = AiState::new_with_config(true, false);
+    let state = AiState::new_with_config(true, false, "Anthropic".to_string());
     assert!(state.visible);
     assert!(state.enabled);
     assert!(!state.configured);
@@ -536,7 +536,7 @@ proptest! {
         ai_enabled in prop::bool::ANY,
         configured in prop::bool::ANY,
     ) {
-        let state = AiState::new_with_config(ai_enabled, configured);
+        let state = AiState::new_with_config(ai_enabled, configured, "Anthropic".to_string());
 
         // Visibility should match enabled state
         prop_assert_eq!(
@@ -562,7 +562,7 @@ fn test_selection_initialized_in_new() {
 
 #[test]
 fn test_selection_initialized_in_new_with_config() {
-    let state = AiState::new_with_config(true, true);
+    let state = AiState::new_with_config(true, true, "Anthropic".to_string());
     assert!(state.selection.get_selected().is_none());
     assert!(!state.selection.is_navigation_active());
 }

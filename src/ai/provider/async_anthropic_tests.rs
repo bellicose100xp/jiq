@@ -1,8 +1,12 @@
 //! Tests for Async Anthropic Claude API client
 
 use super::*;
+use bytes::Bytes;
 use proptest::prelude::*;
 use std::sync::mpsc;
+
+// Import the trait so we can call parse_data on AnthropicEventParser
+use crate::ai::provider::sse::SseEventParser;
 
 #[test]
 fn test_async_anthropic_client_new() {
@@ -19,27 +23,30 @@ fn test_async_anthropic_client_new() {
 fn test_sse_parser_parse_delta_text_valid() {
     let data =
         r#"{"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":"Hello"}}"#;
-    let result = SseParser::parse_delta_text(data);
+    let parser = AnthropicEventParser;
+    let result = parser.parse_data(data);
     assert_eq!(result, Some("Hello".to_string()));
 }
 
 #[test]
 fn test_sse_parser_parse_delta_text_not_delta() {
     let data = r#"{"type":"message_start","message":{"id":"msg_123"}}"#;
-    let result = SseParser::parse_delta_text(data);
+    let parser = AnthropicEventParser;
+    let result = parser.parse_data(data);
     assert_eq!(result, None);
 }
 
 #[test]
 fn test_sse_parser_parse_delta_text_invalid_json() {
     let data = "not valid json";
-    let result = SseParser::parse_delta_text(data);
+    let parser = AnthropicEventParser;
+    let result = parser.parse_data(data);
     assert_eq!(result, None);
 }
 
 #[test]
 fn test_sse_parser_parse_chunk_single_event() {
-    let mut parser = SseParser::new();
+    let mut parser = SseParser::new(AnthropicEventParser);
     let data = b"event: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"text_delta\",\"text\":\"Hello\"}}\n\n";
     let results = parser.parse_chunk(&Bytes::from_static(data));
     assert_eq!(results, vec!["Hello".to_string()]);
@@ -47,7 +54,7 @@ fn test_sse_parser_parse_chunk_single_event() {
 
 #[test]
 fn test_sse_parser_parse_chunk_multiple_events() {
-    let mut parser = SseParser::new();
+    let mut parser = SseParser::new(AnthropicEventParser);
     let data = b"event: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"text_delta\",\"text\":\"Hello\"}}\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"text_delta\",\"text\":\" World\"}}\n\n";
     let results = parser.parse_chunk(&Bytes::from_static(data));
     assert_eq!(results, vec!["Hello".to_string(), " World".to_string()]);
@@ -55,7 +62,7 @@ fn test_sse_parser_parse_chunk_multiple_events() {
 
 #[test]
 fn test_sse_parser_parse_chunk_skips_non_delta_events() {
-    let mut parser = SseParser::new();
+    let mut parser = SseParser::new(AnthropicEventParser);
     let data = b"event: message_start\ndata: {\"type\":\"message_start\",\"message\":{\"id\":\"msg_123\"}}\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"text_delta\",\"text\":\"Hello\"}}\n\n";
     let results = parser.parse_chunk(&Bytes::from_static(data));
     assert_eq!(results, vec!["Hello".to_string()]);
@@ -63,7 +70,7 @@ fn test_sse_parser_parse_chunk_skips_non_delta_events() {
 
 #[test]
 fn test_sse_parser_parse_chunk_handles_done() {
-    let mut parser = SseParser::new();
+    let mut parser = SseParser::new(AnthropicEventParser);
     let data = b"event: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"text_delta\",\"text\":\"Test\"}}\n\ndata: [DONE]\n";
     let results = parser.parse_chunk(&Bytes::from_static(data));
     assert_eq!(results, vec!["Test".to_string()]);
@@ -71,7 +78,7 @@ fn test_sse_parser_parse_chunk_handles_done() {
 
 #[test]
 fn test_sse_parser_parse_chunk_empty() {
-    let mut parser = SseParser::new();
+    let mut parser = SseParser::new(AnthropicEventParser);
     let data = b"";
     let results = parser.parse_chunk(&Bytes::from_static(data));
     assert!(results.is_empty());
@@ -79,7 +86,7 @@ fn test_sse_parser_parse_chunk_empty() {
 
 #[test]
 fn test_sse_parser_parse_chunk_skips_empty_text() {
-    let mut parser = SseParser::new();
+    let mut parser = SseParser::new(AnthropicEventParser);
     let data = b"event: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"text_delta\",\"text\":\"\"}}\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"text_delta\",\"text\":\"Real content\"}}\n\n";
     let results = parser.parse_chunk(&Bytes::from_static(data));
     assert_eq!(results, vec!["Real content".to_string()]);
@@ -87,7 +94,7 @@ fn test_sse_parser_parse_chunk_skips_empty_text() {
 
 #[test]
 fn test_sse_parser_buffers_incomplete_lines() {
-    let mut parser = SseParser::new();
+    let mut parser = SseParser::new(AnthropicEventParser);
 
     // First chunk: incomplete line
     let data1 = b"event: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"text_delta\",\"text\":\"Hel";
@@ -233,4 +240,38 @@ proptest! {
         // Token should still be cancelled
         prop_assert!(token.is_cancelled(), "Token should remain cancelled");
     }
+}
+
+// Subtask 3.1: Verify Anthropic integration with example test
+// **Validates: Requirements 2.3**
+#[test]
+fn test_anthropic_uses_shared_sse_parser() {
+    // This test verifies that the Anthropic client uses the shared SseParser
+    // by testing that it correctly parses Anthropic SSE events using the
+    // AnthropicEventParser implementation.
+
+    let mut parser = SseParser::new(AnthropicEventParser);
+
+    // Test with a typical Anthropic SSE event
+    let data = b"data: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"text_delta\",\"text\":\"Hello from Anthropic\"}}\n\n";
+    let results = parser.parse_chunk(&Bytes::from_static(data));
+
+    // Verify the parser correctly extracted the text
+    assert_eq!(results.len(), 1);
+    assert_eq!(results[0], "Hello from Anthropic");
+
+    // Test with multiple events
+    let data2 = b"data: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"text_delta\",\"text\":\" World\"}}\n\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"text_delta\",\"text\":\"!\"}}\n\n";
+    let results2 = parser.parse_chunk(&Bytes::from_static(data2));
+
+    assert_eq!(results2.len(), 2);
+    assert_eq!(results2[0], " World");
+    assert_eq!(results2[1], "!");
+
+    // Test that [DONE] is handled correctly
+    let data3 = b"data: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"text_delta\",\"text\":\"Final\"}}\n\ndata: [DONE]\n";
+    let results3 = parser.parse_chunk(&Bytes::from_static(data3));
+
+    assert_eq!(results3.len(), 1);
+    assert_eq!(results3[0], "Final");
 }

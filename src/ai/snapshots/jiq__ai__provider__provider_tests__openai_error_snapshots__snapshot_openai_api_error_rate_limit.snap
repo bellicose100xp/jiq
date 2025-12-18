@@ -1,0 +1,5 @@
+---
+source: src/ai/provider_tests.rs
+expression: error_message
+---
+[OpenAI] API error (429): Rate limit exceeded

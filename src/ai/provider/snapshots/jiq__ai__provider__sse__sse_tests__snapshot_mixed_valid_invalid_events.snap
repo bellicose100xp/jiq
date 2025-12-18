@@ -1,0 +1,9 @@
+---
+source: src/ai/provider/sse_tests.rs
+expression: results
+---
+[
+    "First",
+    "Second",
+    "Third",
+]
