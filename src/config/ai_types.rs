@@ -17,6 +17,7 @@ pub enum AiProviderType {
     Anthropic,
     Bedrock,
     Openai,
+    Gemini,
 }
 
 /// Anthropic-specific configuration
@@ -61,6 +62,15 @@ pub struct OpenAiConfig {
     pub model: Option<String>,
 }
 
+/// Gemini-specific configuration
+#[derive(Debug, Clone, Deserialize, Default)]
+pub struct GeminiConfig {
+    /// API key for Gemini (required when AI is enabled with Gemini provider)
+    pub api_key: Option<String>,
+    /// Model to use (required, e.g., "gemini-2.0-flash")
+    pub model: Option<String>,
+}
+
 /// AI assistant configuration section
 #[derive(Debug, Clone, Default, Deserialize)]
 pub struct AiConfig {
@@ -79,6 +89,9 @@ pub struct AiConfig {
     /// OpenAI-specific configuration
     #[serde(default)]
     pub openai: OpenAiConfig,
+    /// Gemini-specific configuration
+    #[serde(default)]
+    pub gemini: GeminiConfig,
 }
 
 #[cfg(test)]

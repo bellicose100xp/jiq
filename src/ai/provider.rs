@@ -13,11 +13,13 @@ use crate::config::ai_types::{AiConfig, AiProviderType};
 
 mod async_anthropic;
 mod async_bedrock;
+mod async_gemini;
 mod async_openai;
 mod sse;
 
 pub use async_anthropic::AsyncAnthropicClient;
 pub use async_bedrock::AsyncBedrockClient;
+pub use async_gemini::AsyncGeminiClient;
 pub use async_openai::AsyncOpenAiClient;
 
 /// Errors that can occur during AI operations
@@ -65,6 +67,8 @@ pub enum AsyncAiProvider {
     Bedrock(AsyncBedrockClient),
     /// OpenAI API (async)
     Openai(AsyncOpenAiClient),
+    /// Google Gemini API (async)
+    Gemini(AsyncGeminiClient),
 }
 
 impl AsyncAiProvider {
@@ -74,6 +78,7 @@ impl AsyncAiProvider {
             AsyncAiProvider::Anthropic(_) => "Anthropic",
             AsyncAiProvider::Bedrock(_) => "Bedrock",
             AsyncAiProvider::Openai(_) => "OpenAI",
+            AsyncAiProvider::Gemini(_) => "Gemini",
         }
     }
 
@@ -86,6 +91,7 @@ impl AsyncAiProvider {
                 AiProviderType::Anthropic => "Anthropic",
                 AiProviderType::Bedrock => "Bedrock",
                 AiProviderType::Openai => "OpenAI",
+                AiProviderType::Gemini => "Gemini",
             };
             return Err(AiError::NotConfigured {
                 provider: provider_name.to_string(),
@@ -188,6 +194,35 @@ impl AsyncAiProvider {
                 let _ = provider.provider_name();
                 Ok(provider)
             }
+            AiProviderType::Gemini => {
+                let api_key = config
+                    .gemini
+                    .api_key
+                    .as_ref()
+                    .filter(|k| !k.trim().is_empty())
+                    .ok_or_else(|| AiError::NotConfigured {
+                        provider: "Gemini".to_string(),
+                        message: "Missing API key. Add 'api_key' in [ai.gemini] section."
+                            .to_string(),
+                    })?;
+
+                let model = config
+                    .gemini
+                    .model
+                    .as_ref()
+                    .filter(|m| !m.trim().is_empty())
+                    .ok_or_else(|| AiError::NotConfigured {
+                        provider: "Gemini".to_string(),
+                        message: "Missing model. Add 'model' in [ai.gemini] section.".to_string(),
+                    })?;
+
+                let provider =
+                    AsyncAiProvider::Gemini(AsyncGeminiClient::new(api_key.clone(), model.clone()));
+
+                // Use provider_name to avoid dead code warning
+                let _ = provider.provider_name();
+                Ok(provider)
+            }
         }
     }
 
@@ -225,6 +260,11 @@ impl AsyncAiProvider {
                     .await
             }
             AsyncAiProvider::Openai(client) => {
+                client
+                    .stream_with_cancel(prompt, request_id, cancel_token, response_tx)
+                    .await
+            }
+            AsyncAiProvider::Gemini(client) => {
                 client
                     .stream_with_cancel(prompt, request_id, cancel_token, response_tx)
                     .await

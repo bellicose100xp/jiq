@@ -9,7 +9,7 @@
 ## Features
 
 - **Real-time query execution** - See results as you type
-- **[EXPERIMENTAL] AI assistant** - Get intelligent query suggestions, error fixes, and natural language interpretation
+- **AI assistant** - Get intelligent query suggestions, error fixes, and natural language interpretation
 - **[EXPERIMENTAL] Context-aware autocomplete** - Intelligent suggestions with JSON type information for fields and functions
 - **Function tooltip** - Quick reference help for jq functions with examples
 - **Search in results** - Find and navigate text in JSON output with highlighting
@@ -281,9 +281,12 @@ backend = "auto"
 
 [ai]
 # Enable AI assistant
-# Prefer faster models like claude haiku or open ai mini or gemini flash
+# For faster responses, prefer lightweight models:
+# - Anthropic: claude-haiku-4-5-20251001
+# - OpenAI: gpt-4o-mini
+# - Gemini: gemini-2.0-flash-exp or gemini-1.5-flash
 enabled = true
-# Provider: "anthropic" (default), "openai", or "bedrock"
+# Provider: "anthropic" (default), "openai", "gemini", or "bedrock"
 provider = "anthropic"
 
 [ai.anthropic]
@@ -296,6 +299,12 @@ model = "claude-haiku-4-5-20251001"
 api_key = "sk-proj-..."
 # OpenAI model to use (e.g., "gpt-4o-mini", "gpt-4o")
 model = "gpt-4o-mini"
+
+[ai.gemini]
+# Get your API key from: https://aistudio.google.com/apikey
+api_key = "AIza..."
+# Gemini model to use (e.g., "gemini-2.0-flash-exp", "gemini-1.5-flash")
+model = "gemini-2.0-flash-exp"
 
 [ai.bedrock]
 region = "us-east-1"

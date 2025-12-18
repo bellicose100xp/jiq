@@ -147,6 +147,33 @@ impl SseEventParser for OpenAiEventParser {
     }
 }
 
+/// Gemini-specific SSE parser
+///
+/// Parses Gemini's streamGenerateContent events:
+/// `{"candidates":[{"content":{"parts":[{"text":"..."}]}}]}`
+pub struct GeminiEventParser;
+
+impl SseEventParser for GeminiEventParser {
+    fn parse_data(&self, data: &str) -> Option<String> {
+        let json: serde_json::Value = serde_json::from_str(data).ok()?;
+
+        // Extract text from candidates[0].content.parts[0].text
+        json.get("candidates")?
+            .get(0)?
+            .get("content")?
+            .get("parts")?
+            .get(0)?
+            .get("text")?
+            .as_str()
+            .map(|s| s.to_string())
+    }
+
+    fn is_done(&self, data: &str) -> bool {
+        // Gemini signals end with empty data
+        data.is_empty()
+    }
+}
+
 #[cfg(test)]
 #[path = "sse_tests.rs"]
 mod sse_tests;
