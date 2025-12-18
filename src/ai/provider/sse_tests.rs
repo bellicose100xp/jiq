@@ -71,6 +71,89 @@ fn test_openai_parser_is_done() {
     assert!(!parser.is_done("other"));
 }
 
+// ============================================================================
+// Gemini Parser Unit Tests
+// ============================================================================
+
+#[test]
+fn test_gemini_parser_valid_delta() {
+    let parser = GeminiEventParser;
+    let data = r#"{"candidates":[{"content":{"parts":[{"text":"Hello"}]}}]}"#;
+    let result = parser.parse_data(data);
+    assert_eq!(result, Some("Hello".to_string()));
+}
+
+#[test]
+fn test_gemini_parser_missing_candidates() {
+    let parser = GeminiEventParser;
+    let data = r#"{"other":"field"}"#;
+    let result = parser.parse_data(data);
+    assert_eq!(result, None);
+}
+
+#[test]
+fn test_gemini_parser_missing_content() {
+    let parser = GeminiEventParser;
+    let data = r#"{"candidates":[{"other":"field"}]}"#;
+    let result = parser.parse_data(data);
+    assert_eq!(result, None);
+}
+
+#[test]
+fn test_gemini_parser_missing_parts() {
+    let parser = GeminiEventParser;
+    let data = r#"{"candidates":[{"content":{"other":"field"}}]}"#;
+    let result = parser.parse_data(data);
+    assert_eq!(result, None);
+}
+
+#[test]
+fn test_gemini_parser_missing_text() {
+    let parser = GeminiEventParser;
+    let data = r#"{"candidates":[{"content":{"parts":[{"other":"field"}]}}]}"#;
+    let result = parser.parse_data(data);
+    assert_eq!(result, None);
+}
+
+#[test]
+fn test_gemini_parser_empty_candidates() {
+    let parser = GeminiEventParser;
+    let data = r#"{"candidates":[]}"#;
+    let result = parser.parse_data(data);
+    assert_eq!(result, None);
+}
+
+#[test]
+fn test_gemini_parser_empty_parts() {
+    let parser = GeminiEventParser;
+    let data = r#"{"candidates":[{"content":{"parts":[]}}]}"#;
+    let result = parser.parse_data(data);
+    assert_eq!(result, None);
+}
+
+#[test]
+fn test_gemini_parser_invalid_json() {
+    let parser = GeminiEventParser;
+    let data = "not valid json";
+    let result = parser.parse_data(data);
+    assert_eq!(result, None);
+}
+
+#[test]
+fn test_gemini_parser_is_done_empty() {
+    let parser = GeminiEventParser;
+    // Gemini signals end with empty data
+    assert!(parser.is_done(""));
+}
+
+#[test]
+fn test_gemini_parser_is_done_not_empty() {
+    let parser = GeminiEventParser;
+    assert!(!parser.is_done("[DONE]"));
+    assert!(!parser.is_done("other"));
+    assert!(!parser.is_done(r#"{"candidates":[]}"#));
+}
+
 #[test]
 fn test_sse_parser_single_event() {
     let mut parser = SseParser::new(AnthropicEventParser);
@@ -377,6 +460,45 @@ proptest! {
     }
 }
 
+// **Feature: gemini-provider, Property 5: Gemini SSE text extraction**
+// *For any* valid Gemini SSE JSON containing text at `candidates[0].content.parts[0].text`,
+// the GeminiEventParser should extract that exact text.
+// **Validates: Requirements 2.3**
+proptest! {
+    #![proptest_config(ProptestConfig::with_cases(100))]
+
+    #[test]
+    fn prop_gemini_sse_text_extraction(
+        text in "[a-zA-Z0-9 ]{1,50}",
+    ) {
+        let parser = GeminiEventParser;
+        let data = format!(
+            r#"{{"candidates":[{{"content":{{"parts":[{{"text":"{}"}}]}}}}]}}"#,
+            text
+        );
+        let result = parser.parse_data(&data);
+        prop_assert_eq!(result, Some(text));
+    }
+}
+
+// **Feature: gemini-provider, Property 6: Invalid JSON resilience**
+// *For any* invalid JSON string, the GeminiEventParser should return None without crashing.
+// **Validates: Requirements 2.5**
+proptest! {
+    #![proptest_config(ProptestConfig::with_cases(100))]
+
+    #[test]
+    fn prop_gemini_invalid_json_resilience(
+        invalid_data in "[^{}\\[\\]\"]{1,100}",
+    ) {
+        let parser = GeminiEventParser;
+        // The generated string should not be valid JSON
+        let result = parser.parse_data(&invalid_data);
+        // Should return None without crashing
+        prop_assert_eq!(result, None);
+    }
+}
+
 // ============================================================================
 // Snapshot Tests
 // ============================================================================
@@ -486,5 +608,25 @@ data: [DONE]
 "#;
 
     let results = parser.parse_chunk(&Bytes::from(mixed_data));
+    insta::assert_debug_snapshot!(results);
+}
+
+#[test]
+fn snapshot_parsed_gemini_sse_stream() {
+    let mut parser = SseParser::new(GeminiEventParser);
+
+    // Simulate a complete Gemini SSE stream
+    let stream_data = r#"data: {"candidates":[{"content":{"parts":[{"text":"Hello"}],"role":"model"},"finishReason":"STOP","index":0}],"usageMetadata":{"promptTokenCount":10,"candidatesTokenCount":1,"totalTokenCount":11}}
+
+data: {"candidates":[{"content":{"parts":[{"text":" world"}],"role":"model"},"finishReason":"STOP","index":0}],"usageMetadata":{"promptTokenCount":10,"candidatesTokenCount":2,"totalTokenCount":12}}
+
+data: {"candidates":[{"content":{"parts":[{"text":"!"}],"role":"model"},"finishReason":"STOP","index":0}],"usageMetadata":{"promptTokenCount":10,"candidatesTokenCount":3,"totalTokenCount":13}}
+
+data: {"candidates":[{"content":{"parts":[{"text":""}],"role":"model"},"finishReason":"STOP","index":0}],"usageMetadata":{"promptTokenCount":10,"candidatesTokenCount":4,"totalTokenCount":14}}
+
+data: 
+"#;
+
+    let results = parser.parse_chunk(&Bytes::from(stream_data));
     insta::assert_debug_snapshot!(results);
 }

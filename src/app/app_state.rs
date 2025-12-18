@@ -59,6 +59,7 @@ impl App {
             crate::config::ai_types::AiProviderType::Anthropic => "Anthropic",
             crate::config::ai_types::AiProviderType::Bedrock => "Bedrock",
             crate::config::ai_types::AiProviderType::Openai => "OpenAI",
+            crate::config::ai_types::AiProviderType::Gemini => "Gemini",
         }
         .to_string();
 

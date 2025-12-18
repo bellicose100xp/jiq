@@ -6,6 +6,7 @@ use proptest::prelude::*;
 
 // Re-export configs for tests
 use super::BedrockConfig;
+use super::GeminiConfig;
 use super::OpenAiConfig;
 
 // **Feature: ai-assistant, Property 1: Valid config parsing**
@@ -95,7 +96,7 @@ proptest! {
     fn prop_invalid_provider_fallback(
         invalid_provider in "[a-z]{3,10}".prop_filter(
             "not valid provider",
-            |s| s != "anthropic" && s != "bedrock"
+            |s| s != "anthropic" && s != "bedrock" && s != "openai" && s != "gemini"
         )
     ) {
         let toml_content = format!(r#"
@@ -159,6 +160,40 @@ model = "{}"
     }
 }
 
+// **Feature: gemini-provider, Property 1: Provider type recognition**
+// *For any* config TOML with `provider = "gemini"`, deserializing should produce `AiProviderType::Gemini`
+// **Validates: Requirements 1.1**
+proptest! {
+    #![proptest_config(ProptestConfig::with_cases(100))]
+
+    #[test]
+    fn prop_gemini_provider_parsing(
+        enabled in prop::bool::ANY,
+        api_key in "[a-zA-Z0-9-_]{20,50}",
+        model in "(gemini-2\\.0-flash|gemini-1\\.5-pro|gemini-1\\.5-flash)",
+    ) {
+        let toml_content = format!(r#"
+[ai]
+enabled = {}
+provider = "gemini"
+
+[ai.gemini]
+api_key = "{}"
+model = "{}"
+"#, enabled, api_key, model);
+
+        let config: Result<Config, _> = toml::from_str(&toml_content);
+
+        prop_assert!(config.is_ok(), "Failed to parse valid Gemini config: {:?}", config.err());
+
+        let config = config.unwrap();
+        prop_assert_eq!(config.ai.enabled, enabled);
+        prop_assert_eq!(config.ai.provider, AiProviderType::Gemini);
+        prop_assert_eq!(config.ai.gemini.api_key, Some(api_key));
+        prop_assert_eq!(config.ai.gemini.model, Some(model));
+    }
+}
+
 // Unit tests for AI config
 
 #[test]
@@ -190,6 +225,13 @@ fn test_bedrock_config_default_values() {
 #[test]
 fn test_openai_config_default_values() {
     let config = OpenAiConfig::default();
+    assert!(config.api_key.is_none());
+    assert!(config.model.is_none());
+}
+
+#[test]
+fn test_gemini_config_default_values() {
+    let config = GeminiConfig::default();
     assert!(config.api_key.is_none());
     assert!(config.model.is_none());
 }
@@ -299,6 +341,24 @@ profile = "my-aws-profile"
         config.ai.bedrock.profile,
         Some("my-aws-profile".to_string())
     );
+}
+
+#[test]
+fn test_parse_gemini_provider() {
+    let toml = r#"
+[ai]
+enabled = true
+provider = "gemini"
+
+[ai.gemini]
+api_key = "AIza-test-key"
+model = "gemini-2.0-flash"
+"#;
+    let config: Config = toml::from_str(toml).unwrap();
+    assert!(config.ai.enabled);
+    assert_eq!(config.ai.provider, AiProviderType::Gemini);
+    assert_eq!(config.ai.gemini.api_key, Some("AIza-test-key".to_string()));
+    assert_eq!(config.ai.gemini.model, Some("gemini-2.0-flash".to_string()));
 }
 
 // **Feature: openai-provider, Property 10: Configuration validation**
