@@ -8,7 +8,6 @@ use std::sync::mpsc::Sender;
 use futures::StreamExt;
 use reqwest::Client;
 use serde::Serialize;
-use serde_json;
 use tokio_util::sync::CancellationToken;
 
 use super::AiError;
