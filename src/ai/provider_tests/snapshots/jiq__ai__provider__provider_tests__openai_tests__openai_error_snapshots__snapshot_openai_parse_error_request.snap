@@ -1,5 +1,5 @@
 ---
-source: src/ai/provider_tests.rs
+source: src/ai/provider_tests/openai_tests.rs
 expression: error_message
 ---
 [OpenAI] Parse error: Failed to serialize request body
