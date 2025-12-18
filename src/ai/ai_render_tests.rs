@@ -11,6 +11,10 @@ mod layout_tests;
 mod model_name_tests;
 #[path = "ai_render_tests/snapshot_tests.rs"]
 mod snapshot_tests;
+#[path = "ai_render_tests/widget_background_unit_tests.rs"]
+mod widget_background_unit_tests;
+#[path = "ai_render_tests/widget_selection_tests.rs"]
+mod widget_selection_tests;
 
 // Re-export items from parent module for test use
 pub(crate) use super::ai_render::*;

@@ -268,6 +268,9 @@ proptest! {
         selected_index in 0usize..10
     ) {
         use crate::ai::ai_state::{Suggestion, SuggestionType};
+        use ratatui::Terminal;
+        use ratatui::backend::TestBackend;
+        use ratatui::layout::Rect;
 
         prop_assume!(selected_index < suggestion_count);
 
@@ -289,18 +292,32 @@ proptest! {
             state.selection.navigate_next(suggestion_count);
         }
 
-        let content = build_content(&state, 80);
+        // Render to TestBackend to check widget-level background styling
+        // Use taller terminal to ensure space for all suggestions (each needs ~2 lines + 1 spacing)
+        let terminal_height = 30 + (suggestion_count as u16 * 3);
+        let backend = TestBackend::new(100, terminal_height);
+        let mut terminal = Terminal::new(backend).unwrap();
+        let mut state_mut = state; // Move state to make it mutable
+        terminal.draw(|f| {
+            let input_area = Rect {
+                x: 0,
+                y: terminal_height - 4,
+                width: 100,
+                height: 3,
+            };
+            render_popup(&mut state_mut, f, input_area);
+        }).unwrap();
 
-        // Check that at least one span has a background color (indicating selection)
-        let has_background = content.lines.iter().any(|line| {
-            line.spans.iter().any(|span| {
-                span.style.bg.is_some() && span.style.bg != Some(Color::Black)
-            })
+        let buffer = terminal.backend().buffer();
+
+        // Check that at least one cell has a DarkGray background (widget-level styling)
+        let has_background = buffer.content.iter().any(|cell| {
+            cell.bg == Color::DarkGray
         });
 
         prop_assert!(
             has_background,
-            "Selected suggestion should have a distinct background color"
+            "Selected suggestion should have cells with DarkGray background color"
         );
     }
 }
