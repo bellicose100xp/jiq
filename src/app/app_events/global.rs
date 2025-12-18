@@ -223,9 +223,14 @@ pub fn handle_global_keys(app: &mut App, key: KeyEvent) -> bool {
             app.ai.toggle();
 
             if !was_visible && app.ai.visible {
+                // AI popup just became visible - hide tooltip
                 app.saved_tooltip_visibility = app.tooltip.enabled;
                 app.tooltip.enabled = false;
+
+                // Trigger AI request for current context
+                app.trigger_ai_request();
             } else if was_visible && !app.ai.visible {
+                // AI popup just became hidden - restore tooltip
                 app.tooltip.enabled = app.saved_tooltip_visibility;
             }
 

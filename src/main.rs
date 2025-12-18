@@ -157,21 +157,7 @@ fn run(
     // Requirements 8.4: WHEN the AI_Popup becomes visible THEN the AI_Assistant SHALL
     // immediately analyze the current query context and provide suggestions
     if app.ai.visible && app.ai.enabled && app.ai.configured {
-        let query = app.input.query().to_string();
-        let cursor_pos = app.input.textarea.cursor().1;
-        let json_input = app.query.executor.json_input().to_string();
-        ai::ai_events::handle_execution_result(
-            &mut app.ai,
-            &app.query.result,
-            &query,
-            cursor_pos,
-            &json_input,
-            ai::context::ContextParams {
-                input_schema: app.input_json_schema.as_deref(),
-                base_query: app.query.base_query_for_suggestions.as_deref(),
-                base_query_result: app.query.last_successful_result.as_deref(),
-            },
-        );
+        app.trigger_ai_request();
     }
 
     loop {
@@ -203,22 +189,16 @@ fn run(
 /// - 4.1: WHEN the AI provider sends a streaming response THEN the AI_Popup
 ///   SHALL display text incrementally as chunks arrive
 fn setup_ai_worker(app: &mut App, config: &config::Config) {
-    // Only set up worker if AI is enabled
-    if !config.ai.enabled {
-        return;
+    // Warn if AI is explicitly enabled but not properly configured
+    if config.ai.enabled && !app.ai.configured {
+        app.notification
+            .show_warning("AI enabled but not configured. Add provider credentials to config.");
     }
 
-    // Validate config and warn if API key is missing
-    if config
-        .ai
-        .anthropic
-        .api_key
-        .as_ref()
-        .is_none_or(|k| k.trim().is_empty())
-    {
-        app.notification.show_warning(
-            "AI enabled but API key missing. Add api_key to [ai.anthropic] in config.",
-        );
+    // Only set up worker if AI is configured (has provider credentials)
+    // Worker is needed regardless of `enabled` because user can toggle with Ctrl+A
+    if !app.ai.configured {
+        return;
     }
 
     // Create channels for communication with worker thread

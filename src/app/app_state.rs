@@ -154,6 +154,33 @@ impl App {
     ) {
         autocomplete::insert_suggestion_from_app(self, suggestion);
     }
+
+    /// Trigger an AI request for the current query context
+    ///
+    /// This extracts the current query, cursor position, JSON input, and context
+    /// parameters from the app state and triggers an AI request via handle_execution_result.
+    pub fn trigger_ai_request(&mut self) {
+        if !self.ai.configured {
+            return;
+        }
+
+        let query = self.input.query().to_string();
+        let cursor_pos = self.input.textarea.cursor().1;
+        let json_input = self.query.executor.json_input().to_string();
+
+        crate::ai::ai_events::handle_execution_result(
+            &mut self.ai,
+            &self.query.result,
+            &query,
+            cursor_pos,
+            &json_input,
+            crate::ai::context::ContextParams {
+                input_schema: self.input_json_schema.as_deref(),
+                base_query: self.query.base_query_for_suggestions.as_deref(),
+                base_query_result: self.query.last_successful_result.as_deref(),
+            },
+        );
+    }
 }
 
 #[cfg(test)]

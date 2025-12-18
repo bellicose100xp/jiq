@@ -487,3 +487,109 @@ proptest! {
         );
     }
 }
+
+#[test]
+fn test_ctrl_a_triggers_ai_request_when_becoming_visible() {
+    // Test that pressing Ctrl+A triggers an AI request when popup becomes visible
+    // This validates the fix for enabled=false but configured=true scenario
+    let mut app = app_with_query(".");
+    app.focus = Focus::InputField;
+
+    // Start with AI hidden but configured (simulating enabled=false in config)
+    app.ai.visible = false;
+    app.ai.enabled = false;
+    app.ai.configured = true;
+
+    // Set up AI channel (simulating worker is running because configured=true)
+    let (tx, rx) = std::sync::mpsc::channel();
+    let (_response_tx, response_rx) = std::sync::mpsc::channel();
+    app.ai.request_tx = Some(tx);
+    app.ai.response_rx = Some(response_rx);
+
+    // Set initial query hash to ensure query appears changed
+    app.ai.set_last_query_hash(".initial");
+
+    // Press Ctrl+A to show AI box
+    app.handle_key_event(key_with_mods(KeyCode::Char('a'), KeyModifiers::CONTROL));
+
+    // Verify popup is now visible
+    assert!(app.ai.visible, "AI popup should be visible after Ctrl+A");
+
+    // Verify AI request was sent
+    let mut found_request = false;
+    while let Ok(msg) = rx.try_recv() {
+        if matches!(msg, crate::ai::ai_state::AiRequest::Query { .. }) {
+            found_request = true;
+            break;
+        }
+    }
+    assert!(
+        found_request,
+        "Should have sent AI request when popup became visible"
+    );
+}
+
+#[test]
+fn test_ctrl_a_no_request_when_not_configured() {
+    // Test that pressing Ctrl+A does NOT trigger AI request when not configured
+    let mut app = app_with_query(".");
+    app.focus = Focus::InputField;
+
+    // Start with AI hidden and NOT configured
+    app.ai.visible = false;
+    app.ai.enabled = false;
+    app.ai.configured = false;
+
+    // No channel setup (no worker running)
+    app.ai.request_tx = None;
+    app.ai.response_rx = None;
+
+    // Press Ctrl+A to show AI box
+    app.handle_key_event(key_with_mods(KeyCode::Char('a'), KeyModifiers::CONTROL));
+
+    // Verify popup is visible (toggle still works)
+    assert!(app.ai.visible, "AI popup should be visible after Ctrl+A");
+
+    // No request was sent (because not configured, so no crash)
+    // This test mainly verifies no panic occurs
+}
+
+#[test]
+fn test_ctrl_a_toggles_off_no_request() {
+    // Test that toggling AI popup OFF does not trigger a request
+    let mut app = app_with_query(".");
+    app.focus = Focus::InputField;
+
+    // Start with AI visible and configured
+    app.ai.visible = true;
+    app.ai.enabled = true;
+    app.ai.configured = true;
+
+    // Set up AI channel
+    let (tx, rx) = std::sync::mpsc::channel();
+    let (_response_tx, response_rx) = std::sync::mpsc::channel();
+    app.ai.request_tx = Some(tx);
+    app.ai.response_rx = Some(response_rx);
+
+    // Clear any pending messages
+    while rx.try_recv().is_ok() {}
+
+    // Press Ctrl+A to HIDE AI box
+    app.handle_key_event(key_with_mods(KeyCode::Char('a'), KeyModifiers::CONTROL));
+
+    // Verify popup is now hidden
+    assert!(!app.ai.visible, "AI popup should be hidden after Ctrl+A");
+
+    // Verify NO AI request was sent when hiding
+    let mut found_request = false;
+    while let Ok(msg) = rx.try_recv() {
+        if matches!(msg, crate::ai::ai_state::AiRequest::Query { .. }) {
+            found_request = true;
+            break;
+        }
+    }
+    assert!(
+        !found_request,
+        "Should NOT send AI request when hiding popup"
+    );
+}

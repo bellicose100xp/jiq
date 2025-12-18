@@ -257,3 +257,95 @@ proptest! {
         );
     }
 }
+
+#[test]
+fn test_trigger_ai_request_sends_request_when_configured() {
+    // Test that trigger_ai_request sends a request when AI is configured
+    let json_input = r#"{"name": "test", "value": 42}"#.to_string();
+    let config = Config::default();
+    let mut app = App::new(json_input, &config);
+
+    // Configure AI with channel
+    app.ai.configured = true;
+    app.ai.visible = true; // Must be visible for requests to be sent
+    let (tx, rx) = std::sync::mpsc::channel();
+    let (_response_tx, response_rx) = std::sync::mpsc::channel();
+    app.ai.request_tx = Some(tx);
+    app.ai.response_rx = Some(response_rx);
+
+    // Set initial query hash to ensure query appears changed
+    app.ai.set_last_query_hash(".initial");
+
+    // Set a different query
+    app.input.textarea.insert_str(".name");
+    app.query.execute(".name");
+
+    // Trigger AI request
+    app.trigger_ai_request();
+
+    // Verify request was sent
+    let mut found_request = false;
+    while let Ok(msg) = rx.try_recv() {
+        if matches!(msg, crate::ai::ai_state::AiRequest::Query { .. }) {
+            found_request = true;
+            break;
+        }
+    }
+    assert!(found_request, "Should have sent AI request when configured");
+}
+
+#[test]
+fn test_trigger_ai_request_noop_when_not_configured() {
+    // Test that trigger_ai_request does nothing when AI is not configured
+    let json_input = r#"{"name": "test"}"#.to_string();
+    let config = Config::default();
+    let mut app = App::new(json_input, &config);
+
+    // AI is NOT configured
+    app.ai.configured = false;
+    app.ai.request_tx = None;
+
+    // Set a query
+    app.input.textarea.insert_str(".name");
+
+    // This should not panic even without channel
+    app.trigger_ai_request();
+
+    // Test passes if no panic occurred
+}
+
+#[test]
+fn test_trigger_ai_request_includes_query_context() {
+    // Test that trigger_ai_request includes the current query context
+    let json_input = r#"{"name": "test", "age": 30}"#.to_string();
+    let config = Config::default();
+    let mut app = App::new(json_input, &config);
+
+    // Configure AI
+    app.ai.configured = true;
+    app.ai.visible = true; // Must be visible for requests to be sent
+    let (tx, rx) = std::sync::mpsc::channel();
+    let (_response_tx, response_rx) = std::sync::mpsc::channel();
+    app.ai.request_tx = Some(tx);
+    app.ai.response_rx = Some(response_rx);
+
+    // Set initial query hash to ensure query appears changed
+    app.ai.set_last_query_hash(".initial");
+
+    // Set a query with error
+    app.input.textarea.insert_str(".invalid");
+    app.query.execute(".invalid");
+
+    // Trigger AI request
+    app.trigger_ai_request();
+
+    // Verify request contains the query
+    if let Ok(crate::ai::ai_state::AiRequest::Query { prompt, .. }) = rx.try_recv() {
+        assert!(
+            prompt.contains(".invalid"),
+            "Prompt should contain the query"
+        );
+    } else {
+        panic!("Expected Query request");
+    }
+}
