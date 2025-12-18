@@ -7,6 +7,8 @@
 mod content_tests;
 #[path = "ai_render_tests/layout_tests.rs"]
 mod layout_tests;
+#[path = "ai_render_tests/model_name_tests.rs"]
+mod model_name_tests;
 #[path = "ai_render_tests/snapshot_tests.rs"]
 mod snapshot_tests;
 

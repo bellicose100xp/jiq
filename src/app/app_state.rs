@@ -52,7 +52,12 @@ impl App {
             config.ai.anthropic.api_key.is_some() && config.ai.anthropic.model.is_some();
         let bedrock_configured =
             config.ai.bedrock.region.is_some() && config.ai.bedrock.model.is_some();
-        let ai_configured = anthropic_configured || bedrock_configured;
+        let openai_configured =
+            config.ai.openai.api_key.is_some() && config.ai.openai.model.is_some();
+        let gemini_configured =
+            config.ai.gemini.api_key.is_some() && config.ai.gemini.model.is_some();
+        let ai_configured =
+            anthropic_configured || bedrock_configured || openai_configured || gemini_configured;
 
         // Determine provider name based on configuration
         let provider_name = match config.ai.provider {
@@ -63,7 +68,24 @@ impl App {
         }
         .to_string();
 
-        let ai_state = AiState::new_with_config(config.ai.enabled, ai_configured, provider_name);
+        // Get model name based on provider
+        let model_name = match config.ai.provider {
+            crate::config::ai_types::AiProviderType::Anthropic => {
+                config.ai.anthropic.model.clone().unwrap_or_default()
+            }
+            crate::config::ai_types::AiProviderType::Bedrock => {
+                config.ai.bedrock.model.clone().unwrap_or_default()
+            }
+            crate::config::ai_types::AiProviderType::Openai => {
+                config.ai.openai.model.clone().unwrap_or_default()
+            }
+            crate::config::ai_types::AiProviderType::Gemini => {
+                config.ai.gemini.model.clone().unwrap_or_default()
+            }
+        };
+
+        let ai_state =
+            AiState::new_with_config(config.ai.enabled, ai_configured, provider_name, model_name);
 
         let tooltip_enabled = if ai_state.visible {
             false
