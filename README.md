@@ -10,12 +10,11 @@
 
 - **Real-time query execution** - See results as you type
 - **AI assistant** - Get intelligent query suggestions, error fixes, and natural language interpretation
-- **[EXPERIMENTAL] Context-aware autocomplete** - Intelligent suggestions with JSON type information for fields and functions
+- **[EXPERIMENTAL] Context-aware autocomplete** - Next function or field suggestion with JSON type information for fields
 - **Function tooltip** - Quick reference help for jq functions with examples
 - **Search in results** - Find and navigate text in JSON output with highlighting
 - **Query history** - Searchable history of successful queries
 - **Clipboard support** - Copy query or results to clipboard (also supports OSC 52 for remote terminals)
-- **Floating error overlay** - Syntax errors appear in a non-disruptive overlay
 - **VIM keybindings** - VIM-style editing for power users
 - **[EXPERIMENTAL] Syntax highlighting** - Colorized JSON output and jq query syntax (experimental)
 - **Stats bar** - Shows result type and count (e.g., "Array [5 objects]", "Stream [3 values]")
@@ -284,7 +283,7 @@ backend = "auto"
 # For faster responses, prefer lightweight models:
 # - Anthropic: claude-haiku-4-5-20251001
 # - OpenAI: gpt-4o-mini
-# - Gemini: gemini-2.0-flash-exp or gemini-1.5-flash
+# - Gemini: gemini-3-flash-preview, gemini-2.0-flash-exp or gemini-1.5-flash
 enabled = true
 # Provider: "anthropic" (default), "openai", "gemini", or "bedrock"
 provider = "anthropic"
@@ -304,7 +303,7 @@ model = "gpt-4o-mini"
 # Get your API key from: https://aistudio.google.com/apikey
 api_key = "AIza..."
 # Gemini model to use (e.g., "gemini-2.0-flash-exp", "gemini-1.5-flash")
-model = "gemini-2.0-flash-exp"
+model = "gemini-3-flash-preview"
 
 [ai.bedrock]
 region = "us-east-1"
