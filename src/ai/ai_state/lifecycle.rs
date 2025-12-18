@@ -17,6 +17,7 @@ impl AiState {
             visible: false,
             enabled,
             configured: false,
+            provider_name: "AI".to_string(),
             loading: false,
             error: None,
             response: String::new(),
@@ -38,11 +39,13 @@ impl AiState {
     /// # Arguments
     /// * `enabled` - Whether AI features are enabled (from config)
     /// * `configured` - Whether AI is properly configured (has API key)
-    pub fn new_with_config(enabled: bool, configured: bool) -> Self {
+    /// * `provider_name` - Name of the AI provider (e.g., "Anthropic", "Bedrock", "OpenAI")
+    pub fn new_with_config(enabled: bool, configured: bool, provider_name: String) -> Self {
         Self {
             visible: enabled,
             enabled,
             configured,
+            provider_name,
             loading: false,
             error: None,
             response: String::new(),

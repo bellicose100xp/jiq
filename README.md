@@ -283,7 +283,7 @@ backend = "auto"
 # Enable AI assistant
 # Prefer faster models like claude haiku or open ai mini or gemini flash
 enabled = true
-# Provider: "anthropic" (default) or "bedrock"
+# Provider: "anthropic" (default), "openai", or "bedrock"
 provider = "anthropic"
 
 [ai.anthropic]
@@ -291,11 +291,16 @@ provider = "anthropic"
 api_key = "your-api-key-here"
 model = "claude-haiku-4-5-20251001"
 
-# Alternative: AWS Bedrock provider
-# [ai.bedrock]
-# region = "us-east-1"
-# model = "global.anthropic.claude-3-haiku-20240307-v1:0"
-# profile = "default"  # Optional: AWS profile name (uses default credential chain if omitted)
+[ai.openai]
+# Get your API key from: https://platform.openai.com/api-keys
+api_key = "sk-proj-..."
+# OpenAI model to use (e.g., "gpt-4o-mini", "gpt-4o")
+model = "gpt-4o-mini"
+
+[ai.bedrock]
+region = "us-east-1"
+model = "global.anthropic.claude-3-haiku-20240307-v1:0"
+profile = "default"  # Optional: AWS profile name (uses default credential chain if omitted)
 ```
 
 ## Known Limitations

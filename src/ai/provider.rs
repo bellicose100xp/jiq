@@ -13,9 +13,12 @@ use crate::config::ai_types::{AiConfig, AiProviderType};
 
 mod async_anthropic;
 mod async_bedrock;
+mod async_openai;
+mod sse;
 
 pub use async_anthropic::AsyncAnthropicClient;
 pub use async_bedrock::AsyncBedrockClient;
+pub use async_openai::AsyncOpenAiClient;
 
 /// Errors that can occur during AI operations
 #[derive(Debug, Error)]
@@ -60,6 +63,8 @@ pub enum AsyncAiProvider {
     Anthropic(AsyncAnthropicClient),
     /// AWS Bedrock API (async)
     Bedrock(AsyncBedrockClient),
+    /// OpenAI API (async)
+    Openai(AsyncOpenAiClient),
 }
 
 impl AsyncAiProvider {
@@ -68,6 +73,7 @@ impl AsyncAiProvider {
         match self {
             AsyncAiProvider::Anthropic(_) => "Anthropic",
             AsyncAiProvider::Bedrock(_) => "Bedrock",
+            AsyncAiProvider::Openai(_) => "OpenAI",
         }
     }
 
@@ -79,6 +85,7 @@ impl AsyncAiProvider {
             let provider_name = match config.provider {
                 AiProviderType::Anthropic => "Anthropic",
                 AiProviderType::Bedrock => "Bedrock",
+                AiProviderType::Openai => "OpenAI",
             };
             return Err(AiError::NotConfigured {
                 provider: provider_name.to_string(),
@@ -152,6 +159,35 @@ impl AsyncAiProvider {
                 let _ = provider.provider_name();
                 Ok(provider)
             }
+            AiProviderType::Openai => {
+                let api_key = config
+                    .openai
+                    .api_key
+                    .as_ref()
+                    .filter(|k| !k.trim().is_empty())
+                    .ok_or_else(|| AiError::NotConfigured {
+                        provider: "OpenAI".to_string(),
+                        message: "Missing API key. Add 'api_key' in [ai.openai] section."
+                            .to_string(),
+                    })?;
+
+                let model = config
+                    .openai
+                    .model
+                    .as_ref()
+                    .filter(|m| !m.trim().is_empty())
+                    .ok_or_else(|| AiError::NotConfigured {
+                        provider: "OpenAI".to_string(),
+                        message: "Missing model. Add 'model' in [ai.openai] section.".to_string(),
+                    })?;
+
+                let provider =
+                    AsyncAiProvider::Openai(AsyncOpenAiClient::new(api_key.clone(), model.clone()));
+
+                // Use provider_name to avoid dead code warning
+                let _ = provider.provider_name();
+                Ok(provider)
+            }
         }
     }
 
@@ -184,6 +220,11 @@ impl AsyncAiProvider {
                     .await
             }
             AsyncAiProvider::Bedrock(client) => {
+                client
+                    .stream_with_cancel(prompt, request_id, cancel_token, response_tx)
+                    .await
+            }
+            AsyncAiProvider::Openai(client) => {
                 client
                     .stream_with_cancel(prompt, request_id, cancel_token, response_tx)
                     .await

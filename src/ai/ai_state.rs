@@ -71,6 +71,8 @@ pub struct AiState {
     pub enabled: bool,
     /// Whether the AI is properly configured (has API key)
     pub configured: bool,
+    /// Name of the AI provider (e.g., "Anthropic", "Bedrock", "OpenAI")
+    pub provider_name: String,
     /// Whether we're waiting for or receiving a response
     pub loading: bool,
     /// Current error message (if any)
@@ -108,6 +110,6 @@ pub struct AiState {
 
 impl Default for AiState {
     fn default() -> Self {
-        Self::new_with_config(false, false)
+        Self::new_with_config(false, false, "AI".to_string())
     }
 }

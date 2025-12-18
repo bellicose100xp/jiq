@@ -52,7 +52,7 @@ pub fn render_popup(ai_state: &mut AiState, frame: &mut Frame, input_area: Rect)
     let title = Line::from(vec![
         Span::raw(" "),
         Span::styled(
-            "AI Assistant",
+            &ai_state.provider_name,
             Style::default()
                 .fg(Color::Green)
                 .add_modifier(Modifier::BOLD),

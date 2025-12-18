@@ -787,9 +787,9 @@ mod snapshot_tests {
             let output = render_to_string(&mut app, 120, 30);
 
             // When AI popup is visible, the tooltip should NOT be rendered
-            // The AI popup shows "AI Assistant" in its title
+            // The AI popup shows the provider name in its title (e.g., "Anthropic", "Bedrock")
             prop_assert!(
-                output.contains("AI Assistant"),
+                output.contains("Anthropic") || output.contains("Bedrock") || output.contains("OpenAI"),
                 "AI popup should be visible when ai.visible = true"
             );
 
@@ -819,9 +819,9 @@ mod snapshot_tests {
             // Render the app
             let output = render_to_string(&mut app, 120, 30);
 
-            // AI popup should NOT be visible
+            // AI popup should NOT be visible (check that provider names are not shown)
             prop_assert!(
-                !output.contains("AI Assistant"),
+                !output.contains("Anthropic") && !output.contains("Bedrock") && !output.contains("OpenAI"),
                 "AI popup should not be visible when ai.visible = false"
             );
 

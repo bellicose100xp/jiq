@@ -54,7 +54,15 @@ impl App {
             config.ai.bedrock.region.is_some() && config.ai.bedrock.model.is_some();
         let ai_configured = anthropic_configured || bedrock_configured;
 
-        let ai_state = AiState::new_with_config(config.ai.enabled, ai_configured);
+        // Determine provider name based on configuration
+        let provider_name = match config.ai.provider {
+            crate::config::ai_types::AiProviderType::Anthropic => "Anthropic",
+            crate::config::ai_types::AiProviderType::Bedrock => "Bedrock",
+            crate::config::ai_types::AiProviderType::Openai => "OpenAI",
+        }
+        .to_string();
+
+        let ai_state = AiState::new_with_config(config.ai.enabled, ai_configured, provider_name);
 
         let tooltip_enabled = if ai_state.visible {
             false
