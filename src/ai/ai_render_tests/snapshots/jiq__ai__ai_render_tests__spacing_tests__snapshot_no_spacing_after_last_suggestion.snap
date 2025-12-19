@@ -1,5 +1,5 @@
 ---
-source: src/ai/ai_render_tests/widget_selection_tests.rs
+source: src/ai/ai_render_tests/spacing_tests.rs
 expression: output
 ---
 "                                                                                                    "
@@ -19,13 +19,13 @@ expression: output
 "                                                                                                    "
 "                                                                                                    "
 "                                                                                                    "
-"                                                                                                    "
-"                                                                                                    "
-"                                                                                                    "
 "                                                       ┌ Anthropic ───────── claude-3-5-sonnet... ┐ "
-"                                                       │1. [Fix] .users[] | select(.active)       │ "
-"                                                       │   Filters to only active users           │ "
+"                                                       │1. [Fix] .first                           │ "
+"                                                       │   First                                  │ "
 "                                                       │                                          │ "
+"                                                       │2. [Next] .last                           │ "
+"                                                       │   Last suggestion should have no spacing │ "
+"                                                       │   after it                               │ "
 "                                                       │                                          │ "
 "                                                       └1-5 or Alt+↑↓+Enter to apply | Ctrl+A to c┘ "
 "                                                                                                    "
