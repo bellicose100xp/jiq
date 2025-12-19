@@ -7,6 +7,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.4.0] - 2025-12-18
+
+### Changed
+- **BREAKING**: Removed default AI provider - users must now explicitly configure their provider
+  - `AiProviderType` no longer has a default value
+  - `provider` field in `AiConfig` is now `Option<AiProviderType>` (was `AiProviderType`)
+  - `AiConfig::default()` now has `provider = None` instead of defaulting to Anthropic
+  - Users must add `provider = "anthropic"` (or "openai", "gemini", "bedrock") to their config
+  - When no provider is configured, AI popup shows setup instructions with README link
+
+### Added
+- Input border hint "Press Ctrl+A for AI Assistant" when AI popup is hidden
+  - Improves discoverability of AI features
+  - Only shown when AI popup is not visible
+
+### Fixed
+- `AsyncAiProvider::from_config` now returns `AiError::NotConfigured` when provider is None
+  - Error message includes README URL for setup guidance
+- Setup instructions in AI popup when no provider is configured
+  - Clear message: "AI provider not configured"
+  - Direct link to configuration documentation
+  - Example configuration showing provider selection
+- Input border hint "Press Ctrl+A for AI Assistant" when AI popup is hidden
+  - Improves discoverability of AI features
+  - Hint disappears when AI popup is visible
+
+### Fixed
+- `AsyncAiProvider::from_config` now returns proper error when provider is None
+  - Returns `AiError::NotConfigured` with helpful message and README URL
+  - No silent fallback to default provider
+
 ## [3.3.1] - 2025-12-18
 
 ### Added
