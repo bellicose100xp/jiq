@@ -20,7 +20,7 @@ fn test_ctrl_e_toggles_error_overlay_when_error_exists() {
     flush_debounced_query(&mut app);
 
     // Should have an error now
-    assert!(app.query.result.is_err());
+    assert!(app.query.as_ref().unwrap().result.is_err());
     assert!(!app.error_overlay_visible); // Initially hidden
 
     // Press Ctrl+E to show overlay
@@ -36,7 +36,7 @@ fn test_ctrl_e_toggles_error_overlay_when_error_exists() {
 fn test_ctrl_e_does_nothing_when_no_error() {
     let mut app = test_app(TEST_JSON);
     // Initial query "." should succeed
-    assert!(app.query.result.is_ok());
+    assert!(app.query.as_ref().unwrap().result.is_ok());
     assert!(!app.error_overlay_visible);
 
     // Press Ctrl+E (should do nothing since no error)
@@ -53,7 +53,7 @@ fn test_error_overlay_hides_on_query_change() {
     app.handle_key_event(key(KeyCode::Char('|')));
     // Flush debounced query to execute immediately
     flush_debounced_query(&mut app);
-    assert!(app.query.result.is_err());
+    assert!(app.query.as_ref().unwrap().result.is_err());
 
     // Show error overlay
     app.handle_key_event(key_with_mods(KeyCode::Char('e'), KeyModifiers::CONTROL));
@@ -75,7 +75,7 @@ fn test_error_overlay_hides_on_query_change_in_normal_mode() {
     app.handle_key_event(key(KeyCode::Char('|')));
     // Flush debounced query to execute immediately
     flush_debounced_query(&mut app);
-    assert!(app.query.result.is_err());
+    assert!(app.query.as_ref().unwrap().result.is_err());
 
     // Show error overlay
     app.handle_key_event(key_with_mods(KeyCode::Char('e'), KeyModifiers::CONTROL));
@@ -99,7 +99,7 @@ fn test_ctrl_e_works_in_normal_mode() {
     app.handle_key_event(key(KeyCode::Char('|')));
     // Flush debounced query to execute immediately
     flush_debounced_query(&mut app);
-    assert!(app.query.result.is_err());
+    assert!(app.query.as_ref().unwrap().result.is_err());
 
     // Switch to Normal mode
     app.handle_key_event(key(KeyCode::Esc));
@@ -119,7 +119,7 @@ fn test_ctrl_e_works_when_results_pane_focused() {
     app.handle_key_event(key(KeyCode::Char('|')));
     // Flush debounced query to execute immediately
     flush_debounced_query(&mut app);
-    assert!(app.query.result.is_err());
+    assert!(app.query.as_ref().unwrap().result.is_err());
 
     // Switch focus to results pane
     app.handle_key_event(key(KeyCode::BackTab));

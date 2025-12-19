@@ -36,8 +36,14 @@ mod query_manipulation;
 /// * `app` - Mutable reference to the App struct
 /// * `suggestion` - The suggestion to insert
 pub fn insert_suggestion_from_app(app: &mut App, suggestion: &Suggestion) {
+    // Only insert if query state is available
+    let query_state = match &mut app.query {
+        Some(q) => q,
+        None => return,
+    };
+
     // Delegate to existing insert_suggestion function
-    insert_suggestion(&mut app.input.textarea, &mut app.query, suggestion);
+    insert_suggestion(&mut app.input.textarea, query_state, suggestion);
 
     // Hide autocomplete and reset scroll/error state
     app.autocomplete.hide();
@@ -49,14 +55,14 @@ pub fn insert_suggestion_from_app(app: &mut App, suggestion: &Suggestion) {
     let query = app.input.textarea.lines()[0].as_ref();
     crate::ai::ai_events::handle_query_result(
         &mut app.ai,
-        &app.query.result,
+        &query_state.result,
         query,
         cursor_pos,
-        app.query.executor.json_input(),
+        query_state.executor.json_input(),
         crate::ai::context::ContextParams {
             input_schema: app.input_json_schema.as_deref(),
-            base_query: app.query.base_query_for_suggestions.as_deref(),
-            base_query_result: app.query.last_successful_result.as_deref(),
+            base_query: query_state.base_query_for_suggestions.as_deref(),
+            base_query_result: query_state.last_successful_result.as_deref(),
         },
     );
 }

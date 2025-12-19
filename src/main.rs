@@ -34,7 +34,7 @@ mod widgets;
 
 use app::{App, OutputMode};
 use error::JiqError;
-use input::reader::InputReader;
+use input::{FileLoader, reader::InputReader};
 use query::executor::JqExecutor;
 
 /// Interactive JSON query tool
@@ -92,26 +92,33 @@ fn main() -> Result<()> {
     // Validate jq binary exists
     validate_jq_exists()?;
 
-    // Read JSON input
-    let json_input = match InputReader::read_json(args.input.as_deref()) {
-        Ok(json) => json,
-        Err(e) => {
-            eprintln!("Error reading JSON: {:?}", e);
-            return Err(e.into());
-        }
-    };
-
     // Initialize terminal (handles raw mode, alternate screen, bracketed paste)
     let terminal = init_terminal()?;
 
-    // Run the application with JSON input and config
-    let app = run(terminal, json_input.clone(), config_result)?;
+    // Create App with deferred loading for file input or synchronous loading for stdin
+    let app = if let Some(path) = args.input {
+        // File input: use deferred loading for instant UI
+        let loader = FileLoader::spawn_load(path);
+        let app = App::new_with_loader(loader, &config_result.config);
+        run(terminal, app, config_result)?
+    } else {
+        // Stdin input: use synchronous loading
+        let json_input = match InputReader::read_json(None) {
+            Ok(json) => json,
+            Err(e) => {
+                eprintln!("Error reading JSON: {:?}", e);
+                return Err(e.into());
+            }
+        };
+        let app = App::new(json_input.clone(), &config_result.config);
+        run(terminal, app, config_result)?
+    };
 
     // Restore terminal (cleanup raw mode, alternate screen, bracketed paste)
     restore_terminal()?;
 
     // Output results AFTER terminal is restored
-    handle_output(&app, &json_input)?;
+    handle_output(&app)?;
 
     Ok(())
 }
@@ -139,11 +146,9 @@ fn restore_terminal() -> Result<()> {
 
 fn run(
     mut terminal: DefaultTerminal,
-    json_input: String,
+    mut app: App,
     config_result: config::ConfigResult,
 ) -> Result<App> {
-    let mut app = App::new(json_input, &config_result.config);
-
     // Show config warning if there was one
     if let Some(warning) = config_result.warning {
         app.notification.show_warning(&warning);
@@ -154,13 +159,14 @@ fn run(
     setup_ai_worker(&mut app, &config_result.config);
 
     // Trigger initial AI request if AI popup is visible on startup
-    // Requirements 8.4: WHEN the AI_Popup becomes visible THEN the AI_Assistant SHALL
-    // immediately analyze the current query context and provide suggestions
     if app.ai.visible && app.ai.enabled && app.ai.configured {
         app.trigger_ai_request();
     }
 
     loop {
+        // Poll file loader before rendering
+        app.poll_file_loader();
+
         // Render the UI
         terminal.draw(|frame| app.render(frame))?;
 
@@ -180,14 +186,6 @@ fn run(
 ///
 /// Creates request/response channels and spawns the worker thread.
 /// Also validates the config and shows a warning if AI is enabled but not configured.
-///
-/// # Requirements
-/// - 1.1: WHEN a user adds an `[ai]` section with `enabled = true` and valid credentials
-///   THEN the AI_Assistant SHALL initialize successfully
-/// - 1.3: WHEN the `[ai.anthropic]` section has a missing or empty `api_key` field
-///   THEN the AI_Assistant SHALL display a configuration error message
-/// - 4.1: WHEN the AI provider sends a streaming response THEN the AI_Popup
-///   SHALL display text incrementally as chunks arrive
 fn setup_ai_worker(app: &mut App, config: &config::Config) {
     // Warn if AI is explicitly enabled but not properly configured
     if config.ai.enabled && !app.ai.configured {
@@ -213,14 +211,18 @@ fn setup_ai_worker(app: &mut App, config: &config::Config) {
 }
 
 /// Handle output after terminal is restored
-fn handle_output(app: &App, json_input: &str) -> Result<()> {
+fn handle_output(app: &App) -> Result<()> {
     match app.output_mode() {
         Some(OutputMode::Results) => {
             // Execute final query and output results
-            let executor = JqExecutor::new(json_input.to_string());
-            match executor.execute(app.query()) {
-                Ok(result) => println!("{}", result),
-                Err(e) => eprintln!("Error: {}", e),
+            // Only output if query is available
+            if let Some(query_state) = &app.query {
+                let json_input = query_state.executor.json_input();
+                let executor = JqExecutor::new(json_input.to_string());
+                match executor.execute(app.query()) {
+                    Ok(result) => println!("{}", result),
+                    Err(e) => eprintln!("Error: {}", e),
+                }
             }
         }
         Some(OutputMode::Query) => {

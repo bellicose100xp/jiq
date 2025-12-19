@@ -25,12 +25,32 @@ pub fn render_pane(app: &mut App, frame: &mut Frame, area: Rect) {
         (area, None)
     };
 
+    // Check if query is available
+    let query_state = match &app.query {
+        Some(q) => q,
+        None => {
+            // Show loading indicator or error if file loader is present
+            if let Some(loader) = &app.file_loader {
+                if loader.is_loading() {
+                    render_loading_indicator(frame, results_area);
+                } else if let crate::input::loader::LoadingState::Error(e) = loader.state() {
+                    render_error_message(
+                        frame,
+                        results_area,
+                        &format!("Failed to load file: {}", e),
+                    );
+                }
+            }
+            return;
+        }
+    };
+
     let border_color = if app.focus == crate::app::Focus::ResultsPane {
         Color::Cyan
     } else {
         Color::DarkGray
     };
-    let title = if app.query.result.is_err() {
+    let title = if query_state.result.is_err() {
         let stats_info = app.stats.display().unwrap_or_default();
         if stats_info.is_empty() {
             Line::from(vec![Span::styled(
@@ -54,7 +74,7 @@ pub fn render_pane(app: &mut App, frame: &mut Frame, area: Rect) {
         ))
     };
 
-    match &app.query.result {
+    match &query_state.result {
         Ok(result) => {
             let viewport_height = results_area.height.saturating_sub(2);
             let viewport_width = results_area.width.saturating_sub(2);
@@ -62,7 +82,7 @@ pub fn render_pane(app: &mut App, frame: &mut Frame, area: Rect) {
             app.results_scroll
                 .update_bounds(line_count, viewport_height);
             app.results_scroll
-                .update_h_bounds(app.query.max_line_width(), viewport_width);
+                .update_h_bounds(query_state.max_line_width(), viewport_width);
 
             let block = Block::default()
                 .borders(Borders::ALL)
@@ -112,9 +132,9 @@ pub fn render_pane(app: &mut App, frame: &mut Frame, area: Rect) {
             app.results_scroll
                 .update_bounds(line_count, viewport_height);
             app.results_scroll
-                .update_h_bounds(app.query.max_line_width(), viewport_width);
+                .update_h_bounds(query_state.max_line_width(), viewport_width);
 
-            if let Some(last_result) = &app.query.last_successful_result {
+            if let Some(last_result) = &query_state.last_successful_result {
                 let results_block = Block::default()
                     .borders(Borders::ALL)
                     .title(title)
@@ -159,8 +179,42 @@ pub fn render_pane(app: &mut App, frame: &mut Frame, area: Rect) {
         crate::search::search_render::render_bar(app, frame, search_rect);
     }
 }
+
+fn render_loading_indicator(frame: &mut Frame, area: Rect) {
+    let text = "Loading file...";
+    let block = Block::default()
+        .borders(Borders::ALL)
+        .title(" Loading ")
+        .border_style(Style::default().fg(Color::Yellow));
+
+    let paragraph = Paragraph::new(text)
+        .block(block)
+        .style(Style::default().fg(Color::Yellow));
+
+    frame.render_widget(paragraph, area);
+}
+
+fn render_error_message(frame: &mut Frame, area: Rect, message: &str) {
+    let block = Block::default()
+        .borders(Borders::ALL)
+        .title(" Error ")
+        .border_style(Style::default().fg(Color::Red));
+
+    let paragraph = Paragraph::new(message)
+        .block(block)
+        .style(Style::default().fg(Color::Red));
+
+    frame.render_widget(paragraph, area);
+}
+
 pub fn render_error_overlay(app: &App, frame: &mut Frame, results_area: Rect) {
-    if let Err(error) = &app.query.result {
+    // Only render if query state is available
+    let query_state = match &app.query {
+        Some(q) => q,
+        None => return,
+    };
+
+    if let Err(error) = &query_state.result {
         let error_lines: Vec<&str> = error.lines().collect();
         let max_content_lines = 5;
         let (display_error, truncated) = if error_lines.len() > max_content_lines {
@@ -315,3 +369,7 @@ fn apply_highlights_to_line(
 
     Line::from(result_spans)
 }
+
+#[cfg(test)]
+#[path = "results_render_tests.rs"]
+mod results_render_tests;

@@ -268,7 +268,10 @@ fn test_update_stats_from_app_no_result() {
     let json = r#"{"test": true}"#;
     let mut app = test_app(json);
 
-    app.query.last_successful_result_unformatted = None;
+    app.query
+        .as_mut()
+        .unwrap()
+        .last_successful_result_unformatted = None;
 
     let stats_before = app.stats.display();
     update_stats_from_app(&mut app);
@@ -285,7 +288,7 @@ fn test_update_stats_from_app_preserves_on_error() {
     update_stats_from_app(&mut app);
     assert_eq!(app.stats.display(), Some("Array [3 numbers]".to_string()));
 
-    app.query.result = Err("syntax error".to_string());
+    app.query.as_mut().unwrap().result = Err("syntax error".to_string());
 
     update_stats_from_app(&mut app);
     assert_eq!(app.stats.display(), Some("Array [3 numbers]".to_string()));
@@ -299,7 +302,7 @@ fn test_update_stats_from_app_updates_on_new_query() {
     update_stats_from_app(&mut app);
     assert_eq!(app.stats.display(), Some("Object".to_string()));
 
-    app.query.execute(".items");
+    app.query.as_mut().unwrap().execute(".items");
     update_stats_from_app(&mut app);
     assert_eq!(app.stats.display(), Some("Array [3 numbers]".to_string()));
 }

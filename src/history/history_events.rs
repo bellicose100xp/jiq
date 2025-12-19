@@ -39,7 +39,9 @@ fn replace_query_with(app: &mut App, text: &str) {
     app.input.textarea.insert_str(text);
 
     let query = app.input.textarea.lines()[0].as_ref();
-    app.query.execute(query);
+    if let Some(query_state) = &mut app.query {
+        query_state.execute(query);
+    }
 
     app.results_scroll.reset();
     app.error_overlay_visible = false;

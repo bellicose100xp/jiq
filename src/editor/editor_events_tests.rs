@@ -514,12 +514,12 @@ fn test_tab_accepts_autocomplete_suggestion() {
 
     use crate::query::ResultType;
     assert_eq!(
-        app.query.base_query_for_suggestions,
+        app.query.as_ref().unwrap().base_query_for_suggestions,
         Some(".".to_string()),
         "base_query should remain '.' since .na returns null"
     );
     assert_eq!(
-        app.query.base_type_for_suggestions,
+        app.query.as_ref().unwrap().base_type_for_suggestions,
         Some(ResultType::Object),
         "base_type should be Object (root object)"
     );

@@ -209,24 +209,30 @@ pub fn execute_query(app: &mut App) {
 }
 
 pub fn execute_query_with_auto_show(app: &mut App) {
+    // Only execute if query state is available
+    let query_state = match &mut app.query {
+        Some(q) => q,
+        None => return,
+    };
+
     let query = app.input.textarea.lines()[0].as_ref();
 
     app.input.brace_tracker.rebuild(query);
-    app.query.execute(query);
+    query_state.execute(query);
     app.results_scroll.reset();
     app.error_overlay_visible = false;
 
     let cursor_pos = app.input.textarea.cursor().1;
     crate::ai::ai_events::handle_query_result(
         &mut app.ai,
-        &app.query.result,
+        &query_state.result,
         query,
         cursor_pos,
-        app.query.executor.json_input(),
+        query_state.executor.json_input(),
         crate::ai::context::ContextParams {
             input_schema: app.input_json_schema.as_deref(),
-            base_query: app.query.base_query_for_suggestions.as_deref(),
-            base_query_result: app.query.last_successful_result.as_deref(),
+            base_query: query_state.base_query_for_suggestions.as_deref(),
+            base_query_result: query_state.last_successful_result.as_deref(),
         },
     );
 }

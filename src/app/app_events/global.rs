@@ -20,14 +20,16 @@ pub fn handle_global_keys(app: &mut App, key: KeyEvent) -> bool {
         return false;
     }
 
-    if crate::ai::ai_events::handle_suggestion_selection(
-        key,
-        &mut app.ai,
-        &mut app.input,
-        &mut app.query,
-        &mut app.autocomplete,
-    ) {
-        return true;
+    if let Some(query) = &mut app.query {
+        if crate::ai::ai_events::handle_suggestion_selection(
+            key,
+            &mut app.ai,
+            &mut app.input,
+            query,
+            &mut app.autocomplete,
+        ) {
+            return true;
+        }
     }
 
     if app.help.visible {
@@ -118,9 +120,11 @@ pub fn handle_global_keys(app: &mut App, key: KeyEvent) -> bool {
                 crate::editor::editor_events::execute_query(app);
                 app.debouncer.mark_executed();
             }
-            if app.query.result.is_ok() && !app.query().is_empty() {
-                let query = app.query().to_string();
-                app.history.add_entry(&query);
+            if let Some(query) = &app.query {
+                if query.result.is_ok() && !app.query().is_empty() {
+                    let query_str = app.query().to_string();
+                    app.history.add_entry(&query_str);
+                }
             }
             app.output_mode = Some(OutputMode::Query);
             app.should_quit = true;
@@ -131,9 +135,11 @@ pub fn handle_global_keys(app: &mut App, key: KeyEvent) -> bool {
                 crate::editor::editor_events::execute_query(app);
                 app.debouncer.mark_executed();
             }
-            if app.query.result.is_ok() && !app.query().is_empty() {
-                let query = app.query().to_string();
-                app.history.add_entry(&query);
+            if let Some(query) = &app.query {
+                if query.result.is_ok() && !app.query().is_empty() {
+                    let query_str = app.query().to_string();
+                    app.history.add_entry(&query_str);
+                }
             }
             app.output_mode = Some(OutputMode::Query);
             app.should_quit = true;
@@ -144,9 +150,11 @@ pub fn handle_global_keys(app: &mut App, key: KeyEvent) -> bool {
                 crate::editor::editor_events::execute_query(app);
                 app.debouncer.mark_executed();
             }
-            if app.query.result.is_ok() && !app.query().is_empty() {
-                let query = app.query().to_string();
-                app.history.add_entry(&query);
+            if let Some(query) = &app.query {
+                if query.result.is_ok() && !app.query().is_empty() {
+                    let query_str = app.query().to_string();
+                    app.history.add_entry(&query_str);
+                }
             }
             app.output_mode = Some(OutputMode::Query);
             app.should_quit = true;
@@ -161,9 +169,11 @@ pub fn handle_global_keys(app: &mut App, key: KeyEvent) -> bool {
                 crate::editor::editor_events::execute_query(app);
                 app.debouncer.mark_executed();
             }
-            if app.query.result.is_ok() && !app.query().is_empty() {
-                let query = app.query().to_string();
-                app.history.add_entry(&query);
+            if let Some(query) = &app.query {
+                if query.result.is_ok() && !app.query().is_empty() {
+                    let query_str = app.query().to_string();
+                    app.history.add_entry(&query_str);
+                }
             }
             app.output_mode = Some(OutputMode::Results);
             app.should_quit = true;
@@ -202,8 +212,10 @@ pub fn handle_global_keys(app: &mut App, key: KeyEvent) -> bool {
         }
 
         KeyCode::Char('e') if key.modifiers.contains(KeyModifiers::CONTROL) => {
-            if app.query.result.is_err() {
-                app.error_overlay_visible = !app.error_overlay_visible;
+            if let Some(query) = &app.query {
+                if query.result.is_err() {
+                    app.error_overlay_visible = !app.error_overlay_visible;
+                }
             }
             true
         }

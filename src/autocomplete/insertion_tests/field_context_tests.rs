@@ -10,16 +10,16 @@ fn test_array_suggestion_appends_to_path() {
 
     // Step 1: Execute ".services" to cache base
     app.input.textarea.insert_str(".services");
-    app.query.execute(".services");
+    app.query.as_mut().unwrap().execute(".services");
 
     // Validate cached state after ".services"
     assert_eq!(
-        app.query.base_query_for_suggestions,
+        app.query.as_ref().unwrap().base_query_for_suggestions,
         Some(".services".to_string()),
         "base_query should be '.services'"
     );
     assert_eq!(
-        app.query.base_type_for_suggestions,
+        app.query.as_ref().unwrap().base_type_for_suggestions,
         Some(ResultType::ArrayOfObjects),
         "base_type should be ArrayOfObjects"
     );
@@ -31,7 +31,7 @@ fn test_array_suggestion_appends_to_path() {
     assert_eq!(app.input.query(), ".services[].name");
 
     // CRITICAL: Verify the query EXECUTES correctly and returns ALL array elements
-    let result = app.query.result.as_ref().unwrap();
+    let result = app.query.as_ref().unwrap().result.as_ref().unwrap();
     assert!(result.contains("alice"), "Should contain first element");
     assert!(result.contains("bob"), "Should contain second element");
     assert!(result.contains("charlie"), "Should contain third element");
@@ -53,15 +53,15 @@ fn test_simple_path_continuation_with_dot() {
 
     // Step 1: Execute base query
     app.input.textarea.insert_str(".user");
-    app.query.execute(".user");
+    app.query.as_mut().unwrap().execute(".user");
 
     // Validate cached state
     assert_eq!(
-        app.query.base_query_for_suggestions,
+        app.query.as_ref().unwrap().base_query_for_suggestions,
         Some(".user".to_string())
     );
     assert_eq!(
-        app.query.base_type_for_suggestions,
+        app.query.as_ref().unwrap().base_type_for_suggestions,
         Some(ResultType::Object)
     );
 
@@ -76,7 +76,7 @@ fn test_simple_path_continuation_with_dot() {
     assert_eq!(app.input.query(), ".user.name");
 
     // Verify execution
-    let result = app.query.result.as_ref().unwrap();
+    let result = app.query.as_ref().unwrap().result.as_ref().unwrap();
     assert!(result.contains("Alice"));
 }
 
@@ -89,15 +89,15 @@ fn test_array_suggestion_replaces_partial_field() {
 
     // Step 1: Execute ".services" to cache base
     app.input.textarea.insert_str(".services");
-    app.query.execute(".services");
+    app.query.as_mut().unwrap().execute(".services");
 
     // Validate cached state
     assert_eq!(
-        app.query.base_query_for_suggestions,
+        app.query.as_ref().unwrap().base_query_for_suggestions,
         Some(".services".to_string())
     );
     assert_eq!(
-        app.query.base_type_for_suggestions,
+        app.query.as_ref().unwrap().base_type_for_suggestions,
         Some(ResultType::ArrayOfObjects)
     );
 
@@ -112,7 +112,7 @@ fn test_array_suggestion_replaces_partial_field() {
     assert_eq!(app.input.query(), ".services[].serviceArn");
 
     // CRITICAL: Verify execution returns ALL serviceArns
-    let result = app.query.result.as_ref().unwrap();
+    let result = app.query.as_ref().unwrap().result.as_ref().unwrap();
 
     assert!(result.contains("arn1"), "Should contain first serviceArn");
     assert!(result.contains("arn2"), "Should contain second serviceArn");
@@ -134,16 +134,16 @@ fn test_array_suggestion_replaces_trailing_dot() {
 
     // Step 1: Execute ".services" to cache base query and type
     app.input.textarea.insert_str(".services");
-    app.query.execute(".services");
+    app.query.as_mut().unwrap().execute(".services");
 
     // Validate cached state
     assert_eq!(
-        app.query.base_query_for_suggestions,
+        app.query.as_ref().unwrap().base_query_for_suggestions,
         Some(".services".to_string()),
         "base_query should be '.services'"
     );
     assert_eq!(
-        app.query.base_type_for_suggestions,
+        app.query.as_ref().unwrap().base_type_for_suggestions,
         Some(ResultType::ArrayOfObjects),
         "base_type should be ArrayOfObjects"
     );
@@ -158,7 +158,7 @@ fn test_array_suggestion_replaces_trailing_dot() {
     assert_eq!(app.input.query(), ".services[].deploymentConfiguration");
 
     // Verify the query executes correctly
-    let result = app.query.result.as_ref().unwrap();
+    let result = app.query.as_ref().unwrap().result.as_ref().unwrap();
     assert!(result.contains("x"));
     assert!(result.contains("1"));
     assert!(result.contains("2"));
@@ -174,16 +174,19 @@ fn test_nested_array_suggestion_replaces_trailing_dot() {
     app.input
         .textarea
         .insert_str(".services[].capacityProviderStrategy[]");
-    app.query.execute(".services[].capacityProviderStrategy[]");
+    app.query
+        .as_mut()
+        .unwrap()
+        .execute(".services[].capacityProviderStrategy[]");
 
     // Validate cached state
     assert_eq!(
-        app.query.base_query_for_suggestions,
+        app.query.as_ref().unwrap().base_query_for_suggestions,
         Some(".services[].capacityProviderStrategy[]".to_string())
     );
     // With only 1 service, this returns a single object, not destructured
     assert_eq!(
-        app.query.base_type_for_suggestions,
+        app.query.as_ref().unwrap().base_type_for_suggestions,
         Some(ResultType::Object)
     );
 
@@ -201,7 +204,7 @@ fn test_nested_array_suggestion_replaces_trailing_dot() {
     );
 
     // Verify the query executes and returns the base values
-    let result = app.query.result.as_ref().unwrap();
+    let result = app.query.as_ref().unwrap().result.as_ref().unwrap();
     assert!(result.contains("0"));
 }
 
@@ -213,15 +216,15 @@ fn test_array_suggestion_after_pipe() {
 
     // Step 1: Execute base query
     app.input.textarea.insert_str(".services");
-    app.query.execute(".services");
+    app.query.as_mut().unwrap().execute(".services");
 
     // Validate cached state
     assert_eq!(
-        app.query.base_query_for_suggestions,
+        app.query.as_ref().unwrap().base_query_for_suggestions,
         Some(".services".to_string())
     );
     assert_eq!(
-        app.query.base_type_for_suggestions,
+        app.query.as_ref().unwrap().base_type_for_suggestions,
         Some(ResultType::ArrayOfObjects)
     );
 
@@ -235,7 +238,7 @@ fn test_array_suggestion_after_pipe() {
     assert_eq!(app.input.query(), ".services | .[].name");
 
     // Verify execution
-    let result = app.query.result.as_ref().unwrap();
+    let result = app.query.as_ref().unwrap().result.as_ref().unwrap();
     assert!(result.contains("svc1"));
 }
 
@@ -258,12 +261,12 @@ fn test_array_suggestion_after_pipe_exact_user_flow() {
 
     // Step 3: Verify base is now cached after successful execution
     assert_eq!(
-        app.query.base_query_for_suggestions,
+        app.query.as_ref().unwrap().base_query_for_suggestions,
         Some(".services".to_string()),
         "base should be '.services' after insertion executed it"
     );
     assert_eq!(
-        app.query.base_type_for_suggestions,
+        app.query.as_ref().unwrap().base_type_for_suggestions,
         Some(ResultType::ArrayOfObjects)
     );
 
@@ -289,20 +292,20 @@ fn test_pipe_after_typing_space() {
 
     // Step 1: Type and execute ".services"
     app.input.textarea.insert_str(".services");
-    app.query.execute(".services");
+    app.query.as_mut().unwrap().execute(".services");
 
     assert_eq!(
-        app.query.base_query_for_suggestions,
+        app.query.as_ref().unwrap().base_query_for_suggestions,
         Some(".services".to_string())
     );
 
     // Step 2: Type space (executes ".services ")
     app.input.textarea.insert_char(' ');
-    app.query.execute(".services ");
+    app.query.as_mut().unwrap().execute(".services ");
 
     // Step 3: Type | (executes ".services |" - syntax error, base stays at ".services")
     app.input.textarea.insert_char('|');
-    app.query.execute(".services |");
+    app.query.as_mut().unwrap().execute(".services |");
 
     // Step 4: Type space then dot
     app.input.textarea.insert_str(" .");
@@ -325,29 +328,60 @@ fn test_suggestions_persist_when_typing_partial_after_array() {
     app.input
         .textarea
         .insert_str(".services[].capacityProviderStrategy[]");
-    app.query.execute(".services[].capacityProviderStrategy[]");
+    app.query
+        .as_mut()
+        .unwrap()
+        .execute(".services[].capacityProviderStrategy[]");
     app.update_autocomplete();
 
     // Cache should have the array element objects with fields: base, weight, capacityProvider
-    assert!(app.query.last_successful_result_unformatted.is_some());
-    let cached = app.query.last_successful_result_unformatted.clone();
+    assert!(
+        app.query
+            .as_ref()
+            .unwrap()
+            .last_successful_result_unformatted
+            .is_some()
+    );
+    let cached = app
+        .query
+        .as_ref()
+        .unwrap()
+        .last_successful_result_unformatted
+        .clone();
 
     // Step 2: Type a dot - should still have cached result
     app.input.textarea.insert_char('.');
     // Query is now ".services[].capacityProviderStrategy[]." which is syntax error
-    app.query.execute(".services[].capacityProviderStrategy[].");
+    app.query
+        .as_mut()
+        .unwrap()
+        .execute(".services[].capacityProviderStrategy[].");
 
     // Cache should NOT be cleared (syntax error doesn't update cache)
-    assert_eq!(app.query.last_successful_result_unformatted, cached);
+    assert_eq!(
+        app.query
+            .as_ref()
+            .unwrap()
+            .last_successful_result_unformatted,
+        cached
+    );
 
     // Step 3: Type a partial "b" - query returns multiple nulls
     app.input.textarea.insert_char('b');
     // Query is now ".services[].capacityProviderStrategy[].b" which returns multiple nulls
     app.query
+        .as_mut()
+        .unwrap()
         .execute(".services[].capacityProviderStrategy[].b");
 
     // CRITICAL: Cache should STILL not be cleared (multiple nulls shouldn't overwrite)
-    assert_eq!(app.query.last_successful_result_unformatted, cached);
+    assert_eq!(
+        app.query
+            .as_ref()
+            .unwrap()
+            .last_successful_result_unformatted,
+        cached
+    );
 
     // Step 4: Update autocomplete - should still show suggestions based on cached result
     app.update_autocomplete();
@@ -396,32 +430,51 @@ fn test_suggestions_persist_with_optional_chaining_and_partial() {
     app.input
         .textarea
         .insert_str(".services[].capacityProviderStrategy[]?");
-    app.query.execute(".services[].capacityProviderStrategy[]?");
+    app.query
+        .as_mut()
+        .unwrap()
+        .execute(".services[].capacityProviderStrategy[]?");
 
     // This should return the object with base, weight, capacityProvider fields
-    let cached_before_partial = app.query.last_successful_result_unformatted.clone();
+    let cached_before_partial = app
+        .query
+        .as_ref()
+        .unwrap()
+        .last_successful_result_unformatted
+        .clone();
     assert!(cached_before_partial.is_some());
     assert!(cached_before_partial.as_ref().unwrap().contains("base"));
 
     // Step 2: Type a dot
     app.input.textarea.insert_char('.');
     app.query
+        .as_mut()
+        .unwrap()
         .execute(".services[].capacityProviderStrategy[]?.");
     // Syntax error - cache should remain
     assert_eq!(
-        app.query.last_successful_result_unformatted,
+        app.query
+            .as_ref()
+            .unwrap()
+            .last_successful_result_unformatted,
         cached_before_partial
     );
 
     // Step 3: Type partial "b"
     app.input.textarea.insert_char('b');
     app.query
+        .as_mut()
+        .unwrap()
         .execute(".services[].capacityProviderStrategy[]?.b");
 
     // This returns single "null" (not multiple) due to optional chaining
     // Cache should NOT be updated
     assert_eq!(
-        app.query.last_successful_result_unformatted, cached_before_partial,
+        app.query
+            .as_ref()
+            .unwrap()
+            .last_successful_result_unformatted,
+        cached_before_partial,
         "Cache should not be overwritten by null result from partial field"
     );
 
@@ -451,7 +504,7 @@ fn test_field_access_after_jq_keyword_preserves_space() {
 
     // Step 1: Execute base query
     app.input.textarea.insert_str(".services[]");
-    app.query.execute(".services[]");
+    app.query.as_mut().unwrap().execute(".services[]");
 
     // Step 2: Type if-then with field access
     app.input
@@ -487,7 +540,7 @@ fn test_field_access_after_else_preserves_space() {
 
     // Execute base query
     app.input.textarea.insert_str(".services[]");
-    app.query.execute(".services[]");
+    app.query.as_mut().unwrap().execute(".services[]");
 
     // Type if-then-else with field access
     app.input
@@ -521,6 +574,8 @@ fn test_autocomplete_inside_if_statement() {
 
     // Execute to cache state (this will likely error due to incomplete query)
     app.query
+        .as_mut()
+        .unwrap()
         .execute(".services | if has(\"capacityProviderStrategy\") then .ca");
 
     // The issue: when Tab is pressed, entire query gets replaced with base + suggestion
@@ -539,12 +594,12 @@ fn test_root_field_suggestion() {
 
     // Validate initial state
     assert_eq!(
-        app.query.base_query_for_suggestions,
+        app.query.as_ref().unwrap().base_query_for_suggestions,
         Some(".".to_string()),
         "base_query should be '.' initially"
     );
     assert_eq!(
-        app.query.base_type_for_suggestions,
+        app.query.as_ref().unwrap().base_type_for_suggestions,
         Some(ResultType::Object),
         "base_type should be Object"
     );
@@ -559,7 +614,7 @@ fn test_root_field_suggestion() {
     assert_eq!(app.input.query(), ".services");
 
     // Verify query executes correctly
-    let result = app.query.result.as_ref().unwrap();
+    let result = app.query.as_ref().unwrap().result.as_ref().unwrap();
     assert!(result.contains("name"));
 }
 
@@ -572,12 +627,12 @@ fn test_field_suggestion_replaces_from_dot() {
     // Initial state: "." was executed during App::new()
     // Validate initial state
     assert_eq!(
-        app.query.base_query_for_suggestions,
+        app.query.as_ref().unwrap().base_query_for_suggestions,
         Some(".".to_string()),
         "base_query should be '.' initially"
     );
     assert_eq!(
-        app.query.base_type_for_suggestions,
+        app.query.as_ref().unwrap().base_type_for_suggestions,
         Some(ResultType::Object),
         "base_type should be Object for root"
     );
@@ -608,16 +663,16 @@ fn test_autocomplete_with_real_ecs_like_data() {
 
     // Step 1: Execute ".services" to cache base
     app.input.textarea.insert_str(".services");
-    app.query.execute(".services");
+    app.query.as_mut().unwrap().execute(".services");
 
     // Validate cached state
     assert_eq!(
-        app.query.base_query_for_suggestions,
+        app.query.as_ref().unwrap().base_query_for_suggestions,
         Some(".services".to_string()),
         "base_query should be '.services'"
     );
     assert_eq!(
-        app.query.base_type_for_suggestions,
+        app.query.as_ref().unwrap().base_type_for_suggestions,
         Some(ResultType::ArrayOfObjects),
         "base_type should be ArrayOfObjects"
     );
@@ -632,7 +687,7 @@ fn test_autocomplete_with_real_ecs_like_data() {
     assert_eq!(query_text, ".services[].serviceArn");
 
     // Verify execution returns ALL 5 serviceArns
-    let result = app.query.result.as_ref().unwrap();
+    let result = app.query.as_ref().unwrap().result.as_ref().unwrap();
 
     // Check for all service ARNs
     assert!(result.contains("svc1"));

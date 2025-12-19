@@ -18,8 +18,8 @@ fn test_paste_event_executes_query() {
 
     app.handle_paste_event(".name".to_string());
 
-    assert!(app.query.result.is_ok());
-    let result = app.query.result.as_ref().unwrap();
+    assert!(app.query.as_ref().unwrap().result.is_ok());
+    let result = app.query.as_ref().unwrap().result.as_ref().unwrap();
     assert!(result.contains("Alice"));
 }
 
@@ -113,7 +113,7 @@ proptest! {
         // Query should have been executed (result should be set)
         // We can't easily verify "exactly once" but we can verify it was executed
         prop_assert!(
-            app.query.result.is_ok() || app.query.result.is_err(),
+            app.query.as_ref().unwrap().result.is_ok() || app.query.as_ref().unwrap().result.is_err(),
             "Query should have been executed after paste"
         );
 

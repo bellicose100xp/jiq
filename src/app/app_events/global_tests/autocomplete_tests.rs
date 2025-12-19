@@ -16,12 +16,12 @@ fn test_tab_accepts_field_suggestion_replaces_from_dot() {
     // .na returns null, so base_query stays at "." (from App::new())
     use crate::query::ResultType;
     assert_eq!(
-        app.query.base_query_for_suggestions,
+        app.query.as_ref().unwrap().base_query_for_suggestions,
         Some(".".to_string()),
         "base_query should remain '.' since .na returns null"
     );
     assert_eq!(
-        app.query.base_type_for_suggestions,
+        app.query.as_ref().unwrap().base_type_for_suggestions,
         Some(ResultType::Object),
         "base_type should be Object (root object)"
     );
@@ -50,12 +50,12 @@ fn test_tab_accepts_array_suggestion_appends() {
     // Validate base state was set up by app_with_query
     use crate::query::ResultType;
     assert_eq!(
-        app.query.base_query_for_suggestions,
+        app.query.as_ref().unwrap().base_query_for_suggestions,
         Some(".services".to_string()),
         "base_query should be '.services'"
     );
     assert_eq!(
-        app.query.base_type_for_suggestions,
+        app.query.as_ref().unwrap().base_type_for_suggestions,
         Some(ResultType::ArrayOfObjects),
         "base_type should be ArrayOfObjects"
     );
@@ -87,11 +87,11 @@ fn test_tab_accepts_array_suggestion_replaces_short_partial() {
     // Validate base state
     use crate::query::ResultType;
     assert_eq!(
-        app.query.base_query_for_suggestions,
+        app.query.as_ref().unwrap().base_query_for_suggestions,
         Some(".services".to_string())
     );
     assert_eq!(
-        app.query.base_type_for_suggestions,
+        app.query.as_ref().unwrap().base_type_for_suggestions,
         Some(ResultType::ArrayOfObjects)
     );
 
@@ -121,12 +121,12 @@ fn test_tab_accepts_nested_array_suggestion() {
     // Validate base state
     use crate::query::ResultType;
     assert_eq!(
-        app.query.base_query_for_suggestions,
+        app.query.as_ref().unwrap().base_query_for_suggestions,
         Some(".items[].tags".to_string()),
         "base_query should be '.items[].tags'"
     );
     assert_eq!(
-        app.query.base_type_for_suggestions,
+        app.query.as_ref().unwrap().base_type_for_suggestions,
         Some(ResultType::ArrayOfObjects),
         "base_type should be ArrayOfObjects"
     );
