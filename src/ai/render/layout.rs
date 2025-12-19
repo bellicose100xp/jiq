@@ -55,6 +55,54 @@ pub fn calculate_popup_area(frame_area: Rect, input_area: Rect) -> Option<Rect> 
     })
 }
 
+/// Calculate popup area with dynamic height based on content
+///
+/// Positions popup at bottom-right and shrinks to fit content height.
+///
+/// # Arguments
+/// * `frame_area` - The full frame area
+/// * `input_area` - The input bar area
+/// * `content_height` - Actual height needed for content
+///
+/// # Returns
+/// A `Rect` for the AI popup, or `None` if there's not enough space
+pub fn calculate_popup_area_with_height(
+    frame_area: Rect,
+    input_area: Rect,
+    content_height: u16,
+) -> Option<Rect> {
+    let available_width = frame_area.width.saturating_sub(AUTOCOMPLETE_RESERVED_WIDTH);
+
+    if available_width < AI_POPUP_MIN_WIDTH {
+        return None;
+    }
+
+    let max_width = (available_width * MAX_WIDTH_PERCENT) / 100;
+    let popup_width = available_width.min(max_width).max(AI_POPUP_MIN_WIDTH);
+
+    let available_height = input_area.y;
+
+    // Add border height (top + bottom) and title/hints height
+    let needed_height = content_height.saturating_add(4); // 2 for borders + 2 for title/hints
+    let popup_height = needed_height.min(available_height).max(MIN_HEIGHT);
+
+    if popup_height < MIN_HEIGHT {
+        return None;
+    }
+
+    let popup_x = frame_area.width.saturating_sub(popup_width + 1);
+
+    // Position at bottom (above input bar)
+    let popup_y = input_area.y.saturating_sub(popup_height);
+
+    Some(Rect {
+        x: popup_x,
+        y: popup_y,
+        width: popup_width,
+        height: popup_height,
+    })
+}
+
 /// Calculate dynamic word limit based on popup dimensions
 ///
 /// Formula: (width - 4) * (height - 2) / 5, clamped to 100-800

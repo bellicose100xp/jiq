@@ -32,6 +32,7 @@ impl AiState {
             suggestions: Vec::new(),
             word_limit: 200,
             selection: SelectionState::new(),
+            previous_popup_height: None,
         }
     }
 
@@ -67,6 +68,7 @@ impl AiState {
             suggestions: Vec::new(),
             word_limit: 200,
             selection: SelectionState::new(),
+            previous_popup_height: None,
         }
     }
 

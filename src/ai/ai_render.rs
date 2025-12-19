@@ -19,11 +19,52 @@ use super::render::layout;
 
 // Re-export public items from sub-modules
 pub use self::content::build_content;
-pub use layout::{calculate_popup_area, calculate_word_limit};
+pub use layout::{
+    AUTOCOMPLETE_RESERVED_WIDTH, calculate_popup_area, calculate_popup_area_with_height,
+    calculate_word_limit,
+};
 
 // Module declarations - only content is local
 #[path = "render/content.rs"]
 mod content;
+
+/// Calculate total height needed for suggestions
+fn calculate_suggestions_height(ai_state: &AiState, max_width: u16) -> u16 {
+    use crate::ai::render::text::wrap_text;
+
+    let mut total_height = 0u16;
+
+    for (i, suggestion) in ai_state.suggestions.iter().enumerate() {
+        let type_label = suggestion.suggestion_type.label();
+        let has_selection_number = i < 5;
+
+        let prefix = if has_selection_number {
+            format!("{}. {} ", i + 1, type_label)
+        } else {
+            format!("{} ", type_label)
+        };
+        let prefix_len = prefix.len();
+
+        // Calculate query lines
+        let query_max_width = max_width.saturating_sub(prefix_len as u16) as usize;
+        let query_lines = wrap_text(&suggestion.query, query_max_width);
+        total_height = total_height.saturating_add(query_lines.len() as u16);
+
+        // Calculate description lines
+        if !suggestion.description.is_empty() {
+            let desc_max_width = max_width.saturating_sub(3) as usize;
+            let desc_lines = wrap_text(&suggestion.description, desc_max_width).len();
+            total_height = total_height.saturating_add(desc_lines as u16);
+        }
+
+        // Add spacing between suggestions (except after last one)
+        if i < ai_state.suggestions.len() - 1 {
+            total_height = total_height.saturating_add(1);
+        }
+    }
+
+    total_height
+}
 
 /// Render suggestions as individual widgets with background highlighting
 fn render_suggestions_as_widgets(
@@ -105,17 +146,16 @@ fn render_suggestions_as_widgets(
         suggestion_blocks.push((lines, is_selected));
     }
 
-    // Calculate layout constraints based on line counts
-    // Use Min instead of Length to handle cases where total height exceeds available space
+    // Calculate layout constraints: each suggestion + 1 line spacing after each (except last)
+    // Use Length for exact sizing to avoid extra space allocation
     let mut constraints: Vec<Constraint> = Vec::new();
-    for (lines, _) in &suggestion_blocks {
-        constraints.push(Constraint::Min(lines.len() as u16));
-        // Add spacing between suggestions
-        constraints.push(Constraint::Length(1));
-    }
-    // Remove the last spacing constraint
-    if !constraints.is_empty() {
-        constraints.pop();
+    for (i, (lines, _)) in suggestion_blocks.iter().enumerate() {
+        // Add constraint for the suggestion content - use Length for exact height
+        constraints.push(Constraint::Length(lines.len() as u16));
+        // Add 1-line spacing after each suggestion except the last
+        if i < suggestion_blocks.len() - 1 {
+            constraints.push(Constraint::Length(1));
+        }
     }
 
     // Create layout
@@ -124,12 +164,12 @@ fn render_suggestions_as_widgets(
         .constraints(constraints)
         .split(inner_area);
 
-    // Render each suggestion in its chunk
+    // Render each suggestion in its chunk (skipping spacing chunks)
     let mut chunk_idx = 0;
     for (lines, is_selected) in suggestion_blocks {
         // Skip if chunk has zero height (layout ran out of space)
         if chunk_idx >= chunks.len() || chunks[chunk_idx].height == 0 {
-            chunk_idx += 2;
+            chunk_idx += 2; // Skip this suggestion and its spacing
             continue;
         }
 
@@ -142,7 +182,7 @@ fn render_suggestions_as_widgets(
         let paragraph = Paragraph::new(lines).style(style);
 
         frame.render_widget(paragraph, chunks[chunk_idx]);
-        chunk_idx += 2; // Skip the spacing chunk
+        chunk_idx += 2; // Move to next suggestion (skip spacing chunk)
     }
 }
 
@@ -159,9 +199,48 @@ pub fn render_popup(ai_state: &mut AiState, frame: &mut Frame, input_area: Rect)
 
     let frame_area = frame.area();
 
-    let popup_area = match calculate_popup_area(frame_area, input_area) {
-        Some(area) => area,
-        None => return,
+    // For suggestions, calculate height dynamically and position at bottom
+    let has_suggestions = !ai_state.suggestions.is_empty()
+        && ai_state.configured
+        && !ai_state.loading
+        && ai_state.error.is_none();
+
+    let popup_area = if has_suggestions {
+        // Pre-calculate content height for suggestions
+        let max_content_width = frame_area
+            .width
+            .saturating_sub(AUTOCOMPLETE_RESERVED_WIDTH)
+            .saturating_sub(4); // Account for borders
+        let content_height = calculate_suggestions_height(ai_state, max_content_width);
+        let area = match calculate_popup_area_with_height(frame_area, input_area, content_height) {
+            Some(area) => area,
+            None => return,
+        };
+        // Store the height for use during loading transitions
+        ai_state.previous_popup_height = Some(area.height);
+        area
+    } else if let Some(prev_height) = ai_state.previous_popup_height {
+        // Use previous height to maintain size during loading/transitions
+        match calculate_popup_area_with_height(
+            frame_area,
+            input_area,
+            prev_height.saturating_sub(4),
+        ) {
+            Some(area) => area,
+            None => {
+                // Fallback to default sizing if previous height doesn't fit
+                match calculate_popup_area(frame_area, input_area) {
+                    Some(area) => area,
+                    None => return,
+                }
+            }
+        }
+    } else {
+        // No previous height - use default sizing
+        match calculate_popup_area(frame_area, input_area) {
+            Some(area) => area,
+            None => return,
+        }
     };
 
     ai_state.word_limit = calculate_word_limit(popup_area.width, popup_area.height);
@@ -217,11 +296,7 @@ pub fn render_popup(ai_state: &mut AiState, frame: &mut Frame, input_area: Rect)
         .style(Style::default().bg(Color::Black));
 
     // Check if we have suggestions - use widget-based rendering for better backgrounds
-    if !ai_state.suggestions.is_empty()
-        && ai_state.configured
-        && !ai_state.loading
-        && ai_state.error.is_none()
-    {
+    if has_suggestions {
         // Render the border block first
         frame.render_widget(block.clone(), popup_area);
 

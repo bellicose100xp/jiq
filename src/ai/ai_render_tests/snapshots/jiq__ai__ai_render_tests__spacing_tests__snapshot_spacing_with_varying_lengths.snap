@@ -1,5 +1,5 @@
 ---
-source: src/ai/ai_render_tests/widget_selection_tests.rs
+source: src/ai/ai_render_tests/spacing_tests.rs
 expression: output
 ---
 "                                                                                                    "
@@ -15,18 +15,18 @@ expression: output
 "                                                                                                    "
 "                                                                                                    "
 "                                                                                                    "
-"                                                                                                    "
-"                                                                                                    "
-"                                                                                                    "
-"                                                                                                    "
-"                                                                                                    "
-"                                                                                                    "
-"                                                                                                    "
 "                                                       ┌ Anthropic ───────── claude-3-5-sonnet... ┐ "
-"                                                       │1. [Fix] .users[] | select(.active)       │ "
-"                                                       │   Filters to only active users           │ "
+"                                                       │1. [Fix] .short                           │ "
+"                                                       │   Short                                  │ "
 "                                                       │                                          │ "
+"                                                       │2. [Next] .users[] | select(.active ==    │ "
+"                                                       │          true and .age > 18)             │ "
+"                                                       │   This is a much longer description that │ "
+"                                                       │   wraps across multiple lines to test    │ "
+"                                                       │   spacing consistency                    │ "
 "                                                       │                                          │ "
+"                                                       │3. [Optimize] .medium                     │ "
+"                                                       │   Medium length description here         │ "
 "                                                       └1-5 or Alt+↑↓+Enter to apply | Ctrl+A to c┘ "
 "                                                                                                    "
 "                                                                                                    "

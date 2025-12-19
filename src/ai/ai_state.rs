@@ -108,6 +108,9 @@ pub struct AiState {
     /// Selection state for suggestion navigation
     /// Tracks which suggestion is selected and navigation mode
     pub selection: SelectionState,
+    /// Previous popup height (when suggestions were last rendered)
+    /// Used to maintain consistent size during loading transitions
+    pub previous_popup_height: Option<u16>,
 }
 
 impl Default for AiState {
