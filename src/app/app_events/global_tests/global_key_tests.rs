@@ -55,7 +55,7 @@ fn test_enter_saves_successful_query_to_history() {
     let initial_count = app.history.total_count();
 
     // Ensure query is successful
-    assert!(app.query.result.is_ok());
+    assert!(app.query.as_ref().unwrap().result.is_ok());
 
     app.handle_key_event(key(KeyCode::Enter));
 
@@ -77,7 +77,7 @@ fn test_enter_does_not_save_failed_query_to_history() {
     let initial_count = app.history.total_count();
 
     // Ensure query failed
-    assert!(app.query.result.is_err());
+    assert!(app.query.as_ref().unwrap().result.is_err());
 
     app.handle_key_event(key(KeyCode::Enter));
 
@@ -126,7 +126,7 @@ fn test_ctrl_q_does_not_save_failed_query() {
     let initial_count = app.history.total_count();
 
     // Ensure query failed
-    assert!(app.query.result.is_err());
+    assert!(app.query.as_ref().unwrap().result.is_err());
 
     app.handle_key_event(key_with_mods(KeyCode::Char('q'), KeyModifiers::CONTROL));
 
@@ -164,7 +164,7 @@ fn test_shift_enter_does_not_save_failed_query() {
     let initial_count = app.history.total_count();
 
     // Ensure query failed
-    assert!(app.query.result.is_err());
+    assert!(app.query.as_ref().unwrap().result.is_err());
 
     app.handle_key_event(key_with_mods(KeyCode::Enter, KeyModifiers::SHIFT));
 
@@ -202,7 +202,7 @@ fn test_alt_enter_does_not_save_failed_query() {
     let initial_count = app.history.total_count();
 
     // Ensure query failed
-    assert!(app.query.result.is_err());
+    assert!(app.query.as_ref().unwrap().result.is_err());
 
     app.handle_key_event(key_with_mods(KeyCode::Enter, KeyModifiers::ALT));
 

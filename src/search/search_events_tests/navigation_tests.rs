@@ -18,8 +18,11 @@ fn test_navigation_scrolls_to_match() {
         })
         .collect();
 
-    app.query.last_successful_result = Some(content.clone());
-    app.query.last_successful_result_unformatted = Some(content.clone());
+    app.query.as_mut().unwrap().last_successful_result = Some(content.clone());
+    app.query
+        .as_mut()
+        .unwrap()
+        .last_successful_result_unformatted = Some(content.clone());
 
     // Set up viewport (simulate render having happened)
     app.results_scroll.viewport_height = 10;
@@ -84,7 +87,7 @@ fn test_navigation_scrolls_to_match() {
 fn test_n_navigates_to_next_match() {
     let mut app = test_app(r#"{"name": "test"}"#);
     // Set up content with matches
-    app.query.last_successful_result = Some("test\ntest\ntest".to_string());
+    app.query.as_mut().unwrap().last_successful_result = Some("test\ntest\ntest".to_string());
     open_search(&mut app);
 
     // Type search query
@@ -111,7 +114,7 @@ fn test_n_navigates_to_next_match() {
 #[test]
 fn test_capital_n_navigates_to_prev_match() {
     let mut app = test_app(r#"{"name": "test"}"#);
-    app.query.last_successful_result = Some("test\ntest\ntest".to_string());
+    app.query.as_mut().unwrap().last_successful_result = Some("test\ntest\ntest".to_string());
     open_search(&mut app);
 
     app.search.search_textarea_mut().insert_str("test");
@@ -130,7 +133,7 @@ fn test_capital_n_navigates_to_prev_match() {
 #[test]
 fn test_enter_navigates_to_next_match() {
     let mut app = test_app(r#"{"name": "test"}"#);
-    app.query.last_successful_result = Some("test\ntest".to_string());
+    app.query.as_mut().unwrap().last_successful_result = Some("test\ntest".to_string());
     open_search(&mut app);
 
     app.search.search_textarea_mut().insert_str("test");
@@ -149,7 +152,7 @@ fn test_enter_navigates_to_next_match() {
 #[test]
 fn test_shift_enter_navigates_to_prev_match() {
     let mut app = test_app(r#"{"name": "test"}"#);
-    app.query.last_successful_result = Some("test\ntest".to_string());
+    app.query.as_mut().unwrap().last_successful_result = Some("test\ntest".to_string());
     open_search(&mut app);
 
     app.search.search_textarea_mut().insert_str("test");
@@ -168,8 +171,11 @@ fn test_shift_enter_navigates_to_prev_match() {
 #[test]
 fn test_ctrl_f_reenters_edit_mode_when_confirmed() {
     let mut app = test_app(r#"{"name": "test"}"#);
-    app.query.last_successful_result = Some("test\ntest".to_string());
-    app.query.last_successful_result_unformatted = Some("test\ntest".to_string());
+    app.query.as_mut().unwrap().last_successful_result = Some("test\ntest".to_string());
+    app.query
+        .as_mut()
+        .unwrap()
+        .last_successful_result_unformatted = Some("test\ntest".to_string());
     open_search(&mut app);
 
     // Type search query
@@ -197,8 +203,11 @@ fn test_ctrl_f_reenters_edit_mode_when_confirmed() {
 #[test]
 fn test_slash_reenters_edit_mode_when_confirmed() {
     let mut app = test_app(r#"{"name": "test"}"#);
-    app.query.last_successful_result = Some("test\ntest".to_string());
-    app.query.last_successful_result_unformatted = Some("test\ntest".to_string());
+    app.query.as_mut().unwrap().last_successful_result = Some("test\ntest".to_string());
+    app.query
+        .as_mut()
+        .unwrap()
+        .last_successful_result_unformatted = Some("test\ntest".to_string());
     open_search(&mut app);
 
     // Type search query
@@ -223,8 +232,11 @@ fn test_slash_reenters_edit_mode_when_confirmed() {
 #[test]
 fn test_can_type_after_reenter_edit_mode() {
     let mut app = test_app(r#"{"name": "test"}"#);
-    app.query.last_successful_result = Some("test\ntest".to_string());
-    app.query.last_successful_result_unformatted = Some("test\ntest".to_string());
+    app.query.as_mut().unwrap().last_successful_result = Some("test\ntest".to_string());
+    app.query
+        .as_mut()
+        .unwrap()
+        .last_successful_result_unformatted = Some("test\ntest".to_string());
     open_search(&mut app);
 
     // Type initial query
@@ -254,9 +266,12 @@ fn app_with_confirmed_search() -> crate::app::App {
 
     // Set up content with 50 lines
     let content: String = (0..50).map(|i| format!("line {} test\n", i)).collect();
-    app.query.last_successful_result = Some(content.clone());
-    app.query.last_successful_result_unformatted = Some(content.clone());
-    app.query.result = Ok(content.clone());
+    app.query.as_mut().unwrap().last_successful_result = Some(content.clone());
+    app.query
+        .as_mut()
+        .unwrap()
+        .last_successful_result_unformatted = Some(content.clone());
+    app.query.as_mut().unwrap().result = Ok(content.clone());
 
     // Set up scroll bounds
     app.results_scroll.update_bounds(50, 10); // 50 lines, 10 viewport
@@ -505,9 +520,9 @@ proptest! {
         let content: String = (0..content_lines)
             .map(|i| format!("line {} test\n", i))
             .collect();
-        app.query.last_successful_result = Some(content.clone());
-        app.query.last_successful_result_unformatted = Some(content.clone());
-        app.query.result = Ok(content.clone());
+        app.query.as_mut().unwrap().last_successful_result = Some(content.clone());
+        app.query.as_mut().unwrap().last_successful_result_unformatted = Some(content.clone());
+        app.query.as_mut().unwrap().result = Ok(content.clone());
 
         // Set up scroll bounds
         app.results_scroll.update_bounds(content_lines, viewport_height);
@@ -588,9 +603,9 @@ proptest! {
         let content: String = (0..20)
             .map(|i| format!("line {} test {}\n", i, "x".repeat(line_width as usize)))
             .collect();
-        app.query.last_successful_result = Some(content.clone());
-        app.query.last_successful_result_unformatted = Some(content.clone());
-        app.query.result = Ok(content.clone());
+        app.query.as_mut().unwrap().last_successful_result = Some(content.clone());
+        app.query.as_mut().unwrap().last_successful_result_unformatted = Some(content.clone());
+        app.query.as_mut().unwrap().result = Ok(content.clone());
 
         // Set up scroll bounds
         app.results_scroll.update_bounds(20, 10);
@@ -671,9 +686,9 @@ proptest! {
         let content: String = (0..content_lines)
             .map(|i| format!("line {} test\n", i))
             .collect();
-        app.query.last_successful_result = Some(content.clone());
-        app.query.last_successful_result_unformatted = Some(content.clone());
-        app.query.result = Ok(content.clone());
+        app.query.as_mut().unwrap().last_successful_result = Some(content.clone());
+        app.query.as_mut().unwrap().last_successful_result_unformatted = Some(content.clone());
+        app.query.as_mut().unwrap().result = Ok(content.clone());
 
         // Set up scroll bounds
         app.results_scroll.update_bounds(content_lines, viewport_height);
@@ -746,9 +761,9 @@ proptest! {
         let content: String = (0..content_lines)
             .map(|i| format!("line {} test\n", i)) // "test" on every line
             .collect();
-        app.query.last_successful_result = Some(content.clone());
-        app.query.last_successful_result_unformatted = Some(content.clone());
-        app.query.result = Ok(content.clone());
+        app.query.as_mut().unwrap().last_successful_result = Some(content.clone());
+        app.query.as_mut().unwrap().last_successful_result_unformatted = Some(content.clone());
+        app.query.as_mut().unwrap().result = Ok(content.clone());
 
         // Set up scroll bounds
         app.results_scroll.update_bounds(content_lines, viewport_height);
@@ -839,7 +854,7 @@ proptest! {
         let content: String = (0..num_matches)
             .map(|i| format!("line {} {}\n", i, query))
             .collect();
-        app.query.last_successful_result = Some(content.clone());
+        app.query.as_mut().unwrap().last_successful_result = Some(content.clone());
         app.search.update_matches(&content);
 
         // Capture search state before scroll

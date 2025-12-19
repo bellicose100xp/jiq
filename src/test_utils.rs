@@ -28,7 +28,9 @@ pub mod test_helpers {
     pub fn app_with_query(query: &str) -> App {
         let mut app = test_app(TEST_JSON);
         app.input.textarea.insert_str(query);
-        app.query.execute(query);
+        if let Some(query_state) = &mut app.query {
+            query_state.execute(query);
+        }
         app.history = HistoryState::empty();
         app
     }

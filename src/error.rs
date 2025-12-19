@@ -1,6 +1,6 @@
 use thiserror::Error;
 
-#[derive(Debug, Error)]
+#[derive(Debug, Error, Clone, PartialEq)]
 pub enum JiqError {
     #[error("jq binary not found in PATH.\n\nInstall jq from: https://jqlang.org/download/")]
     JqNotFound,
@@ -9,5 +9,11 @@ pub enum JiqError {
     InvalidJson(String),
 
     #[error("IO error: {0}")]
-    Io(#[from] std::io::Error),
+    Io(String),
+}
+
+impl From<std::io::Error> for JiqError {
+    fn from(err: std::io::Error) -> Self {
+        JiqError::Io(err.to_string())
+    }
 }

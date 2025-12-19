@@ -39,7 +39,13 @@ fn copy_query(app: &mut App, backend: ClipboardBackend) -> bool {
 }
 
 fn copy_result(app: &mut App, backend: ClipboardBackend) -> bool {
-    let result = match &app.query.result {
+    // Only copy if query state is available
+    let query_state = match &app.query {
+        Some(q) => q,
+        None => return false,
+    };
+
+    let result = match &query_state.result {
         Ok(text) => strip_ansi_codes(text),
         Err(_) => return false,
     };

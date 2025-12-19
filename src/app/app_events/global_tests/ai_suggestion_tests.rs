@@ -47,7 +47,7 @@ fn test_ai_suggestion_selection_complete_flow() {
     assert!(!app.should_quit);
 
     // Query should have been executed (result should be updated)
-    assert!(app.query.result.is_ok());
+    assert!(app.query.as_ref().unwrap().result.is_ok());
 }
 
 #[test]

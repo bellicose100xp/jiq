@@ -41,8 +41,12 @@ impl App {
             crate::history::history_render::render_popup(self, frame, input_area);
         }
 
-        if self.error_overlay_visible && self.query.result.is_err() {
-            crate::results::results_render::render_error_overlay(self, frame, results_area);
+        if self.error_overlay_visible {
+            if let Some(query) = &self.query {
+                if query.result.is_err() {
+                    crate::results::results_render::render_error_overlay(self, frame, results_area);
+                }
+            }
         }
 
         if self.help.visible {
@@ -97,7 +101,7 @@ mod snapshot_tests {
         let json = r#"{"name": "Alice", "age": 30}"#;
         let mut app = test_app(json);
         app.input.textarea.insert_str(".name");
-        app.query.execute(".name");
+        app.query.as_mut().unwrap().execute(".name");
 
         let output = render_to_string(&mut app, TEST_WIDTH, TEST_HEIGHT);
         assert_snapshot!(output);
@@ -108,7 +112,7 @@ mod snapshot_tests {
         let json = r#"[{"name": "Alice"}, {"name": "Bob"}, {"name": "Charlie"}]"#;
         let mut app = test_app(json);
         app.input.textarea.insert_str(".[].name");
-        app.query.execute(".[].name");
+        app.query.as_mut().unwrap().execute(".[].name");
 
         let output = render_to_string(&mut app, TEST_WIDTH, TEST_HEIGHT);
         assert_snapshot!(output);
@@ -169,7 +173,7 @@ mod snapshot_tests {
         let json = r#"{"test": true}"#;
         let mut app = test_app(json);
         app.input.textarea.insert_str(".invalid[");
-        app.query.execute(".invalid[");
+        app.query.as_mut().unwrap().execute(".invalid[");
 
         let output = render_to_string(&mut app, TEST_WIDTH, TEST_HEIGHT);
         assert_snapshot!(output);
@@ -180,7 +184,7 @@ mod snapshot_tests {
         let json = r#"{"test": true}"#;
         let mut app = test_app(json);
         app.input.textarea.insert_str(".invalid[");
-        app.query.execute(".invalid[");
+        app.query.as_mut().unwrap().execute(".invalid[");
         app.error_overlay_visible = true;
 
         let output = render_to_string(&mut app, TEST_WIDTH, TEST_HEIGHT);
@@ -275,7 +279,8 @@ mod snapshot_tests {
         let json = r#"{"test": true}"#;
         let mut app = test_app(json);
 
-        app.query.result = Err("jq: compile error: syntax error at line 1".to_string());
+        app.query.as_mut().unwrap().result =
+            Err("jq: compile error: syntax error at line 1".to_string());
         app.error_overlay_visible = true;
 
         let output = render_to_string(&mut app, TEST_WIDTH, TEST_HEIGHT);
@@ -288,11 +293,11 @@ mod snapshot_tests {
         let mut app = test_app(json);
 
         app.input.textarea.insert_str(".name");
-        app.query.execute(".name");
+        app.query.as_mut().unwrap().execute(".name");
 
         app.input.textarea.delete_line_by_head();
         app.input.textarea.insert_str(".invalid[");
-        app.query.execute(".invalid[");
+        app.query.as_mut().unwrap().execute(".invalid[");
 
         app.focus = Focus::InputField;
 
@@ -306,11 +311,11 @@ mod snapshot_tests {
         let mut app = test_app(json);
 
         app.input.textarea.insert_str(".name");
-        app.query.execute(".name");
+        app.query.as_mut().unwrap().execute(".name");
 
         app.input.textarea.delete_line_by_head();
         app.input.textarea.insert_str(".invalid[");
-        app.query.execute(".invalid[");
+        app.query.as_mut().unwrap().execute(".invalid[");
 
         app.focus = Focus::ResultsPane;
 
@@ -324,7 +329,7 @@ mod snapshot_tests {
         let mut app = test_app(json);
 
         app.input.textarea.insert_str(".name");
-        app.query.execute(".name");
+        app.query.as_mut().unwrap().execute(".name");
 
         app.focus = Focus::InputField;
 
@@ -338,7 +343,7 @@ mod snapshot_tests {
         let mut app = test_app(json);
 
         app.input.textarea.insert_str(".name");
-        app.query.execute(".name");
+        app.query.as_mut().unwrap().execute(".name");
 
         app.focus = Focus::ResultsPane;
 
@@ -598,7 +603,7 @@ mod snapshot_tests {
         let json = r#"[{"id": 1}, {"id": 2}, {"id": 3}]"#;
         let mut app = test_app(json);
 
-        app.query.execute(".");
+        app.query.as_mut().unwrap().execute(".");
 
         app.focus = Focus::ResultsPane;
 
@@ -611,7 +616,7 @@ mod snapshot_tests {
         let json = r#"{"name": "Alice", "age": 30}"#;
         let mut app = test_app(json);
 
-        app.query.execute(".");
+        app.query.as_mut().unwrap().execute(".");
 
         app.focus = Focus::InputField;
 
@@ -624,10 +629,10 @@ mod snapshot_tests {
         let json = r#"[1, 2, 3, 4, 5]"#;
         let mut app = test_app(json);
 
-        app.query.execute(".");
+        app.query.as_mut().unwrap().execute(".");
 
         app.input.textarea.insert_str(".invalid[");
-        app.query.execute(".invalid[");
+        app.query.as_mut().unwrap().execute(".invalid[");
 
         app.focus = Focus::InputField;
 
@@ -640,12 +645,17 @@ mod snapshot_tests {
         let json = r#"{"name": "Alice", "email": "alice@example.com", "role": "admin"}"#;
         let mut app = test_app(json);
 
-        app.query.execute(".");
+        app.query.as_mut().unwrap().execute(".");
 
         app.search.open();
         app.search.search_textarea_mut().insert_str("alice");
 
-        if let Some(content) = &app.query.last_successful_result_unformatted {
+        if let Some(content) = &app
+            .query
+            .as_ref()
+            .unwrap()
+            .last_successful_result_unformatted
+        {
             app.search.update_matches(content);
         }
 
@@ -660,12 +670,17 @@ mod snapshot_tests {
         let json = r#"[{"name": "alice"}, {"name": "bob"}, {"name": "alice"}]"#;
         let mut app = test_app(json);
 
-        app.query.execute(".");
+        app.query.as_mut().unwrap().execute(".");
 
         app.search.open();
         app.search.search_textarea_mut().insert_str("alice");
 
-        if let Some(content) = &app.query.last_successful_result_unformatted {
+        if let Some(content) = &app
+            .query
+            .as_ref()
+            .unwrap()
+            .last_successful_result_unformatted
+        {
             app.search.update_matches(content);
         }
 
@@ -680,12 +695,17 @@ mod snapshot_tests {
         let json = r#"{"name": "Alice", "age": 30}"#;
         let mut app = test_app(json);
 
-        app.query.execute(".");
+        app.query.as_mut().unwrap().execute(".");
 
         app.search.open();
         app.search.search_textarea_mut().insert_str("xyz");
 
-        if let Some(content) = &app.query.last_successful_result_unformatted {
+        if let Some(content) = &app
+            .query
+            .as_ref()
+            .unwrap()
+            .last_successful_result_unformatted
+        {
             app.search.update_matches(content);
         }
 
@@ -701,12 +721,17 @@ mod snapshot_tests {
             r#"[{"name": "alice", "email": "alice@test.com"}, {"name": "bob"}, {"name": "alice"}]"#;
         let mut app = test_app(json);
 
-        app.query.execute(".");
+        app.query.as_mut().unwrap().execute(".");
 
         app.search.open();
         app.search.search_textarea_mut().insert_str("alice");
 
-        if let Some(content) = &app.query.last_successful_result_unformatted {
+        if let Some(content) = &app
+            .query
+            .as_ref()
+            .unwrap()
+            .last_successful_result_unformatted
+        {
             app.search.update_matches(content);
         }
 
@@ -727,7 +752,7 @@ mod snapshot_tests {
         );
         let mut app = test_app(&json);
 
-        app.query.execute(".");
+        app.query.as_mut().unwrap().execute(".");
 
         app.results_scroll.viewport_width = 80;
         app.results_scroll.viewport_height = 20;
@@ -735,7 +760,12 @@ mod snapshot_tests {
         app.search.open();
         app.search.search_textarea_mut().insert_str("match_here");
 
-        if let Some(content) = &app.query.last_successful_result_unformatted {
+        if let Some(content) = &app
+            .query
+            .as_ref()
+            .unwrap()
+            .last_successful_result_unformatted
+        {
             app.search.update_matches(content);
 
             let max_line_width = content.lines().map(|l| l.len()).max().unwrap_or(0) as u16;

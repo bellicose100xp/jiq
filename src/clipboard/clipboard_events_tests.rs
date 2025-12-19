@@ -151,7 +151,7 @@ proptest! {
 
         // Set result to ANSI-only content (becomes empty after stripping)
         let ansi_only = format!("\x1b[{}{}", ansi_params, ansi_letter);
-        app.query.result = Ok(ansi_only);
+        app.query.as_mut().unwrap().result = Ok(ansi_only);
 
         let result = copy_result(&mut app, ClipboardBackend::Osc52);
 
@@ -183,7 +183,7 @@ fn test_copy_query_rejects_empty() {
 #[test]
 fn test_copy_result_rejects_empty() {
     let mut app = test_app("{}");
-    app.query.result = Ok(String::new());
+    app.query.as_mut().unwrap().result = Ok(String::new());
     let result = copy_result(&mut app, ClipboardBackend::Osc52);
     assert!(!result, "Empty result should be rejected");
     assert!(
@@ -195,7 +195,7 @@ fn test_copy_result_rejects_empty() {
 #[test]
 fn test_copy_result_rejects_ansi_only() {
     let mut app = test_app("{}");
-    app.query.result = Ok("\x1b[31m\x1b[0m".to_string());
+    app.query.as_mut().unwrap().result = Ok("\x1b[31m\x1b[0m".to_string());
     let result = copy_result(&mut app, ClipboardBackend::Osc52);
     assert!(!result, "ANSI-only result should be rejected");
     assert!(
@@ -207,7 +207,7 @@ fn test_copy_result_rejects_ansi_only() {
 #[test]
 fn test_copy_result_rejects_error() {
     let mut app = test_app("{}");
-    app.query.result = Err("some error".to_string());
+    app.query.as_mut().unwrap().result = Err("some error".to_string());
     let result = copy_result(&mut app, ClipboardBackend::Osc52);
     assert!(!result, "Error result should be rejected");
     assert!(
@@ -232,7 +232,7 @@ fn test_copy_query_accepts_non_empty() {
 #[test]
 fn test_copy_result_accepts_non_empty() {
     let mut app = test_app("{}");
-    app.query.result = Ok(r#"{"key": "value"}"#.to_string());
+    app.query.as_mut().unwrap().result = Ok(r#"{"key": "value"}"#.to_string());
     let result = copy_result(&mut app, ClipboardBackend::Osc52);
     assert!(result, "Non-empty result should be accepted");
     assert_eq!(

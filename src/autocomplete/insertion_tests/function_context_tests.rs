@@ -13,6 +13,8 @@ fn test_jq_keyword_autocomplete_no_dot_prefix() {
         .textarea
         .insert_str(".services | if has(\"capacityProviderStrategy\")");
     app.query
+        .as_mut()
+        .unwrap()
         .execute(".services | if has(\"capacityProviderStrategy\")");
 
     // Step 2: Type partial "the" to trigger autocomplete for "then"

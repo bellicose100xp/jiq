@@ -10,7 +10,7 @@ fn test_j_scrolls_down_one_line() {
     app.focus = Focus::ResultsPane;
 
     let content: String = (0..20).map(|i| format!("line{}\n", i)).collect();
-    app.query.result = Ok(content);
+    app.query.as_mut().unwrap().result = Ok(content);
 
     let line_count = app.results_line_count_u32();
     app.results_scroll.update_bounds(line_count, 10);
@@ -49,7 +49,7 @@ fn test_capital_j_scrolls_down_ten_lines() {
     app.focus = Focus::ResultsPane;
 
     let content: String = (0..30).map(|i| format!("line{}\n", i)).collect();
-    app.query.result = Ok(content);
+    app.query.as_mut().unwrap().result = Ok(content);
 
     let line_count = app.results_line_count_u32();
     app.results_scroll.update_bounds(line_count, 10);
@@ -118,7 +118,7 @@ fn test_page_down_scrolls_half_page() {
     app.focus = Focus::ResultsPane;
 
     let content: String = (0..50).map(|i| format!("line{}\n", i)).collect();
-    app.query.result = Ok(content);
+    app.query.as_mut().unwrap().result = Ok(content);
 
     let line_count = app.results_line_count_u32();
     app.results_scroll.update_bounds(line_count, 20);
@@ -147,7 +147,7 @@ fn test_ctrl_d_scrolls_half_page_down() {
     app.focus = Focus::ResultsPane;
 
     let content: String = (0..50).map(|i| format!("line{}\n", i)).collect();
-    app.query.result = Ok(content);
+    app.query.as_mut().unwrap().result = Ok(content);
 
     let line_count = app.results_line_count_u32();
     app.results_scroll.update_bounds(line_count, 20);
@@ -175,7 +175,7 @@ fn test_down_arrow_scrolls_in_results_pane() {
     app.focus = Focus::ResultsPane;
 
     let content: String = (0..20).map(|i| format!("line{}\n", i)).collect();
-    app.query.result = Ok(content);
+    app.query.as_mut().unwrap().result = Ok(content);
 
     let line_count = app.results_line_count_u32();
     app.results_scroll.update_bounds(line_count, 10);
@@ -202,7 +202,7 @@ fn test_scroll_clamped_to_max() {
     let mut app = app_with_query("");
     app.focus = Focus::ResultsPane;
 
-    app.query.result = Ok("line1\nline2\nline3".to_string());
+    app.query.as_mut().unwrap().result = Ok("line1\nline2\nline3".to_string());
 
     let line_count = app.results_line_count_u32();
     app.results_scroll.update_bounds(line_count, 10);
@@ -224,7 +224,7 @@ fn test_scroll_clamped_with_content() {
     app.focus = Focus::ResultsPane;
 
     let content: String = (0..20).map(|i| format!("line{}\n", i)).collect();
-    app.query.result = Ok(content);
+    app.query.as_mut().unwrap().result = Ok(content);
 
     let line_count = app.results_line_count_u32();
     app.results_scroll.update_bounds(line_count, 10);
@@ -244,7 +244,7 @@ fn test_scroll_page_down_clamped() {
     app.focus = Focus::ResultsPane;
 
     let content: String = (0..15).map(|i| format!("line{}\n", i)).collect();
-    app.query.result = Ok(content);
+    app.query.as_mut().unwrap().result = Ok(content);
 
     let line_count = app.results_line_count_u32();
     app.results_scroll.update_bounds(line_count, 10);
@@ -264,7 +264,7 @@ fn test_scroll_j_clamped() {
     app.focus = Focus::ResultsPane;
 
     let content: String = (0..5).map(|i| format!("line{}\n", i)).collect();
-    app.query.result = Ok(content);
+    app.query.as_mut().unwrap().result = Ok(content);
 
     let line_count = app.results_line_count_u32();
     app.results_scroll.update_bounds(line_count, 3);
@@ -290,7 +290,7 @@ fn app_with_wide_content() -> App {
     let content: String = (0..10)
         .map(|i| format!("{}{}\n", i, "x".repeat(100)))
         .collect();
-    app.query.result = Ok(content);
+    app.query.as_mut().unwrap().result = Ok(content);
     app.results_scroll.update_h_bounds(101, 40);
     app
 }
@@ -411,7 +411,7 @@ fn test_end_jumps_to_bottom() {
     app.focus = Focus::ResultsPane;
 
     let content: String = (0..20).map(|i| format!("line{}\n", i)).collect();
-    app.query.result = Ok(content);
+    app.query.as_mut().unwrap().result = Ok(content);
     app.results_scroll.update_bounds(20, 10);
     app.results_scroll.offset = 0;
 

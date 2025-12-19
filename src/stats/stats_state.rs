@@ -3,7 +3,13 @@ use crate::stats::parser::StatsParser;
 use crate::stats::types::ResultStats;
 
 pub fn update_stats_from_app(app: &mut App) {
-    if let Some(result) = &app.query.last_successful_result_unformatted {
+    // Only update if query state is available
+    let query_state = match &app.query {
+        Some(q) => q,
+        None => return,
+    };
+
+    if let Some(result) = &query_state.last_successful_result_unformatted {
         app.stats.compute(result);
     }
 }
