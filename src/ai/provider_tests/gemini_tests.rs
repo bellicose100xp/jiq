@@ -21,7 +21,7 @@ proptest! {
     ) {
         let config = AiConfig {
             enabled: true,
-            provider: AiProviderType::Gemini,
+            provider: Some(AiProviderType::Gemini),
             anthropic: AnthropicConfig::default(),
             bedrock: BedrockConfig::default(),
             openai: OpenAiConfig::default(),
@@ -148,7 +148,7 @@ proptest! {
 fn test_gemini_from_config_missing_api_key() {
     let config = AiConfig {
         enabled: true,
-        provider: AiProviderType::Gemini,
+        provider: Some(AiProviderType::Gemini),
         anthropic: AnthropicConfig::default(),
         bedrock: BedrockConfig::default(),
         openai: OpenAiConfig::default(),
@@ -172,7 +172,7 @@ fn test_gemini_from_config_missing_api_key() {
 fn test_gemini_from_config_missing_model() {
     let config = AiConfig {
         enabled: true,
-        provider: AiProviderType::Gemini,
+        provider: Some(AiProviderType::Gemini),
         anthropic: AnthropicConfig::default(),
         bedrock: BedrockConfig::default(),
         openai: OpenAiConfig::default(),
@@ -196,7 +196,7 @@ fn test_gemini_from_config_missing_model() {
 fn test_gemini_from_config_valid_creates_client() {
     let config = AiConfig {
         enabled: true,
-        provider: AiProviderType::Gemini,
+        provider: Some(AiProviderType::Gemini),
         anthropic: AnthropicConfig::default(),
         bedrock: BedrockConfig::default(),
         openai: OpenAiConfig::default(),
@@ -219,7 +219,7 @@ fn test_gemini_from_config_valid_creates_client() {
 fn test_gemini_provider_name() {
     let config = AiConfig {
         enabled: true,
-        provider: AiProviderType::Gemini,
+        provider: Some(AiProviderType::Gemini),
         anthropic: AnthropicConfig::default(),
         bedrock: BedrockConfig::default(),
         openai: OpenAiConfig::default(),

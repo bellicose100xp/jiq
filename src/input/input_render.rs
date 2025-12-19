@@ -63,12 +63,23 @@ pub fn render_field(app: &mut App, frame: &mut Frame, area: Rect) {
         None
     };
 
+    let ai_hint = if !app.ai.visible {
+        Some(Line::from(vec![Span::styled(
+            " Press Ctrl+A for AI Assistant ",
+            Style::default().fg(Color::Cyan),
+        )]))
+    } else {
+        None
+    };
+
     let mut block = Block::default()
         .borders(Borders::ALL)
         .title(title)
         .border_style(Style::default().fg(border_color));
 
     if let Some(hint) = tooltip_hint {
+        block = block.title_top(hint.alignment(Alignment::Right));
+    } else if let Some(hint) = ai_hint {
         block = block.title_top(hint.alignment(Alignment::Right));
     }
 

@@ -20,7 +20,7 @@ proptest! {
     ) {
         let config = AiConfig {
             enabled: true,
-            provider: AiProviderType::Openai,
+            provider: Some(AiProviderType::Openai),
             anthropic: AnthropicConfig::default(),
             bedrock: BedrockConfig::default(),
             openai: OpenAiConfig {
@@ -51,7 +51,7 @@ proptest! {
     ) {
         let config = AiConfig {
             enabled: true,
-            provider: AiProviderType::Openai,
+            provider: Some(AiProviderType::Openai),
             anthropic: AnthropicConfig::default(),
             bedrock: BedrockConfig::default(),
             openai: OpenAiConfig {
@@ -91,7 +91,7 @@ proptest! {
     ) {
         let config = AiConfig {
             enabled: true,
-            provider: AiProviderType::Openai,
+            provider: Some(AiProviderType::Openai),
             anthropic: AnthropicConfig::default(),
             bedrock: BedrockConfig::default(),
             openai: OpenAiConfig {
@@ -129,7 +129,7 @@ proptest! {
     ) {
         let config = AiConfig {
             enabled: true,
-            provider: AiProviderType::Openai,
+            provider: Some(AiProviderType::Openai),
             anthropic: AnthropicConfig::default(),
             bedrock: BedrockConfig::default(),
             openai: OpenAiConfig {
@@ -169,7 +169,7 @@ proptest! {
     ) {
         let config = AiConfig {
             enabled: true,
-            provider: AiProviderType::Openai,
+            provider: Some(AiProviderType::Openai),
             anthropic: AnthropicConfig::default(),
             bedrock: BedrockConfig::default(),
             openai: OpenAiConfig {
@@ -217,7 +217,7 @@ mod openai_error_snapshots {
     fn snapshot_openai_missing_api_key_error() {
         let config = AiConfig {
             enabled: true,
-            provider: AiProviderType::Openai,
+            provider: Some(AiProviderType::Openai),
             anthropic: AnthropicConfig::default(),
             bedrock: BedrockConfig::default(),
             openai: OpenAiConfig {
@@ -237,7 +237,7 @@ mod openai_error_snapshots {
     fn snapshot_openai_missing_model_error() {
         let config = AiConfig {
             enabled: true,
-            provider: AiProviderType::Openai,
+            provider: Some(AiProviderType::Openai),
             anthropic: AnthropicConfig::default(),
             bedrock: BedrockConfig::default(),
             openai: OpenAiConfig {
@@ -257,7 +257,7 @@ mod openai_error_snapshots {
     fn snapshot_openai_whitespace_api_key_error() {
         let config = AiConfig {
             enabled: true,
-            provider: AiProviderType::Openai,
+            provider: Some(AiProviderType::Openai),
             anthropic: AnthropicConfig::default(),
             bedrock: BedrockConfig::default(),
             openai: OpenAiConfig {
@@ -277,7 +277,7 @@ mod openai_error_snapshots {
     fn snapshot_openai_whitespace_model_error() {
         let config = AiConfig {
             enabled: true,
-            provider: AiProviderType::Openai,
+            provider: Some(AiProviderType::Openai),
             anthropic: AnthropicConfig::default(),
             bedrock: BedrockConfig::default(),
             openai: OpenAiConfig {

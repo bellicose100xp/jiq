@@ -63,9 +63,11 @@ fn test_build_content_not_configured() {
         .map(|s| s.content.as_ref())
         .collect();
 
-    assert!(text.contains("Setup Required"));
+    assert!(text.contains("AI provider not configured"));
     assert!(text.contains("[ai]"));
+    assert!(text.contains("provider"));
     assert!(text.contains("api_key"));
+    assert!(text.contains("https://github.com/bellicose100xp/jiq#configuration"));
 }
 
 #[test]
@@ -153,6 +155,98 @@ fn test_build_content_loading_with_previous() {
 
     assert!(text.contains("Previous answer"));
     assert!(text.contains("Thinking"));
+}
+
+// =========================================================================
+// No Default AI Provider Property-Based Tests
+// =========================================================================
+
+// **Feature: no-default-ai-provider, Property 2: Unconfigured state shows setup message**
+// *For any* AiState where configured is false due to missing provider, the rendered content
+// SHALL contain setup instructions including "provider" configuration guidance
+// **Validates: Requirements 1.1, 3.1, 3.3**
+proptest! {
+    #![proptest_config(ProptestConfig::with_cases(100))]
+
+    #[test]
+    fn prop_unconfigured_state_shows_setup_message(
+        enabled in proptest::bool::ANY,
+        provider_name in "[a-zA-Z]{3,15}",
+        model_name in "[a-zA-Z0-9-]{5,30}",
+        max_width in 40u16..200u16
+    ) {
+        // Create an unconfigured state (configured = false)
+        let state = AiState::new_with_config(
+            enabled,
+            false,  // configured = false
+            provider_name,
+            model_name,
+        );
+
+        let content = build_content(&state, max_width);
+        let text: String = content
+            .lines
+            .iter()
+            .flat_map(|l| l.spans.iter())
+            .map(|s| s.content.as_ref())
+            .collect();
+
+        // Verify setup instructions are present
+        prop_assert!(
+            text.contains("AI provider not configured"),
+            "Content should contain 'AI provider not configured' message"
+        );
+
+        // Verify provider configuration guidance is present
+        prop_assert!(
+            text.contains("provider"),
+            "Content should contain 'provider' configuration guidance"
+        );
+
+        // Verify example config shows provider selection
+        prop_assert!(
+            text.contains("anthropic") || text.contains("openai") || text.contains("gemini") || text.contains("bedrock"),
+            "Content should show provider selection options"
+        );
+    }
+}
+
+// **Feature: no-default-ai-provider, Property 3: Unconfigured state includes README URL**
+// *For any* AiState where configured is false due to missing provider, the rendered content
+// SHALL contain the URL "https://github.com/bellicose100xp/jiq#configuration"
+// **Validates: Requirements 1.2, 3.2**
+proptest! {
+    #![proptest_config(ProptestConfig::with_cases(100))]
+
+    #[test]
+    fn prop_unconfigured_state_includes_readme_url(
+        enabled in proptest::bool::ANY,
+        provider_name in "[a-zA-Z]{3,15}",
+        model_name in "[a-zA-Z0-9-]{5,30}",
+        max_width in 40u16..200u16
+    ) {
+        // Create an unconfigured state (configured = false)
+        let state = AiState::new_with_config(
+            enabled,
+            false,  // configured = false
+            provider_name,
+            model_name,
+        );
+
+        let content = build_content(&state, max_width);
+        let text: String = content
+            .lines
+            .iter()
+            .flat_map(|l| l.spans.iter())
+            .map(|s| s.content.as_ref())
+            .collect();
+
+        // Verify README URL is present
+        prop_assert!(
+            text.contains("https://github.com/bellicose100xp/jiq#configuration"),
+            "Content should contain the README configuration URL"
+        );
+    }
 }
 
 // =========================================================================

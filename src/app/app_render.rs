@@ -535,6 +535,36 @@ mod snapshot_tests {
     }
 
     #[test]
+    fn snapshot_input_border_with_ai_hint() {
+        let json = r#"{"name": "Alice", "age": 30}"#;
+        let mut app = test_app(json);
+
+        // AI popup is not visible
+        app.ai.visible = false;
+        // No tooltip hint should be shown
+        app.tooltip.enabled = false;
+        app.tooltip.set_current_function(None);
+
+        let output = render_to_string(&mut app, TEST_WIDTH, TEST_HEIGHT);
+        assert_snapshot!(output);
+    }
+
+    #[test]
+    fn snapshot_input_border_no_ai_hint_when_ai_visible() {
+        let json = r#"{"name": "Alice", "age": 30}"#;
+        let mut app = test_app(json);
+
+        // AI popup is visible - hint should not be shown
+        app.ai.visible = true;
+        // No tooltip hint should be shown
+        app.tooltip.enabled = false;
+        app.tooltip.set_current_function(None);
+
+        let output = render_to_string(&mut app, TEST_WIDTH, TEST_HEIGHT);
+        assert_snapshot!(output);
+    }
+
+    #[test]
     fn snapshot_tooltip_and_autocomplete_both_visible() {
         use crate::autocomplete::{Suggestion, SuggestionType};
 
@@ -787,9 +817,9 @@ mod snapshot_tests {
             let output = render_to_string(&mut app, 120, 30);
 
             // When AI popup is visible, the tooltip should NOT be rendered
-            // The AI popup shows the provider name in its title (e.g., "Anthropic", "Bedrock")
+            // The AI popup shows the provider name in its title (e.g., "Anthropic", "Bedrock", "Not Configured")
             prop_assert!(
-                output.contains("Anthropic") || output.contains("Bedrock") || output.contains("OpenAI"),
+                output.contains("Anthropic") || output.contains("Bedrock") || output.contains("OpenAI") || output.contains("Not Configured"),
                 "AI popup should be visible when ai.visible = true"
             );
 
@@ -821,7 +851,7 @@ mod snapshot_tests {
 
             // AI popup should NOT be visible (check that provider names are not shown)
             prop_assert!(
-                !output.contains("Anthropic") && !output.contains("Bedrock") && !output.contains("OpenAI"),
+                !output.contains("Anthropic") && !output.contains("Bedrock") && !output.contains("OpenAI") && !output.contains("Not Configured"),
                 "AI popup should not be visible when ai.visible = false"
             );
 

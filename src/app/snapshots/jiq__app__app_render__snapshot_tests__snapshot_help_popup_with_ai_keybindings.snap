@@ -22,7 +22,7 @@ expression: output
 "│    │  Ctrl+A         Toggle AI assistant                                │    │"
 "│    │  Alt+1-5        Apply AI suggestion (direct)                       │    │"
 "└────│  Alt+↑↓/j/k     Navigate suggestions                               │────┘"
-"┌ Que│  Enter          Apply selected suggestion                          │────┐"
+"┌ Que│  Enter          Apply selected suggestion                          │ant ┐"
 "│    │                                                                    │    │"
 "└────│           j/k: scroll | g/G: top/bottom | F1/q/?: close            │────┘"
 " F1: └────────────────────────────────────────────────────────────────────┘story"

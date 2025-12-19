@@ -9,6 +9,52 @@ use super::BedrockConfig;
 use super::GeminiConfig;
 use super::OpenAiConfig;
 
+// **Feature: no-default-ai-provider, Property 1: Deserialization without provider yields None**
+// *For any* valid TOML configuration string that does not contain a provider field in the [ai] section,
+// deserializing it into AiConfig SHALL result in provider being None
+// **Validates: Requirements 2.1, 2.2**
+proptest! {
+    #![proptest_config(ProptestConfig::with_cases(100))]
+
+    #[test]
+    fn prop_deserialization_without_provider_yields_none(
+        enabled in prop::bool::ANY,
+        include_anthropic_section in prop::bool::ANY,
+        include_openai_section in prop::bool::ANY,
+    ) {
+        // Build a config WITHOUT provider field
+        let mut toml_content = format!(r#"
+[ai]
+enabled = {}
+"#, enabled);
+
+        if include_anthropic_section {
+            toml_content.push_str(r#"
+[ai.anthropic]
+api_key = "sk-ant-test-key"
+model = "claude-3-haiku-20240307"
+"#);
+        }
+
+        if include_openai_section {
+            toml_content.push_str(r#"
+[ai.openai]
+api_key = "sk-proj-test-key"
+model = "gpt-4o-mini"
+"#);
+        }
+
+        let config: Result<Config, _> = toml::from_str(&toml_content);
+
+        prop_assert!(config.is_ok(), "Failed to parse config without provider field");
+
+        let config = config.unwrap();
+        // Provider should be None when not specified
+        prop_assert!(config.ai.provider.is_none(), "Provider should be None when not specified in config");
+        prop_assert_eq!(config.ai.enabled, enabled);
+    }
+}
+
 // **Feature: ai-assistant, Property 1: Valid config parsing**
 // *For any* valid TOML config with `[ai]` section containing valid fields,
 // parsing should succeed and produce an AiConfig with the specified values.
@@ -38,7 +84,7 @@ max_tokens = {}
 
         let config = config.unwrap();
         prop_assert_eq!(config.ai.enabled, enabled);
-        prop_assert_eq!(config.ai.provider, AiProviderType::Anthropic);
+        prop_assert_eq!(config.ai.provider, Some(AiProviderType::Anthropic));
         prop_assert_eq!(config.ai.anthropic.max_tokens, max_tokens);
         prop_assert_eq!(config.ai.anthropic.api_key, Some("sk-ant-test-key".to_string()));
     }
@@ -80,8 +126,8 @@ auto_show = true
         let config = config.unwrap();
         // AI should be disabled by default when section is missing
         prop_assert!(!config.ai.enabled, "AI should be disabled when [ai] section is missing");
-        // Other defaults should also be set
-        prop_assert_eq!(config.ai.provider, AiProviderType::Anthropic);
+        // Provider should be None when not specified
+        prop_assert!(config.ai.provider.is_none(), "Provider should be None when [ai] section is missing");
     }
 }
 
@@ -113,7 +159,7 @@ provider = "{}"
         // When parsing fails, the system should fall back to defaults
         let default_config = Config::default();
         prop_assert!(!default_config.ai.enabled, "Default AI config should be disabled");
-        prop_assert_eq!(default_config.ai.provider, AiProviderType::Anthropic);
+        prop_assert!(default_config.ai.provider.is_none(), "Default provider should be None");
     }
 }
 
@@ -153,7 +199,7 @@ model = "{}"
 
         let config = config.unwrap();
         prop_assert_eq!(config.ai.enabled, enabled);
-        prop_assert_eq!(config.ai.provider, AiProviderType::Bedrock);
+        prop_assert_eq!(config.ai.provider, Some(AiProviderType::Bedrock));
         prop_assert_eq!(config.ai.bedrock.region, Some(region));
         prop_assert_eq!(config.ai.bedrock.model, Some(model));
         prop_assert_eq!(config.ai.bedrock.profile, profile);
@@ -188,7 +234,7 @@ model = "{}"
 
         let config = config.unwrap();
         prop_assert_eq!(config.ai.enabled, enabled);
-        prop_assert_eq!(config.ai.provider, AiProviderType::Gemini);
+        prop_assert_eq!(config.ai.provider, Some(AiProviderType::Gemini));
         prop_assert_eq!(config.ai.gemini.api_key, Some(api_key));
         prop_assert_eq!(config.ai.gemini.model, Some(model));
     }
@@ -196,11 +242,16 @@ model = "{}"
 
 // Unit tests for AI config
 
+// **Feature: no-default-ai-provider, Unit test: AiConfig::default() has provider = None**
+// **Validates: Requirements 2.3**
 #[test]
 fn test_ai_config_default_values() {
     let config = AiConfig::default();
     assert!(!config.enabled);
-    assert_eq!(config.provider, AiProviderType::Anthropic);
+    assert!(
+        config.provider.is_none(),
+        "AiConfig::default() should have provider = None"
+    );
     assert!(config.anthropic.api_key.is_none());
     assert!(config.anthropic.model.is_none());
     assert_eq!(config.anthropic.max_tokens, 512);
@@ -293,7 +344,7 @@ model = "gpt-4o-mini"
 "#;
     let config: Config = toml::from_str(toml).unwrap();
     assert!(config.ai.enabled);
-    assert_eq!(config.ai.provider, AiProviderType::Openai);
+    assert_eq!(config.ai.provider, Some(AiProviderType::Openai));
     assert_eq!(
         config.ai.openai.api_key,
         Some("sk-proj-test-key".to_string())
@@ -314,7 +365,7 @@ model = "anthropic.claude-3-haiku-20240307-v1:0"
 "#;
     let config: Config = toml::from_str(toml).unwrap();
     assert!(config.ai.enabled);
-    assert_eq!(config.ai.provider, AiProviderType::Bedrock);
+    assert_eq!(config.ai.provider, Some(AiProviderType::Bedrock));
     assert_eq!(config.ai.bedrock.region, Some("us-east-1".to_string()));
     assert_eq!(
         config.ai.bedrock.model,
@@ -336,7 +387,7 @@ model = "anthropic.claude-3-sonnet-20240229-v1:0"
 profile = "my-aws-profile"
 "#;
     let config: Config = toml::from_str(toml).unwrap();
-    assert_eq!(config.ai.provider, AiProviderType::Bedrock);
+    assert_eq!(config.ai.provider, Some(AiProviderType::Bedrock));
     assert_eq!(
         config.ai.bedrock.profile,
         Some("my-aws-profile".to_string())
@@ -356,7 +407,7 @@ model = "gemini-2.0-flash"
 "#;
     let config: Config = toml::from_str(toml).unwrap();
     assert!(config.ai.enabled);
-    assert_eq!(config.ai.provider, AiProviderType::Gemini);
+    assert_eq!(config.ai.provider, Some(AiProviderType::Gemini));
     assert_eq!(config.ai.gemini.api_key, Some("AIza-test-key".to_string()));
     assert_eq!(config.ai.gemini.model, Some("gemini-2.0-flash".to_string()));
 }
@@ -390,7 +441,7 @@ model = "{}"
 
         let config = config.unwrap();
         prop_assert_eq!(config.ai.enabled, enabled);
-        prop_assert_eq!(config.ai.provider, AiProviderType::Openai);
+        prop_assert_eq!(config.ai.provider, Some(AiProviderType::Openai));
         prop_assert_eq!(config.ai.openai.api_key, Some(api_key));
         prop_assert_eq!(config.ai.openai.model, Some(model));
     }

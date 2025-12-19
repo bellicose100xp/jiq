@@ -86,8 +86,16 @@ impl AsyncAiProvider {
     ///
     /// Returns an error if the configuration is invalid (e.g., missing API key)
     pub fn from_config(config: &AiConfig) -> Result<Self, AiError> {
+        // Check if provider is configured
+        let provider_type = config.provider.ok_or_else(|| AiError::NotConfigured {
+            provider: "None".to_string(),
+            message:
+                "No AI provider configured. See https://github.com/bellicose100xp/jiq#configuration"
+                    .to_string(),
+        })?;
+
         if !config.enabled {
-            let provider_name = match config.provider {
+            let provider_name = match provider_type {
                 AiProviderType::Anthropic => "Anthropic",
                 AiProviderType::Bedrock => "Bedrock",
                 AiProviderType::Openai => "OpenAI",
@@ -102,7 +110,7 @@ impl AsyncAiProvider {
             });
         }
 
-        match config.provider {
+        match provider_type {
             AiProviderType::Anthropic => {
                 let api_key = config
                     .anthropic

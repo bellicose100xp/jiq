@@ -22,7 +22,7 @@ expression: output
 "│ │jq: compile error: syntax error at line 1                                 │ │"
 "│ └──────────────────────────────────────────────────────────────────────────┘ │"
 "└──────────────────────────────────────────────────────────────────────────────┘"
-"┌ Query [INSERT] ⚠ Syntax Error (Ctrl+E to view)───────────────────────────────┐"
+"┌ Query [INSERT] ⚠ Syntax Error (Ctrl+E to view) Press Ctrl+A for AI Assistant ┐"
 "│                                                                              │"
 "└──────────────────────────────────────────────────────────────────────────────┘"
 " F1: Help | Shift+Tab: Switch Pane | Ctrl+P/N: Cycle History | ↑/Ctrl+R: History"

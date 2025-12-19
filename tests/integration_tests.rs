@@ -408,12 +408,13 @@ fn test_ai_visibility_configurations() {
 #[test]
 fn test_initial_visibility_ai_enabled() {
     use jiq::app::App;
-    use jiq::config::{AiConfig, AnthropicConfig, Config};
+    use jiq::config::{AiConfig, AiProviderType, AnthropicConfig, Config};
 
-    // Create config with AI enabled
+    // Create config with AI enabled and provider explicitly set
     let config = Config {
         ai: AiConfig {
             enabled: true,
+            provider: Some(AiProviderType::Anthropic),
             anthropic: AnthropicConfig {
                 api_key: Some("test-key".to_string()),
                 model: Some("claude-3-5-sonnet-20241022".to_string()),
@@ -465,12 +466,13 @@ fn test_initial_visibility_ai_disabled() {
 #[test]
 fn test_tooltip_hidden_when_ai_visible_on_startup() {
     use jiq::app::App;
-    use jiq::config::{AiConfig, AnthropicConfig, Config, TooltipConfig};
+    use jiq::config::{AiConfig, AiProviderType, AnthropicConfig, Config, TooltipConfig};
 
-    // Create config with AI enabled and tooltip auto_show enabled
+    // Create config with AI enabled, provider set, and tooltip auto_show enabled
     let config = Config {
         ai: AiConfig {
             enabled: true,
+            provider: Some(AiProviderType::Anthropic),
             anthropic: AnthropicConfig {
                 api_key: Some("test-key".to_string()),
                 model: Some("claude-3-5-sonnet-20241022".to_string()),
@@ -680,12 +682,13 @@ fn test_visibility_control_mechanisms_complete() {
     use jiq::ai::ai_events::handle_execution_result;
     use jiq::ai::ai_state::AiState;
     use jiq::app::App;
-    use jiq::config::{AiConfig, AnthropicConfig, Config};
+    use jiq::config::{AiConfig, AiProviderType, AnthropicConfig, Config};
 
     // Mechanism 1: Config controls initial visibility
     let config_enabled = Config {
         ai: AiConfig {
             enabled: true,
+            provider: Some(AiProviderType::Anthropic),
             anthropic: AnthropicConfig {
                 api_key: Some("test-key".to_string()),
                 model: Some("claude-3-5-sonnet-20241022".to_string()),

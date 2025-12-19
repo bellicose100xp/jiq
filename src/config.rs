@@ -9,7 +9,7 @@ pub use types::{ClipboardBackend, Config};
 
 // Re-export for integration tests
 #[allow(unused_imports)]
-pub use ai_types::{AiConfig, AnthropicConfig};
+pub use ai_types::{AiConfig, AiProviderType, AnthropicConfig};
 #[allow(unused_imports)]
 pub use types::TooltipConfig;
 

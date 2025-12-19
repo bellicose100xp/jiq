@@ -2,6 +2,88 @@
 
 use super::*;
 
+// =========================================================================
+// Unit Tests for No Default Provider
+// =========================================================================
+
+#[test]
+fn test_from_config_returns_error_when_provider_is_none() {
+    // Create config with provider = None
+    let config = AiConfig {
+        enabled: true,
+        provider: None,
+        anthropic: AnthropicConfig {
+            max_tokens: 512,
+            api_key: Some("valid-key".to_string()),
+            model: Some("claude-3-haiku".to_string()),
+        },
+        bedrock: BedrockConfig::default(),
+        openai: OpenAiConfig::default(),
+        gemini: GeminiConfig::default(),
+    };
+
+    let result = AsyncAiProvider::from_config(&config);
+
+    // Should return NotConfigured error
+    assert!(result.is_err(), "Expected error when provider is None");
+
+    match result {
+        Err(AiError::NotConfigured { provider, message }) => {
+            assert_eq!(provider, "None", "Provider should be 'None'");
+            assert!(
+                message.contains("No AI provider configured"),
+                "Message should indicate no provider: {}",
+                message
+            );
+            assert!(
+                message.contains("https://github.com/bellicose100xp/jiq#configuration"),
+                "Message should contain README URL: {}",
+                message
+            );
+        }
+        _ => panic!("Expected NotConfigured error, got {:?}", result),
+    }
+}
+
+#[test]
+fn test_from_config_error_when_provider_none_even_with_all_credentials() {
+    // Even with valid credentials for all providers, should fail when provider is None
+    let config = AiConfig {
+        enabled: true,
+        provider: None,
+        anthropic: AnthropicConfig {
+            max_tokens: 512,
+            api_key: Some("anthropic-key".to_string()),
+            model: Some("claude-3-haiku".to_string()),
+        },
+        bedrock: BedrockConfig {
+            region: Some("us-east-1".to_string()),
+            model: Some("anthropic.claude-3-haiku".to_string()),
+            profile: None,
+        },
+        openai: OpenAiConfig {
+            api_key: Some("openai-key".to_string()),
+            model: Some("gpt-4".to_string()),
+        },
+        gemini: GeminiConfig {
+            api_key: Some("gemini-key".to_string()),
+            model: Some("gemini-pro".to_string()),
+        },
+    };
+
+    let result = AsyncAiProvider::from_config(&config);
+
+    // Should still return error - no default fallback
+    assert!(
+        result.is_err(),
+        "Should return error even with all credentials when provider is None"
+    );
+    assert!(
+        matches!(result, Err(AiError::NotConfigured { .. })),
+        "Should be NotConfigured error"
+    );
+}
+
 #[test]
 fn test_ai_error_display() {
     let err = AiError::NotConfigured {
@@ -200,7 +282,7 @@ proptest! {
     ) {
         let config = AiConfig {
             enabled: true,
-            provider: AiProviderType::Anthropic,
+            provider: Some(AiProviderType::Anthropic),
             anthropic: AnthropicConfig { max_tokens: 512,
                 api_key: Some(api_key),
                 model: Some(model),
@@ -252,7 +334,7 @@ proptest! {
         // Test 1: Missing API key should produce error with correct provider
         let config = AiConfig {
             enabled: true,
-            provider: AiProviderType::Anthropic,
+            provider: Some(AiProviderType::Anthropic),
             anthropic: AnthropicConfig { max_tokens: 512,
                 api_key: None,
                 model: Some(model.clone()),
@@ -277,7 +359,7 @@ proptest! {
         // Test 2: Disabled config should produce error with correct provider
         let config = AiConfig {
             enabled: false,
-            provider: AiProviderType::Anthropic,
+            provider: Some(AiProviderType::Anthropic),
             anthropic: AnthropicConfig { max_tokens: 512,
                 api_key: Some("valid-key".to_string()),
                 model: Some(model.clone()),
@@ -302,7 +384,7 @@ proptest! {
         // Test 3: Empty API key should produce error with correct provider
         let config = AiConfig {
             enabled: true,
-            provider: AiProviderType::Anthropic,
+            provider: Some(AiProviderType::Anthropic),
             anthropic: AnthropicConfig { max_tokens: 512,
                 api_key: Some("".to_string()),
                 model: Some(model),
@@ -319,6 +401,81 @@ proptest! {
             prop_assert_eq!(
                 provider, "Anthropic",
                 "Error provider should match configured provider type"
+            );
+        } else {
+            prop_assert!(false, "Expected NotConfigured error, got {:?}", result);
+        }
+    }
+}
+
+// =========================================================================
+// Property-Based Tests for No Default Provider Fallback
+// =========================================================================
+
+// **Feature: no-default-ai-provider, Property 4: No default provider fallback**
+// *For any* AiConfig where provider is None and enabled is true, calling
+// AsyncAiProvider::from_config SHALL return an AiError::NotConfigured error
+// rather than creating a provider.
+// **Validates: Requirements 1.3**
+proptest! {
+    #![proptest_config(ProptestConfig::with_cases(100))]
+
+    #[test]
+    fn prop_no_default_provider_fallback(
+        // Generate random config values to ensure property holds regardless of other settings
+        api_key in "[a-zA-Z0-9_-]{10,50}",
+        model in "[a-z0-9-]{5,30}",
+        region in "(us-east-1|us-west-2|eu-west-1)",
+        max_tokens in 100u32..2000u32,
+    ) {
+        // Create config with provider = None but enabled = true
+        // Even with valid credentials for all providers, it should fail
+        let config = AiConfig {
+            enabled: true,
+            provider: None,  // No provider configured
+            anthropic: AnthropicConfig {
+                max_tokens,
+                api_key: Some(api_key.clone()),
+                model: Some(model.clone()),
+            },
+            bedrock: BedrockConfig {
+                region: Some(region),
+                model: Some(model.clone()),
+                profile: None,
+            },
+            openai: OpenAiConfig {
+                api_key: Some(api_key.clone()),
+                model: Some(model.clone()),
+            },
+            gemini: GeminiConfig {
+                api_key: Some(api_key),
+                model: Some(model),
+            },
+        };
+
+        let result = AsyncAiProvider::from_config(&config);
+
+        // Should always return an error when provider is None
+        prop_assert!(
+            result.is_err(),
+            "from_config should return error when provider is None"
+        );
+
+        // Should be NotConfigured error with provider = "None"
+        if let Err(AiError::NotConfigured { provider, message }) = result {
+            prop_assert_eq!(
+                provider, "None",
+                "Error provider should be 'None' when no provider configured"
+            );
+            prop_assert!(
+                message.contains("No AI provider configured"),
+                "Error message should indicate no provider configured: {}",
+                message
+            );
+            prop_assert!(
+                message.contains("https://github.com/bellicose100xp/jiq#configuration"),
+                "Error message should contain README URL: {}",
+                message
             );
         } else {
             prop_assert!(false, "Expected NotConfigured error, got {:?}", result);

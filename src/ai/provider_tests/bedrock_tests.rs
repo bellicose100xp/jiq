@@ -20,7 +20,7 @@ proptest! {
     ) {
         let config = AiConfig {
             enabled: true,
-            provider: AiProviderType::Bedrock,
+            provider: Some(AiProviderType::Bedrock),
             anthropic: AnthropicConfig::default(),
             bedrock: BedrockConfig {
                 region: Some(region),
@@ -62,7 +62,7 @@ proptest! {
     ) {
         let config = AiConfig {
             enabled: true,
-            provider: AiProviderType::Bedrock,
+            provider: Some(AiProviderType::Bedrock),
             anthropic: AnthropicConfig::default(),
             bedrock: BedrockConfig {
                 region: Some(region),
@@ -110,7 +110,7 @@ proptest! {
     ) {
         let config = AiConfig {
             enabled: true,
-            provider: AiProviderType::Bedrock,
+            provider: Some(AiProviderType::Bedrock),
             anthropic: AnthropicConfig::default(),
             bedrock: BedrockConfig {
                 region: None,
@@ -152,7 +152,7 @@ proptest! {
     ) {
         let config = AiConfig {
             enabled: true,
-            provider: AiProviderType::Bedrock,
+            provider: Some(AiProviderType::Bedrock),
             anthropic: AnthropicConfig::default(),
             bedrock: BedrockConfig {
                 region: Some(empty_region),
@@ -193,7 +193,7 @@ proptest! {
     ) {
         let config = AiConfig {
             enabled: true,
-            provider: AiProviderType::Bedrock,
+            provider: Some(AiProviderType::Bedrock),
             anthropic: AnthropicConfig::default(),
             bedrock: BedrockConfig {
                 region: Some(region),

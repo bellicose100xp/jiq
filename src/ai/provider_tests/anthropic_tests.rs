@@ -20,7 +20,7 @@ proptest! {
         // Config with enabled=true but no API key
         let config = AiConfig {
             enabled: true,
-            provider: AiProviderType::Anthropic,
+            provider: Some(AiProviderType::Anthropic),
             anthropic: AnthropicConfig { max_tokens: 512,
                 api_key: None,
                 model: Some(model),
@@ -56,7 +56,7 @@ proptest! {
     ) {
         let config = AiConfig {
             enabled: true,
-            provider: AiProviderType::Anthropic,
+            provider: Some(AiProviderType::Anthropic),
             anthropic: AnthropicConfig { max_tokens: 512,
                 api_key: Some(empty_key),
                 model: Some(model),
@@ -92,7 +92,7 @@ proptest! {
     ) {
         let config = AiConfig {
             enabled: true,
-            provider: AiProviderType::Anthropic,
+            provider: Some(AiProviderType::Anthropic),
             anthropic: AnthropicConfig { max_tokens: 512,
                 api_key: Some(api_key),
                 model: Some(model),
@@ -118,7 +118,7 @@ proptest! {
         // Config with enabled=false (even with valid API key)
         let config = AiConfig {
             enabled: false,
-            provider: AiProviderType::Anthropic,
+            provider: Some(AiProviderType::Anthropic),
             anthropic: AnthropicConfig { max_tokens: 512,
                 api_key: Some(api_key),
                 model: Some(model),
@@ -155,7 +155,7 @@ proptest! {
 fn test_async_from_config_missing_api_key() {
     let config = AiConfig {
         enabled: true,
-        provider: AiProviderType::Anthropic,
+        provider: Some(AiProviderType::Anthropic),
         anthropic: AnthropicConfig {
             max_tokens: 512,
             api_key: None,
@@ -175,7 +175,7 @@ fn test_async_from_config_missing_api_key() {
 fn test_async_from_config_empty_api_key() {
     let config = AiConfig {
         enabled: true,
-        provider: AiProviderType::Anthropic,
+        provider: Some(AiProviderType::Anthropic),
         anthropic: AnthropicConfig {
             max_tokens: 512,
             api_key: Some("".to_string()),
@@ -195,7 +195,7 @@ fn test_async_from_config_empty_api_key() {
 fn test_async_from_config_whitespace_api_key() {
     let config = AiConfig {
         enabled: true,
-        provider: AiProviderType::Anthropic,
+        provider: Some(AiProviderType::Anthropic),
         anthropic: AnthropicConfig {
             max_tokens: 512,
             api_key: Some("   ".to_string()),
@@ -215,7 +215,7 @@ fn test_async_from_config_whitespace_api_key() {
 fn test_async_from_config_valid_api_key() {
     let config = AiConfig {
         enabled: true,
-        provider: AiProviderType::Anthropic,
+        provider: Some(AiProviderType::Anthropic),
         anthropic: AnthropicConfig {
             max_tokens: 512,
             api_key: Some("sk-ant-test-key".to_string()),
@@ -234,7 +234,7 @@ fn test_async_from_config_valid_api_key() {
 fn test_async_from_config_disabled() {
     let config = AiConfig {
         enabled: false,
-        provider: AiProviderType::Anthropic,
+        provider: Some(AiProviderType::Anthropic),
         anthropic: AnthropicConfig {
             max_tokens: 512,
             api_key: Some("sk-ant-test-key".to_string()),

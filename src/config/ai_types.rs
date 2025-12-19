@@ -10,10 +10,9 @@ fn default_max_tokens() -> u32 {
 }
 
 /// AI provider selection
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum AiProviderType {
-    #[default]
     Anthropic,
     Bedrock,
     Openai,
@@ -77,9 +76,9 @@ pub struct AiConfig {
     /// Whether AI features are enabled
     #[serde(default)]
     pub enabled: bool,
-    /// Which AI provider to use
+    /// Which AI provider to use (None when not configured)
     #[serde(default)]
-    pub provider: AiProviderType,
+    pub provider: Option<AiProviderType>,
     /// Anthropic-specific configuration
     #[serde(default)]
     pub anthropic: AnthropicConfig,

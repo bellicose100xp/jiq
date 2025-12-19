@@ -18,7 +18,7 @@ pub fn build_content(ai_state: &AiState, max_width: u16) -> Text<'static> {
         lines.push(Line::from(vec![
             Span::styled("⚙ ", Style::default().fg(Color::Yellow)),
             Span::styled(
-                "Setup Required",
+                "AI provider not configured",
                 Style::default()
                     .fg(Color::Yellow)
                     .add_modifier(Modifier::BOLD),
@@ -26,11 +26,11 @@ pub fn build_content(ai_state: &AiState, max_width: u16) -> Text<'static> {
         ]));
         lines.push(Line::from(""));
         lines.push(Line::from(Span::styled(
-            "To enable AI assistance, add this",
+            "To enable AI assistance, configure a provider",
             Style::default().fg(Color::Gray),
         )));
         lines.push(Line::from(Span::styled(
-            "to ~/.config/jiq/config.toml:",
+            "in ~/.config/jiq/config.toml:",
             Style::default().fg(Color::Gray),
         )));
         lines.push(Line::from(""));
@@ -40,6 +40,10 @@ pub fn build_content(ai_state: &AiState, max_width: u16) -> Text<'static> {
         )));
         lines.push(Line::from(Span::styled(
             "enabled = true",
+            Style::default().fg(Color::Cyan),
+        )));
+        lines.push(Line::from(Span::styled(
+            "provider = \"anthropic\"  # or \"openai\", \"gemini\", \"bedrock\"",
             Style::default().fg(Color::Cyan),
         )));
         lines.push(Line::from(""));
@@ -52,8 +56,19 @@ pub fn build_content(ai_state: &AiState, max_width: u16) -> Text<'static> {
             Style::default().fg(Color::Cyan),
         )));
         lines.push(Line::from(Span::styled(
-            "model = \"your-model-name\"",
+            "model = \"claude-3-5-sonnet-20241022\"",
             Style::default().fg(Color::Cyan),
+        )));
+        lines.push(Line::from(""));
+        lines.push(Line::from(Span::styled(
+            "For more details, see:",
+            Style::default().fg(Color::Gray),
+        )));
+        lines.push(Line::from(Span::styled(
+            "https://github.com/bellicose100xp/jiq#configuration",
+            Style::default()
+                .fg(Color::Blue)
+                .add_modifier(Modifier::UNDERLINED),
         )));
 
         return Text::from(lines);

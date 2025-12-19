@@ -22,7 +22,7 @@ expression: output
 "│    │  i/a/I/A        Enter Insert mode                                  │    │"
 "│    │  h/l            Move cursor left/right                             │    │"
 "└────│  0/^/$          Jump to start/end of line                          │────┘"
-"┌ Que│  w/b/e          Word navigation                                    │────┐"
+"┌ Que│  w/b/e          Word navigation                                    │ant ┐"
 "│    │  x/X            Delete character                                   │    │"
 "└────│  dd/D           Delete line/to end                                 │────┘"
 " F1: └────────────────────────────────────────────────────────────────────┘story"
