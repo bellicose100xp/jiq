@@ -69,9 +69,9 @@ fn test_default_impl() {
 }
 
 // Feature: performance, Property 2: Debounce timer reset on input
-// *For any* sequence of keystrokes where each keystroke occurs within 50ms
+// *For any* sequence of keystrokes where each keystroke occurs within 150ms
 // of the previous one, the debouncer should reset its timer on each keystroke
-// and not trigger execution until 50ms after the final keystroke.
+// and not trigger execution until 150ms after the final keystroke.
 // **Validates: Requirements 2.1, 2.2, 2.3**
 proptest! {
     #![proptest_config(ProptestConfig::with_cases(100))]

@@ -1,6 +1,6 @@
 use std::time::{Duration, Instant};
 
-const DEBOUNCE_MS: u64 = 50;
+const DEBOUNCE_MS: u64 = 150;
 #[derive(Debug)]
 pub struct Debouncer {
     /// Timestamp of the last input that triggered a debounce
