@@ -110,13 +110,15 @@ fn test_worker_sends_error_response_for_jq_failure() {
         })
         .unwrap();
 
-    // Should get error response with correct request_id
+    // Should get error response with correct request_id and query
     match response_rx.recv_timeout(std::time::Duration::from_secs(2)) {
         Ok(QueryResponse::Error {
             message,
+            query,
             request_id,
         }) => {
             assert_eq!(request_id, 1);
+            assert_eq!(query, ".invalid syntax [");
             assert!(message.contains("parse error") || message.contains("syntax"));
         }
         Ok(other) => panic!("Expected Error, got {:?}", other),

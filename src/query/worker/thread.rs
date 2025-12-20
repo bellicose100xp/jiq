@@ -51,6 +51,7 @@ pub fn spawn_worker(
             // Use request_id = 0 to indicate worker-level error
             let _ = response_tx_clone.send(QueryResponse::Error {
                 message: format!("Query worker crashed: {}", panic_msg),
+                query: String::new(), // No specific query for worker-level errors
                 request_id: 0,
             });
         }));
@@ -136,6 +137,7 @@ fn handle_request(
             log::debug!("Query {} failed: {}", request.request_id, e);
             let _ = response_tx.send(QueryResponse::Error {
                 message: e.to_string(),
+                query: request.query,
                 request_id: request.request_id,
             });
         }

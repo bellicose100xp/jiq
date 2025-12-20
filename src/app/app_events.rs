@@ -164,17 +164,19 @@ impl App {
     /// Poll for query responses and update state
     ///
     /// Checks for completed async queries and triggers AI updates when needed.
+    /// Uses the query returned from poll_response() to ensure AI gets correct context.
     fn poll_query_response(&mut self) {
         if let Some(query_state) = &mut self.query {
-            if query_state.poll_response() {
-                // State changed - trigger AI update if visible
-                if self.ai.visible {
-                    let query = self.input.query().to_string();
+            // poll_response() returns the query that produced the result
+            // This ensures AI gets matching query/result pairs even if user keeps typing
+            if let Some(completed_query) = query_state.poll_response() {
+                // State changed - trigger AI update if visible and query is not empty
+                if self.ai.visible && !completed_query.is_empty() {
                     let cursor_pos = self.input.textarea.cursor().1;
                     crate::ai::ai_events::handle_query_result(
                         &mut self.ai,
                         &query_state.result,
-                        &query,
+                        &completed_query, // Use query from response, not current input!
                         cursor_pos,
                         query_state.executor.json_input(),
                         crate::ai::context::ContextParams {

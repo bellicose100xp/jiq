@@ -48,7 +48,8 @@ pub mod test_helpers {
                 if !query_state.is_pending() {
                     return true;
                 }
-                query_state.poll_response();
+                // poll_response() now returns Option<String>, just call and discard
+                let _ = query_state.poll_response();
             }
             std::thread::sleep(std::time::Duration::from_millis(10));
         }
