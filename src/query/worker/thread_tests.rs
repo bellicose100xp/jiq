@@ -91,3 +91,107 @@ fn test_worker_handles_pre_cancelled_request() {
         Err(e) => panic!("Timeout waiting for response: {}", e),
     }
 }
+
+#[test]
+fn test_worker_sends_error_response_for_jq_failure() {
+    let json_input = r#"{"test": "data"}"#.to_string();
+    let (request_tx, request_rx) = channel();
+    let (response_tx, response_rx) = channel();
+
+    spawn_worker(json_input, request_rx, response_tx);
+
+    // Send query with invalid syntax
+    let cancel_token = CancellationToken::new();
+    request_tx
+        .send(QueryRequest {
+            query: ".invalid syntax [".to_string(),
+            request_id: 1,
+            cancel_token,
+        })
+        .unwrap();
+
+    // Should get error response with correct request_id
+    match response_rx.recv_timeout(std::time::Duration::from_secs(2)) {
+        Ok(QueryResponse::Error {
+            message,
+            request_id,
+        }) => {
+            assert_eq!(request_id, 1);
+            assert!(message.contains("parse error") || message.contains("syntax"));
+        }
+        Ok(other) => panic!("Expected Error, got {:?}", other),
+        Err(e) => panic!("Timeout waiting for error response: {}", e),
+    }
+}
+
+#[test]
+fn test_worker_handles_multiple_rapid_queries() {
+    let json_input = r#"{"a": 1, "b": 2, "c": 3}"#.to_string();
+    let (request_tx, request_rx) = channel();
+    let (response_tx, response_rx) = channel();
+
+    spawn_worker(json_input, request_rx, response_tx);
+
+    // Send multiple queries rapidly
+    for i in 1..=5 {
+        let cancel_token = CancellationToken::new();
+        request_tx
+            .send(QueryRequest {
+                query: format!(".{}", if i % 2 == 0 { "a" } else { "b" }),
+                request_id: i,
+                cancel_token,
+            })
+            .unwrap();
+    }
+
+    // Should receive 5 responses
+    let mut received_count = 0;
+    for _ in 0..5 {
+        match response_rx.recv_timeout(std::time::Duration::from_secs(3)) {
+            Ok(QueryResponse::Success { .. }) | Ok(QueryResponse::Error { .. }) => {
+                received_count += 1;
+            }
+            Ok(QueryResponse::Cancelled { .. }) => {
+                // Acceptable - query was cancelled
+                received_count += 1;
+            }
+            Err(e) => panic!("Timeout after {} responses: {}", received_count, e),
+        }
+    }
+
+    assert_eq!(received_count, 5, "Should receive all 5 responses");
+}
+
+#[test]
+fn test_worker_response_includes_original_query() {
+    let json_input = r#"{"test": "value"}"#.to_string();
+    let (request_tx, request_rx) = channel();
+    let (response_tx, response_rx) = channel();
+
+    spawn_worker(json_input, request_rx, response_tx);
+
+    let original_query = ".test";
+    let cancel_token = CancellationToken::new();
+    request_tx
+        .send(QueryRequest {
+            query: original_query.to_string(),
+            request_id: 42,
+            cancel_token,
+        })
+        .unwrap();
+
+    // Response should include the original query
+    match response_rx.recv_timeout(std::time::Duration::from_secs(2)) {
+        Ok(QueryResponse::Success {
+            query, request_id, ..
+        }) => {
+            assert_eq!(
+                query, original_query,
+                "Response should include original query"
+            );
+            assert_eq!(request_id, 42);
+        }
+        Ok(other) => panic!("Expected Success, got {:?}", other),
+        Err(e) => panic!("Timeout: {}", e),
+    }
+}

@@ -134,6 +134,25 @@ fn test_io_errors_convert_to_jiq_error() {
     );
 }
 
+// ============================================================================
+// Stdin Loading Tests (Phase 2 - Deferred Stdin Loading)
+// ============================================================================
+
+#[test]
+fn test_spawn_load_stdin_creates_loader() {
+    // Note: spawn_load_stdin() spawns a thread that reads from stdin
+    // Full stdin reading is difficult to test in unit tests
+    // This test verifies the method exists and creates a loader correctly
+    let loader = FileLoader::spawn_load_stdin();
+
+    // Should initialize in Loading state
+    assert!(loader.is_loading());
+    assert!(matches!(loader.state(), LoadingState::Loading));
+
+    // Note: We don't poll here because stdin would block waiting for input
+    // Integration tests verify full stdin loading behavior
+}
+
 #[cfg(test)]
 mod property_tests {
     use super::*;

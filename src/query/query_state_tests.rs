@@ -212,6 +212,302 @@ fn test_multiple_nulls_dont_overwrite_cache() {
 }
 
 // ============================================================================
+// Parsed Result Caching Tests (Phase 3 - Performance Optimization)
+// ============================================================================
+
+#[test]
+fn test_parsed_result_cached_for_autocomplete() {
+    let json =
+        r#"{"services": [{"name": "svc1", "arn": "arn1"}, {"name": "svc2", "arn": "arn2"}]}"#;
+    let mut state = QueryState::new(json.to_string());
+
+    // Initial query should have parsed result cached
+    assert!(state.last_successful_result_parsed.is_some());
+
+    // Execute query that returns array of objects
+    state.execute(".services");
+    assert!(state.last_successful_result_parsed.is_some());
+
+    // Destructured query returns multiple objects (not valid JSON as whole)
+    state.execute(".services[]");
+
+    // Should still have parsed result (first object)
+    assert!(state.last_successful_result_parsed.is_some());
+
+    // Parsed result should be an object with fields from first array element
+    let parsed = state.last_successful_result_parsed.as_ref().unwrap();
+    assert!(parsed.is_object());
+    assert!(parsed.get("name").is_some());
+    assert!(parsed.get("arn").is_some());
+}
+
+#[test]
+fn test_parsed_result_handles_destructured_output() {
+    let json = r#"{"items": [{"id": 1, "value": "a"}, {"id": 2, "value": "b"}]}"#;
+    let mut state = QueryState::new(json.to_string());
+
+    // Query that destructures array - output is multiple objects separated by newlines
+    state.execute(".items[]");
+
+    // Verify result is destructured (multiple objects, not valid JSON as whole)
+    let result = state.result.as_ref().unwrap();
+    let line_count = result.lines().count();
+    assert!(
+        line_count >= 2,
+        "Should have multiple lines for destructured output"
+    );
+
+    // Parsed result should still be available (first object)
+    assert!(state.last_successful_result_parsed.is_some());
+
+    // Should be first object with correct fields
+    let parsed = state.last_successful_result_parsed.as_ref().unwrap();
+    assert!(parsed.is_object());
+    assert_eq!(parsed.get("id").and_then(|v| v.as_i64()), Some(1));
+    assert_eq!(parsed.get("value").and_then(|v| v.as_str()), Some("a"));
+}
+
+#[test]
+fn test_parse_first_value_handles_single_object() {
+    let json = r#"{"name": "test", "value": 42}"#;
+    let parsed = QueryState::parse_first_value(json);
+
+    assert!(parsed.is_some());
+    let value = parsed.unwrap();
+    assert!(value.is_object());
+    assert_eq!(value.get("name").and_then(|v| v.as_str()), Some("test"));
+}
+
+#[test]
+fn test_parse_first_value_handles_destructured_objects() {
+    let json = "{\"name\": \"first\"}\n{\"name\": \"second\"}\n{\"name\": \"third\"}";
+    let parsed = QueryState::parse_first_value(json);
+
+    assert!(parsed.is_some());
+    let value = parsed.unwrap();
+    assert!(value.is_object());
+    // Should only parse first object
+    assert_eq!(value.get("name").and_then(|v| v.as_str()), Some("first"));
+}
+
+#[test]
+fn test_parse_first_value_handles_array() {
+    let json = r#"[{"id": 1}, {"id": 2}]"#;
+    let parsed = QueryState::parse_first_value(json);
+
+    assert!(parsed.is_some());
+    let value = parsed.unwrap();
+    assert!(value.is_array());
+}
+
+#[test]
+fn test_parse_first_value_returns_none_for_empty() {
+    assert!(QueryState::parse_first_value("").is_none());
+    assert!(QueryState::parse_first_value("   ").is_none());
+}
+
+#[test]
+fn test_parse_first_value_returns_none_for_invalid_json() {
+    assert!(QueryState::parse_first_value("invalid json {").is_none());
+    assert!(QueryState::parse_first_value("not json at all").is_none());
+}
+
+// ============================================================================
+// Async Execution Tests (Phase 3 - Async Query Worker)
+// ============================================================================
+
+#[test]
+fn test_execute_async_basic_flow() {
+    use std::sync::Arc;
+
+    let json = r#"{"name": "test", "value": 42}"#;
+    let mut state = QueryState::new(json.to_string());
+
+    // Execute async query
+    state.execute_async(".name");
+
+    // Should be marked as pending
+    assert!(state.is_pending());
+    assert!(state.in_flight_request_id.is_some());
+
+    // Poll for result (may need multiple attempts)
+    let timeout = std::time::Instant::now();
+    while state.is_pending() && timeout.elapsed() < std::time::Duration::from_secs(2) {
+        state.poll_response();
+        std::thread::sleep(std::time::Duration::from_millis(10));
+    }
+
+    // Should complete successfully
+    assert!(!state.is_pending());
+    assert!(state.result.is_ok());
+    assert!(state.result.as_ref().unwrap().contains("test"));
+}
+
+#[test]
+fn test_execute_async_cancellation() {
+    let json = r#"{"data": "value"}"#;
+    let mut state = QueryState::new(json.to_string());
+
+    // Start first query
+    state.execute_async(".data");
+    let first_request_id = state.in_flight_request_id;
+    assert!(first_request_id.is_some());
+
+    // Immediately start second query (should cancel first)
+    state.execute_async(".data | length");
+    let second_request_id = state.in_flight_request_id;
+
+    // Request ID should have incremented
+    assert!(second_request_id.is_some());
+    assert_ne!(first_request_id, second_request_id);
+
+    // Wait for completion
+    let timeout = std::time::Instant::now();
+    while state.is_pending() && timeout.elapsed() < std::time::Duration::from_secs(2) {
+        state.poll_response();
+        std::thread::sleep(std::time::Duration::from_millis(10));
+    }
+
+    // Should complete with second query result
+    assert!(!state.is_pending());
+    assert!(state.result.is_ok());
+}
+
+#[test]
+fn test_poll_response_filters_stale_responses() {
+    let json = r#"{"test": true}"#;
+    let mut state = QueryState::new(json.to_string());
+
+    // Start query and get request ID
+    state.execute_async(".");
+    let first_id = state.in_flight_request_id.unwrap();
+
+    // Cancel and start new query
+    state.execute_async(".test");
+    let second_id = state.in_flight_request_id.unwrap();
+    assert_ne!(first_id, second_id);
+
+    // Poll for results - should filter out stale response from first query
+    let timeout = std::time::Instant::now();
+    while state.is_pending() && timeout.elapsed() < std::time::Duration::from_secs(2) {
+        state.poll_response();
+        std::thread::sleep(std::time::Duration::from_millis(10));
+    }
+
+    // Should have result from second query only
+    assert!(!state.is_pending());
+}
+
+#[test]
+fn test_request_id_increments_correctly() {
+    let json = r#"{"test": true}"#;
+    let mut state = QueryState::new(json.to_string());
+
+    // Initial request ID should be 1
+    state.execute_async(".");
+    assert_eq!(state.in_flight_request_id, Some(1));
+    state.cancel_in_flight();
+
+    // Should increment
+    state.execute_async(".test");
+    assert_eq!(state.in_flight_request_id, Some(2));
+    state.cancel_in_flight();
+
+    // Should keep incrementing
+    state.execute_async(".");
+    assert_eq!(state.in_flight_request_id, Some(3));
+}
+
+#[test]
+fn test_is_pending_tracks_state_correctly() {
+    let json = r#"{"test": true}"#;
+    let mut state = QueryState::new(json.to_string());
+
+    // Initially not pending
+    assert!(!state.is_pending());
+
+    // After execute_async, should be pending
+    state.execute_async(".");
+    assert!(state.is_pending());
+
+    // Wait for completion
+    let timeout = std::time::Instant::now();
+    while state.is_pending() && timeout.elapsed() < std::time::Duration::from_secs(2) {
+        state.poll_response();
+        std::thread::sleep(std::time::Duration::from_millis(10));
+    }
+
+    // After completion, should not be pending
+    assert!(!state.is_pending());
+}
+
+#[test]
+fn test_cancel_in_flight_clears_state() {
+    let json = r#"{"test": true}"#;
+    let mut state = QueryState::new(json.to_string());
+
+    state.execute_async(".");
+    assert!(state.is_pending());
+    assert!(state.in_flight_request_id.is_some());
+    assert!(state.current_cancel_token.is_some());
+
+    state.cancel_in_flight();
+
+    assert!(!state.is_pending());
+    assert!(state.in_flight_request_id.is_none());
+    assert!(state.current_cancel_token.is_none());
+}
+
+#[test]
+fn test_async_execution_updates_base_query_for_suggestions() {
+    let json = r#"{"services": [{"name": "svc1"}, {"name": "svc2"}]}"#;
+    let mut state = QueryState::new(json.to_string());
+
+    // Execute async query
+    state.execute_async(".services");
+
+    // Wait for completion
+    let timeout = std::time::Instant::now();
+    while state.is_pending() && timeout.elapsed() < std::time::Duration::from_secs(2) {
+        state.poll_response();
+        std::thread::sleep(std::time::Duration::from_millis(10));
+    }
+
+    // base_query_for_suggestions should be updated
+    assert_eq!(
+        state.base_query_for_suggestions,
+        Some(".services".to_string()),
+        "Async execution should update base_query_for_suggestions"
+    );
+
+    // Parsed result should be available for autocomplete
+    assert!(
+        state.last_successful_result_parsed.is_some(),
+        "Async execution should cache parsed result"
+    );
+}
+
+#[test]
+fn test_async_execution_handles_errors_correctly() {
+    let json = r#"{"test": true}"#;
+    let mut state = QueryState::new(json.to_string());
+
+    // Execute async query with invalid syntax
+    state.execute_async(".invalid syntax [");
+
+    // Wait for completion
+    let timeout = std::time::Instant::now();
+    while state.is_pending() && timeout.elapsed() < std::time::Duration::from_secs(2) {
+        state.poll_response();
+        std::thread::sleep(std::time::Duration::from_millis(10));
+    }
+
+    // Should have error result
+    assert!(state.result.is_err());
+    assert!(!state.is_pending());
+}
+
+// ============================================================================
 // ResultType Detection Tests
 // ============================================================================
 
