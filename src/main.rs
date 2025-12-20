@@ -34,7 +34,7 @@ mod widgets;
 
 use app::{App, OutputMode};
 use error::JiqError;
-use input::{FileLoader, reader::InputReader};
+use input::FileLoader;
 use query::executor::JqExecutor;
 
 /// Interactive JSON query tool
@@ -95,24 +95,17 @@ fn main() -> Result<()> {
     // Initialize terminal (handles raw mode, alternate screen, bracketed paste)
     let terminal = init_terminal()?;
 
-    // Create App with deferred loading for file input or synchronous loading for stdin
-    let app = if let Some(path) = args.input {
-        // File input: use deferred loading for instant UI
-        let loader = FileLoader::spawn_load(path);
-        let app = App::new_with_loader(loader, &config_result.config);
-        run(terminal, app, config_result)?
+    // Create App with deferred loading for both file and stdin input
+    let loader = if let Some(path) = args.input {
+        // File input: load from file in background
+        FileLoader::spawn_load(path)
     } else {
-        // Stdin input: use synchronous loading
-        let json_input = match InputReader::read_json(None) {
-            Ok(json) => json,
-            Err(e) => {
-                eprintln!("Error reading JSON: {:?}", e);
-                return Err(e.into());
-            }
-        };
-        let app = App::new(json_input.clone(), &config_result.config);
-        run(terminal, app, config_result)?
+        // Stdin input: load from stdin in background
+        FileLoader::spawn_load_stdin()
     };
+
+    let app = App::new_with_loader(loader, &config_result.config);
+    let app = run(terminal, app, config_result)?;
 
     // Restore terminal (cleanup raw mode, alternate screen, bracketed paste)
     restore_terminal()?;

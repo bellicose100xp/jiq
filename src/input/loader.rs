@@ -44,6 +44,24 @@ impl FileLoader {
         }
     }
 
+    /// Spawn a background thread to load from stdin
+    ///
+    /// Creates a background thread that reads from stdin, validates JSON,
+    /// and sends the result back via a channel.
+    pub fn spawn_load_stdin() -> Self {
+        let (tx, rx) = channel();
+
+        std::thread::spawn(move || {
+            let result = load_stdin_sync();
+            let _ = tx.send(result);
+        });
+
+        Self {
+            state: LoadingState::Loading,
+            rx: Some(rx),
+        }
+    }
+
     /// Poll for loading completion (non-blocking)
     ///
     /// Checks the channel for results without blocking. Returns None if still loading,
@@ -99,6 +117,22 @@ fn load_file_sync(path: &Path) -> Result<String, JiqError> {
         .map_err(|e| JiqError::InvalidJson(e.to_string()))?;
 
     Ok(contents)
+}
+
+/// Synchronous stdin loading (runs in background thread)
+///
+/// Reads from stdin and validates that it contains valid JSON.
+fn load_stdin_sync() -> Result<String, JiqError> {
+    use std::io::{self, Read};
+
+    let mut buffer = String::new();
+    io::stdin().read_to_string(&mut buffer)?;
+
+    // Validate JSON
+    serde_json::from_str::<serde_json::Value>(&buffer)
+        .map_err(|e| JiqError::InvalidJson(e.to_string()))?;
+
+    Ok(buffer)
 }
 
 #[cfg(test)]
