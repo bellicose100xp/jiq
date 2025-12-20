@@ -7,6 +7,52 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.5.0] - 2025-12-20
+
+### Performance
+- **Async query execution infrastructure**
+  - Query worker with background thread for non-blocking execution
+  - Automatic cancellation of stale queries with request ID tracking
+  - Eliminates UI freezing during query execution
+  - Proper pipe handling prevents deadlocks on large outputs (>64KB)
+- **Arc-based optimizations for large file handling**
+  - Arc<String> for JSON input (O(1) cloning vs O(n))
+  - Arc<String> for cached results (eliminates copy on every keystroke)
+  - Cached parsed JSON (Arc<Value>) for autocomplete
+  - Eliminates O(n) string copies and JSON parsing on every keystroke
+- **Deferred/lazy loading for instant UI**
+  - Background file loading with progress indication
+  - Instant UI startup even with very large input files
+  - Responsive interaction during file loading
+- **Improved debouncing**
+  - Increased debounce delay from 50ms to 150ms for better performance
+  - Reduces query execution spam during fast typing
+
+### Fixed
+- **AI context matching**
+  - AI suggestions now correctly match executed queries
+  - Fixed race condition where AI received mismatched query/result pairs
+  - poll_response() now returns the completed query for accurate context
+  - Query field added to QueryResponse::Error for consistency
+- **Autocomplete improvements**
+  - Unified async execution eliminates sync/async race conditions
+  - No more stale autocomplete results
+  - Paste operation now uses async execution correctly
+  - Base query context properly updated via async path
+
+### Added
+- Comprehensive test coverage with 24+ new tests
+  - Worker thread tests for concurrent query handling
+  - Async execution lifecycle tests
+  - Parsed result caching tests
+  - Request ID filtering and cancellation tests
+  - Coverage for query-in-response and AI context correctness
+
+### Changed
+- Removed dead code and unused imports
+- Fixed 11 clippy collapsible_if warnings
+- Cleaned up implementation comments for better code clarity
+
 ## [3.4.0] - 2025-12-18
 
 ### Changed
