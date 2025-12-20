@@ -1,6 +1,7 @@
 use crate::autocomplete::autocomplete_state::{JsonFieldType, Suggestion, SuggestionType};
 use crate::query::ResultType;
 use serde_json::Value;
+use std::sync::Arc;
 
 pub struct ResultAnalyzer;
 
@@ -25,6 +26,21 @@ impl ResultAnalyzer {
         }
     }
 
+    /// Analyze pre-parsed JSON value for field suggestions
+    ///
+    /// This is the optimized path that avoids re-parsing on every keystroke.
+    /// Critical for large files (127MB+) where parsing takes 50-100ms.
+    pub fn analyze_parsed_result(
+        value: &Arc<Value>,
+        result_type: ResultType,
+        needs_leading_dot: bool,
+    ) -> Vec<Suggestion> {
+        Self::extract_suggestions_for_type(value, result_type, needs_leading_dot)
+    }
+
+    /// Analyze result string by parsing it first (legacy path for compatibility)
+    ///
+    /// WARNING: This parses JSON on every call. Prefer analyze_parsed_result() for performance.
     pub fn analyze_result(
         result: &str,
         result_type: ResultType,

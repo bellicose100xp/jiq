@@ -1,3 +1,4 @@
+use std::sync::Arc;
 use std::sync::mpsc::{Receiver, Sender, channel};
 use tokio_util::sync::CancellationToken;
 
@@ -48,9 +49,16 @@ pub enum CharType {
 pub struct QueryState {
     pub executor: JqExecutor,
     pub result: Result<String, String>,
-    pub last_successful_result: Option<String>,
+    /// Cached last successful result with ANSI colors (for rendering on error)
+    /// Uses Arc to make cloning cheap - autocomplete clones this on every keystroke!
+    pub last_successful_result: Option<Arc<String>>,
     /// Unformatted result without ANSI codes (for autosuggestion analysis)
-    pub last_successful_result_unformatted: Option<String>,
+    /// Uses Arc to make cloning cheap - autocomplete clones this on every keystroke!
+    pub last_successful_result_unformatted: Option<Arc<String>>,
+    /// Parsed JSON value of last successful result (for autocomplete field extraction)
+    /// Uses Arc to avoid re-parsing 127MB JSON on every keystroke!
+    /// This is THE critical optimization for large files.
+    pub last_successful_result_parsed: Option<Arc<Value>>,
     /// Base query that produced the last successful result (for suggestions)
     pub base_query_for_suggestions: Option<String>,
     /// Type of the last successful result (for type-aware suggestions)
@@ -76,15 +84,21 @@ impl QueryState {
     pub fn new(json_input: String) -> Self {
         let executor = JqExecutor::new(json_input.clone());
         let result = executor.execute(".");
-        let last_successful_result = result.as_ref().ok().cloned();
+        let last_successful_result = result.as_ref().ok().map(|s| Arc::new(s.clone()));
         let last_successful_result_unformatted = last_successful_result
             .as_ref()
-            .map(|s| Self::strip_ansi_codes(s));
+            .map(|s| Arc::new(Self::strip_ansi_codes(s)));
 
         let base_query_for_suggestions = Some(".".to_string());
         let base_type_for_suggestions = last_successful_result_unformatted
             .as_ref()
             .map(|s| Self::detect_result_type(s));
+
+        // Parse result once for autocomplete (avoid re-parsing on every keystroke)
+        let last_successful_result_parsed = last_successful_result_unformatted
+            .as_ref()
+            .and_then(|s| Self::parse_first_value(s))
+            .map(Arc::new);
 
         // Create worker channels
         let (request_tx, request_rx) = channel();
@@ -98,6 +112,7 @@ impl QueryState {
             result,
             last_successful_result,
             last_successful_result_unformatted,
+            last_successful_result_parsed,
             base_query_for_suggestions,
             base_type_for_suggestions,
             request_tx: Some(request_tx),
@@ -113,32 +128,51 @@ impl QueryState {
     pub fn execute(&mut self, query: &str) {
         self.result = self.executor.execute(query);
         if let Ok(result) = &self.result {
-            // Only cache non-null results for autosuggestions
-            // When typing partial queries like ".s", jq returns "null" (potentially with ANSI codes)
-            // For array iterations, may return multiple nulls: "null\nnull\nnull\n"
-            // We want to keep the last meaningful result for suggestions
-            let unformatted = Self::strip_ansi_codes(result);
+            self.update_successful_result(result.clone(), query);
+        }
+    }
 
-            // Check if result contains only nulls and whitespace
-            let is_only_nulls = unformatted
-                .lines()
-                .filter(|line| !line.trim().is_empty())
-                .all(|line| line.trim() == "null");
+    /// Update cached results for autosuggestions
+    ///
+    /// Extracts this common logic used by both sync execute() and async process_response().
+    /// Only caches non-null results to avoid polluting suggestions with partial queries.
+    fn update_successful_result(&mut self, output: String, query: &str) {
+        // When typing partial queries like ".s", jq returns "null" (potentially with ANSI codes)
+        // For array iterations, may return multiple nulls: "null\nnull\nnull\n"
+        // We want to keep the last meaningful result for suggestions
+        let unformatted = Self::strip_ansi_codes(&output);
 
-            if !is_only_nulls {
-                self.last_successful_result = Some(result.clone());
-                self.last_successful_result_unformatted = Some(unformatted.clone());
+        // Check if result contains only nulls and whitespace
+        let is_only_nulls = unformatted
+            .lines()
+            .filter(|line| !line.trim().is_empty())
+            .all(|line| line.trim() == "null");
 
-                // Cache base query and result type for type-aware suggestions
-                // Trim trailing whitespace and incomplete operators/dots
-                // Examples to strip:
-                //   ".services | ." → ".services"
-                //   ".services[]." → ".services[]"
-                //   ".user " → ".user"
-                let base_query = Self::normalize_base_query(query);
-                self.base_query_for_suggestions = Some(base_query);
-                self.base_type_for_suggestions = Some(Self::detect_result_type(&unformatted));
+        if !is_only_nulls {
+            self.last_successful_result = Some(Arc::new(output));
+            self.last_successful_result_unformatted = Some(Arc::new(unformatted.clone()));
+
+            // Parse result once for autocomplete (critical optimization for large files!)
+            // Without this, autocomplete re-parses 127MB JSON on EVERY keystroke
+            // For destructured results (multiple JSON values), parse just the first one
+            self.last_successful_result_parsed =
+                Self::parse_first_value(&unformatted).map(Arc::new);
+
+            if self.last_successful_result_parsed.is_none() {
+                log::debug!("Failed to parse result for autocomplete caching");
+            } else {
+                log::debug!("Successfully cached parsed result for autocomplete");
             }
+
+            // Cache base query and result type for type-aware suggestions
+            // Trim trailing whitespace and incomplete operators/dots
+            // Examples to strip:
+            //   ".services | ." → ".services"
+            //   ".services[]." → ".services[]"
+            //   ".user " → ".user"
+            let base_query = Self::normalize_base_query(query);
+            self.base_query_for_suggestions = Some(base_query);
+            self.base_type_for_suggestions = Some(Self::detect_result_type(&unformatted));
         }
     }
 
@@ -260,7 +294,11 @@ impl QueryState {
         let current_request_id = self.in_flight_request_id;
 
         match response {
-            QueryResponse::Success { output, request_id } => {
+            QueryResponse::Success {
+                output,
+                query,
+                request_id,
+            } => {
                 log::debug!("Processing Success response for request {}", request_id);
                 // Ignore stale responses
                 if Some(request_id) != current_request_id {
@@ -277,18 +315,8 @@ impl QueryState {
                 self.current_cancel_token = None;
                 self.result = Ok(output.clone());
 
-                // Cache result for autosuggestions (same logic as sync execute)
-                let unformatted = Self::strip_ansi_codes(&output);
-                let is_only_nulls = unformatted
-                    .lines()
-                    .filter(|line| !line.trim().is_empty())
-                    .all(|line| line.trim() == "null");
-
-                if !is_only_nulls {
-                    self.last_successful_result = Some(output);
-                    self.last_successful_result_unformatted = Some(unformatted.clone());
-                    self.base_type_for_suggestions = Some(Self::detect_result_type(&unformatted));
-                }
+                // Cache result for autosuggestions (DRY - same logic as sync execute)
+                self.update_successful_result(output, &query);
 
                 true
             }
@@ -421,6 +449,26 @@ impl QueryState {
         }
     }
 
+    /// Parse first JSON value from result text
+    ///
+    /// Handles both single values and destructured output (multiple JSON values).
+    /// For destructured results like `{"a":1}\n{"b":2}`, parses just the first value.
+    fn parse_first_value(text: &str) -> Option<Value> {
+        let text = text.trim();
+        if text.is_empty() {
+            return None;
+        }
+
+        // Try to parse the entire text first (common case: single value)
+        if let Ok(value) = serde_json::from_str(text) {
+            return Some(value);
+        }
+
+        // Fallback: use streaming parser to get first value (handles destructured output)
+        let mut deserializer = serde_json::Deserializer::from_str(text).into_iter();
+        deserializer.next().and_then(|r| r.ok())
+    }
+
     /// Strip ANSI escape codes from a string
     ///
     /// jq outputs colored results with ANSI codes like:
@@ -468,7 +516,11 @@ impl QueryState {
     pub fn max_line_width(&self) -> u16 {
         let content = match &self.result {
             Ok(result) => result,
-            Err(_) => self.last_successful_result.as_deref().unwrap_or(""),
+            Err(_) => self
+                .last_successful_result
+                .as_deref()
+                .map(|s| s.as_ref())
+                .unwrap_or(""),
         };
         content
             .lines()

@@ -1,5 +1,6 @@
 use std::io::Write;
 use std::process::{Command, Stdio};
+use std::sync::Arc;
 use std::thread::sleep;
 use std::time::Duration;
 
@@ -8,14 +9,21 @@ use tokio_util::sync::CancellationToken;
 use crate::query::worker::types::QueryError;
 
 /// Execute jq queries against JSON input
+///
+/// Uses Arc<String> to enable cheap cloning when spawning worker threads.
+/// Without Arc, each query execution would copy the entire JSON input (O(n)),
+/// causing typing lag on large files. With Arc, cloning is just a reference
+/// count increment (O(1)).
 pub struct JqExecutor {
-    json_input: String,
+    json_input: Arc<String>,
 }
 
 impl JqExecutor {
     /// Create a new JQ executor with JSON input
     pub fn new(json_input: String) -> Self {
-        Self { json_input }
+        Self {
+            json_input: Arc::new(json_input),
+        }
     }
 
     /// Get a reference to the JSON input
@@ -100,7 +108,8 @@ impl JqExecutor {
 
         // Spawn thread to write JSON to stdin
         // This prevents deadlock if JSON is large (>64KB) and jq is slow to read
-        let json_input = self.json_input.clone();
+        // Arc::clone is O(1) - just increments reference count, no data copying
+        let json_input = Arc::clone(&self.json_input);
         if let Some(stdin) = child.stdin.take() {
             std::thread::spawn(move || {
                 use std::io::Write;

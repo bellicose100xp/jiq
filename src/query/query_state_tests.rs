@@ -56,7 +56,7 @@ fn test_line_count_uses_cached_on_error() {
 
     let valid_result: String = (0..30).map(|i| format!("line{}\n", i)).collect();
     state.result = Ok(valid_result.clone());
-    state.last_successful_result = Some(valid_result);
+    state.last_successful_result = Some(Arc::new(valid_result));
 
     // Now set an error
     state.result = Err("syntax error".to_string());

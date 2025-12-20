@@ -116,11 +116,13 @@ fn handle_request(
 
     // Execute query with cancellation support
     log::debug!("Executing query {} with jq", request.request_id);
+    let query = request.query.clone();
     match executor.execute_with_cancel(&request.query, &request.cancel_token) {
         Ok(output) => {
             log::debug!("Query {} succeeded, sending response", request.request_id);
             let _ = response_tx.send(QueryResponse::Success {
                 output,
+                query,
                 request_id: request.request_id,
             });
         }

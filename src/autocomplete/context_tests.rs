@@ -2,6 +2,8 @@
 
 use super::*;
 use proptest::prelude::*;
+use serde_json::Value;
+use std::sync::Arc;
 
 fn tracker_for(query: &str) -> BraceTracker {
     let mut tracker = BraceTracker::new();
@@ -387,10 +389,11 @@ proptest! {
         let json_result = format!("{{{}}}", json_fields.join(", "));
 
         // Get suggestions
+        let parsed = serde_json::from_str::<Value>(&json_result).ok().map(Arc::new);
         let suggestions = get_suggestions(
             &query,
             query.len(),
-            Some(&json_result),
+            parsed,
             Some(ResultType::Object),
             &tracker,
         );
@@ -430,10 +433,11 @@ proptest! {
         let json_result = format!("{{{}}}", json_fields.join(", "));
 
         // Get suggestions
+        let parsed = serde_json::from_str::<Value>(&json_result).ok().map(Arc::new);
         let suggestions = get_suggestions(
             &query,
             query.len(),
-            Some(&json_result),
+            parsed,
             Some(ResultType::Object),
             &tracker,
         );

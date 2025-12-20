@@ -15,14 +15,14 @@ pub fn update_suggestions_from_app(app: &mut App) {
 
     let query = app.input.query().to_string();
     let cursor_pos = app.input.textarea.cursor().1; // Column position
-    let result = query_state.last_successful_result_unformatted.clone();
+    let result_parsed = query_state.last_successful_result_parsed.clone();
     let result_type = query_state.base_type_for_suggestions.clone();
 
     update_suggestions(
         &mut app.autocomplete,
         &query,
         cursor_pos,
-        result.as_deref(),
+        result_parsed,
         result_type,
         &app.input.brace_tracker,
     );

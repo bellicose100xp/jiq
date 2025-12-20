@@ -6,3 +6,4 @@
 # everyone who runs the test benefits from these saved cases.
 cc fb2493bc123007df467f25fef0fae1419be073b6d410d2c5cdd25358382f2807 # shrinks to model_name = "0a A0྾🌀Σ0೦￼ꟕ®𐺰A\u{11c92} ¡𐺀￼", popup_width = 54
 cc e020cea4ff8c769fe237a1d17cce4686bbb24b77e08ec16bd0765a24387c1304 # shrinks to model_name = "aA 𑣿ਫ਼ A ড়🌀A  0𐖳0 aAAA𐬀Aぁ\u{8e3}𐤿", popup_width = 80
+cc a25ffef9bc13cd55a4b4fe9cb5c6e2486e71a66d0b178588254d6eef232fecee # shrinks to model_name = "...", popup_width = 40

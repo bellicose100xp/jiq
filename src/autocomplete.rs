@@ -23,6 +23,8 @@ pub use context::{
 pub use insertion::insert_suggestion_from_app;
 
 use crate::query::ResultType;
+use serde_json::Value;
+use std::sync::Arc;
 
 pub const MIN_CHARS_FOR_AUTOCOMPLETE: usize = 1;
 
@@ -30,7 +32,7 @@ pub fn update_suggestions(
     autocomplete: &mut AutocompleteState,
     query: &str,
     cursor_pos: usize,
-    result: Option<&str>,
+    result_parsed: Option<Arc<Value>>,
     result_type: Option<ResultType>,
     brace_tracker: &BraceTracker,
 ) {
@@ -39,6 +41,6 @@ pub fn update_suggestions(
         return;
     }
 
-    let suggestions = get_suggestions(query, cursor_pos, result, result_type, brace_tracker);
+    let suggestions = get_suggestions(query, cursor_pos, result_parsed, result_type, brace_tracker);
     autocomplete.update_suggestions(suggestions);
 }

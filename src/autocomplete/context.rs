@@ -3,6 +3,8 @@ use super::brace_tracker::BraceTracker;
 use super::jq_functions::filter_builtins;
 use super::result_analyzer::ResultAnalyzer;
 use crate::query::ResultType;
+use serde_json::Value;
+use std::sync::Arc;
 
 fn filter_suggestions_by_partial(suggestions: Vec<Suggestion>, partial: &str) -> Vec<Suggestion> {
     let partial_lower = partial.to_lowercase();
@@ -23,7 +25,7 @@ pub enum SuggestionContext {
 pub fn get_suggestions(
     query: &str,
     cursor_pos: usize,
-    result: Option<&str>,
+    result_parsed: Option<Arc<Value>>,
     result_type: Option<ResultType>,
     brace_tracker: &BraceTracker,
 ) -> Vec<Suggestion> {
@@ -65,8 +67,8 @@ pub fn get_suggestions(
                     | None
             ) || has_whitespace_before_dot;
 
-            let suggestions = if let (Some(result), Some(typ)) = (result, result_type) {
-                ResultAnalyzer::analyze_result(result, typ, needs_leading_dot)
+            let suggestions = if let (Some(result), Some(typ)) = (result_parsed, result_type) {
+                ResultAnalyzer::analyze_parsed_result(&result, typ, needs_leading_dot)
             } else {
                 Vec::new()
             };
@@ -89,8 +91,8 @@ pub fn get_suggestions(
                 return Vec::new();
             }
 
-            let suggestions = if let (Some(result), Some(typ)) = (result, result_type) {
-                ResultAnalyzer::analyze_result(result, typ, false)
+            let suggestions = if let (Some(result), Some(typ)) = (result_parsed, result_type) {
+                ResultAnalyzer::analyze_parsed_result(&result, typ, false)
             } else {
                 Vec::new()
             };

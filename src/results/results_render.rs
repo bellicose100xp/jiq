@@ -150,7 +150,7 @@ pub fn render_pane(app: &mut App, frame: &mut Frame, area: Rect) {
                     .as_bytes()
                     .to_vec()
                     .into_text()
-                    .unwrap_or_else(|_| Text::raw(last_result));
+                    .unwrap_or_else(|_| Text::raw(last_result.as_ref()));
                 let final_text = if app.search.is_visible() && !app.search.matches().is_empty() {
                     apply_search_highlights(
                         colored_text,

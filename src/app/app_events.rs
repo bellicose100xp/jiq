@@ -178,7 +178,10 @@ impl App {
                         crate::ai::context::ContextParams {
                             input_schema: self.input_json_schema.as_deref(),
                             base_query: query_state.base_query_for_suggestions.as_deref(),
-                            base_query_result: query_state.last_successful_result.as_deref(),
+                            base_query_result: query_state
+                                .last_successful_result
+                                .as_deref()
+                                .map(|s| s.as_ref()),
                         },
                     );
                 }

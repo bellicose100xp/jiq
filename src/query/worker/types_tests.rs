@@ -37,11 +37,17 @@ fn test_query_response_variants() {
     // Test Success variant
     let response = QueryResponse::Success {
         output: "result".to_string(),
+        query: ".foo".to_string(),
         request_id: 1,
     };
     match response {
-        QueryResponse::Success { output, request_id } => {
+        QueryResponse::Success {
+            output,
+            query,
+            request_id,
+        } => {
             assert_eq!(output, "result");
+            assert_eq!(query, ".foo");
             assert_eq!(request_id, 1);
         }
         _ => panic!("Expected Success variant"),

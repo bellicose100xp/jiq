@@ -23,6 +23,8 @@ pub enum QueryResponse {
     Success {
         /// Output from jq with ANSI colors
         output: String,
+        /// The query that produced this output (for updating base_query_for_suggestions)
+        query: String,
         /// Request ID this response belongs to
         request_id: u64,
     },

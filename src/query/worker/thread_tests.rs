@@ -26,8 +26,8 @@ fn test_worker_spawns_successfully() {
 
     // Should get a success response
     match response_rx.recv_timeout(std::time::Duration::from_secs(2)) {
-        Ok(QueryResponse::Success { .. }) => {
-            // Success
+        Ok(QueryResponse::Success { query, .. }) => {
+            assert_eq!(query, ".");
         }
         Ok(other) => panic!("Expected Success, got {:?}", other),
         Err(e) => panic!("Timeout waiting for response: {}", e),

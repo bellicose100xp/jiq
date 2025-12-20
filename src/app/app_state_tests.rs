@@ -3,6 +3,7 @@
 use super::*;
 use crate::test_utils::test_helpers::test_app;
 use proptest::prelude::*;
+use std::sync::Arc;
 
 #[test]
 fn test_app_initialization() {
@@ -138,7 +139,7 @@ fn test_line_count_uses_last_result_on_error() {
     let valid_result: String = (0..50).map(|i| format!("line{}\n", i)).collect();
     let query_state = app.query.as_mut().unwrap();
     query_state.result = Ok(valid_result.clone());
-    query_state.last_successful_result = Some(valid_result);
+    query_state.last_successful_result = Some(Arc::new(valid_result));
 
     assert_eq!(app.results_line_count_u32(), 50);
 
