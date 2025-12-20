@@ -16,7 +16,7 @@ mod query_execution_tests;
 pub(crate) use super::insertion::*;
 pub(crate) use crate::autocomplete::autocomplete_state::{Suggestion, SuggestionType};
 pub(crate) use crate::query::ResultType;
-pub(crate) use crate::test_utils::test_helpers::test_app;
+pub(crate) use crate::test_utils::test_helpers::{execute_query_and_wait, test_app};
 pub(crate) use tui_textarea::TextArea;
 
 /// Helper to create a test environment for insertion

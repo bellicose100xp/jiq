@@ -259,7 +259,10 @@ fn test_array_suggestion_after_pipe_exact_user_flow() {
     // Validate: should now be ".services"
     assert_eq!(app.input.query(), ".services");
 
-    // Step 3: Verify base is now cached after successful execution
+    // Step 3: Wait for async execution to complete (autocomplete now uses debouncer)
+    execute_query_and_wait(&mut app);
+
+    // Verify base is now cached after successful execution
     assert_eq!(
         app.query.as_ref().unwrap().base_query_for_suggestions,
         Some(".services".to_string()),

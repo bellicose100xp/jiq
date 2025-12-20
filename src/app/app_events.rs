@@ -46,6 +46,8 @@ impl App {
             .brace_tracker
             .rebuild(self.input.textarea.lines()[0].as_ref());
 
+        // Execute immediately for instant feedback (like old behavior)
+        // Uses async execution to prevent race conditions
         editor::editor_events::execute_query(self);
 
         self.update_autocomplete();

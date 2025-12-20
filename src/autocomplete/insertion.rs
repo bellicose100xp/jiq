@@ -28,9 +28,8 @@ mod query_manipulation;
 
 /// Insert an autocomplete suggestion from App context
 ///
-/// This function delegates to the existing `insert_suggestion()` function and
-/// updates related app state (hide autocomplete, reset scroll, clear error overlay).
-/// This pattern allows the App to delegate feature-specific logic to the autocomplete module.
+/// Executes the new query immediately (no debounce) for instant feedback.
+/// Uses async execution to prevent race conditions with ongoing queries.
 ///
 /// # Arguments
 /// * `app` - Mutable reference to the App struct
@@ -42,32 +41,21 @@ pub fn insert_suggestion_from_app(app: &mut App, suggestion: &Suggestion) {
         None => return,
     };
 
-    // Delegate to existing insert_suggestion function
+    // Delegate to existing insert_suggestion function (modifies textarea only)
     insert_suggestion(&mut app.input.textarea, query_state, suggestion);
 
     // Hide autocomplete and reset scroll/error state
     app.autocomplete.hide();
     app.results_scroll.reset();
-    app.error_overlay_visible = false; // Auto-hide error overlay on query change
+    app.error_overlay_visible = false;
 
-    // Handle AI state based on query result
-    let cursor_pos = app.input.textarea.cursor().1;
+    // Execute immediately (no debounce delay for autocomplete)
+    // This provides instant feedback like the old sync execution
     let query = app.input.textarea.lines()[0].as_ref();
-    crate::ai::ai_events::handle_query_result(
-        &mut app.ai,
-        &query_state.result,
-        query,
-        cursor_pos,
-        query_state.executor.json_input(),
-        crate::ai::context::ContextParams {
-            input_schema: app.input_json_schema.as_deref(),
-            base_query: query_state.base_query_for_suggestions.as_deref(),
-            base_query_result: query_state
-                .last_successful_result
-                .as_deref()
-                .map(|s| s.as_ref()),
-        },
-    );
+    app.input.brace_tracker.rebuild(query);
+    query_state.execute_async(query);
+
+    // Note: AI update will happen in poll_query_response() when result arrives
 }
 
 /// Insert an autocomplete suggestion at the current cursor position
@@ -147,8 +135,7 @@ pub fn insert_suggestion(
         let target_pos = replacement_start + insert_text.len();
         move_cursor_to_column(textarea, target_pos);
 
-        // Execute query
-        execute_query_and_update(textarea, query_state);
+        // Query execution will be triggered by debouncer (scheduled in insert_suggestion_from_app)
         return;
     }
 
@@ -180,8 +167,7 @@ pub fn insert_suggestion(
         let target_pos = replacement_start + suggestion_text.len();
         move_cursor_to_column(textarea, target_pos);
 
-        // Execute query
-        execute_query_and_update(textarea, query_state);
+        // Query execution will be triggered by debouncer (scheduled in insert_suggestion_from_app)
         return;
     }
 
@@ -361,6 +347,5 @@ pub fn insert_suggestion(
     let target_pos = new_query.len();
     move_cursor_to_column(textarea, target_pos);
 
-    // Execute query
-    execute_query_and_update(textarea, query_state);
+    // Query execution will be triggered by debouncer (scheduled in insert_suggestion_from_app)
 }
