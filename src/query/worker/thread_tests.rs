@@ -197,3 +197,37 @@ fn test_worker_response_includes_original_query() {
         Err(e) => panic!("Timeout: {}", e),
     }
 }
+
+#[test]
+fn test_worker_error_response_includes_original_query() {
+    let json_input = r#"{"test": "value"}"#.to_string();
+    let (request_tx, request_rx) = channel();
+    let (response_tx, response_rx) = channel();
+
+    spawn_worker(json_input, request_rx, response_tx);
+
+    let original_query = ".invalid syntax [";
+    let cancel_token = CancellationToken::new();
+    request_tx
+        .send(QueryRequest {
+            query: original_query.to_string(),
+            request_id: 99,
+            cancel_token,
+        })
+        .unwrap();
+
+    // Error response should include the original query
+    match response_rx.recv_timeout(std::time::Duration::from_secs(2)) {
+        Ok(QueryResponse::Error {
+            query, request_id, ..
+        }) => {
+            assert_eq!(
+                query, original_query,
+                "Error response should include original query"
+            );
+            assert_eq!(request_id, 99);
+        }
+        Ok(other) => panic!("Expected Error, got {:?}", other),
+        Err(e) => panic!("Timeout: {}", e),
+    }
+}

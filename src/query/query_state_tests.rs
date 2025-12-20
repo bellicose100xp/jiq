@@ -507,6 +507,61 @@ fn test_async_execution_handles_errors_correctly() {
     assert!(!state.is_pending());
 }
 
+#[test]
+fn test_poll_response_returns_completed_query() {
+    let json = r#"{"name": "test", "value": 42}"#;
+    let mut state = QueryState::new(json.to_string());
+
+    // Execute async query
+    state.execute_async(".name");
+
+    // Poll for result
+    let timeout = std::time::Instant::now();
+    let mut completed_query = None;
+    while timeout.elapsed() < std::time::Duration::from_secs(2) {
+        if let Some(query) = state.poll_response() {
+            completed_query = Some(query);
+            break;
+        }
+        std::thread::sleep(std::time::Duration::from_millis(10));
+    }
+
+    // Should return the query that was executed
+    assert_eq!(
+        completed_query,
+        Some(".name".to_string()),
+        "poll_response should return the query that produced the result"
+    );
+}
+
+#[test]
+fn test_poll_response_returns_query_for_errors() {
+    let json = r#"{"test": true}"#;
+    let mut state = QueryState::new(json.to_string());
+
+    let error_query = ".invalid syntax [";
+    state.execute_async(error_query);
+
+    // Poll for error result
+    let timeout = std::time::Instant::now();
+    let mut completed_query = None;
+    while timeout.elapsed() < std::time::Duration::from_secs(2) {
+        if let Some(query) = state.poll_response() {
+            completed_query = Some(query);
+            break;
+        }
+        std::thread::sleep(std::time::Duration::from_millis(10));
+    }
+
+    // Should return the query that produced the error
+    assert_eq!(
+        completed_query,
+        Some(error_query.to_string()),
+        "poll_response should return query even for errors (for AI context)"
+    );
+    assert!(state.result.is_err());
+}
+
 // ============================================================================
 // ResultType Detection Tests
 // ============================================================================
