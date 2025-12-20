@@ -45,6 +45,12 @@ pub fn render_pane(app: &mut App, frame: &mut Frame, area: Rect) {
         }
     };
 
+    // Show processing indicator if query is pending
+    if query_state.is_pending() {
+        render_processing_indicator(frame, results_area);
+        return;
+    }
+
     let border_color = if app.focus == crate::app::Focus::ResultsPane {
         Color::Cyan
     } else {
@@ -203,6 +209,20 @@ fn render_error_message(frame: &mut Frame, area: Rect, message: &str) {
     let paragraph = Paragraph::new(message)
         .block(block)
         .style(Style::default().fg(Color::Red));
+
+    frame.render_widget(paragraph, area);
+}
+
+fn render_processing_indicator(frame: &mut Frame, area: Rect) {
+    let text = "Processing query...";
+    let block = Block::default()
+        .borders(Borders::ALL)
+        .title(" Query ")
+        .border_style(Style::default().fg(Color::Yellow));
+
+    let paragraph = Paragraph::new(text)
+        .block(block)
+        .style(Style::default().fg(Color::Yellow));
 
     frame.render_widget(paragraph, area);
 }

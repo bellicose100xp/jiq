@@ -20,6 +20,9 @@ impl App {
             self.debouncer.mark_executed();
         }
 
+        // Poll for query responses
+        self.poll_query_response();
+
         crate::ai::ai_events::poll_response_channel(&mut self.ai);
 
         if event::poll(EVENT_POLL_TIMEOUT)? {
@@ -154,6 +157,33 @@ impl App {
         };
         self.history.open(initial_query);
         self.autocomplete.hide();
+    }
+
+    /// Poll for query responses and update state
+    ///
+    /// Checks for completed async queries and triggers AI updates when needed.
+    fn poll_query_response(&mut self) {
+        if let Some(query_state) = &mut self.query {
+            if query_state.poll_response() {
+                // State changed - trigger AI update if visible
+                if self.ai.visible {
+                    let query = self.input.query().to_string();
+                    let cursor_pos = self.input.textarea.cursor().1;
+                    crate::ai::ai_events::handle_query_result(
+                        &mut self.ai,
+                        &query_state.result,
+                        &query,
+                        cursor_pos,
+                        query_state.executor.json_input(),
+                        crate::ai::context::ContextParams {
+                            input_schema: self.input_json_schema.as_deref(),
+                            base_query: query_state.base_query_for_suggestions.as_deref(),
+                            base_query_result: query_state.last_successful_result.as_deref(),
+                        },
+                    );
+                }
+            }
+        }
     }
 }
 

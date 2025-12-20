@@ -82,6 +82,9 @@ impl JqExecutor {
         query: &str,
         cancel_token: &CancellationToken,
     ) -> Result<String, QueryError> {
+        use std::io::Read;
+        use std::sync::mpsc::channel;
+
         // Empty query defaults to identity filter
         let query = if query.trim().is_empty() { "." } else { query };
 
@@ -95,16 +98,42 @@ impl JqExecutor {
             .spawn()
             .map_err(|e| QueryError::SpawnFailed(e.to_string()))?;
 
-        // Write JSON to jq's stdin
-        if let Some(mut stdin) = child.stdin.take() {
-            stdin
-                .write_all(self.json_input.as_bytes())
-                .map_err(|e| QueryError::StdinWriteFailed(e.to_string()))?;
+        // Spawn thread to write JSON to stdin
+        // This prevents deadlock if JSON is large (>64KB) and jq is slow to read
+        let json_input = self.json_input.clone();
+        if let Some(stdin) = child.stdin.take() {
+            std::thread::spawn(move || {
+                use std::io::Write;
+                let mut stdin = stdin;
+                let _ = stdin.write_all(json_input.as_bytes());
+                // stdin is dropped here, closing the pipe
+            });
+        }
+
+        // Spawn threads to read stdout/stderr concurrently
+        // This prevents pipe buffer deadlock on large outputs
+        let (stdout_tx, stdout_rx) = channel();
+        let (stderr_tx, stderr_rx) = channel();
+
+        if let Some(mut stdout) = child.stdout.take() {
+            std::thread::spawn(move || {
+                let mut buffer = Vec::new();
+                let _ = stdout.read_to_end(&mut buffer);
+                let _ = stdout_tx.send(buffer);
+            });
+        }
+
+        if let Some(mut stderr) = child.stderr.take() {
+            std::thread::spawn(move || {
+                let mut buffer = Vec::new();
+                let _ = stderr.read_to_end(&mut buffer);
+                let _ = stderr_tx.send(buffer);
+            });
         }
 
         // Poll for completion or cancellation
         const POLL_INTERVAL_MS: u64 = 10;
-        loop {
+        let status = loop {
             // Check cancellation first
             if cancel_token.is_cancelled() {
                 let _ = child.kill();
@@ -116,25 +145,28 @@ impl JqExecutor {
                 .try_wait()
                 .map_err(|e| QueryError::OutputReadFailed(e.to_string()))?
             {
-                Some(status) => {
-                    // Process finished - get output
-                    let output = child
-                        .wait_with_output()
-                        .map_err(|e| QueryError::OutputReadFailed(e.to_string()))?;
-
-                    if status.success() {
-                        return Ok(String::from_utf8_lossy(&output.stdout).to_string());
-                    } else {
-                        return Err(QueryError::ExecutionFailed(
-                            String::from_utf8_lossy(&output.stderr).to_string(),
-                        ));
-                    }
-                }
+                Some(s) => break s,
                 None => {
                     // Process still running - sleep briefly
                     sleep(Duration::from_millis(POLL_INTERVAL_MS));
                 }
             }
+        };
+
+        // Process has exited - collect output from reader threads
+        let stdout_data = stdout_rx
+            .recv()
+            .map_err(|_| QueryError::OutputReadFailed("Failed to read stdout".to_string()))?;
+        let stderr_data = stderr_rx
+            .recv()
+            .map_err(|_| QueryError::OutputReadFailed("Failed to read stderr".to_string()))?;
+
+        if status.success() {
+            Ok(String::from_utf8_lossy(&stdout_data).to_string())
+        } else {
+            Err(QueryError::ExecutionFailed(
+                String::from_utf8_lossy(&stderr_data).to_string(),
+            ))
         }
     }
 }
