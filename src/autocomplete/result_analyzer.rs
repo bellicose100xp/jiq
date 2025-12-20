@@ -28,53 +28,14 @@ impl ResultAnalyzer {
 
     /// Analyze pre-parsed JSON value for field suggestions
     ///
-    /// This is the optimized path that avoids re-parsing on every keystroke.
-    /// Critical for large files (127MB+) where parsing takes 50-100ms.
+    /// Optimized path that avoids re-parsing on every keystroke.
+    /// Critical for large files where parsing takes 50-100ms.
     pub fn analyze_parsed_result(
         value: &Arc<Value>,
         result_type: ResultType,
         needs_leading_dot: bool,
     ) -> Vec<Suggestion> {
         Self::extract_suggestions_for_type(value, result_type, needs_leading_dot)
-    }
-
-    /// Analyze result string by parsing it first (legacy path for compatibility)
-    ///
-    /// WARNING: This parses JSON on every call. Prefer analyze_parsed_result() for performance.
-    pub fn analyze_result(
-        result: &str,
-        result_type: ResultType,
-        needs_leading_dot: bool,
-    ) -> Vec<Suggestion> {
-        if result.trim().is_empty() {
-            return Vec::new();
-        }
-
-        let value = match Self::parse_first_json_value(result) {
-            Some(v) => v,
-            None => return Vec::new(),
-        };
-
-        Self::extract_suggestions_for_type(&value, result_type, needs_leading_dot)
-    }
-
-    fn parse_first_json_value(text: &str) -> Option<Value> {
-        let text = text.trim();
-        if text.is_empty() {
-            return None;
-        }
-
-        // Try to parse the entire text first (common case: single value)
-        if let Ok(value) = serde_json::from_str(text) {
-            return Some(value);
-        }
-
-        let mut deserializer = serde_json::Deserializer::from_str(text).into_iter();
-        if let Some(Ok(value)) = deserializer.next() {
-            return Some(value);
-        }
-
-        None
     }
 
     fn extract_suggestions_for_type(

@@ -151,17 +151,17 @@ pub fn handle_search_key(app: &mut App, key: KeyEvent) -> bool {
             app.search.search_textarea_mut().input(key);
 
             // Only update matches if query state is available
-            if let Some(query_state) = &app.query {
-                if let Some(content) = &query_state.last_successful_result_unformatted {
-                    app.search.update_matches(content);
+            if let Some(query_state) = &app.query
+                && let Some(content) = &query_state.last_successful_result_unformatted
+            {
+                app.search.update_matches(content);
 
-                    #[cfg(debug_assertions)]
-                    debug!(
-                        "Search: query changed to '{}', found {} matches",
-                        app.search.query(),
-                        app.search.matches().len()
-                    );
-                }
+                #[cfg(debug_assertions)]
+                debug!(
+                    "Search: query changed to '{}', found {} matches",
+                    app.search.query(),
+                    app.search.matches().len()
+                );
             }
 
             if let Some(m) = app.search.current_match() {

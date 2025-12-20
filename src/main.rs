@@ -49,7 +49,6 @@ struct Args {
 }
 
 fn main() -> Result<()> {
-    // Initialize logger (only in debug builds)
     // Writes to /tmp/jiq-debug.log at DEBUG level
     #[cfg(debug_assertions)]
     {
@@ -80,37 +79,30 @@ fn main() -> Result<()> {
         log::debug!("=== JIQ DEBUG SESSION STARTED ===");
     }
 
-    // Install color-eyre panic hook for better error messages
     color_eyre::install()?;
 
-    // Load configuration early in startup
+    // Load config early to avoid defaults during app initialization
     let config_result = config::load_config();
 
-    // Parse CLI arguments
     let args = Args::parse();
 
-    // Validate jq binary exists
     validate_jq_exists()?;
 
-    // Initialize terminal (handles raw mode, alternate screen, bracketed paste)
     let terminal = init_terminal()?;
 
-    // Create App with deferred loading for both file and stdin input
+    // Deferred loading prevents blocking on large files/stdin
     let loader = if let Some(path) = args.input {
-        // File input: load from file in background
         FileLoader::spawn_load(path)
     } else {
-        // Stdin input: load from stdin in background
         FileLoader::spawn_load_stdin()
     };
 
     let app = App::new_with_loader(loader, &config_result.config);
     let app = run(terminal, app, config_result)?;
 
-    // Restore terminal (cleanup raw mode, alternate screen, bracketed paste)
     restore_terminal()?;
 
-    // Output results AFTER terminal is restored
+    // Output after terminal restore to prevent corruption
     handle_output(&app)?;
 
     Ok(())
@@ -142,31 +134,26 @@ fn run(
     mut app: App,
     config_result: config::ConfigResult,
 ) -> Result<App> {
-    // Show config warning if there was one
     if let Some(warning) = config_result.warning {
         app.notification.show_warning(&warning);
     }
 
-    // Set up AI worker thread if AI is enabled
     // Requirements 1.1, 1.3, 4.1
     setup_ai_worker(&mut app, &config_result.config);
 
-    // Trigger initial AI request if AI popup is visible on startup
+    // Trigger initial request when AI popup visible on startup
     if app.ai.visible && app.ai.enabled && app.ai.configured {
         app.trigger_ai_request();
     }
 
     loop {
-        // Poll file loader before rendering
+        // Poll before render to load data from background thread
         app.poll_file_loader();
 
-        // Render the UI
         terminal.draw(|frame| app.render(frame))?;
 
-        // Handle events (all logic in app.rs now)
         app.handle_events()?;
 
-        // Check if we should exit
         if app.should_quit() {
             break;
         }
@@ -176,27 +163,19 @@ fn run(
 }
 
 /// Set up the AI worker thread and channels
-///
-/// Creates request/response channels and spawns the worker thread.
-/// Also validates the config and shows a warning if AI is enabled but not configured.
 fn setup_ai_worker(app: &mut App, config: &config::Config) {
-    // Warn if AI is explicitly enabled but not properly configured
     if config.ai.enabled && !app.ai.configured {
         app.notification
             .show_warning("AI enabled but not configured. Add provider credentials to config.");
     }
 
-    // Only set up worker if AI is configured (has provider credentials)
-    // Worker is needed regardless of `enabled` because user can toggle with Ctrl+A
+    // Worker needed even when disabled to support Ctrl+A toggle
     if !app.ai.configured {
         return;
     }
 
-    // Create channels for communication with worker thread
     let (request_tx, request_rx) = std::sync::mpsc::channel();
     let (response_tx, response_rx) = std::sync::mpsc::channel();
-
-    // Set channel handles in AiState
     app.ai.set_channels(request_tx, response_rx);
 
     // Spawn the worker thread

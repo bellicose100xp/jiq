@@ -47,4 +47,4 @@ pub mod types;
 
 // Re-exports for convenience
 pub use thread::spawn_worker;
-pub use types::{QueryError, QueryRequest, QueryResponse};
+pub use types::{QueryRequest, QueryResponse};

@@ -56,7 +56,7 @@ pub struct QueryState {
     /// Uses Arc to make cloning cheap - autocomplete clones this on every keystroke!
     pub last_successful_result_unformatted: Option<Arc<String>>,
     /// Parsed JSON value of last successful result (for autocomplete field extraction)
-    /// Uses Arc to avoid re-parsing 127MB JSON on every keystroke!
+    /// Uses Arc to avoid re-parsing large files on every keystroke!
     /// This is THE critical optimization for large files.
     pub last_successful_result_parsed: Option<Arc<Value>>,
     /// Base query that produced the last successful result (for suggestions)
@@ -94,17 +94,15 @@ impl QueryState {
             .as_ref()
             .map(|s| Self::detect_result_type(s));
 
-        // Parse result once for autocomplete (avoid re-parsing on every keystroke)
+        // Avoid re-parsing on every keystroke
         let last_successful_result_parsed = last_successful_result_unformatted
             .as_ref()
             .and_then(|s| Self::parse_first_value(s))
             .map(Arc::new);
 
-        // Create worker channels
         let (request_tx, request_rx) = channel();
         let (response_tx, response_rx) = channel();
 
-        // Spawn worker thread
         spawn_worker(json_input, request_rx, response_tx);
 
         Self {
@@ -117,7 +115,7 @@ impl QueryState {
             base_type_for_suggestions,
             request_tx: Some(request_tx),
             response_rx: Some(response_rx),
-            next_request_id: 1, // Start at 1, reserve 0 for worker errors
+            next_request_id: 1, // Reserve 0 for worker errors
             in_flight_request_id: None,
             current_cancel_token: None,
         }
@@ -134,15 +132,11 @@ impl QueryState {
 
     /// Update cached results for autosuggestions
     ///
-    /// Extracts this common logic used by both sync execute() and async process_response().
     /// Only caches non-null results to avoid polluting suggestions with partial queries.
     fn update_successful_result(&mut self, output: String, query: &str) {
-        // When typing partial queries like ".s", jq returns "null" (potentially with ANSI codes)
-        // For array iterations, may return multiple nulls: "null\nnull\nnull\n"
-        // We want to keep the last meaningful result for suggestions
+        // Partial queries like ".s" return "null"; keep last meaningful result for suggestions
         let unformatted = Self::strip_ansi_codes(&output);
 
-        // Check if result contains only nulls and whitespace
         let is_only_nulls = unformatted
             .lines()
             .filter(|line| !line.trim().is_empty())
@@ -152,9 +146,7 @@ impl QueryState {
             self.last_successful_result = Some(Arc::new(output));
             self.last_successful_result_unformatted = Some(Arc::new(unformatted.clone()));
 
-            // Parse result once for autocomplete (critical optimization for large files!)
-            // Without this, autocomplete re-parses 127MB JSON on EVERY keystroke
-            // For destructured results (multiple JSON values), parse just the first one
+            // Critical: prevents re-parsing large files on EVERY keystroke
             self.last_successful_result_parsed =
                 Self::parse_first_value(&unformatted).map(Arc::new);
 
@@ -164,12 +156,7 @@ impl QueryState {
                 log::debug!("Successfully cached parsed result for autocomplete");
             }
 
-            // Cache base query and result type for type-aware suggestions
-            // Trim trailing whitespace and incomplete operators/dots
-            // Examples to strip:
-            //   ".services | ." → ".services"
-            //   ".services[]." → ".services[]"
-            //   ".user " → ".user"
+            // Trim trailing whitespace/incomplete operators: ".services | ." → ".services"
             let base_query = Self::normalize_base_query(query);
             self.base_query_for_suggestions = Some(base_query);
             self.base_type_for_suggestions = Some(Self::detect_result_type(&unformatted));

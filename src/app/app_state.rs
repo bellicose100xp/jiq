@@ -47,91 +47,8 @@ pub struct App {
 }
 
 impl App {
-    pub fn new(json_input: String, config: &Config) -> Self {
-        // Check if AI is configured for either Anthropic or Bedrock
-        let anthropic_configured =
-            config.ai.anthropic.api_key.is_some() && config.ai.anthropic.model.is_some();
-        let bedrock_configured =
-            config.ai.bedrock.region.is_some() && config.ai.bedrock.model.is_some();
-        let openai_configured =
-            config.ai.openai.api_key.is_some() && config.ai.openai.model.is_some();
-        let gemini_configured =
-            config.ai.gemini.api_key.is_some() && config.ai.gemini.model.is_some();
-
-        // Determine provider name based on configuration
-        let provider_name = match config.ai.provider {
-            Some(crate::config::ai_types::AiProviderType::Anthropic) => "Anthropic",
-            Some(crate::config::ai_types::AiProviderType::Bedrock) => "Bedrock",
-            Some(crate::config::ai_types::AiProviderType::Openai) => "OpenAI",
-            Some(crate::config::ai_types::AiProviderType::Gemini) => "Gemini",
-            None => "Not Configured",
-        }
-        .to_string();
-
-        // ai_configured is false when provider is None
-        let ai_configured = config.ai.provider.is_some()
-            && (anthropic_configured
-                || bedrock_configured
-                || openai_configured
-                || gemini_configured);
-
-        // Get model name based on provider
-        let model_name = match config.ai.provider {
-            Some(crate::config::ai_types::AiProviderType::Anthropic) => {
-                config.ai.anthropic.model.clone().unwrap_or_default()
-            }
-            Some(crate::config::ai_types::AiProviderType::Bedrock) => {
-                config.ai.bedrock.model.clone().unwrap_or_default()
-            }
-            Some(crate::config::ai_types::AiProviderType::Openai) => {
-                config.ai.openai.model.clone().unwrap_or_default()
-            }
-            Some(crate::config::ai_types::AiProviderType::Gemini) => {
-                config.ai.gemini.model.clone().unwrap_or_default()
-            }
-            None => String::new(),
-        };
-
-        let ai_state =
-            AiState::new_with_config(config.ai.enabled, ai_configured, provider_name, model_name);
-
-        let tooltip_enabled = if ai_state.visible {
-            false
-        } else {
-            config.tooltip.auto_show
-        };
-
-        // Extract JSON schema once at startup for AI context
-        let input_json_schema =
-            crate::json::extract_json_schema(&json_input, crate::json::DEFAULT_SCHEMA_MAX_DEPTH);
-
-        Self {
-            input: InputState::new(),
-            query: Some(QueryState::new(json_input)),
-            file_loader: None,
-            focus: Focus::InputField,
-            results_scroll: ScrollState::new(),
-            output_mode: None,
-            should_quit: false,
-            autocomplete: AutocompleteState::new(),
-            error_overlay_visible: false,
-            history: HistoryState::new(),
-            help: HelpPopupState::new(),
-            notification: NotificationState::new(),
-            clipboard_backend: config.clipboard.backend,
-            tooltip: TooltipState::new(tooltip_enabled),
-            stats: StatsState::default(),
-            debouncer: Debouncer::new(),
-            search: SearchState::new(),
-            ai: ai_state,
-            saved_tooltip_visibility: config.tooltip.auto_show,
-            input_json_schema,
-        }
-    }
-
     /// Create App with deferred file loading
     pub fn new_with_loader(loader: FileLoader, config: &Config) -> Self {
-        // Check if AI is configured for either Anthropic or Bedrock
         let anthropic_configured =
             config.ai.anthropic.api_key.is_some() && config.ai.anthropic.model.is_some();
         let bedrock_configured =
@@ -141,7 +58,6 @@ impl App {
         let gemini_configured =
             config.ai.gemini.api_key.is_some() && config.ai.gemini.model.is_some();
 
-        // Determine provider name based on configuration
         let provider_name = match config.ai.provider {
             Some(crate::config::ai_types::AiProviderType::Anthropic) => "Anthropic",
             Some(crate::config::ai_types::AiProviderType::Bedrock) => "Bedrock",
@@ -151,14 +67,12 @@ impl App {
         }
         .to_string();
 
-        // ai_configured is false when provider is None
         let ai_configured = config.ai.provider.is_some()
             && (anthropic_configured
                 || bedrock_configured
                 || openai_configured
                 || gemini_configured);
 
-        // Get model name based on provider
         let model_name = match config.ai.provider {
             Some(crate::config::ai_types::AiProviderType::Anthropic) => {
                 config.ai.anthropic.model.clone().unwrap_or_default()
@@ -210,33 +124,29 @@ impl App {
 
     /// Poll file loader and initialize QueryState when complete
     pub fn poll_file_loader(&mut self) {
-        if let Some(loader) = &mut self.file_loader {
-            if let Some(result) = loader.poll() {
-                match result {
-                    Ok(json_input) => {
-                        // Initialize QueryState with loaded JSON
-                        self.query = Some(QueryState::new(json_input.clone()));
+        if let Some(loader) = &mut self.file_loader
+            && let Some(result) = loader.poll()
+        {
+            match result {
+                Ok(json_input) => {
+                    self.query = Some(QueryState::new(json_input.clone()));
 
-                        // Extract schema for AI
-                        self.input_json_schema = crate::json::extract_json_schema(
-                            &json_input,
-                            crate::json::DEFAULT_SCHEMA_MAX_DEPTH,
-                        );
+                    self.input_json_schema = crate::json::extract_json_schema(
+                        &json_input,
+                        crate::json::DEFAULT_SCHEMA_MAX_DEPTH,
+                    );
 
-                        // Remove loader
-                        self.file_loader = None;
+                    self.file_loader = None;
 
-                        // Trigger AI request if AI is visible, enabled, and configured
-                        // This ensures AI works on launch with deferred file loading
-                        if self.ai.visible && self.ai.enabled && self.ai.configured {
-                            self.trigger_ai_request();
-                        }
+                    // Ensure AI works on launch with deferred file loading
+                    if self.ai.visible && self.ai.enabled && self.ai.configured {
+                        self.trigger_ai_request();
                     }
-                    Err(e) => {
-                        // Show error, keep loader for state tracking
-                        self.notification
-                            .show_error(&format!("Failed to load file: {}", e));
-                    }
+                }
+                Err(e) => {
+                    // Keep loader for state tracking
+                    self.notification
+                        .show_error(&format!("Failed to load file: {}", e));
                 }
             }
         }
@@ -278,15 +188,11 @@ impl App {
     }
 
     /// Trigger an AI request for the current query context
-    ///
-    /// This extracts the current query, cursor position, JSON input, and context
-    /// parameters from the app state and triggers an AI request via handle_execution_result.
     pub fn trigger_ai_request(&mut self) {
         if !self.ai.configured {
             return;
         }
 
-        // Only trigger if query is available
         let query_state = match &self.query {
             Some(q) => q,
             None => return,

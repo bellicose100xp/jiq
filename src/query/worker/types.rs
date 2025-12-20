@@ -50,8 +50,6 @@ pub enum QueryResponse {
 pub enum QueryError {
     /// Failed to spawn jq process
     SpawnFailed(String),
-    /// Failed to write to jq stdin
-    StdinWriteFailed(String),
     /// Failed to read jq output
     OutputReadFailed(String),
     /// Query execution was cancelled
@@ -64,7 +62,6 @@ impl std::fmt::Display for QueryError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             QueryError::SpawnFailed(e) => write!(f, "Failed to spawn jq: {}", e),
-            QueryError::StdinWriteFailed(e) => write!(f, "Failed to write to jq stdin: {}", e),
             QueryError::OutputReadFailed(e) => write!(f, "Failed to read jq output: {}", e),
             QueryError::Cancelled => write!(f, "Query execution cancelled"),
             QueryError::ExecutionFailed(e) => write!(f, "{}", e),

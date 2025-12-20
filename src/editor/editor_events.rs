@@ -209,7 +209,6 @@ pub fn execute_query(app: &mut App) {
 }
 
 pub fn execute_query_with_auto_show(app: &mut App) {
-    // Only execute if query state is available
     let query_state = match &mut app.query {
         Some(q) => q,
         None => return,
@@ -219,13 +218,12 @@ pub fn execute_query_with_auto_show(app: &mut App) {
 
     app.input.brace_tracker.rebuild(query);
 
-    // Start async execution
     query_state.execute_async(query);
 
     app.results_scroll.reset();
     app.error_overlay_visible = false;
 
-    // Note: AI update will happen in poll_query_response() when result arrives
+    // AI update happens in poll_query_response() when result arrives
 }
 
 #[cfg(test)]

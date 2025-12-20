@@ -41,12 +41,11 @@ impl App {
             crate::history::history_render::render_popup(self, frame, input_area);
         }
 
-        if self.error_overlay_visible {
-            if let Some(query) = &self.query {
-                if query.result.is_err() {
-                    crate::results::results_render::render_error_overlay(self, frame, results_area);
-                }
-            }
+        if self.error_overlay_visible
+            && let Some(query) = &self.query
+            && query.result.is_err()
+        {
+            crate::results::results_render::render_error_overlay(self, frame, results_area);
         }
 
         if self.help.visible {

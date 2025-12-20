@@ -45,13 +45,13 @@ pub fn render_field(app: &mut App, frame: &mut Frame, area: Rect) {
         }
     };
 
-    if let Some(query) = &app.query {
-        if query.result.is_err() {
-            title_spans.push(Span::styled(
-                "⚠ Syntax Error (Ctrl+E to view)",
-                Style::default().fg(Color::Yellow),
-            ));
-        }
+    if let Some(query) = &app.query
+        && query.result.is_err()
+    {
+        title_spans.push(Span::styled(
+            "⚠ Syntax Error (Ctrl+E to view)",
+            Style::default().fg(Color::Yellow),
+        ));
     }
 
     let title = Line::from(title_spans);

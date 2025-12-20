@@ -15,14 +15,11 @@ use log::debug;
 
 // Re-export sub-module functions
 pub use self::cursor::move_cursor_to_column;
-pub use self::execution::execute_query_and_update;
 pub use self::query_manipulation::extract_middle_query;
 
 // Module declarations
 #[path = "insertion/cursor.rs"]
 mod cursor;
-#[path = "insertion/execution.rs"]
-mod execution;
 #[path = "insertion/query_manipulation.rs"]
 mod query_manipulation;
 
@@ -35,27 +32,23 @@ mod query_manipulation;
 /// * `app` - Mutable reference to the App struct
 /// * `suggestion` - The suggestion to insert
 pub fn insert_suggestion_from_app(app: &mut App, suggestion: &Suggestion) {
-    // Only insert if query state is available
     let query_state = match &mut app.query {
         Some(q) => q,
         None => return,
     };
 
-    // Delegate to existing insert_suggestion function (modifies textarea only)
     insert_suggestion(&mut app.input.textarea, query_state, suggestion);
 
-    // Hide autocomplete and reset scroll/error state
     app.autocomplete.hide();
     app.results_scroll.reset();
     app.error_overlay_visible = false;
 
-    // Execute immediately (no debounce delay for autocomplete)
-    // This provides instant feedback like the old sync execution
+    // Execute immediately for instant feedback (no debounce delay)
     let query = app.input.textarea.lines()[0].as_ref();
     app.input.brace_tracker.rebuild(query);
     query_state.execute_async(query);
 
-    // Note: AI update will happen in poll_query_response() when result arrives
+    // AI update happens in poll_query_response() when result arrives
 }
 
 /// Insert an autocomplete suggestion at the current cursor position
@@ -68,13 +61,9 @@ pub fn insert_suggestion(
     suggestion: &Suggestion,
 ) {
     let suggestion_text = &suggestion.text;
-    // Get base query that produced these suggestions
     let base_query = match &query_state.base_query_for_suggestions {
         Some(b) => b.clone(),
-        None => {
-            // Fallback to current query if no base (shouldn't happen)
-            textarea.lines()[0].clone()
-        }
+        None => textarea.lines()[0].clone(), // Fallback (shouldn't happen)
     };
 
     let query = textarea.lines()[0].clone();
@@ -87,10 +76,6 @@ pub fn insert_suggestion(
         query, base_query, suggestion_text, cursor_pos
     );
 
-    // Determine the trigger context
-    // Note: For insertion, we create a temporary BraceTracker since we only need
-    // to distinguish FunctionContext from FieldContext here. ObjectKeyContext
-    // handling will be added in task 9.
     let mut temp_tracker = crate::autocomplete::BraceTracker::new();
     temp_tracker.rebuild(before_cursor);
     let (context, partial) = analyze_context(before_cursor, &temp_tracker);
@@ -101,13 +86,10 @@ pub fn insert_suggestion(
         context, partial
     );
 
-    // For function/operator context (jq keywords like then, else, end, etc.),
-    // we should do simple replacement without adding dots or complex formulas
+    // Function context: simple replacement without dots or complex formulas
     if context == SuggestionContext::FunctionContext {
-        // Simple replacement: remove the partial and insert the suggestion
         let replacement_start = cursor_pos.saturating_sub(partial.len());
 
-        // Append opening parenthesis if the function requires arguments
         let insert_text = if suggestion.needs_parens {
             format!("{}(", suggestion_text)
         } else {
@@ -127,23 +109,17 @@ pub fn insert_suggestion(
             partial, new_query
         );
 
-        // Replace the entire line with new query
         textarea.delete_line_by_head();
         textarea.insert_str(&new_query);
 
-        // Move cursor to end of inserted suggestion (including parenthesis if added)
         let target_pos = replacement_start + insert_text.len();
         move_cursor_to_column(textarea, target_pos);
 
-        // Query execution will be triggered by debouncer (scheduled in insert_suggestion_from_app)
         return;
     }
 
-    // For ObjectKeyContext (object key names inside `{}`),
-    // we do simple replacement similar to FunctionContext
-    // This handles cases like `{na` -> `{name` or `{name: .name, ag` -> `{name: .name, age`
+    // ObjectKeyContext: handles cases like `{na` -> `{name` or `{name: .name, ag` -> `{name: .name, age`
     if context == SuggestionContext::ObjectKeyContext {
-        // Simple replacement: remove the partial and insert the suggestion
         let replacement_start = cursor_pos.saturating_sub(partial.len());
 
         let new_query = format!(
@@ -159,24 +135,19 @@ pub fn insert_suggestion(
             partial, new_query
         );
 
-        // Replace the entire line with new query
         textarea.delete_line_by_head();
         textarea.insert_str(&new_query);
 
-        // Move cursor to end of inserted suggestion
         let target_pos = replacement_start + suggestion_text.len();
         move_cursor_to_column(textarea, target_pos);
 
-        // Query execution will be triggered by debouncer (scheduled in insert_suggestion_from_app)
         return;
     }
 
-    // For field context, continue with the existing complex logic
     let char_before = find_char_before_field_access(before_cursor, &partial);
     let trigger_type = QueryState::classify_char(char_before);
 
-    // Extract middle_query: everything between base and current field being typed
-    // This preserves complex expressions like if/then/else, functions, etc.
+    // Preserves complex expressions like if/then/else, functions between base and current field
     let mut middle_query = extract_middle_query(&query, &base_query, before_cursor, &partial);
     let mut adjusted_base = base_query.clone();
     let mut adjusted_suggestion = suggestion_text.to_string();
@@ -187,21 +158,17 @@ pub fn insert_suggestion(
         partial, char_before, trigger_type, middle_query
     );
 
-    // Special handling for CloseBracket trigger with [] in middle_query
-    // This handles nested arrays like: .services[].capacityProviderStrategy[].field
-    // When user types [], it becomes part of middle_query, but should be part of base
+    // Nested arrays: .services[].capacityProviderStrategy[].field
+    // Move [] from middle_query to base when user types []
     if trigger_type == CharType::CloseBracket && middle_query == "[]" {
         #[cfg(debug_assertions)]
         debug!("nested_array_adjustment: detected [] in middle_query, moving to base");
 
-        // Move [] from middle to base
         adjusted_base = format!("{}{}", base_query, middle_query);
         middle_query = String::new();
 
-        // Strip [] prefix from suggestion if present (it's already in the query)
-        // Also strip the leading dot since CloseBracket formula will add it
+        // Strip [] and leading dot from suggestion (already in query, formula adds dot)
         if let Some(stripped) = adjusted_suggestion.strip_prefix("[]") {
-            // Strip leading dot if present (e.g., "[].base" -> "base")
             adjusted_suggestion = stripped.strip_prefix('.').unwrap_or(stripped).to_string();
 
             #[cfg(debug_assertions)]
@@ -215,9 +182,7 @@ pub fn insert_suggestion(
         );
     }
 
-    // Special case: if base is root "." and suggestion starts with ".",
-    // replace the base entirely instead of appending
-    // This prevents: "." + ".services" = "..services"
+    // Prevent double dots: "." + ".services" = "..services"
     let new_query = if adjusted_base == "."
         && adjusted_suggestion.starts_with('.')
         && middle_query.is_empty()
@@ -227,14 +192,9 @@ pub fn insert_suggestion(
 
         adjusted_suggestion.to_string()
     } else {
-        // Apply insertion formula: base + middle + (operator) + suggestion
-        // The middle preserves complex expressions between base and current field
         let formula_result = match trigger_type {
             CharType::NoOp => {
-                // NoOp means continuing a path, but we need to check if suggestion needs a dot
-                // - If suggestion starts with special char like [, {, etc., don't add dot
-                // - If base is root ".", don't add another dot
-                // - Otherwise, add dot for path continuation (like .user.name)
+                // Add dot for path continuation unless suggestion starts with special char
                 let needs_dot = !adjusted_suggestion.starts_with('[')
                     && !adjusted_suggestion.starts_with('{')
                     && !adjusted_suggestion.starts_with('.')
@@ -256,15 +216,13 @@ pub fn insert_suggestion(
                 #[cfg(debug_assertions)]
                 debug!("formula: CloseBracket -> base + middle + '.' + suggestion");
 
-                // Formula: base + middle + "." + suggestion
                 format!("{}{}.{}", adjusted_base, middle_query, adjusted_suggestion)
             }
             CharType::PipeOperator | CharType::Semicolon | CharType::Comma | CharType::Colon => {
                 #[cfg(debug_assertions)]
                 debug!("formula: Separator -> base + middle + ' ' + suggestion");
 
-                // Formula: base + middle + " " + suggestion
-                // Trim trailing space from middle to avoid double spaces
+                // Trim trailing space to avoid double spaces
                 let trimmed_middle = middle_query.trim_end();
                 format!(
                     "{}{} {}",
@@ -277,8 +235,7 @@ pub fn insert_suggestion(
                     "formula: OpenParen -> base + middle + suggestion (paren already in middle)"
                 );
 
-                // Formula: base + middle + suggestion
-                // The ( is already in middle_query, don't add it again
+                // ( already in middle_query
                 format!("{}{}{}", adjusted_base, middle_query, adjusted_suggestion)
             }
             CharType::OpenBracket => {
@@ -287,8 +244,7 @@ pub fn insert_suggestion(
                     "formula: OpenBracket -> base + middle + suggestion (bracket already in middle)"
                 );
 
-                // Formula: base + middle + suggestion
-                // The [ is already in middle_query, don't add it again
+                // [ already in middle_query
                 format!("{}{}{}", adjusted_base, middle_query, adjusted_suggestion)
             }
             CharType::OpenBrace => {
@@ -297,29 +253,25 @@ pub fn insert_suggestion(
                     "formula: OpenBrace -> base + middle + suggestion (brace already in middle)"
                 );
 
-                // Formula: base + middle + suggestion
-                // The { is already in middle_query, don't add it again
+                // { already in middle_query
                 format!("{}{}{}", adjusted_base, middle_query, adjusted_suggestion)
             }
             CharType::QuestionMark => {
                 #[cfg(debug_assertions)]
                 debug!("formula: QuestionMark -> base + middle + '.' + suggestion");
 
-                // Formula: base + middle + "." + suggestion
                 format!("{}{}.{}", adjusted_base, middle_query, adjusted_suggestion)
             }
             CharType::Dot => {
                 #[cfg(debug_assertions)]
                 debug!("formula: Dot -> base + middle + suggestion");
 
-                // Formula: base + middle + suggestion
                 format!("{}{}{}", adjusted_base, middle_query, adjusted_suggestion)
             }
             CharType::CloseParen | CharType::CloseBrace => {
                 #[cfg(debug_assertions)]
                 debug!("formula: CloseParen/CloseBrace -> base + middle + '.' + suggestion");
 
-                // Formula: base + middle + "." + suggestion
                 format!("{}{}.{}", adjusted_base, middle_query, adjusted_suggestion)
             }
         };
@@ -336,16 +288,12 @@ pub fn insert_suggestion(
     #[cfg(debug_assertions)]
     debug!("new_query_constructed: '{}'", new_query);
 
-    // Replace the entire line with new query
     textarea.delete_line_by_head();
     textarea.insert_str(&new_query);
 
     #[cfg(debug_assertions)]
     debug!("query_after_insertion: '{}'", textarea.lines()[0]);
 
-    // Move cursor to end of query
     let target_pos = new_query.len();
     move_cursor_to_column(textarea, target_pos);
-
-    // Query execution will be triggered by debouncer (scheduled in insert_suggestion_from_app)
 }
