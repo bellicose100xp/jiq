@@ -161,6 +161,8 @@ impl QueryState {
             self.next_request_id = 1;
         }
 
+        log::debug!("Sending query request {} for query: {}", request_id, query);
+
         // Create cancellation token
         let cancel_token = CancellationToken::new();
         self.current_cancel_token = Some(cancel_token.clone());
@@ -176,13 +178,17 @@ impl QueryState {
 
             // If send fails, worker died - clear channels
             if tx.send(request).is_err() {
-                log::error!("Query worker disconnected");
+                log::error!("Query worker disconnected - send failed");
                 self.request_tx = None;
                 self.response_rx = None;
                 self.in_flight_request_id = None;
                 self.current_cancel_token = None;
                 self.result = Err("Query worker disconnected".to_string());
+            } else {
+                log::debug!("Query request {} sent successfully", request_id);
             }
+        } else {
+            log::error!("No request channel available");
         }
     }
 
@@ -205,13 +211,17 @@ impl QueryState {
         // Take the receiver temporarily to avoid borrow checker issues
         let rx = match self.response_rx.take() {
             Some(rx) => rx,
-            None => return false,
+            None => {
+                log::debug!("poll_response: no receiver available");
+                return false;
+            }
         };
 
         // Process all available responses
         loop {
             match rx.try_recv() {
                 Ok(response) => {
+                    log::debug!("poll_response: received response");
                     if self.process_response(response) {
                         state_changed = true;
                     }
@@ -222,7 +232,7 @@ impl QueryState {
                     break;
                 }
                 Err(std::sync::mpsc::TryRecvError::Disconnected) => {
-                    log::error!("Query worker disconnected");
+                    log::error!("Query worker disconnected in poll_response");
                     self.request_tx = None;
                     if self.in_flight_request_id.is_some() {
                         self.result = Err("Query worker disconnected".to_string());
@@ -236,6 +246,10 @@ impl QueryState {
             }
         }
 
+        if state_changed {
+            log::debug!("poll_response: state changed");
+        }
+
         state_changed
     }
 
@@ -247,6 +261,7 @@ impl QueryState {
 
         match response {
             QueryResponse::Success { output, request_id } => {
+                log::debug!("Processing Success response for request {}", request_id);
                 // Ignore stale responses
                 if Some(request_id) != current_request_id {
                     log::debug!(
@@ -257,6 +272,7 @@ impl QueryState {
                     return false;
                 }
 
+                log::debug!("Updating result for request {}", request_id);
                 self.in_flight_request_id = None;
                 self.current_cancel_token = None;
                 self.result = Ok(output.clone());
