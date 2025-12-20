@@ -238,26 +238,27 @@ impl QueryState {
     /// Poll for query responses (non-blocking)
     ///
     /// Call this in main event loop to check for completed queries.
-    /// Returns true if state changed (response received).
-    pub fn poll_response(&mut self) -> bool {
-        let mut state_changed = false;
+    /// Returns the query that produced the last completed result (for AI context), or None if no update.
+    pub fn poll_response(&mut self) -> Option<String> {
+        let mut completed_query: Option<String> = None;
 
         // Take the receiver temporarily to avoid borrow checker issues
         let rx = match self.response_rx.take() {
             Some(rx) => rx,
             None => {
                 log::debug!("poll_response: no receiver available");
-                return false;
+                return None;
             }
         };
 
         // Process all available responses
+        // Keep last completed query (if multiple responses, most recent wins)
         loop {
             match rx.try_recv() {
                 Ok(response) => {
                     log::debug!("poll_response: received response");
-                    if self.process_response(response) {
-                        state_changed = true;
+                    if let Some(query) = self.process_response(response) {
+                        completed_query = Some(query);
                     }
                 }
                 Err(std::sync::mpsc::TryRecvError::Empty) => {
@@ -272,7 +273,7 @@ impl QueryState {
                         self.result = Err("Query worker disconnected".to_string());
                         self.in_flight_request_id = None;
                         self.current_cancel_token = None;
-                        state_changed = true;
+                        completed_query = Some(String::new());
                     }
                     // Don't put receiver back - it's disconnected
                     break;
@@ -280,17 +281,18 @@ impl QueryState {
             }
         }
 
-        if state_changed {
-            log::debug!("poll_response: state changed");
+        if completed_query.is_some() {
+            log::debug!("poll_response: query completed");
         }
 
-        state_changed
+        completed_query
     }
 
     /// Process a single response
     ///
-    /// Returns true if state changed (result updated).
-    fn process_response(&mut self, response: QueryResponse) -> bool {
+    /// Returns the query that produced this result (for AI context updates).
+    /// Returns None if response was stale/cancelled (no state change).
+    fn process_response(&mut self, response: QueryResponse) -> Option<String> {
         let current_request_id = self.in_flight_request_id;
 
         match response {
@@ -307,7 +309,7 @@ impl QueryState {
                         request_id,
                         current_request_id
                     );
-                    return false;
+                    return None;
                 }
 
                 log::debug!("Updating result for request {}", request_id);
@@ -318,10 +320,11 @@ impl QueryState {
                 // Cache result for autosuggestions (DRY - same logic as sync execute)
                 self.update_successful_result(output, &query);
 
-                true
+                Some(query)
             }
             QueryResponse::Error {
                 message,
+                query,
                 request_id,
             } => {
                 // Worker-level errors (request_id == 0) always apply
@@ -330,7 +333,8 @@ impl QueryState {
                     self.in_flight_request_id = None;
                     self.current_cancel_token = None;
                     self.result = Err(message);
-                    return true;
+                    // Return the query that produced this error for AI context
+                    return Some(query);
                 }
 
                 log::debug!(
@@ -338,7 +342,7 @@ impl QueryState {
                     request_id,
                     current_request_id
                 );
-                false
+                None
             }
             QueryResponse::Cancelled { request_id } => {
                 // Only clear in-flight if it matches
@@ -346,7 +350,7 @@ impl QueryState {
                     self.in_flight_request_id = None;
                     self.current_cancel_token = None;
                 }
-                false
+                None
             }
         }
     }

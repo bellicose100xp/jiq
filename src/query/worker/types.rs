@@ -32,6 +32,8 @@ pub enum QueryResponse {
     Error {
         /// Error message from jq stderr
         message: String,
+        /// The query that produced this error (for AI context)
+        query: String,
         /// Request ID this response belongs to
         /// Note: request_id = 0 indicates a worker-level error (applies immediately)
         request_id: u64,

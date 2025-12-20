@@ -56,14 +56,17 @@ fn test_query_response_variants() {
     // Test Error variant
     let response = QueryResponse::Error {
         message: "error".to_string(),
+        query: ".invalid".to_string(),
         request_id: 2,
     };
     match response {
         QueryResponse::Error {
             message,
+            query,
             request_id,
         } => {
             assert_eq!(message, "error");
+            assert_eq!(query, ".invalid");
             assert_eq!(request_id, 2);
         }
         _ => panic!("Expected Error variant"),
@@ -84,13 +87,20 @@ fn test_worker_error_request_id() {
     // Test that request_id = 0 is reserved for worker-level errors
     let response = QueryResponse::Error {
         message: "Worker crashed".to_string(),
+        query: String::new(), // Worker-level errors have no associated query
         request_id: 0,
     };
     match response {
-        QueryResponse::Error { request_id, .. } => {
+        QueryResponse::Error {
+            request_id, query, ..
+        } => {
             assert_eq!(
                 request_id, 0,
                 "Worker-level errors should use request_id = 0"
+            );
+            assert!(
+                query.is_empty(),
+                "Worker-level errors should have empty query"
             );
         }
         _ => panic!("Expected Error variant"),

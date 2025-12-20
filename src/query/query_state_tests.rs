@@ -333,7 +333,7 @@ fn test_execute_async_basic_flow() {
     // Poll for result (may need multiple attempts)
     let timeout = std::time::Instant::now();
     while state.is_pending() && timeout.elapsed() < std::time::Duration::from_secs(2) {
-        state.poll_response();
+        let _ = state.poll_response();
         std::thread::sleep(std::time::Duration::from_millis(10));
     }
 
@@ -364,7 +364,7 @@ fn test_execute_async_cancellation() {
     // Wait for completion
     let timeout = std::time::Instant::now();
     while state.is_pending() && timeout.elapsed() < std::time::Duration::from_secs(2) {
-        state.poll_response();
+        let _ = state.poll_response();
         std::thread::sleep(std::time::Duration::from_millis(10));
     }
 
@@ -390,7 +390,7 @@ fn test_poll_response_filters_stale_responses() {
     // Poll for results - should filter out stale response from first query
     let timeout = std::time::Instant::now();
     while state.is_pending() && timeout.elapsed() < std::time::Duration::from_secs(2) {
-        state.poll_response();
+        let _ = state.poll_response();
         std::thread::sleep(std::time::Duration::from_millis(10));
     }
 
@@ -433,7 +433,7 @@ fn test_is_pending_tracks_state_correctly() {
     // Wait for completion
     let timeout = std::time::Instant::now();
     while state.is_pending() && timeout.elapsed() < std::time::Duration::from_secs(2) {
-        state.poll_response();
+        let _ = state.poll_response();
         std::thread::sleep(std::time::Duration::from_millis(10));
     }
 
@@ -469,7 +469,7 @@ fn test_async_execution_updates_base_query_for_suggestions() {
     // Wait for completion
     let timeout = std::time::Instant::now();
     while state.is_pending() && timeout.elapsed() < std::time::Duration::from_secs(2) {
-        state.poll_response();
+        let _ = state.poll_response();
         std::thread::sleep(std::time::Duration::from_millis(10));
     }
 
@@ -498,7 +498,7 @@ fn test_async_execution_handles_errors_correctly() {
     // Wait for completion
     let timeout = std::time::Instant::now();
     while state.is_pending() && timeout.elapsed() < std::time::Duration::from_secs(2) {
-        state.poll_response();
+        let _ = state.poll_response();
         std::thread::sleep(std::time::Duration::from_millis(10));
     }
 
