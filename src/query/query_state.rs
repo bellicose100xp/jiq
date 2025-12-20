@@ -1,4 +1,8 @@
+use std::sync::mpsc::{Receiver, Sender, channel};
+use tokio_util::sync::CancellationToken;
+
 use crate::query::executor::JqExecutor;
+use crate::query::worker::{QueryRequest, QueryResponse, spawn_worker};
 use serde_json::Value;
 
 /// Type of result returned by a jq query
@@ -51,12 +55,26 @@ pub struct QueryState {
     pub base_query_for_suggestions: Option<String>,
     /// Type of the last successful result (for type-aware suggestions)
     pub base_type_for_suggestions: Option<ResultType>,
+
+    // Async execution support
+    /// Channel to send query requests to worker
+    request_tx: Option<Sender<QueryRequest>>,
+    /// Channel to receive query responses from worker
+    response_rx: Option<Receiver<QueryResponse>>,
+    /// Current request ID counter (starts at 1, 0 reserved for worker errors)
+    next_request_id: u64,
+    /// ID of currently in-flight request, if any
+    in_flight_request_id: Option<u64>,
+    /// Cancellation token for current request
+    current_cancel_token: Option<CancellationToken>,
 }
 
 impl QueryState {
     /// Create a new QueryState with the given JSON input
+    ///
+    /// Spawns a background worker thread for async query execution.
     pub fn new(json_input: String) -> Self {
-        let executor = JqExecutor::new(json_input);
+        let executor = JqExecutor::new(json_input.clone());
         let result = executor.execute(".");
         let last_successful_result = result.as_ref().ok().cloned();
         let last_successful_result_unformatted = last_successful_result
@@ -68,6 +86,13 @@ impl QueryState {
             .as_ref()
             .map(|s| Self::detect_result_type(s));
 
+        // Create worker channels
+        let (request_tx, request_rx) = channel();
+        let (response_tx, response_rx) = channel();
+
+        // Spawn worker thread
+        spawn_worker(json_input, request_rx, response_tx);
+
         Self {
             executor,
             result,
@@ -75,6 +100,11 @@ impl QueryState {
             last_successful_result_unformatted,
             base_query_for_suggestions,
             base_type_for_suggestions,
+            request_tx: Some(request_tx),
+            response_rx: Some(response_rx),
+            next_request_id: 1, // Start at 1, reserve 0 for worker errors
+            in_flight_request_id: None,
+            current_cancel_token: None,
         }
     }
 
@@ -110,6 +140,176 @@ impl QueryState {
                 self.base_type_for_suggestions = Some(Self::detect_result_type(&unformatted));
             }
         }
+    }
+
+    /// Execute query asynchronously
+    ///
+    /// Sends query to worker thread and returns immediately.
+    /// Call poll_response() in main event loop to get results.
+    ///
+    /// Automatically cancels any in-flight request before starting new one.
+    pub fn execute_async(&mut self, query: &str) {
+        // Cancel any existing request
+        self.cancel_in_flight();
+
+        // Allocate new request ID
+        let request_id = self.next_request_id;
+        self.next_request_id = self.next_request_id.wrapping_add(1);
+
+        // Skip 0 on wrap (reserved for worker errors)
+        if self.next_request_id == 0 {
+            self.next_request_id = 1;
+        }
+
+        // Create cancellation token
+        let cancel_token = CancellationToken::new();
+        self.current_cancel_token = Some(cancel_token.clone());
+        self.in_flight_request_id = Some(request_id);
+
+        // Send request to worker
+        if let Some(ref tx) = self.request_tx {
+            let request = QueryRequest {
+                query: query.to_string(),
+                request_id,
+                cancel_token,
+            };
+
+            // If send fails, worker died - clear channels
+            if tx.send(request).is_err() {
+                log::error!("Query worker disconnected");
+                self.request_tx = None;
+                self.response_rx = None;
+                self.in_flight_request_id = None;
+                self.current_cancel_token = None;
+                self.result = Err("Query worker disconnected".to_string());
+            }
+        }
+    }
+
+    /// Cancel in-flight request if any
+    pub fn cancel_in_flight(&mut self) {
+        if let Some(token) = self.current_cancel_token.take() {
+            token.cancel();
+            log::debug!("Cancelled request {:?}", self.in_flight_request_id);
+        }
+        self.in_flight_request_id = None;
+    }
+
+    /// Poll for query responses (non-blocking)
+    ///
+    /// Call this in main event loop to check for completed queries.
+    /// Returns true if state changed (response received).
+    pub fn poll_response(&mut self) -> bool {
+        let mut state_changed = false;
+
+        // Take the receiver temporarily to avoid borrow checker issues
+        let rx = match self.response_rx.take() {
+            Some(rx) => rx,
+            None => return false,
+        };
+
+        // Process all available responses
+        loop {
+            match rx.try_recv() {
+                Ok(response) => {
+                    if self.process_response(response) {
+                        state_changed = true;
+                    }
+                }
+                Err(std::sync::mpsc::TryRecvError::Empty) => {
+                    // Put receiver back and break
+                    self.response_rx = Some(rx);
+                    break;
+                }
+                Err(std::sync::mpsc::TryRecvError::Disconnected) => {
+                    log::error!("Query worker disconnected");
+                    self.request_tx = None;
+                    if self.in_flight_request_id.is_some() {
+                        self.result = Err("Query worker disconnected".to_string());
+                        self.in_flight_request_id = None;
+                        self.current_cancel_token = None;
+                        state_changed = true;
+                    }
+                    // Don't put receiver back - it's disconnected
+                    break;
+                }
+            }
+        }
+
+        state_changed
+    }
+
+    /// Process a single response
+    ///
+    /// Returns true if state changed (result updated).
+    fn process_response(&mut self, response: QueryResponse) -> bool {
+        let current_request_id = self.in_flight_request_id;
+
+        match response {
+            QueryResponse::Success { output, request_id } => {
+                // Ignore stale responses
+                if Some(request_id) != current_request_id {
+                    log::debug!(
+                        "Ignoring stale success from request {} (current: {:?})",
+                        request_id,
+                        current_request_id
+                    );
+                    return false;
+                }
+
+                self.in_flight_request_id = None;
+                self.current_cancel_token = None;
+                self.result = Ok(output.clone());
+
+                // Cache result for autosuggestions (same logic as sync execute)
+                let unformatted = Self::strip_ansi_codes(&output);
+                let is_only_nulls = unformatted
+                    .lines()
+                    .filter(|line| !line.trim().is_empty())
+                    .all(|line| line.trim() == "null");
+
+                if !is_only_nulls {
+                    self.last_successful_result = Some(output);
+                    self.last_successful_result_unformatted = Some(unformatted.clone());
+                    self.base_type_for_suggestions = Some(Self::detect_result_type(&unformatted));
+                }
+
+                true
+            }
+            QueryResponse::Error {
+                message,
+                request_id,
+            } => {
+                // Worker-level errors (request_id == 0) always apply
+                // Request-level errors only apply if they match current request
+                if request_id == 0 || Some(request_id) == current_request_id {
+                    self.in_flight_request_id = None;
+                    self.current_cancel_token = None;
+                    self.result = Err(message);
+                    return true;
+                }
+
+                log::debug!(
+                    "Ignoring stale error from request {} (current: {:?})",
+                    request_id,
+                    current_request_id
+                );
+                false
+            }
+            QueryResponse::Cancelled { request_id } => {
+                // Only clear in-flight if it matches
+                if Some(request_id) == current_request_id {
+                    self.in_flight_request_id = None;
+                    self.current_cancel_token = None;
+                }
+                false
+            }
+        }
+    }
+
+    /// Check if a query is currently pending
+    pub fn is_pending(&self) -> bool {
+        self.in_flight_request_id.is_some()
     }
 
     /// Normalize base query by stripping trailing incomplete operations
