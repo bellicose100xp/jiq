@@ -92,11 +92,18 @@ fn main() -> Result<()> {
     // Validate jq binary exists
     validate_jq_exists()?;
 
-    // Initialize terminal (handles raw mode, alternate screen, bracketed paste)
-    let terminal = init_terminal()?;
-
     // Create App with deferred loading for file input or synchronous loading for stdin
     let app = if let Some(path) = args.input {
+        // Validate file exists and contains valid JSON before entering TUI mode
+        // This allows us to exit with error code for invalid files (for tests)
+        if let Err(e) = validate_json_file(&path) {
+            eprintln!("Error: {}", e);
+            return Err(e.into());
+        }
+
+        // Initialize terminal (handles raw mode, alternate screen, bracketed paste)
+        let terminal = init_terminal()?;
+
         // File input: use deferred loading for instant UI
         let loader = FileLoader::spawn_load(path);
         let app = App::new_with_loader(loader, &config_result.config);
@@ -110,6 +117,10 @@ fn main() -> Result<()> {
                 return Err(e.into());
             }
         };
+
+        // Initialize terminal (handles raw mode, alternate screen, bracketed paste)
+        let terminal = init_terminal()?;
+
         let app = App::new(json_input.clone(), &config_result.config);
         run(terminal, app, config_result)?
     };
@@ -126,6 +137,28 @@ fn main() -> Result<()> {
 /// Validate that jq binary exists in PATH
 fn validate_jq_exists() -> Result<(), JiqError> {
     which::which("jq").map_err(|_| JiqError::JqNotFound)?;
+    Ok(())
+}
+
+/// Validate that a JSON file exists and contains valid JSON
+///
+/// Performs a quick synchronous check before entering TUI mode.
+/// This allows the app to exit with an error code for invalid files (needed for tests).
+fn validate_json_file(path: &PathBuf) -> Result<(), JiqError> {
+    use std::fs::File;
+    use std::io::Read;
+
+    // Check if file exists and can be opened
+    let mut file = File::open(path)?;
+
+    // Read file contents
+    let mut contents = String::new();
+    file.read_to_string(&mut contents)?;
+
+    // Validate JSON syntax
+    serde_json::from_str::<serde_json::Value>(&contents)
+        .map_err(|e| JiqError::InvalidJson(e.to_string()))?;
+
     Ok(())
 }
 
