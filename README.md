@@ -21,7 +21,12 @@
 - **Flexible output** - Export results or query string
 
 ## Demo
-![](https://raw.githubusercontent.com/bellicose100xp/assets/refs/heads/main/jiq/jiq-demo-1280.gif)
+
+### With AI Assistant
+![AI Demo](https://raw.githubusercontent.com/bellicose100xp/assets/refs/heads/main/jiq/jiq-v3-demo-ai.gif)
+
+### Offline Mode (with built-in help)
+![Offline Demo](https://raw.githubusercontent.com/bellicose100xp/assets/refs/heads/main/jiq/jiq-v3-demo.gif)
 
 ## Installation
 
