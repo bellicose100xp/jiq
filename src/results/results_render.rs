@@ -16,6 +16,28 @@ const MATCH_HIGHLIGHT_BG: Color = Color::Rgb(128, 128, 128);
 const MATCH_HIGHLIGHT_FG: Color = Color::White;
 const CURRENT_MATCH_HIGHLIGHT_BG: Color = Color::Rgb(255, 165, 0);
 const CURRENT_MATCH_HIGHLIGHT_FG: Color = Color::Black;
+
+// Rainbow spinner animation
+const SPINNER_CHARS: &[char] = &['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
+const SPINNER_COLORS: &[Color] = &[
+    Color::Rgb(255, 107, 107), // Red/Coral
+    Color::Rgb(255, 159, 67),  // Orange
+    Color::Rgb(254, 202, 87),  // Yellow
+    Color::Rgb(72, 219, 147),  // Green
+    Color::Rgb(69, 170, 242),  // Blue
+    Color::Rgb(120, 111, 213), // Indigo
+    Color::Rgb(214, 128, 255), // Violet
+    Color::Rgb(255, 121, 198), // Pink
+];
+
+fn get_spinner(frame_count: u64) -> (char, Color) {
+    // Change every ~8 frames for visible but not too fast animation (~133ms at 60fps)
+    let index = (frame_count / 8) as usize;
+    let char_idx = index % SPINNER_CHARS.len();
+    let color_idx = index % SPINNER_COLORS.len();
+    (SPINNER_CHARS[char_idx], SPINNER_COLORS[color_idx])
+}
+
 pub fn render_pane(app: &mut App, frame: &mut Frame, area: Rect) {
     let (results_area, search_area) = if app.search.is_visible() {
         let layout = Layout::vertical([Constraint::Min(3), Constraint::Length(SEARCH_BAR_HEIGHT)])
@@ -45,39 +67,52 @@ pub fn render_pane(app: &mut App, frame: &mut Frame, area: Rect) {
         }
     };
 
-    // Show processing indicator if query is pending
-    if query_state.is_pending() {
-        render_processing_indicator(frame, results_area);
-        return;
-    }
-
+    let is_pending = query_state.is_pending();
     let border_color = if app.focus == crate::app::Focus::ResultsPane {
         Color::Cyan
     } else {
         Color::DarkGray
     };
     let title = if query_state.result.is_err() {
+        // Error title with optional rainbow spinner
         let stats_info = app.stats.display().unwrap_or_default();
-        if stats_info.is_empty() {
-            Line::from(vec![Span::styled(
-                " ⚠ Syntax Error ",
-                Style::default().fg(Color::Yellow),
-            )])
-        } else {
-            Line::from(vec![
-                Span::styled(" ⚠ Syntax Error ", Style::default().fg(Color::Yellow)),
-                Span::styled(
-                    format!("({} - last successful query result) ", stats_info),
-                    Style::default().fg(Color::Gray),
-                ),
-            ])
+        let mut spans = Vec::new();
+        if is_pending {
+            let (spinner_char, spinner_color) = get_spinner(app.frame_count);
+            spans.push(Span::styled(
+                format!("{} ", spinner_char),
+                Style::default().fg(spinner_color),
+            ));
         }
+        spans.push(Span::styled(
+            " ⚠ Syntax Error ",
+            Style::default().fg(Color::Yellow),
+        ));
+        if !stats_info.is_empty() {
+            spans.push(Span::styled(
+                format!("({} - last successful query result) ", stats_info),
+                Style::default().fg(Color::Gray),
+            ));
+        }
+        Line::from(spans)
     } else {
+        // Normal title with optional rainbow spinner
         let stats_info = app.stats.display().unwrap_or_else(|| "Results".to_string());
-        Line::from(Span::styled(
-            format!(" {} ", stats_info),
-            Style::default().fg(Color::Cyan),
-        ))
+        if is_pending {
+            let (spinner_char, spinner_color) = get_spinner(app.frame_count);
+            Line::from(vec![
+                Span::styled(
+                    format!("{} ", spinner_char),
+                    Style::default().fg(spinner_color),
+                ),
+                Span::styled(format!("{} ", stats_info), Style::default().fg(Color::Cyan)),
+            ])
+        } else {
+            Line::from(Span::styled(
+                format!(" {} ", stats_info),
+                Style::default().fg(Color::Cyan),
+            ))
+        }
     };
 
     match &query_state.result {
@@ -209,20 +244,6 @@ fn render_error_message(frame: &mut Frame, area: Rect, message: &str) {
     let paragraph = Paragraph::new(message)
         .block(block)
         .style(Style::default().fg(Color::Red));
-
-    frame.render_widget(paragraph, area);
-}
-
-fn render_processing_indicator(frame: &mut Frame, area: Rect) {
-    let text = "Processing query...";
-    let block = Block::default()
-        .borders(Borders::ALL)
-        .title(" Query ")
-        .border_style(Style::default().fg(Color::Yellow));
-
-    let paragraph = Paragraph::new(text)
-        .block(block)
-        .style(Style::default().fg(Color::Yellow));
 
     frame.render_widget(paragraph, area);
 }
