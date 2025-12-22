@@ -70,3 +70,117 @@ mod property_tests {
         }
     }
 }
+
+#[cfg(test)]
+mod spinner_tests {
+    use super::super::{SPINNER_CHARS, SPINNER_COLORS, get_spinner};
+
+    #[test]
+    fn test_spinner_first_frame() {
+        let (char, color) = get_spinner(0);
+        assert_eq!(char, SPINNER_CHARS[0]);
+        assert_eq!(color, SPINNER_COLORS[0]);
+    }
+
+    #[test]
+    fn test_spinner_second_frame() {
+        let (char, color) = get_spinner(8);
+        assert_eq!(char, SPINNER_CHARS[1]);
+        assert_eq!(color, SPINNER_COLORS[1]);
+    }
+
+    #[test]
+    fn test_spinner_char_cycling() {
+        // Test all 10 spinner characters
+        for i in 0..10 {
+            let (char, _) = get_spinner(i * 8);
+            assert_eq!(
+                char,
+                SPINNER_CHARS[i as usize],
+                "Frame {} should have char {}",
+                i * 8,
+                SPINNER_CHARS[i as usize]
+            );
+        }
+    }
+
+    #[test]
+    fn test_spinner_color_cycling() {
+        // Test all 8 colors
+        for i in 0..8 {
+            let (_, color) = get_spinner(i * 8);
+            assert_eq!(
+                color,
+                SPINNER_COLORS[i as usize],
+                "Frame {} should have color at index {}",
+                i * 8,
+                i
+            );
+        }
+    }
+
+    #[test]
+    fn test_spinner_char_wrapping() {
+        // After 10 chars (80 frames), should wrap back to first char
+        let (char_start, _) = get_spinner(0);
+        let (char_wrap, _) = get_spinner(80);
+        assert_eq!(
+            char_start, char_wrap,
+            "Character should wrap after 10 iterations"
+        );
+    }
+
+    #[test]
+    fn test_spinner_color_wrapping() {
+        // After 8 colors (64 frames), should wrap back to first color
+        let (_, color_start) = get_spinner(0);
+        let (_, color_wrap) = get_spinner(64);
+        assert_eq!(
+            color_start, color_wrap,
+            "Color should wrap after 8 iterations"
+        );
+    }
+
+    #[test]
+    fn test_spinner_independent_cycling() {
+        // Chars and colors cycle independently (different lengths: 10 vs 8)
+        // At frame 40: char index = 5, color index = 5
+        let (char, _) = get_spinner(40);
+        assert_eq!(char, SPINNER_CHARS[5]);
+
+        // At frame 48: char index = 6, color index = 6
+        let (char, _) = get_spinner(48);
+        assert_eq!(char, SPINNER_CHARS[6]);
+
+        // At frame 64: char index = 8, color index = 0 (wrapped)
+        let (char, color) = get_spinner(64);
+        assert_eq!(char, SPINNER_CHARS[8]);
+        assert_eq!(color, SPINNER_COLORS[0]);
+    }
+
+    #[test]
+    fn test_spinner_large_frame_count() {
+        // Test with large frame count to ensure no overflow/panic
+        let (char, color) = get_spinner(u64::MAX);
+        // Should still produce valid char and color
+        assert!(SPINNER_CHARS.contains(&char));
+        assert!(SPINNER_COLORS.contains(&color));
+    }
+
+    #[test]
+    fn test_spinner_animation_speed() {
+        // Verify frames 0-7 all use same char (changes every 8 frames)
+        let (char0, _) = get_spinner(0);
+        for frame in 1..8 {
+            let (char, _) = get_spinner(frame);
+            assert_eq!(char, char0, "Frames 0-7 should all use same character");
+        }
+
+        // Frame 8 should use different char
+        let (char8, _) = get_spinner(8);
+        assert_ne!(
+            char8, char0,
+            "Frame 8 should use different character than frame 0"
+        );
+    }
+}

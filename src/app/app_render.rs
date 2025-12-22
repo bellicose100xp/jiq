@@ -8,6 +8,8 @@ use crate::notification::render_notification;
 
 impl App {
     pub fn render(&mut self, frame: &mut Frame) {
+        self.frame_count = self.frame_count.wrapping_add(1);
+
         let layout = Layout::vertical([
             Constraint::Min(3),
             Constraint::Length(3),
@@ -812,6 +814,106 @@ mod snapshot_tests {
         }
 
         app.focus = Focus::ResultsPane;
+
+        let output = render_to_string(&mut app, TEST_WIDTH, TEST_HEIGHT);
+        assert_snapshot!(output);
+    }
+
+    #[test]
+    fn snapshot_processing_query_spinner_frame_0() {
+        let json = r#"{"name": "Alice", "age": 30}"#;
+        let mut app = test_app(json);
+
+        // Trigger async query
+        app.input.textarea.insert_str(".name");
+        if let Some(query_state) = &mut app.query {
+            query_state.execute_async(".name");
+        }
+
+        // Set frame count to 0 to get first spinner char/color
+        app.frame_count = 0;
+
+        // Render while query is pending
+        let output = render_to_string(&mut app, TEST_WIDTH, TEST_HEIGHT);
+        assert_snapshot!(output);
+    }
+
+    #[test]
+    fn snapshot_processing_query_spinner_frame_8() {
+        let json = r#"{"name": "Alice", "age": 30}"#;
+        let mut app = test_app(json);
+
+        app.input.textarea.insert_str(".name");
+        if let Some(query_state) = &mut app.query {
+            query_state.execute_async(".name");
+        }
+
+        // Frame 8 = second spinner char/color
+        app.frame_count = 8;
+
+        let output = render_to_string(&mut app, TEST_WIDTH, TEST_HEIGHT);
+        assert_snapshot!(output);
+    }
+
+    #[test]
+    fn snapshot_processing_query_spinner_frame_64() {
+        let json = r#"{"name": "Alice", "age": 30}"#;
+        let mut app = test_app(json);
+
+        app.input.textarea.insert_str(".name");
+        if let Some(query_state) = &mut app.query {
+            query_state.execute_async(".name");
+        }
+
+        // Frame 64 = different spinner char/color (64/8 = 8th iteration)
+        app.frame_count = 64;
+
+        let output = render_to_string(&mut app, TEST_WIDTH, TEST_HEIGHT);
+        assert_snapshot!(output);
+    }
+
+    #[test]
+    fn snapshot_processing_with_previous_result() {
+        let json = r#"{"name": "Alice", "age": 30}"#;
+        let mut app = test_app(json);
+
+        // Execute successful query first
+        app.input.textarea.insert_str(".name");
+        app.query.as_mut().unwrap().execute(".name");
+
+        // Now trigger async query - results should still be visible
+        app.input.textarea.delete_line_by_head();
+        app.input.textarea.insert_str(".age");
+        if let Some(query_state) = &mut app.query {
+            query_state.execute_async(".age");
+        }
+
+        app.frame_count = 16;
+
+        let output = render_to_string(&mut app, TEST_WIDTH, TEST_HEIGHT);
+        assert_snapshot!(output);
+    }
+
+    #[test]
+    fn snapshot_processing_with_syntax_error() {
+        let json = r#"{"name": "Alice", "age": 30}"#;
+        let mut app = test_app(json);
+
+        // First successful query
+        app.input.textarea.insert_str(".name");
+        app.query.as_mut().unwrap().execute(".name");
+
+        // Then query with error
+        app.input.textarea.delete_line_by_head();
+        app.input.textarea.insert_str(".invalid[");
+        app.query.as_mut().unwrap().execute(".invalid[");
+
+        // Now trigger async query while error is showing
+        if let Some(query_state) = &mut app.query {
+            query_state.execute_async(".invalid[");
+        }
+
+        app.frame_count = 24;
 
         let output = render_to_string(&mut app, TEST_WIDTH, TEST_HEIGHT);
         assert_snapshot!(output);

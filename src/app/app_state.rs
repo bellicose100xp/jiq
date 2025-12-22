@@ -44,6 +44,7 @@ pub struct App {
     pub ai: AiState,
     pub saved_tooltip_visibility: bool,
     pub input_json_schema: Option<String>,
+    pub frame_count: u64,
 }
 
 impl App {
@@ -119,6 +120,7 @@ impl App {
             ai: ai_state,
             saved_tooltip_visibility: config.tooltip.auto_show,
             input_json_schema: None,
+            frame_count: 0,
         }
     }
 
