@@ -2,6 +2,10 @@
 
 use super::*;
 
+// Submodules
+#[path = "query_state_tests/async_preprocessing_tests.rs"]
+mod async_preprocessing_tests;
+
 #[test]
 fn test_new_query_state() {
     let json = r#"{"name": "test"}"#;

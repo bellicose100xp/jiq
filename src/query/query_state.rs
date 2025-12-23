@@ -3,9 +3,10 @@ use std::sync::mpsc::{Receiver, Sender, channel};
 use tokio_util::sync::CancellationToken;
 
 use ansi_to_tui::IntoText;
-use ratatui::text::Text;
+use ratatui::text::{Line, Span, Text};
 
 use crate::query::executor::JqExecutor;
+use crate::query::worker::types::RenderedLine;
 use crate::query::worker::{QueryRequest, QueryResponse, spawn_worker};
 use serde_json::Value;
 
@@ -300,7 +301,6 @@ impl QueryState {
         loop {
             match rx.try_recv() {
                 Ok(response) => {
-                    log::debug!("poll_response: received response");
                     if let Some(query) = self.process_response(response) {
                         completed_query = Some(query);
                     }
@@ -323,10 +323,6 @@ impl QueryState {
                     break;
                 }
             }
-        }
-
-        if completed_query.is_some() {
-            log::debug!("poll_response: query completed");
         }
 
         completed_query
@@ -365,6 +361,62 @@ impl QueryState {
                 self.update_successful_result(output, &query);
 
                 Some(query)
+            }
+            QueryResponse::ProcessedSuccess {
+                processed,
+                request_id,
+            } => {
+                log::debug!(
+                    "Processing ProcessedSuccess response for request {}",
+                    request_id
+                );
+                // Ignore stale responses
+                if Some(request_id) != current_request_id {
+                    log::debug!(
+                        "Ignoring stale processed result from request {} (current: {:?})",
+                        request_id,
+                        current_request_id
+                    );
+                    return None;
+                }
+
+                log::debug!(
+                    "Updating result from processed data for request {}",
+                    request_id
+                );
+
+                // Check if result is only nulls (same logic as sync path)
+                let is_only_nulls = processed
+                    .unformatted
+                    .lines()
+                    .filter(|line| !line.trim().is_empty())
+                    .all(|line| line.trim() == "null");
+
+                // Convert rendered lines to Text (fast - just allocations)
+                let rendered = Self::rendered_lines_to_text(processed.rendered_lines);
+
+                // Assign all fields (instant - no processing)
+                self.in_flight_request_id = None;
+                self.current_cancel_token = None;
+                self.result = Ok(processed.output.as_ref().clone());
+
+                // Only update cache if result is not null (same as sync path)
+                if !is_only_nulls {
+                    self.last_successful_result = Some(processed.output);
+                    self.last_successful_result_unformatted = Some(processed.unformatted);
+                    self.last_successful_result_rendered = Some(rendered);
+                    self.last_successful_result_parsed = processed.parsed;
+                    self.cached_line_count = processed.line_count;
+                    self.cached_max_line_width = processed.max_width;
+                    self.base_query_for_suggestions = Some(processed.query.clone());
+                    self.base_type_for_suggestions = Some(processed.result_type);
+                } else {
+                    // Null result - only update rendered output, preserve cache
+                    self.last_successful_result_rendered = Some(rendered);
+                    log::debug!("Null result - preserving cached base_query and suggestions");
+                }
+
+                Some(processed.query)
             }
             QueryResponse::Error {
                 message,
@@ -515,6 +567,26 @@ impl QueryState {
         // Fallback: use streaming parser to get first value (handles destructured output)
         let mut deserializer = serde_json::Deserializer::from_str(text).into_iter();
         deserializer.next().and_then(|r| r.ok())
+    }
+
+    /// Convert pre-rendered lines to Text for display
+    ///
+    /// Takes Vec<RenderedLine> from worker and converts to ratatui Text.
+    /// This is a simple allocation operation - much faster than ANSI parsing.
+    fn rendered_lines_to_text(lines: Vec<RenderedLine>) -> Text<'static> {
+        Text::from(
+            lines
+                .into_iter()
+                .map(|line| {
+                    Line::from(
+                        line.spans
+                            .into_iter()
+                            .map(|s| Span::styled(s.content, s.style))
+                            .collect::<Vec<_>>(),
+                    )
+                })
+                .collect::<Vec<_>>(),
+        )
     }
 
     /// Strip ANSI escape codes from a string

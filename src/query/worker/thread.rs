@@ -7,6 +7,7 @@
 use std::panic::{self, AssertUnwindSafe};
 use std::sync::mpsc::{Receiver, Sender};
 
+use super::preprocess::preprocess_result;
 use super::types::{QueryError, QueryRequest, QueryResponse};
 use crate::query::executor::JqExecutor;
 
@@ -120,12 +121,38 @@ fn handle_request(
     let query = request.query.clone();
     match executor.execute_with_cancel(&request.query, &request.cancel_token) {
         Ok(output) => {
-            log::debug!("Query {} succeeded, sending response", request.request_id);
-            let _ = response_tx.send(QueryResponse::Success {
-                output,
-                query,
-                request_id: request.request_id,
-            });
+            log::debug!(
+                "Query {} succeeded, preprocessing result",
+                request.request_id
+            );
+
+            // Preprocess result (expensive operations done in worker thread)
+            match preprocess_result(output, &query, &request.cancel_token) {
+                Ok(processed) => {
+                    log::debug!(
+                        "Query {} preprocessing complete, sending response",
+                        request.request_id
+                    );
+                    let _ = response_tx.send(QueryResponse::ProcessedSuccess {
+                        processed,
+                        request_id: request.request_id,
+                    });
+                }
+                Err(QueryError::Cancelled) => {
+                    log::debug!("Query {} preprocessing was cancelled", request.request_id);
+                    let _ = response_tx.send(QueryResponse::Cancelled {
+                        request_id: request.request_id,
+                    });
+                }
+                Err(e) => {
+                    log::debug!("Query {} preprocessing failed: {}", request.request_id, e);
+                    let _ = response_tx.send(QueryResponse::Error {
+                        message: e.to_string(),
+                        query: query.clone(),
+                        request_id: request.request_id,
+                    });
+                }
+            }
         }
         Err(QueryError::Cancelled) => {
             log::debug!("Query {} was cancelled", request.request_id);

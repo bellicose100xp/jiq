@@ -42,6 +42,7 @@
 //! }
 //! ```
 
+pub mod preprocess;
 pub mod thread;
 pub mod types;
 

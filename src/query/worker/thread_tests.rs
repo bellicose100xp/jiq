@@ -29,7 +29,10 @@ fn test_worker_spawns_successfully() {
         Ok(QueryResponse::Success { query, .. }) => {
             assert_eq!(query, ".");
         }
-        Ok(other) => panic!("Expected Success, got {:?}", other),
+        Ok(QueryResponse::ProcessedSuccess { processed, .. }) => {
+            assert_eq!(processed.query, ".");
+        }
+        Ok(other) => panic!("Expected Success or ProcessedSuccess, got {:?}", other),
         Err(e) => panic!("Timeout waiting for response: {}", e),
     }
 }
@@ -150,7 +153,9 @@ fn test_worker_handles_multiple_rapid_queries() {
     let mut received_count = 0;
     for _ in 0..5 {
         match response_rx.recv_timeout(std::time::Duration::from_secs(3)) {
-            Ok(QueryResponse::Success { .. }) | Ok(QueryResponse::Error { .. }) => {
+            Ok(QueryResponse::Success { .. })
+            | Ok(QueryResponse::ProcessedSuccess { .. })
+            | Ok(QueryResponse::Error { .. }) => {
                 received_count += 1;
             }
             Ok(QueryResponse::Cancelled { .. }) => {
@@ -193,7 +198,17 @@ fn test_worker_response_includes_original_query() {
             );
             assert_eq!(request_id, 42);
         }
-        Ok(other) => panic!("Expected Success, got {:?}", other),
+        Ok(QueryResponse::ProcessedSuccess {
+            processed,
+            request_id,
+        }) => {
+            assert_eq!(
+                processed.query, original_query,
+                "Response should include original query"
+            );
+            assert_eq!(request_id, 42);
+        }
+        Ok(other) => panic!("Expected Success or ProcessedSuccess, got {:?}", other),
         Err(e) => panic!("Timeout: {}", e),
     }
 }
