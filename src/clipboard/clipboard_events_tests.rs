@@ -151,7 +151,10 @@ proptest! {
 
         // Set result to ANSI-only content (becomes empty after stripping)
         let ansi_only = format!("\x1b[{}{}", ansi_params, ansi_letter);
-        app.query.as_mut().unwrap().result = Ok(ansi_only);
+        let query_state = app.query.as_mut().unwrap();
+        query_state.result = Ok(ansi_only);
+        // Clear cache to test the no-cache scenario
+        query_state.last_successful_result_unformatted = None;
 
         let result = copy_result(&mut app, ClipboardBackend::Osc52);
 
@@ -181,11 +184,15 @@ fn test_copy_query_rejects_empty() {
 }
 
 #[test]
-fn test_copy_result_rejects_empty() {
+fn test_copy_result_rejects_empty_without_cache() {
     let mut app = test_app("{}");
-    app.query.as_mut().unwrap().result = Ok(String::new());
+    let query_state = app.query.as_mut().unwrap();
+    query_state.result = Ok(String::new());
+    // Clear cache to test the no-cache scenario
+    query_state.last_successful_result_unformatted = None;
+
     let result = copy_result(&mut app, ClipboardBackend::Osc52);
-    assert!(!result, "Empty result should be rejected");
+    assert!(!result, "Empty result without cache should be rejected");
     assert!(
         app.notification.current().is_none(),
         "No notification for rejected copy"
@@ -193,11 +200,15 @@ fn test_copy_result_rejects_empty() {
 }
 
 #[test]
-fn test_copy_result_rejects_ansi_only() {
+fn test_copy_result_rejects_ansi_only_without_cache() {
     let mut app = test_app("{}");
-    app.query.as_mut().unwrap().result = Ok("\x1b[31m\x1b[0m".to_string());
+    let query_state = app.query.as_mut().unwrap();
+    query_state.result = Ok("\x1b[31m\x1b[0m".to_string());
+    // Clear cache to test the no-cache scenario
+    query_state.last_successful_result_unformatted = None;
+
     let result = copy_result(&mut app, ClipboardBackend::Osc52);
-    assert!(!result, "ANSI-only result should be rejected");
+    assert!(!result, "ANSI-only result without cache should be rejected");
     assert!(
         app.notification.current().is_none(),
         "No notification for rejected copy"
@@ -205,11 +216,15 @@ fn test_copy_result_rejects_ansi_only() {
 }
 
 #[test]
-fn test_copy_result_rejects_error() {
+fn test_copy_result_rejects_error_without_cache() {
     let mut app = test_app("{}");
-    app.query.as_mut().unwrap().result = Err("some error".to_string());
+    let query_state = app.query.as_mut().unwrap();
+    query_state.result = Err("some error".to_string());
+    // Clear cache to test the no-cache scenario
+    query_state.last_successful_result_unformatted = None;
+
     let result = copy_result(&mut app, ClipboardBackend::Osc52);
-    assert!(!result, "Error result should be rejected");
+    assert!(!result, "Error result without cache should be rejected");
     assert!(
         app.notification.current().is_none(),
         "No notification for rejected copy"
@@ -239,5 +254,59 @@ fn test_copy_result_accepts_non_empty() {
         app.notification.current_message(),
         Some("Copied result!"),
         "Notification should be shown for successful copy"
+    );
+}
+
+#[test]
+fn test_copy_result_uses_cached_when_result_is_error() {
+    use std::sync::Arc;
+
+    let mut app = test_app(r#"{"value": 42}"#);
+    let query_state = app.query.as_mut().unwrap();
+
+    // Set up cached successful result
+    let cached_result = r#"{"cached": "data"}"#;
+    query_state.last_successful_result_unformatted = Some(Arc::new(cached_result.to_string()));
+
+    // Set current result to error
+    query_state.result = Err("syntax error".to_string());
+
+    // Copy should succeed and use cached result
+    let result = copy_result(&mut app, ClipboardBackend::Osc52);
+    assert!(
+        result,
+        "Copy should succeed with cached result even when current result is error"
+    );
+    assert_eq!(
+        app.notification.current_message(),
+        Some("Copied result!"),
+        "Notification should be shown"
+    );
+}
+
+#[test]
+fn test_copy_result_uses_cached_when_result_is_null() {
+    use std::sync::Arc;
+
+    let mut app = test_app(r#"{"name": "test", "value": 42}"#);
+    let query_state = app.query.as_mut().unwrap();
+
+    // Set up cached successful result (meaningful data)
+    let cached_result = r#"{"value": 42}"#;
+    query_state.last_successful_result_unformatted = Some(Arc::new(cached_result.to_string()));
+
+    // Set current result to null (partial query like ".nonexistent")
+    query_state.result = Ok("null\n".to_string());
+
+    // Copy should succeed and use cached result (not "null")
+    let result = copy_result(&mut app, ClipboardBackend::Osc52);
+    assert!(
+        result,
+        "Copy should succeed with cached result even when current result is null"
+    );
+    assert_eq!(
+        app.notification.current_message(),
+        Some("Copied result!"),
+        "Notification should be shown"
     );
 }

@@ -106,7 +106,9 @@ fn test_max_scroll_large_content() {
     let mut app = test_app(json);
 
     let large_result: String = (0..70000).map(|i| format!("line {}\n", i)).collect();
-    app.query.as_mut().unwrap().result = Ok(large_result);
+    let query_state = app.query.as_mut().unwrap();
+    query_state.result = Ok(large_result.clone());
+    query_state.last_successful_result = Some(Arc::new(large_result));
 
     let line_count = app.results_line_count_u32();
     assert!(line_count > 65535);
@@ -122,7 +124,9 @@ fn test_results_line_count_large_file() {
     let mut app = test_app(json);
 
     let result: String = (0..65535).map(|_| "x\n").collect();
-    app.query.as_mut().unwrap().result = Ok(result);
+    let query_state = app.query.as_mut().unwrap();
+    query_state.result = Ok(result.clone());
+    query_state.last_successful_result = Some(Arc::new(result));
 
     assert_eq!(app.results_line_count_u32(), 65535);
 

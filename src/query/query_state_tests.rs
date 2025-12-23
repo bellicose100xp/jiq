@@ -44,7 +44,8 @@ fn test_line_count_with_ok_result() {
     let mut state = QueryState::new(json.to_string());
 
     let content: String = (0..50).map(|i| format!("line{}\n", i)).collect();
-    state.result = Ok(content);
+    state.result = Ok(content.clone());
+    state.last_successful_result = Some(Arc::new(content));
 
     assert_eq!(state.line_count(), 50);
 }
@@ -832,4 +833,106 @@ fn test_normalize_handles_complex_patterns() {
         QueryState::normalize_base_query(".services[].config | ."),
         ".services[].config"
     );
+}
+
+// ============================================================================
+// Rendered Cache Tests
+// ============================================================================
+
+#[test]
+fn test_new_populates_rendered_cache() {
+    let json = r#"{"name": "test"}"#;
+    let state = QueryState::new(json.to_string());
+
+    assert!(
+        state.last_successful_result_rendered.is_some(),
+        "new() should populate rendered cache"
+    );
+}
+
+#[test]
+fn test_successful_query_updates_rendered_cache() {
+    let json = r#"{"name": "test", "value": 42}"#;
+    let mut state = QueryState::new(json.to_string());
+
+    state.execute(".name");
+    assert!(state.result.is_ok(), "Query should succeed");
+    assert!(
+        state.last_successful_result_rendered.is_some(),
+        "Rendered cache should be populated after successful query"
+    );
+}
+
+#[test]
+fn test_error_query_preserves_rendered_cache() {
+    let json = r#"{"value": 42}"#;
+    let mut state = QueryState::new(json.to_string());
+
+    state.execute(".value");
+    let cached_rendered = state.last_successful_result_rendered.clone();
+    assert!(cached_rendered.is_some());
+
+    // Execute invalid query (syntax error)
+    state.execute(".[invalid syntax");
+    assert!(state.result.is_err(), "Query should fail");
+
+    // Rendered cache should be unchanged
+    assert_eq!(
+        state.last_successful_result_rendered.is_some(),
+        cached_rendered.is_some(),
+        "Rendered cache should be preserved on error"
+    );
+}
+
+#[test]
+fn test_null_result_preserves_rendered_cache() {
+    let json = r#"{"name": "test", "age": 30}"#;
+    let mut state = QueryState::new(json.to_string());
+
+    let initial_rendered = state.last_successful_result_rendered.clone();
+    assert!(initial_rendered.is_some());
+
+    // Execute a query that returns null (partial field that doesn't exist)
+    state.execute(".nonexistent");
+    assert!(state.result.is_ok());
+    assert!(state.result.as_ref().unwrap().contains("null"));
+
+    // Rendered cache should NOT be updated
+    assert_eq!(
+        state.last_successful_result_rendered.is_some(),
+        initial_rendered.is_some(),
+        "Rendered cache should be preserved for null-only results"
+    );
+}
+
+#[test]
+fn test_line_count_always_uses_last_successful_result() {
+    let json = r#"{"test": true}"#;
+    let mut state = QueryState::new(json.to_string());
+
+    // Set up: successful result with known line count
+    let multiline_result: String = (0..50).map(|i| format!("line{}\n", i)).collect();
+    state.last_successful_result = Some(Arc::new(multiline_result));
+
+    // Set current result to something different
+    state.result = Ok("null\n".to_string());
+
+    // line_count() should use last_successful_result (50 lines), not result (1 line)
+    assert_eq!(state.line_count(), 50);
+}
+
+#[test]
+fn test_max_line_width_always_uses_last_successful_result() {
+    let json = r#"{"test": true}"#;
+    let mut state = QueryState::new(json.to_string());
+
+    // Set up: successful result with known max width
+    let wide_result = "short\nthis_is_a_very_long_line_with_many_characters\nshort";
+    state.last_successful_result = Some(Arc::new(wide_result.to_string()));
+
+    // Set current result to something different (short)
+    state.result = Ok("x".to_string());
+
+    // max_line_width() should use last_successful_result (45 chars), not result (1 char)
+    assert_eq!(state.max_line_width(), 45);
 }

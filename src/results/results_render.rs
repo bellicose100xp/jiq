@@ -1,4 +1,3 @@
-use ansi_to_tui::IntoText;
 use ratatui::{
     Frame,
     layout::{Constraint, Layout, Rect},
@@ -115,106 +114,80 @@ pub fn render_pane(app: &mut App, frame: &mut Frame, area: Rect) {
         }
     };
 
-    match &query_state.result {
-        Ok(result) => {
-            let viewport_height = results_area.height.saturating_sub(2);
-            let viewport_width = results_area.width.saturating_sub(2);
-            let line_count = app.results_line_count_u32();
-            app.results_scroll
-                .update_bounds(line_count, viewport_height);
-            app.results_scroll
-                .update_h_bounds(query_state.max_line_width(), viewport_width);
+    // Always render from cached pre-rendered text
+    if let Some(rendered) = &query_state.last_successful_result_rendered {
+        let viewport_height = results_area.height.saturating_sub(2);
+        let viewport_width = results_area.width.saturating_sub(2);
+        let line_count = app.results_line_count_u32();
+        app.results_scroll
+            .update_bounds(line_count, viewport_height);
+        app.results_scroll
+            .update_h_bounds(query_state.max_line_width(), viewport_width);
 
-            let block = Block::default()
-                .borders(Borders::ALL)
-                .title(title)
-                .border_style(Style::default().fg(border_color));
+        let block = Block::default()
+            .borders(Borders::ALL)
+            .title(title)
+            .border_style(Style::default().fg(border_color));
 
-            let colored_text = result
-                .as_bytes()
-                .to_vec()
-                .into_text()
-                .unwrap_or_else(|_| Text::raw(result));
-            let final_text = if app.search.is_visible() && !app.search.matches().is_empty() {
-                #[cfg(debug_assertions)]
-                {
-                    if let Some(current_match) = app.search.current_match() {
-                        log::debug!(
-                            "render: applying highlights, current_match at line={} col={} len={}, scroll=({}, {})",
-                            current_match.line,
-                            current_match.col,
-                            current_match.len,
-                            app.results_scroll.offset,
-                            app.results_scroll.h_offset
-                        );
-                    }
-                }
-                apply_search_highlights(
-                    colored_text,
-                    app.search.matches(),
-                    app.search.current_index(),
-                    app.results_scroll.offset,
-                    viewport_height,
-                )
-            } else {
-                colored_text
-            };
+        // Use cached pre-rendered text
+        // Optimization: Only clone visible viewport to avoid massive allocations
+        let scroll_offset = app.results_scroll.offset as usize;
+        let viewport_lines = viewport_height as usize;
 
-            let content = Paragraph::new(final_text)
-                .block(block)
-                .scroll((app.results_scroll.offset, app.results_scroll.h_offset));
+        // Slice to viewport range (with bounds checking)
+        let total_lines = rendered.lines.len();
+        let end_line = (scroll_offset + viewport_lines).min(total_lines);
+        let visible_lines = if scroll_offset < total_lines {
+            &rendered.lines[scroll_offset..end_line]
+        } else {
+            &[]
+        };
 
-            frame.render_widget(content, results_area);
-        }
-        Err(_error) => {
-            let viewport_height = results_area.height.saturating_sub(2);
-            let viewport_width = results_area.width.saturating_sub(2);
-            let line_count = app.results_line_count_u32();
-            app.results_scroll
-                .update_bounds(line_count, viewport_height);
-            app.results_scroll
-                .update_h_bounds(query_state.max_line_width(), viewport_width);
+        // Clone only visible lines (50 lines instead of 100K+ for large files!)
+        let viewport_text = Text::from(visible_lines.to_vec());
 
-            if let Some(last_result) = &query_state.last_successful_result {
-                let results_block = Block::default()
-                    .borders(Borders::ALL)
-                    .title(title)
-                    .border_style(Style::default().fg(border_color));
-
-                let colored_text = last_result
-                    .as_bytes()
-                    .to_vec()
-                    .into_text()
-                    .unwrap_or_else(|_| Text::raw(last_result.as_ref()));
-                let final_text = if app.search.is_visible() && !app.search.matches().is_empty() {
-                    apply_search_highlights(
-                        colored_text,
-                        app.search.matches(),
-                        app.search.current_index(),
+        // Apply search highlights only to visible viewport
+        let final_text = if app.search.is_visible() && !app.search.matches().is_empty() {
+            #[cfg(debug_assertions)]
+            {
+                if let Some(current_match) = app.search.current_match() {
+                    log::debug!(
+                        "render: applying highlights, current_match at line={} col={} len={}, scroll=({}, {})",
+                        current_match.line,
+                        current_match.col,
+                        current_match.len,
                         app.results_scroll.offset,
-                        viewport_height,
-                    )
-                } else {
-                    colored_text
-                };
-
-                let results_widget = Paragraph::new(final_text)
-                    .block(results_block)
-                    .scroll((app.results_scroll.offset, app.results_scroll.h_offset));
-
-                frame.render_widget(results_widget, results_area);
-            } else {
-                let block = Block::default()
-                    .borders(Borders::ALL)
-                    .title(title)
-                    .border_style(Style::default().fg(border_color));
-
-                let empty_text = Text::from("");
-                let content = Paragraph::new(empty_text).block(block);
-
-                frame.render_widget(content, results_area);
+                        app.results_scroll.h_offset
+                    );
+                }
             }
-        }
+            apply_search_highlights(
+                viewport_text,
+                app.search.matches(),
+                app.search.current_index(),
+                app.results_scroll.offset,
+                viewport_height,
+            )
+        } else {
+            viewport_text
+        };
+
+        // Vertical scroll handled by viewport slicing, but horizontal scroll still needed
+        let content = Paragraph::new(final_text)
+            .block(block)
+            .scroll((0, app.results_scroll.h_offset));
+        frame.render_widget(content, results_area);
+    } else {
+        // No successful result yet - show empty
+        let block = Block::default()
+            .borders(Borders::ALL)
+            .title(title)
+            .border_style(Style::default().fg(border_color));
+
+        let empty_text = Text::from("");
+        let content = Paragraph::new(empty_text).block(block);
+
+        frame.render_widget(content, results_area);
     }
     if let Some(search_rect) = search_area {
         crate::search::search_render::render_bar(app, frame, search_rect);
@@ -321,16 +294,18 @@ fn apply_search_highlights(
         );
     }
 
-    let _ = (scroll_offset, viewport_height);
+    let _ = viewport_height;
     let highlighted_lines: Vec<Line<'static>> = text
         .lines
         .into_iter()
         .enumerate()
         .map(|(line_idx, line)| {
+            // Adjust line_idx by scroll_offset to get absolute line number
+            let absolute_line = line_idx + scroll_offset as usize;
             let line_matches: Vec<(usize, &Match)> = matches
                 .iter()
                 .enumerate()
-                .filter(|(_, m)| m.line as usize == line_idx)
+                .filter(|(_, m)| m.line as usize == absolute_line)
                 .collect();
 
             if line_matches.is_empty() {

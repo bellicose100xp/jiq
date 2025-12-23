@@ -21,8 +21,6 @@ impl App {
         let input_area = layout[1];
         let help_area = layout[2];
 
-        self.update_stats();
-
         crate::results::results_render::render_pane(self, frame, results_area);
 
         crate::input::input_render::render_field(self, frame, input_area);
@@ -103,6 +101,7 @@ mod snapshot_tests {
         let mut app = test_app(json);
         app.input.textarea.insert_str(".name");
         app.query.as_mut().unwrap().execute(".name");
+        app.update_stats();
 
         let output = render_to_string(&mut app, TEST_WIDTH, TEST_HEIGHT);
         assert_snapshot!(output);
@@ -114,6 +113,7 @@ mod snapshot_tests {
         let mut app = test_app(json);
         app.input.textarea.insert_str(".[].name");
         app.query.as_mut().unwrap().execute(".[].name");
+        app.update_stats();
 
         let output = render_to_string(&mut app, TEST_WIDTH, TEST_HEIGHT);
         assert_snapshot!(output);
@@ -295,6 +295,7 @@ mod snapshot_tests {
 
         app.input.textarea.insert_str(".name");
         app.query.as_mut().unwrap().execute(".name");
+        app.update_stats();
 
         app.input.textarea.delete_line_by_head();
         app.input.textarea.insert_str(".invalid[");
@@ -313,6 +314,7 @@ mod snapshot_tests {
 
         app.input.textarea.insert_str(".name");
         app.query.as_mut().unwrap().execute(".name");
+        app.update_stats();
 
         app.input.textarea.delete_line_by_head();
         app.input.textarea.insert_str(".invalid[");
@@ -331,6 +333,7 @@ mod snapshot_tests {
 
         app.input.textarea.insert_str(".name");
         app.query.as_mut().unwrap().execute(".name");
+        app.update_stats();
 
         app.focus = Focus::InputField;
 
@@ -345,6 +348,7 @@ mod snapshot_tests {
 
         app.input.textarea.insert_str(".name");
         app.query.as_mut().unwrap().execute(".name");
+        app.update_stats();
 
         app.focus = Focus::ResultsPane;
 
@@ -880,6 +884,7 @@ mod snapshot_tests {
         // Execute successful query first
         app.input.textarea.insert_str(".name");
         app.query.as_mut().unwrap().execute(".name");
+        app.update_stats();
 
         // Now trigger async query - results should still be visible
         app.input.textarea.delete_line_by_head();
@@ -902,6 +907,7 @@ mod snapshot_tests {
         // First successful query
         app.input.textarea.insert_str(".name");
         app.query.as_mut().unwrap().execute(".name");
+        app.update_stats();
 
         // Then query with error
         app.input.textarea.delete_line_by_head();

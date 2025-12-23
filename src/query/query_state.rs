@@ -2,6 +2,9 @@ use std::sync::Arc;
 use std::sync::mpsc::{Receiver, Sender, channel};
 use tokio_util::sync::CancellationToken;
 
+use ansi_to_tui::IntoText;
+use ratatui::text::Text;
+
 use crate::query::executor::JqExecutor;
 use crate::query::worker::{QueryRequest, QueryResponse, spawn_worker};
 use serde_json::Value;
@@ -59,6 +62,9 @@ pub struct QueryState {
     /// Uses Arc to avoid re-parsing large files on every keystroke!
     /// This is THE critical optimization for large files.
     pub last_successful_result_parsed: Option<Arc<Value>>,
+    /// Pre-rendered Text<'static> for display
+    /// Avoids expensive into_text() conversion in render loop (~10x/sec)
+    pub last_successful_result_rendered: Option<Text<'static>>,
     /// Base query that produced the last successful result (for suggestions)
     pub base_query_for_suggestions: Option<String>,
     /// Type of the last successful result (for type-aware suggestions)
@@ -100,6 +106,14 @@ impl QueryState {
             .and_then(|s| Self::parse_first_value(s))
             .map(Arc::new);
 
+        // Pre-render result to avoid expensive conversion in render loop
+        let last_successful_result_rendered = last_successful_result.clone().map(|s| {
+            s.as_bytes()
+                .to_vec()
+                .into_text()
+                .unwrap_or_else(|_| Text::raw(s.to_string()))
+        });
+
         let (request_tx, request_rx) = channel();
         let (response_tx, response_rx) = channel();
 
@@ -111,6 +125,7 @@ impl QueryState {
             last_successful_result,
             last_successful_result_unformatted,
             last_successful_result_parsed,
+            last_successful_result_rendered,
             base_query_for_suggestions,
             base_type_for_suggestions,
             request_tx: Some(request_tx),
@@ -143,6 +158,15 @@ impl QueryState {
             .all(|line| line.trim() == "null");
 
         if !is_only_nulls {
+            // Pre-render result BEFORE moving output into Arc
+            // This avoids expensive into_text() conversion in render loop
+            let rendered = output
+                .as_bytes()
+                .to_vec()
+                .into_text()
+                .unwrap_or_else(|_| Text::raw(output.clone()));
+
+            self.last_successful_result_rendered = Some(rendered);
             self.last_successful_result = Some(Arc::new(output));
             self.last_successful_result_unformatted = Some(Arc::new(unformatted.clone()));
 
@@ -491,34 +515,28 @@ impl QueryState {
 
     /// Get the total number of lines in the current results
     /// Note: Returns u32 to handle large files (>65K lines) correctly
-    /// When there's an error, uses last_successful_result since that's what gets rendered
+    /// Always uses last_successful_result since that's what gets rendered
     pub fn line_count(&self) -> u32 {
-        match &self.result {
-            Ok(result) => result.lines().count() as u32,
-            Err(_) => self
-                .last_successful_result
-                .as_ref()
-                .map(|r| r.lines().count() as u32)
-                .unwrap_or(0),
-        }
+        self.last_successful_result
+            .as_ref()
+            .map(|r| r.lines().count() as u32)
+            .unwrap_or(0)
     }
 
     /// Get the maximum line width in the current results (for horizontal scrolling)
+    /// Always uses last_successful_result since that's what gets rendered
     pub fn max_line_width(&self) -> u16 {
-        let content = match &self.result {
-            Ok(result) => result,
-            Err(_) => self
-                .last_successful_result
-                .as_deref()
-                .map(|s| s.as_ref())
-                .unwrap_or(""),
-        };
-        content
-            .lines()
-            .map(|l| l.len())
-            .max()
+        self.last_successful_result
+            .as_deref()
+            .map(|content| {
+                content
+                    .lines()
+                    .map(|l| l.len())
+                    .max()
+                    .unwrap_or(0)
+                    .min(u16::MAX as usize) as u16
+            })
             .unwrap_or(0)
-            .min(u16::MAX as usize) as u16
     }
 }
 

@@ -45,9 +45,10 @@ fn copy_result(app: &mut App, backend: ClipboardBackend) -> bool {
         None => return false,
     };
 
-    let result = match &query_state.result {
-        Ok(text) => strip_ansi_codes(text),
-        Err(_) => return false,
+    // Copy what's displayed: last_successful_result_unformatted
+    let result = match &query_state.last_successful_result_unformatted {
+        Some(text) => text.as_ref().to_string(),
+        None => return false,
     };
 
     if result.is_empty() {
@@ -62,6 +63,7 @@ fn copy_result(app: &mut App, backend: ClipboardBackend) -> bool {
     }
 }
 
+#[cfg(test)]
 pub fn strip_ansi_codes(text: &str) -> String {
     let mut result = String::with_capacity(text.len());
     let mut chars = text.chars().peekable();

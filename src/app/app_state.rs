@@ -135,6 +135,9 @@ impl App {
 
                     self.input_json_schema = crate::json::extract_json_schema_dynamic(&json_input);
 
+                    // Initialize stats for initial result
+                    self.update_stats();
+
                     self.file_loader = None;
 
                     // Ensure AI works on launch with deferred file loading
