@@ -88,7 +88,6 @@ fn test_height_stored_after_rendering_suggestions() {
         state.previous_popup_height.is_some(),
         "previous_popup_height should be stored after rendering suggestions"
     );
-    println!("✓ Height stored: {}", state.previous_popup_height.unwrap());
 }
 
 #[test]
@@ -126,12 +125,6 @@ fn test_height_maintained_during_loading() {
         height_during_loading.unwrap(),
         baseline_height,
         "Popup height should remain consistent during loading transition"
-    );
-
-    println!(
-        "✓ Height maintained during loading: baseline={}, loading={}",
-        baseline_height,
-        height_during_loading.unwrap()
     );
 }
 
@@ -199,11 +192,6 @@ fn test_height_adjusts_with_new_suggestions() {
         long_height > short_height,
         "Popup should expand when more/longer suggestions are shown"
     );
-
-    println!(
-        "✓ Height adjusts with content: short={}, long={}",
-        short_height, long_height
-    );
 }
 
 #[test]
@@ -266,10 +254,5 @@ fn test_height_persistence_across_multiple_loads() {
     assert_eq!(
         height2, height3,
         "Height should remain consistent after loading"
-    );
-
-    println!(
-        "✓ Height consistent across transitions: initial={}, loading={}, final={}",
-        height1, height2, height3
     );
 }
