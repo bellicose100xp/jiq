@@ -31,23 +31,31 @@ fn test_query_request_creation() {
 
 #[test]
 fn test_query_response_variants() {
-    // Test Success variant
-    let response = QueryResponse::Success {
-        output: "result".to_string(),
+    // Test ProcessedSuccess variant
+    let processed = ProcessedResult {
+        output: std::sync::Arc::new("result".to_string()),
+        unformatted: std::sync::Arc::new("result".to_string()),
+        rendered_lines: vec![],
+        parsed: None,
+        line_count: 1,
+        max_width: 6,
+        result_type: ResultType::String,
         query: ".foo".to_string(),
+    };
+    let response = QueryResponse::ProcessedSuccess {
+        processed,
         request_id: 1,
     };
     match response {
-        QueryResponse::Success {
-            output,
-            query,
+        QueryResponse::ProcessedSuccess {
+            processed,
             request_id,
         } => {
-            assert_eq!(output, "result");
-            assert_eq!(query, ".foo");
+            assert_eq!(*processed.output, "result");
+            assert_eq!(processed.query, ".foo");
             assert_eq!(request_id, 1);
         }
-        _ => panic!("Expected Success variant"),
+        _ => panic!("Expected ProcessedSuccess variant"),
     }
 
     // Test Error variant

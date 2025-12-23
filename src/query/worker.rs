@@ -36,7 +36,7 @@
 //!
 //! // Receive response
 //! match response_rx.recv().unwrap() {
-//!     QueryResponse::Success { output, .. } => println!("{}", output),
+//!     QueryResponse::ProcessedSuccess { processed, .. } => println!("{}", processed.output),
 //!     QueryResponse::Error { message, .. } => eprintln!("{}", message),
 //!     QueryResponse::Cancelled { .. } => println!("Cancelled"),
 //! }

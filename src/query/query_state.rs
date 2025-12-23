@@ -336,32 +336,6 @@ impl QueryState {
         let current_request_id = self.in_flight_request_id;
 
         match response {
-            QueryResponse::Success {
-                output,
-                query,
-                request_id,
-            } => {
-                log::debug!("Processing Success response for request {}", request_id);
-                // Ignore stale responses
-                if Some(request_id) != current_request_id {
-                    log::debug!(
-                        "Ignoring stale success from request {} (current: {:?})",
-                        request_id,
-                        current_request_id
-                    );
-                    return None;
-                }
-
-                log::debug!("Updating result for request {}", request_id);
-                self.in_flight_request_id = None;
-                self.current_cancel_token = None;
-                self.result = Ok(output.clone());
-
-                // Cache result for autosuggestions (DRY - same logic as sync execute)
-                self.update_successful_result(output, &query);
-
-                Some(query)
-            }
             QueryResponse::ProcessedSuccess {
                 processed,
                 request_id,

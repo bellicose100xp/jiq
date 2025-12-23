@@ -1,0 +1,28 @@
+---
+source: src/app/app_render_tests/popup_tests.rs
+expression: output
+---
+"┌ Obj┌ Keyboard Shortcuts ────────────────────────────────────────────────┐────┐"
+"│{   │  Enter          Confirm search                                     │    │"
+"│  "t│  n/Enter        Next match                                         │    │"
+"│}   │  N/Shift+Enter  Previous match                                     │    │"
+"│    │  Ctrl+F or /    Re-enter edit mode                                 │    │"
+"│    │  Esc            Close search                                       │    │"
+"│    │                                                                    │    │"
+"│    │  ── HISTORY POPUP ──                                               │    │"
+"│    │  Up/Down        Navigate entries                                   │    │"
+"│    │  Type           Fuzzy search filter                                │    │"
+"│    │  Enter/Tab      Select entry and close                             │    │"
+"│    │  Esc            Close without selecting                            │    │"
+"│    │                                                                    │    │"
+"│    │  ── ERROR OVERLAY ──                                               │    │"
+"│    │  Ctrl+E         Toggle error details                               │    │"
+"│    │                                                                    │    │"
+"│    │  ── AI ASSISTANT ──                                                │    │"
+"│    │  Ctrl+A         Toggle AI assistant                                │    │"
+"│    │  Alt+1-5        Apply AI suggestion (direct)                       │    │"
+"└────│  Alt+↑↓/j/k     Navigate suggestions                               │────┘"
+"┌ Que│  Enter          Apply selected suggestion                          │ant ┐"
+"│    │                                                                    │    │"
+"└────│           j/k: scroll | g/G: top/bottom | F1/q/?: close            │────┘"
+" F1: └────────────────────────────────────────────────────────────────────┘story"

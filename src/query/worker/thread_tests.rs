@@ -26,13 +26,10 @@ fn test_worker_spawns_successfully() {
 
     // Should get a success response
     match response_rx.recv_timeout(std::time::Duration::from_secs(2)) {
-        Ok(QueryResponse::Success { query, .. }) => {
-            assert_eq!(query, ".");
-        }
         Ok(QueryResponse::ProcessedSuccess { processed, .. }) => {
             assert_eq!(processed.query, ".");
         }
-        Ok(other) => panic!("Expected Success or ProcessedSuccess, got {:?}", other),
+        Ok(other) => panic!("Expected ProcessedSuccess, got {:?}", other),
         Err(e) => panic!("Timeout waiting for response: {}", e),
     }
 }
@@ -153,9 +150,7 @@ fn test_worker_handles_multiple_rapid_queries() {
     let mut received_count = 0;
     for _ in 0..5 {
         match response_rx.recv_timeout(std::time::Duration::from_secs(3)) {
-            Ok(QueryResponse::Success { .. })
-            | Ok(QueryResponse::ProcessedSuccess { .. })
-            | Ok(QueryResponse::Error { .. }) => {
+            Ok(QueryResponse::ProcessedSuccess { .. }) | Ok(QueryResponse::Error { .. }) => {
                 received_count += 1;
             }
             Ok(QueryResponse::Cancelled { .. }) => {
@@ -189,15 +184,6 @@ fn test_worker_response_includes_original_query() {
 
     // Response should include the original query
     match response_rx.recv_timeout(std::time::Duration::from_secs(2)) {
-        Ok(QueryResponse::Success {
-            query, request_id, ..
-        }) => {
-            assert_eq!(
-                query, original_query,
-                "Response should include original query"
-            );
-            assert_eq!(request_id, 42);
-        }
         Ok(QueryResponse::ProcessedSuccess {
             processed,
             request_id,
@@ -208,7 +194,7 @@ fn test_worker_response_includes_original_query() {
             );
             assert_eq!(request_id, 42);
         }
-        Ok(other) => panic!("Expected Success or ProcessedSuccess, got {:?}", other),
+        Ok(other) => panic!("Expected ProcessedSuccess, got {:?}", other),
         Err(e) => panic!("Timeout: {}", e),
     }
 }
