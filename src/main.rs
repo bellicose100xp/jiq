@@ -150,7 +150,10 @@ fn run(
         // Poll before render to load data from background thread
         app.poll_file_loader();
 
-        terminal.draw(|frame| app.render(frame))?;
+        if app.should_render() {
+            terminal.draw(|frame| app.render(frame))?;
+            app.clear_dirty();
+        }
 
         app.handle_events()?;
 

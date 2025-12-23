@@ -110,9 +110,10 @@ pub fn handle_suggestion_selection(
 ///
 /// This should be called in the main event loop to process streaming responses.
 /// Uses try_recv() for non-blocking polling.
-pub fn poll_response_channel(ai_state: &mut AiState) {
+/// Returns true if any state changed (responses received or disconnected).
+pub fn poll_response_channel(ai_state: &mut AiState) -> bool {
     if ai_state.response_rx.is_none() {
-        return;
+        return false;
     }
 
     let mut responses = Vec::new();
@@ -135,6 +136,8 @@ pub fn poll_response_channel(ai_state: &mut AiState) {
         }
     }
 
+    let had_responses = !responses.is_empty();
+
     for response in responses {
         process_response(ai_state, response);
     }
@@ -142,6 +145,8 @@ pub fn poll_response_channel(ai_state: &mut AiState) {
     if disconnected && ai_state.loading {
         ai_state.set_error("AI worker disconnected unexpectedly".to_string());
     }
+
+    had_responses || disconnected
 }
 
 /// Handle AI state after jq execution completes
