@@ -72,6 +72,7 @@ pub fn render_pane(app: &mut App, frame: &mut Frame, area: Rect) {
     } else {
         Color::DarkGray
     };
+
     let title = if query_state.result.is_err() {
         // Error title with optional rainbow spinner
         let stats_info = app.stats.display().unwrap_or_default();

@@ -70,21 +70,9 @@ pub fn insert_suggestion(
     let cursor_pos = textarea.cursor().1;
     let before_cursor = &query[..cursor_pos.min(query.len())];
 
-    #[cfg(debug_assertions)]
-    debug!(
-        "insert_suggestion: current_query='{}' base_query='{}' suggestion='{}' cursor_pos={}",
-        query, base_query, suggestion_text, cursor_pos
-    );
-
     let mut temp_tracker = crate::autocomplete::BraceTracker::new();
     temp_tracker.rebuild(before_cursor);
     let (context, partial) = analyze_context(before_cursor, &temp_tracker);
-
-    #[cfg(debug_assertions)]
-    debug!(
-        "context_analysis: context={:?} partial='{}'",
-        context, partial
-    );
 
     // Function context: simple replacement without dots or complex formulas
     if context == SuggestionContext::FunctionContext {
@@ -152,34 +140,16 @@ pub fn insert_suggestion(
     let mut adjusted_base = base_query.clone();
     let mut adjusted_suggestion = suggestion_text.to_string();
 
-    #[cfg(debug_assertions)]
-    debug!(
-        "field_context: partial='{}' char_before={:?} trigger_type={:?} middle_query='{}'",
-        partial, char_before, trigger_type, middle_query
-    );
-
     // Nested arrays: .services[].capacityProviderStrategy[].field
     // Move [] from middle_query to base when user types []
     if trigger_type == CharType::CloseBracket && middle_query == "[]" {
-        #[cfg(debug_assertions)]
-        debug!("nested_array_adjustment: detected [] in middle_query, moving to base");
-
         adjusted_base = format!("{}{}", base_query, middle_query);
         middle_query = String::new();
 
         // Strip [] and leading dot from suggestion (already in query, formula adds dot)
         if let Some(stripped) = adjusted_suggestion.strip_prefix("[]") {
             adjusted_suggestion = stripped.strip_prefix('.').unwrap_or(stripped).to_string();
-
-            #[cfg(debug_assertions)]
-            debug!("nested_array_adjustment: stripped [] and leading dot from suggestion");
         }
-
-        #[cfg(debug_assertions)]
-        debug!(
-            "nested_array_adjustment: adjusted_base='{}' adjusted_suggestion='{}' middle_query='{}'",
-            adjusted_base, adjusted_suggestion, middle_query
-        );
     }
 
     // Prevent double dots: "." + ".services" = "..services"
@@ -187,12 +157,9 @@ pub fn insert_suggestion(
         && adjusted_suggestion.starts_with('.')
         && middle_query.is_empty()
     {
-        #[cfg(debug_assertions)]
-        debug!("formula: root_replacement (special case for root '.')");
-
         adjusted_suggestion.to_string()
     } else {
-        let formula_result = match trigger_type {
+        match trigger_type {
             CharType::NoOp => {
                 // Add dot for path continuation unless suggestion starts with special char
                 let needs_dot = !adjusted_suggestion.starts_with('[')
@@ -201,27 +168,15 @@ pub fn insert_suggestion(
                     && adjusted_base != ".";
 
                 if needs_dot {
-                    #[cfg(debug_assertions)]
-                    debug!("formula: NoOp -> base + middle + '.' + suggestion");
-
                     format!("{}{}.{}", adjusted_base, middle_query, adjusted_suggestion)
                 } else {
-                    #[cfg(debug_assertions)]
-                    debug!("formula: NoOp -> base + middle + suggestion (no dot added)");
-
                     format!("{}{}{}", adjusted_base, middle_query, adjusted_suggestion)
                 }
             }
             CharType::CloseBracket => {
-                #[cfg(debug_assertions)]
-                debug!("formula: CloseBracket -> base + middle + '.' + suggestion");
-
                 format!("{}{}.{}", adjusted_base, middle_query, adjusted_suggestion)
             }
             CharType::PipeOperator | CharType::Semicolon | CharType::Comma | CharType::Colon => {
-                #[cfg(debug_assertions)]
-                debug!("formula: Separator -> base + middle + ' ' + suggestion");
-
                 // Trim trailing space to avoid double spaces
                 let trimmed_middle = middle_query.trim_end();
                 format!(
@@ -230,63 +185,28 @@ pub fn insert_suggestion(
                 )
             }
             CharType::OpenParen => {
-                #[cfg(debug_assertions)]
-                debug!(
-                    "formula: OpenParen -> base + middle + suggestion (paren already in middle)"
-                );
-
                 // ( already in middle_query
                 format!("{}{}{}", adjusted_base, middle_query, adjusted_suggestion)
             }
             CharType::OpenBracket => {
-                #[cfg(debug_assertions)]
-                debug!(
-                    "formula: OpenBracket -> base + middle + suggestion (bracket already in middle)"
-                );
-
                 // [ already in middle_query
                 format!("{}{}{}", adjusted_base, middle_query, adjusted_suggestion)
             }
             CharType::OpenBrace => {
-                #[cfg(debug_assertions)]
-                debug!(
-                    "formula: OpenBrace -> base + middle + suggestion (brace already in middle)"
-                );
-
                 // { already in middle_query
                 format!("{}{}{}", adjusted_base, middle_query, adjusted_suggestion)
             }
             CharType::QuestionMark => {
-                #[cfg(debug_assertions)]
-                debug!("formula: QuestionMark -> base + middle + '.' + suggestion");
-
                 format!("{}{}.{}", adjusted_base, middle_query, adjusted_suggestion)
             }
             CharType::Dot => {
-                #[cfg(debug_assertions)]
-                debug!("formula: Dot -> base + middle + suggestion");
-
                 format!("{}{}{}", adjusted_base, middle_query, adjusted_suggestion)
             }
             CharType::CloseParen | CharType::CloseBrace => {
-                #[cfg(debug_assertions)]
-                debug!("formula: CloseParen/CloseBrace -> base + middle + '.' + suggestion");
-
                 format!("{}{}.{}", adjusted_base, middle_query, adjusted_suggestion)
             }
-        };
-
-        #[cfg(debug_assertions)]
-        debug!(
-            "formula_components: base='{}' middle='{}' suggestion='{}'",
-            adjusted_base, middle_query, adjusted_suggestion
-        );
-
-        formula_result
+        }
     };
-
-    #[cfg(debug_assertions)]
-    debug!("new_query_constructed: '{}'", new_query);
 
     textarea.delete_line_by_head();
     textarea.insert_str(&new_query);

@@ -392,16 +392,17 @@ impl QueryState {
                     .filter(|line| !line.trim().is_empty())
                     .all(|line| line.trim() == "null");
 
-                // Convert rendered lines to Text (fast - just allocations)
-                let rendered = Self::rendered_lines_to_text(processed.rendered_lines);
-
-                // Assign all fields (instant - no processing)
+                // Clear in-flight tracking immediately
                 self.in_flight_request_id = None;
                 self.current_cancel_token = None;
-                self.result = Ok(processed.output.as_ref().clone());
 
                 // Only update cache if result is not null (same as sync path)
                 if !is_only_nulls {
+                    // Convert rendered lines to Text (fast - just allocations)
+                    let rendered = Self::rendered_lines_to_text(processed.rendered_lines);
+
+                    // Update result and all caches
+                    self.result = Ok(processed.output.as_ref().clone());
                     self.last_successful_result = Some(processed.output);
                     self.last_successful_result_unformatted = Some(processed.unformatted);
                     self.last_successful_result_rendered = Some(rendered);
@@ -411,9 +412,12 @@ impl QueryState {
                     self.base_query_for_suggestions = Some(processed.query.clone());
                     self.base_type_for_suggestions = Some(processed.result_type);
                 } else {
-                    // Null result - only update rendered output, preserve cache
-                    self.last_successful_result_rendered = Some(rendered);
-                    log::debug!("Null result - preserving cached base_query and suggestions");
+                    // Null result - preserve ALL cache including rendered output
+                    // Only update self.result so it shows as "null" in error state
+                    self.result = Ok(processed.output.as_ref().clone());
+                    log::debug!(
+                        "Null result - preserving all cached values including rendered output"
+                    );
                 }
 
                 Some(processed.query)
