@@ -163,8 +163,7 @@ pub fn render_pane(app: &mut App, frame: &mut Frame, area: Rect) {
             }
             apply_search_highlights(
                 viewport_text,
-                app.search.matches(),
-                app.search.current_index(),
+                &app.search,
                 app.results_scroll.offset,
                 viewport_height,
             )
@@ -273,11 +272,13 @@ pub fn render_error_overlay(app: &App, frame: &mut Frame, results_area: Rect) {
 }
 fn apply_search_highlights(
     text: Text<'_>,
-    matches: &[Match],
-    current_match_index: usize,
+    search_state: &crate::search::SearchState,
     scroll_offset: u16,
     viewport_height: u16,
 ) -> Text<'static> {
+    let matches = search_state.matches();
+    let current_match_index = search_state.current_index();
+
     if matches.is_empty() {
         return Text::from(
             text.lines
@@ -302,11 +303,8 @@ fn apply_search_highlights(
         .map(|(line_idx, line)| {
             // Adjust line_idx by scroll_offset to get absolute line number
             let absolute_line = line_idx + scroll_offset as usize;
-            let line_matches: Vec<(usize, &Match)> = matches
-                .iter()
-                .enumerate()
-                .filter(|(_, m)| m.line as usize == absolute_line)
-                .collect();
+            let line_matches: Vec<(usize, &Match)> =
+                search_state.matches_on_line(absolute_line as u32).collect();
 
             if line_matches.is_empty() {
                 Line::from(

@@ -45,7 +45,8 @@ fn test_line_count_with_ok_result() {
 
     let content: String = (0..50).map(|i| format!("line{}\n", i)).collect();
     state.result = Ok(content.clone());
-    state.last_successful_result = Some(Arc::new(content));
+    state.last_successful_result = Some(Arc::new(content.clone()));
+    state.cached_line_count = content.lines().count() as u32;
 
     assert_eq!(state.line_count(), 50);
 }
@@ -57,7 +58,8 @@ fn test_line_count_uses_cached_on_error() {
 
     let valid_result: String = (0..30).map(|i| format!("line{}\n", i)).collect();
     state.result = Ok(valid_result.clone());
-    state.last_successful_result = Some(Arc::new(valid_result));
+    state.last_successful_result = Some(Arc::new(valid_result.clone()));
+    state.cached_line_count = valid_result.lines().count() as u32;
 
     // Now set an error
     state.result = Err("syntax error".to_string());
@@ -73,6 +75,7 @@ fn test_line_count_zero_on_error_without_cache() {
 
     state.result = Err("error".to_string());
     state.last_successful_result = None;
+    state.cached_line_count = 0;
 
     assert_eq!(state.line_count(), 0);
 }
@@ -912,7 +915,8 @@ fn test_line_count_always_uses_last_successful_result() {
 
     // Set up: successful result with known line count
     let multiline_result: String = (0..50).map(|i| format!("line{}\n", i)).collect();
-    state.last_successful_result = Some(Arc::new(multiline_result));
+    state.last_successful_result = Some(Arc::new(multiline_result.clone()));
+    state.cached_line_count = multiline_result.lines().count() as u32;
 
     // Set current result to something different
     state.result = Ok("null\n".to_string());
@@ -929,6 +933,7 @@ fn test_max_line_width_always_uses_last_successful_result() {
     // Set up: successful result with known max width
     let wide_result = "short\nthis_is_a_very_long_line_with_many_characters\nshort";
     state.last_successful_result = Some(Arc::new(wide_result.to_string()));
+    state.cached_max_line_width = wide_result.lines().map(|l| l.len()).max().unwrap_or(0) as u16;
 
     // Set current result to something different (short)
     state.result = Ok("x".to_string());

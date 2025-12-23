@@ -1,4 +1,5 @@
 use ratatui::style::{Modifier, Style};
+use std::collections::HashMap;
 use tui_textarea::TextArea;
 
 /// Represents a single match position in the results
@@ -35,6 +36,8 @@ pub struct SearchState {
     current_index: usize,
     /// Cached query to detect changes
     last_query: String,
+    /// Indexed matches by line for O(1) lookup during render
+    matches_by_line: HashMap<u32, Vec<usize>>,
 }
 
 impl Default for SearchState {
@@ -53,6 +56,7 @@ impl SearchState {
             matches: Vec::new(),
             current_index: 0,
             last_query: String::new(),
+            matches_by_line: HashMap::new(),
         }
     }
 
@@ -70,6 +74,7 @@ impl SearchState {
         self.matches.clear();
         self.current_index = 0;
         self.last_query.clear();
+        self.matches_by_line.clear();
     }
 
     /// Returns whether the search has been confirmed (Enter pressed)
@@ -161,11 +166,26 @@ impl SearchState {
         self.last_query = query.clone();
         self.matches = SearchMatcher::find_all(content, &query);
         self.current_index = 0;
+
+        // Build line index for O(1) lookup during render
+        self.matches_by_line.clear();
+        for (idx, m) in self.matches.iter().enumerate() {
+            self.matches_by_line.entry(m.line).or_default().push(idx);
+        }
     }
 
     /// Get the current match index (0-indexed)
     pub fn current_index(&self) -> usize {
         self.current_index
+    }
+
+    /// Get all matches on a specific line with their global indices (O(1) lookup)
+    /// Returns (global_index, &Match) tuples for current match highlighting
+    pub fn matches_on_line(&self, line: u32) -> impl Iterator<Item = (usize, &Match)> + '_ {
+        self.matches_by_line
+            .get(&line)
+            .into_iter()
+            .flat_map(|indices| indices.iter().map(|&i| (i, &self.matches[i])))
     }
 }
 

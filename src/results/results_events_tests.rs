@@ -13,7 +13,8 @@ fn test_j_scrolls_down_one_line() {
     let content: String = (0..20).map(|i| format!("line{}\n", i)).collect();
     let query_state = app.query.as_mut().unwrap();
     query_state.result = Ok(content.clone());
-    query_state.last_successful_result = Some(Arc::new(content));
+    query_state.last_successful_result = Some(Arc::new(content.clone()));
+    query_state.cached_line_count = content.lines().count() as u32;
 
     let line_count = app.results_line_count_u32();
     app.results_scroll.update_bounds(line_count, 10);
@@ -54,7 +55,8 @@ fn test_capital_j_scrolls_down_ten_lines() {
     let content: String = (0..30).map(|i| format!("line{}\n", i)).collect();
     let query_state = app.query.as_mut().unwrap();
     query_state.result = Ok(content.clone());
-    query_state.last_successful_result = Some(Arc::new(content));
+    query_state.last_successful_result = Some(Arc::new(content.clone()));
+    query_state.cached_line_count = content.lines().count() as u32;
 
     let line_count = app.results_line_count_u32();
     app.results_scroll.update_bounds(line_count, 10);
@@ -125,7 +127,8 @@ fn test_page_down_scrolls_half_page() {
     let content: String = (0..50).map(|i| format!("line{}\n", i)).collect();
     let query_state = app.query.as_mut().unwrap();
     query_state.result = Ok(content.clone());
-    query_state.last_successful_result = Some(Arc::new(content));
+    query_state.last_successful_result = Some(Arc::new(content.clone()));
+    query_state.cached_line_count = content.lines().count() as u32;
 
     let line_count = app.results_line_count_u32();
     app.results_scroll.update_bounds(line_count, 20);
@@ -156,7 +159,8 @@ fn test_ctrl_d_scrolls_half_page_down() {
     let content: String = (0..50).map(|i| format!("line{}\n", i)).collect();
     let query_state = app.query.as_mut().unwrap();
     query_state.result = Ok(content.clone());
-    query_state.last_successful_result = Some(Arc::new(content));
+    query_state.last_successful_result = Some(Arc::new(content.clone()));
+    query_state.cached_line_count = content.lines().count() as u32;
 
     let line_count = app.results_line_count_u32();
     app.results_scroll.update_bounds(line_count, 20);
@@ -184,7 +188,10 @@ fn test_down_arrow_scrolls_in_results_pane() {
     app.focus = Focus::ResultsPane;
 
     let content: String = (0..20).map(|i| format!("line{}\n", i)).collect();
-    app.query.as_mut().unwrap().result = Ok(content);
+    let query_state = app.query.as_mut().unwrap();
+    query_state.result = Ok(content.clone());
+    query_state.last_successful_result = Some(Arc::new(content.clone()));
+    query_state.cached_line_count = content.lines().count() as u32;
 
     let line_count = app.results_line_count_u32();
     app.results_scroll.update_bounds(line_count, 10);
@@ -214,7 +221,8 @@ fn test_scroll_clamped_to_max() {
     let content = "line1\nline2\nline3".to_string();
     let query_state = app.query.as_mut().unwrap();
     query_state.result = Ok(content.clone());
-    query_state.last_successful_result = Some(Arc::new(content));
+    query_state.last_successful_result = Some(Arc::new(content.clone()));
+    query_state.cached_line_count = content.lines().count() as u32;
 
     let line_count = app.results_line_count_u32();
     app.results_scroll.update_bounds(line_count, 10);
@@ -236,7 +244,10 @@ fn test_scroll_clamped_with_content() {
     app.focus = Focus::ResultsPane;
 
     let content: String = (0..20).map(|i| format!("line{}\n", i)).collect();
-    app.query.as_mut().unwrap().result = Ok(content);
+    let query_state = app.query.as_mut().unwrap();
+    query_state.result = Ok(content.clone());
+    query_state.last_successful_result = Some(Arc::new(content.clone()));
+    query_state.cached_line_count = content.lines().count() as u32;
 
     let line_count = app.results_line_count_u32();
     app.results_scroll.update_bounds(line_count, 10);
@@ -258,7 +269,8 @@ fn test_scroll_page_down_clamped() {
     let content: String = (0..15).map(|i| format!("line{}\n", i)).collect();
     let query_state = app.query.as_mut().unwrap();
     query_state.result = Ok(content.clone());
-    query_state.last_successful_result = Some(Arc::new(content));
+    query_state.last_successful_result = Some(Arc::new(content.clone()));
+    query_state.cached_line_count = content.lines().count() as u32;
 
     let line_count = app.results_line_count_u32();
     app.results_scroll.update_bounds(line_count, 10);
@@ -280,7 +292,8 @@ fn test_scroll_j_clamped() {
     let content: String = (0..5).map(|i| format!("line{}\n", i)).collect();
     let query_state = app.query.as_mut().unwrap();
     query_state.result = Ok(content.clone());
-    query_state.last_successful_result = Some(Arc::new(content));
+    query_state.last_successful_result = Some(Arc::new(content.clone()));
+    query_state.cached_line_count = content.lines().count() as u32;
 
     let line_count = app.results_line_count_u32();
     app.results_scroll.update_bounds(line_count, 3);
@@ -308,7 +321,9 @@ fn app_with_wide_content() -> App {
         .collect();
     let query_state = app.query.as_mut().unwrap();
     query_state.result = Ok(content.clone());
-    query_state.last_successful_result = Some(Arc::new(content));
+    query_state.last_successful_result = Some(Arc::new(content.clone()));
+    query_state.cached_line_count = content.lines().count() as u32;
+    query_state.cached_max_line_width = content.lines().map(|l| l.len()).max().unwrap_or(0) as u16;
     app.results_scroll.update_h_bounds(101, 40);
     app
 }
@@ -431,7 +446,8 @@ fn test_end_jumps_to_bottom() {
     let content: String = (0..20).map(|i| format!("line{}\n", i)).collect();
     let query_state = app.query.as_mut().unwrap();
     query_state.result = Ok(content.clone());
-    query_state.last_successful_result = Some(Arc::new(content));
+    query_state.last_successful_result = Some(Arc::new(content.clone()));
+    query_state.cached_line_count = content.lines().count() as u32;
     app.results_scroll.update_bounds(20, 10);
     app.results_scroll.offset = 0;
 

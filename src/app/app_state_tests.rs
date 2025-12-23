@@ -108,7 +108,8 @@ fn test_max_scroll_large_content() {
     let large_result: String = (0..70000).map(|i| format!("line {}\n", i)).collect();
     let query_state = app.query.as_mut().unwrap();
     query_state.result = Ok(large_result.clone());
-    query_state.last_successful_result = Some(Arc::new(large_result));
+    query_state.last_successful_result = Some(Arc::new(large_result.clone()));
+    query_state.cached_line_count = large_result.lines().count() as u32;
 
     let line_count = app.results_line_count_u32();
     assert!(line_count > 65535);
@@ -126,7 +127,8 @@ fn test_results_line_count_large_file() {
     let result: String = (0..65535).map(|_| "x\n").collect();
     let query_state = app.query.as_mut().unwrap();
     query_state.result = Ok(result.clone());
-    query_state.last_successful_result = Some(Arc::new(result));
+    query_state.last_successful_result = Some(Arc::new(result.clone()));
+    query_state.cached_line_count = result.lines().count() as u32;
 
     assert_eq!(app.results_line_count_u32(), 65535);
 
@@ -143,7 +145,8 @@ fn test_line_count_uses_last_result_on_error() {
     let valid_result: String = (0..50).map(|i| format!("line{}\n", i)).collect();
     let query_state = app.query.as_mut().unwrap();
     query_state.result = Ok(valid_result.clone());
-    query_state.last_successful_result = Some(Arc::new(valid_result));
+    query_state.last_successful_result = Some(Arc::new(valid_result.clone()));
+    query_state.cached_line_count = valid_result.lines().count() as u32;
 
     assert_eq!(app.results_line_count_u32(), 50);
 
@@ -162,6 +165,7 @@ fn test_line_count_with_error_no_cached_result() {
 
     let query_state = app.query.as_mut().unwrap();
     query_state.last_successful_result = None;
+    query_state.cached_line_count = 0;
     query_state.result = Err("error message".to_string());
 
     assert_eq!(app.results_line_count_u32(), 0);

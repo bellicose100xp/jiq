@@ -69,6 +69,10 @@ pub struct QueryState {
     pub base_query_for_suggestions: Option<String>,
     /// Type of the last successful result (for type-aware suggestions)
     pub base_type_for_suggestions: Option<ResultType>,
+    /// Cached line count (computed once per result, not per render)
+    pub(crate) cached_line_count: u32,
+    /// Cached max line width (computed once per result, not per render)
+    pub(crate) cached_max_line_width: u16,
 
     // Async execution support
     /// Channel to send query requests to worker
@@ -114,6 +118,21 @@ impl QueryState {
                 .unwrap_or_else(|_| Text::raw(s.to_string()))
         });
 
+        // Cache line count and max width for initial result
+        let (cached_line_count, cached_max_line_width) = last_successful_result
+            .as_ref()
+            .map(|s| {
+                let line_count = s.lines().count() as u32;
+                let max_width = s
+                    .lines()
+                    .map(|l| l.len())
+                    .max()
+                    .unwrap_or(0)
+                    .min(u16::MAX as usize) as u16;
+                (line_count, max_width)
+            })
+            .unwrap_or((0, 0));
+
         let (request_tx, request_rx) = channel();
         let (response_tx, response_rx) = channel();
 
@@ -128,6 +147,8 @@ impl QueryState {
             last_successful_result_rendered,
             base_query_for_suggestions,
             base_type_for_suggestions,
+            cached_line_count,
+            cached_max_line_width,
             request_tx: Some(request_tx),
             response_rx: Some(response_rx),
             next_request_id: 1, // Reserve 0 for worker errors
@@ -158,6 +179,15 @@ impl QueryState {
             .all(|line| line.trim() == "null");
 
         if !is_only_nulls {
+            // Cache line count and max width BEFORE moving output
+            let cached_line_count = output.lines().count() as u32;
+            let cached_max_line_width = output
+                .lines()
+                .map(|l| l.len())
+                .max()
+                .unwrap_or(0)
+                .min(u16::MAX as usize) as u16;
+
             // Pre-render result BEFORE moving output into Arc
             // This avoids expensive into_text() conversion in render loop
             let rendered = output
@@ -184,6 +214,9 @@ impl QueryState {
             let base_query = Self::normalize_base_query(query);
             self.base_query_for_suggestions = Some(base_query);
             self.base_type_for_suggestions = Some(Self::detect_result_type(&unformatted));
+
+            self.cached_line_count = cached_line_count;
+            self.cached_max_line_width = cached_max_line_width;
         }
     }
 
@@ -515,28 +548,15 @@ impl QueryState {
 
     /// Get the total number of lines in the current results
     /// Note: Returns u32 to handle large files (>65K lines) correctly
-    /// Always uses last_successful_result since that's what gets rendered
+    /// Always uses cached value computed when result changes
     pub fn line_count(&self) -> u32 {
-        self.last_successful_result
-            .as_ref()
-            .map(|r| r.lines().count() as u32)
-            .unwrap_or(0)
+        self.cached_line_count
     }
 
     /// Get the maximum line width in the current results (for horizontal scrolling)
-    /// Always uses last_successful_result since that's what gets rendered
+    /// Always uses cached value computed when result changes
     pub fn max_line_width(&self) -> u16 {
-        self.last_successful_result
-            .as_deref()
-            .map(|content| {
-                content
-                    .lines()
-                    .map(|l| l.len())
-                    .max()
-                    .unwrap_or(0)
-                    .min(u16::MAX as usize) as u16
-            })
-            .unwrap_or(0)
+        self.cached_max_line_width
     }
 }
 
