@@ -18,20 +18,35 @@ impl App {
         if self.debouncer.should_execute() {
             editor::editor_events::execute_query_with_auto_show(self);
             self.debouncer.mark_executed();
+            self.mark_dirty();
         }
 
         // Poll for query responses
-        self.poll_query_response();
+        if self.poll_query_response() {
+            self.mark_dirty();
+        }
 
-        crate::ai::ai_events::poll_response_channel(&mut self.ai);
+        if crate::ai::ai_events::poll_response_channel(&mut self.ai) {
+            self.mark_dirty();
+        }
+
+        // Check notification expiry
+        if self.notification.clear_if_expired() {
+            self.mark_dirty();
+        }
 
         if event::poll(EVENT_POLL_TIMEOUT)? {
             match event::read()? {
                 Event::Key(key_event) if key_event.kind == KeyEventKind::Press => {
                     self.handle_key_event(key_event);
+                    self.mark_dirty();
                 }
                 Event::Paste(text) => {
                     self.handle_paste_event(text);
+                    self.mark_dirty();
+                }
+                Event::Resize(_, _) => {
+                    self.mark_dirty();
                 }
                 _ => {}
             }
@@ -165,7 +180,8 @@ impl App {
     ///
     /// Checks for completed async queries and triggers AI updates when needed.
     /// Uses the query returned from poll_response() to ensure AI gets correct context.
-    fn poll_query_response(&mut self) {
+    /// Returns true if state changed (query completed).
+    fn poll_query_response(&mut self) -> bool {
         let completed_query = if let Some(query_state) = &mut self.query {
             query_state.poll_response()
         } else {
@@ -196,7 +212,9 @@ impl App {
                     },
                 );
             }
+            return true;
         }
+        false
     }
 }
 

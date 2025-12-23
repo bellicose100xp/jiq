@@ -45,6 +45,7 @@ pub struct App {
     pub saved_tooltip_visibility: bool,
     pub input_json_schema: Option<String>,
     pub frame_count: u64,
+    pub needs_render: bool,
 }
 
 impl App {
@@ -121,6 +122,7 @@ impl App {
             saved_tooltip_visibility: config.tooltip.auto_show,
             input_json_schema: None,
             frame_count: 0,
+            needs_render: true,
         }
     }
 
@@ -129,6 +131,7 @@ impl App {
         if let Some(loader) = &mut self.file_loader
             && let Some(result) = loader.poll()
         {
+            self.mark_dirty();
             match result {
                 Ok(json_input) => {
                     self.query = Some(QueryState::new(json_input.clone()));
@@ -219,6 +222,41 @@ impl App {
                     .map(|s| s.as_ref()),
             },
         );
+    }
+
+    pub fn mark_dirty(&mut self) {
+        self.needs_render = true;
+    }
+
+    pub fn clear_dirty(&mut self) {
+        self.needs_render = false;
+    }
+
+    /// Returns true if continuous rendering is needed for animations
+    fn needs_animation(&self) -> bool {
+        // Query execution spinner
+        if let Some(ref query) = self.query {
+            if query.is_pending() {
+                return true;
+            }
+        }
+        // AI loading spinner
+        if self.ai.loading {
+            return true;
+        }
+        // File loading spinner
+        if self.file_loader.as_ref().is_some_and(|l| l.is_loading()) {
+            return true;
+        }
+        // Notification timer expiry check
+        if self.notification.current().is_some() {
+            return true;
+        }
+        false
+    }
+
+    pub fn should_render(&self) -> bool {
+        self.needs_render || self.needs_animation()
     }
 }
 
