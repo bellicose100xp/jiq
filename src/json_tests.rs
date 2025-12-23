@@ -153,3 +153,85 @@ fn snapshot_schema_extraction_nested_arrays() {
     let schema = extract_json_schema(json, 5).unwrap();
     insta::assert_snapshot!(schema);
 }
+
+#[test]
+fn test_calculate_schema_depth() {
+    // Edge case: zero size
+    assert_eq!(calculate_schema_depth(0), SMALL_DEPTH);
+
+    // Small: < 1MB -> depth 30
+    assert_eq!(calculate_schema_depth(1000), SMALL_DEPTH);
+    assert_eq!(calculate_schema_depth(500 * 1024), SMALL_DEPTH);
+    assert_eq!(calculate_schema_depth(1024 * 1024 - 1), SMALL_DEPTH); // Just below 1MB
+
+    // Medium: 1MB - 10MB -> depth 20
+    assert_eq!(calculate_schema_depth(1024 * 1024), MEDIUM_DEPTH); // Exact 1MB
+    assert_eq!(calculate_schema_depth(5 * 1024 * 1024), MEDIUM_DEPTH);
+    assert_eq!(calculate_schema_depth(10 * 1024 * 1024 - 1), MEDIUM_DEPTH); // Just below 10MB
+
+    // Large: 10MB - 100MB -> depth 10
+    assert_eq!(calculate_schema_depth(10 * 1024 * 1024), LARGE_DEPTH); // Exact 10MB
+    assert_eq!(calculate_schema_depth(50 * 1024 * 1024), LARGE_DEPTH);
+    assert_eq!(calculate_schema_depth(100 * 1024 * 1024 - 1), LARGE_DEPTH); // Just below 100MB
+
+    // Very Large: > 100MB -> depth 5
+    assert_eq!(calculate_schema_depth(100 * 1024 * 1024), VERY_LARGE_DEPTH); // Exact 100MB
+    assert_eq!(calculate_schema_depth(500 * 1024 * 1024), VERY_LARGE_DEPTH);
+}
+
+#[test]
+fn test_extract_json_schema_dynamic() {
+    let small_json = r#"{"a": {"b": {"c": 1}}}"#;
+    let schema = extract_json_schema_dynamic(small_json);
+    assert!(schema.is_some());
+    let schema_value = schema.unwrap();
+    assert!(schema_value.contains(r#""a""#));
+    assert!(schema_value.contains(r#""b""#));
+    assert!(schema_value.contains(r#""c""#));
+}
+
+#[test]
+fn test_extract_json_schema_dynamic_invalid_json() {
+    // Invalid JSON should return None
+    let result = extract_json_schema_dynamic("not valid json");
+    assert!(result.is_none());
+
+    let result = extract_json_schema_dynamic("{broken: json}");
+    assert!(result.is_none());
+}
+
+#[test]
+fn test_extract_json_schema_dynamic_empty_string() {
+    // Empty string is invalid JSON
+    let result = extract_json_schema_dynamic("");
+    assert!(result.is_none());
+}
+
+#[test]
+fn test_extract_json_schema_dynamic_empty_containers() {
+    // Empty object
+    let schema = extract_json_schema_dynamic("{}").unwrap();
+    assert_eq!(schema, "{}");
+
+    // Empty array
+    let schema = extract_json_schema_dynamic("[]").unwrap();
+    assert_eq!(schema, "[]");
+}
+
+#[test]
+fn test_extract_json_schema_dynamic_depth_scaling() {
+    // Create a deeply nested JSON (35 levels deep)
+    let mut json = String::from(r#""leaf""#);
+    for i in 0..35 {
+        json = format!(r#"{{"level{}": {}}}"#, i, json);
+    }
+
+    // For small JSON (< 1MB), should use depth 30
+    let schema = extract_json_schema_dynamic(&json).unwrap();
+    // Should have truncation at depth 30
+    assert!(schema.contains(r#""...""#));
+
+    // Verify it doesn't go too deep (would have more levels if depth was higher)
+    let depth_check = extract_json_schema(&json, 35).unwrap();
+    assert_ne!(schema, depth_check);
+}

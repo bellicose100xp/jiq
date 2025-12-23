@@ -133,10 +133,7 @@ impl App {
                 Ok(json_input) => {
                     self.query = Some(QueryState::new(json_input.clone()));
 
-                    self.input_json_schema = crate::json::extract_json_schema(
-                        &json_input,
-                        crate::json::DEFAULT_SCHEMA_MAX_DEPTH,
-                    );
+                    self.input_json_schema = crate::json::extract_json_schema_dynamic(&json_input);
 
                     self.file_loader = None;
 
