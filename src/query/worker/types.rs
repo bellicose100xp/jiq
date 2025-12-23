@@ -49,16 +49,7 @@ pub struct ProcessedResult {
 /// Response from query execution
 #[derive(Debug)]
 pub enum QueryResponse {
-    /// Query execution succeeded
-    Success {
-        /// Output from jq with ANSI colors
-        output: String,
-        /// The query that produced this output (for updating base_query_for_suggestions)
-        query: String,
-        /// Request ID this response belongs to
-        request_id: u64,
-    },
-    /// Fully processed result with all caches computed (new async path)
+    /// Query execution succeeded with fully processed result
     ProcessedSuccess {
         /// Pre-processed result with all caches
         processed: ProcessedResult,

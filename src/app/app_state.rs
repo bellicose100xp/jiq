@@ -235,10 +235,10 @@ impl App {
     /// Returns true if continuous rendering is needed for animations
     fn needs_animation(&self) -> bool {
         // Query execution spinner
-        if let Some(ref query) = self.query {
-            if query.is_pending() {
-                return true;
-            }
+        if let Some(ref query) = self.query
+            && query.is_pending()
+        {
+            return true;
         }
         // AI loading spinner
         if self.ai.loading {
