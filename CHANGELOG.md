@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.6.0] - 2025-12-22
+
+### Changed
+- **Dynamic AI context depth** - Schema extraction depth now scales with file size
+  - Small files (<1MB): depth 30 for comprehensive context
+  - Medium files (1-10MB): depth 20 for balanced extraction
+  - Large files (10-100MB): depth 10 for focused structure
+  - Very large files (>100MB): depth 5 for minimal extraction
+  - Provides better AI assistance for small files while maintaining performance
+  - Array sampling optimization keeps extraction fast regardless of depth
+  - Negligible load-time impact (<5ms for most files)
+
 ## [3.5.1] - 2025-12-22
 
 ### Added
