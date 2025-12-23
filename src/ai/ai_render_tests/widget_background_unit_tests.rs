@@ -111,11 +111,6 @@ fn test_selected_suggestion_has_background() {
         cells_with_darkgray_bg,
         total_non_empty_cells
     );
-
-    println!(
-        "✓ Found {} cells with DarkGray background in selected suggestion row (out of {} cells)",
-        cells_with_darkgray_bg, total_non_empty_cells
-    );
 }
 
 #[test]
@@ -189,6 +184,4 @@ fn test_unselected_suggestion_no_background() {
         "Unselected suggestion should NOT have DarkGray background. Found {} cells with DarkGray bg",
         cells_with_darkgray_bg
     );
-
-    println!("✓ Unselected suggestion correctly has no DarkGray background");
 }
