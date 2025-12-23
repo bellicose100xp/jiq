@@ -383,6 +383,52 @@ fn test_trigger_ai_request_includes_query_context() {
     }
 }
 
+#[test]
+fn test_initial_needs_render_true() {
+    let app = test_app(r#"{"test": true}"#);
+    assert!(
+        app.needs_render,
+        "New app should have needs_render=true for initial render"
+    );
+}
+
+#[test]
+fn test_poll_file_loader_marks_dirty_on_success() {
+    let json_input = r#"{"test": true}"#.to_string();
+    let config = Config::default();
+    let loader = create_test_loader(json_input);
+    let mut app = App::new_with_loader(loader, &config);
+
+    app.clear_dirty();
+
+    app.poll_file_loader();
+
+    assert!(
+        app.needs_render,
+        "poll_file_loader should mark dirty on successful load"
+    );
+}
+
+#[test]
+fn test_poll_file_loader_marks_dirty_on_error() {
+    let config = Config::default();
+    let loader = crate::input::FileLoader::spawn_load(std::path::PathBuf::from("/nonexistent"));
+    let mut app = App::new_with_loader(loader, &config);
+
+    std::thread::sleep(std::time::Duration::from_millis(100));
+
+    app.clear_dirty();
+
+    app.poll_file_loader();
+
+    if app.notification.current().is_some() {
+        assert!(
+            app.needs_render,
+            "poll_file_loader should mark dirty when error notification is shown"
+        );
+    }
+}
+
 // **Feature: deferred-file-loading, Property 2: Successful loading initializes QueryState**
 // *For any* valid JSON string returned by FileLoader, after poll_file_loader processes the result,
 // the App's query field should be Some and contain a QueryState initialized with that JSON
@@ -472,3 +518,7 @@ proptest! {
             }
     }
 }
+
+#[cfg(test)]
+#[path = "app_state_tests/dirty_flag_tests.rs"]
+mod dirty_flag_tests;

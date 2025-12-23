@@ -39,6 +39,9 @@ fn test_close_resets_state() {
     state.current_index = 1;
     state.last_query = "test".to_string();
 
+    state.matches_by_line.insert(0, vec![0]);
+    state.matches_by_line.insert(1, vec![1]);
+
     state.close();
 
     assert!(!state.is_visible());
@@ -46,6 +49,10 @@ fn test_close_resets_state() {
     assert!(state.matches().is_empty());
     assert_eq!(state.current_index(), 0);
     assert!(state.last_query.is_empty());
+    assert!(
+        state.matches_by_line.is_empty(),
+        "matches_by_line should be cleared"
+    );
 }
 
 #[test]
@@ -476,3 +483,7 @@ proptest! {
         );
     }
 }
+
+#[cfg(test)]
+#[path = "search_state_tests/matches_by_line_tests.rs"]
+mod matches_by_line_tests;
