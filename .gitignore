@@ -21,3 +21,10 @@ Cargo.lock
 # Test artifacts
 *.profraw
 *.profdata
+
+# Coverage artifacts
+coverage/
+*.lcov
+lcov.info
+coverage_output.log
+llvm_cov_output.log
