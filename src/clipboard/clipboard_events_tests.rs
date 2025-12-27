@@ -310,3 +310,71 @@ fn test_copy_result_uses_cached_when_result_is_null() {
         "Notification should be shown"
     );
 }
+
+#[test]
+fn test_strip_ansi_osc_sequence_with_st_terminator() {
+    // OSC sequence with ST (String Terminator: \x1b\\) instead of BEL
+    assert_eq!(strip_ansi_codes("\x1b]0;title\x1b\\text"), "text");
+}
+
+#[test]
+fn test_strip_ansi_simple_escape() {
+    // Simple escape followed by another character - consumes \x1b and (
+    assert_eq!(strip_ansi_codes("\x1b(Btext"), "Btext");
+}
+
+#[test]
+fn test_strip_ansi_lone_escape_at_end() {
+    // Lone escape character at end of string
+    assert_eq!(strip_ansi_codes("text\x1b"), "text");
+}
+
+#[test]
+fn test_handle_clipboard_key_ctrl_y() {
+    let mut app = test_app(r#"{"test": "data"}"#);
+    app.input.textarea.insert_str(".test");
+
+    let key = KeyEvent::new(KeyCode::Char('y'), KeyModifiers::CONTROL);
+    let result = handle_clipboard_key(&mut app, key, ClipboardBackend::Osc52);
+
+    assert!(result);
+}
+
+#[test]
+fn test_copy_focused_content_results_pane() {
+    use crate::app::Focus;
+
+    let mut app = test_app(r#"{"test": "data"}"#);
+    app.focus = Focus::ResultsPane;
+
+    let result = handle_yank_key(&mut app, ClipboardBackend::Osc52);
+
+    assert!(result);
+}
+
+#[test]
+fn test_copy_result_when_query_none() {
+    let mut app = test_app(r#"{"test": "data"}"#);
+    app.query = None;
+    app.focus = crate::app::Focus::ResultsPane;
+
+    let result = copy_focused_content(&mut app, ClipboardBackend::Osc52);
+
+    assert!(!result);
+}
+
+#[test]
+fn test_copy_result_when_result_empty() {
+    use std::sync::Arc;
+
+    let mut app = test_app(r#"{"test": "data"}"#);
+    app.focus = crate::app::Focus::ResultsPane;
+
+    if let Some(ref mut query_state) = app.query {
+        query_state.last_successful_result_unformatted = Some(Arc::new(String::new()));
+    }
+
+    let result = copy_result(&mut app, ClipboardBackend::Osc52);
+
+    assert!(!result);
+}
