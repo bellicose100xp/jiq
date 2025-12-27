@@ -195,3 +195,7 @@ impl AutocompleteState {
         self.selected_index
     }
 }
+
+#[cfg(test)]
+#[path = "autocomplete_state_tests.rs"]
+mod autocomplete_state_tests;

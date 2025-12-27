@@ -411,3 +411,75 @@ fn test_element_context_functions_all_in_metadata() {
         );
     }
 }
+
+// ============================================================================
+// filter_builtins Tests
+// ============================================================================
+
+#[test]
+fn test_filter_builtins_with_empty_prefix() {
+    let results = filter_builtins("");
+    assert!(
+        results.is_empty(),
+        "filter_builtins with empty prefix should return empty vec"
+    );
+}
+
+#[test]
+fn test_filter_builtins_with_valid_prefix() {
+    let results = filter_builtins("ma");
+    assert!(
+        !results.is_empty(),
+        "Should find functions starting with 'ma'"
+    );
+    assert!(
+        results.iter().any(|s| s.text == "map"),
+        "Should include 'map' function"
+    );
+    assert!(
+        results.iter().any(|s| s.text == "max"),
+        "Should include 'max' function"
+    );
+}
+
+#[test]
+fn test_filter_builtins_case_insensitive() {
+    let results_lower = filter_builtins("ma");
+    let results_upper = filter_builtins("MA");
+    assert_eq!(
+        results_lower.len(),
+        results_upper.len(),
+        "Case should not affect filtering"
+    );
+}
+
+#[test]
+fn test_filter_builtins_no_matches() {
+    let results = filter_builtins("zzz_nonexistent");
+    assert!(
+        results.is_empty(),
+        "Should return empty vec for non-matching prefix"
+    );
+}
+
+// ============================================================================
+// JqFunction Constructor Tests
+// ============================================================================
+
+#[test]
+fn test_jq_function_new() {
+    let func = JqFunction::new("test_func", "test_func(arg)", "Test description", true);
+    assert_eq!(func.name, "test_func");
+    assert_eq!(func.signature, "test_func(arg)");
+    assert_eq!(func.description, "Test description");
+    assert!(func.needs_parens);
+}
+
+#[test]
+fn test_jq_function_new_without_parens() {
+    let func = JqFunction::new("keys", "keys", "Get object keys", false);
+    assert_eq!(func.name, "keys");
+    assert_eq!(func.signature, "keys");
+    assert_eq!(func.description, "Get object keys");
+    assert!(!func.needs_parens);
+}

@@ -563,3 +563,73 @@ fn test_autocomplete_navigation_only_works_in_insert_mode() {
 
     assert_eq!(selected_before, selected_after);
 }
+
+#[test]
+fn test_question_mark_toggles_help() {
+    let mut app = app_with_query(".name");
+    app.input.editor_mode = EditorMode::Normal;
+    app.help.visible = false;
+
+    app.handle_key_event(key(KeyCode::Char('?')));
+
+    assert!(app.help.visible);
+
+    app.handle_key_event(key(KeyCode::Char('?')));
+
+    assert!(!app.help.visible);
+}
+
+#[test]
+fn test_y_enters_operator_mode() {
+    let mut app = app_with_query(".name");
+    app.input.editor_mode = EditorMode::Normal;
+
+    app.handle_key_event(key(KeyCode::Char('y')));
+
+    assert!(matches!(app.input.editor_mode, EditorMode::Operator('y')));
+}
+
+#[test]
+fn test_yy_yanks_line() {
+    let mut app = app_with_query(".name.first");
+    app.input.editor_mode = EditorMode::Normal;
+
+    app.handle_key_event(key(KeyCode::Char('y')));
+    app.handle_key_event(key(KeyCode::Char('y')));
+
+    assert_eq!(app.input.editor_mode, EditorMode::Normal);
+}
+
+#[test]
+fn test_operator_unknown_with_motion_cancels() {
+    let mut app = app_with_query(".name");
+    app.input.editor_mode = EditorMode::Operator('z');
+    let original_query = app.query().to_string();
+
+    app.handle_key_event(key(KeyCode::Char('w')));
+
+    assert_eq!(app.input.editor_mode, EditorMode::Normal);
+    assert_eq!(app.query(), original_query);
+}
+
+#[test]
+fn test_operator_unknown_double_cancels() {
+    let mut app = app_with_query(".name");
+    app.input.editor_mode = EditorMode::Operator('z');
+    let original_query = app.query().to_string();
+
+    app.handle_key_event(key(KeyCode::Char('z')));
+
+    assert_eq!(app.input.editor_mode, EditorMode::Normal);
+    assert_eq!(app.query(), original_query);
+}
+
+#[test]
+fn test_execute_query_with_auto_show_when_query_none() {
+    let mut app = app_with_query(".name");
+    app.query = None;
+
+    execute_query_with_auto_show(&mut app);
+
+    assert!(app.query.is_none());
+}

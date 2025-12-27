@@ -945,3 +945,47 @@ fn test_max_line_width_always_uses_last_successful_result() {
     // max_line_width() should use last_successful_result (45 chars), not result (1 char)
     assert_eq!(state.max_line_width(), 45);
 }
+
+#[test]
+fn test_execute_logs_parse_failure() {
+    let json = r#"{"a": 1, "b": 2}"#;
+    let mut state = QueryState::new(json.to_string());
+
+    state.execute("to_entries | .[] | \"\\(.key)=\\(.value)\"");
+
+    let result_str = state.result.as_ref().unwrap();
+    assert!(result_str.contains("a=1"));
+}
+
+#[test]
+fn test_request_id_wraps_and_skips_zero() {
+    let json = r#"{"test": true}"#;
+    let mut state = QueryState::new(json.to_string());
+
+    state.next_request_id = u64::MAX;
+
+    state.execute_async(".");
+
+    assert_eq!(state.next_request_id, 1);
+}
+
+#[test]
+fn test_execute_async_with_no_channel() {
+    let json = r#"{"test": true}"#;
+    let mut state = QueryState::new(json.to_string());
+
+    state.request_tx = None;
+
+    state.execute_async(".");
+}
+
+#[test]
+fn test_poll_response_with_no_receiver() {
+    let json = r#"{"test": true}"#;
+    let mut state = QueryState::new(json.to_string());
+
+    state.response_rx = None;
+
+    let result = state.poll_response();
+    assert!(result.is_none());
+}
