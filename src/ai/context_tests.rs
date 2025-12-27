@@ -152,6 +152,45 @@ fn test_extract_top_level_keys_with_array() {
     assert_eq!(keys, vec!["items", "count"]);
 }
 
+#[test]
+fn test_json_type_info_object_with_many_keys() {
+    // Test truncation when object has more than 5 keys
+    let json = r#"{"key1": 1, "key2": 2, "key3": 3, "key4": 4, "key5": 5, "key6": 6, "key7": 7}"#;
+    let info = JsonTypeInfo::from_json(json);
+
+    assert_eq!(info.root_type, "Object");
+    assert_eq!(info.top_level_keys.len(), 7);
+    // Schema hint should show truncation for >5 keys
+    assert!(info.schema_hint.contains("more"), "Should show truncation indicator for >5 keys");
+}
+
+#[test]
+fn test_json_type_info_from_stream() {
+    // Test Stream result type (multiple JSON values on separate lines)
+    let json = "{\"a\":1}\n{\"b\":2}\n{\"c\":3}";
+    let info = JsonTypeInfo::from_json(json);
+
+    assert_eq!(info.root_type, "Stream");
+    assert_eq!(info.element_count, Some(3));
+    assert!(info.schema_hint.contains("Stream of 3 values"));
+}
+
+#[test]
+fn test_extract_top_level_keys_with_escaped_quotes() {
+    // Test handling of escaped quotes in JSON keys
+    let json = r#"{"key\"with\"quotes": 1, "normal": 2}"#;
+    let keys = JsonTypeInfo::extract_top_level_keys(json);
+    assert_eq!(keys, vec!["key\\\"with\\\"quotes", "normal"]);
+}
+
+#[test]
+fn test_extract_top_level_keys_with_backslashes() {
+    // Test handling of backslashes in JSON values
+    let json = r#"{"path": "C:\\Program Files\\", "other": "value"}"#;
+    let keys = JsonTypeInfo::extract_top_level_keys(json);
+    assert_eq!(keys, vec!["path", "other"]);
+}
+
 // **Feature: ai-assistant, Property 15: Context completeness**
 // *For any* app state, the built QueryContext should include: query text,
 // cursor position, error (if any), truncated JSON sample (≤1000 chars),
