@@ -17,3 +17,6 @@ mod property_tests;
 
 #[path = "context_tests/element_context_tests.rs"]
 mod element_context_tests;
+
+#[path = "context_tests/with_entries_context_tests.rs"]
+mod with_entries_context_tests;

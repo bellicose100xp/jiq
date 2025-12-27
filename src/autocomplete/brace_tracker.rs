@@ -14,8 +14,8 @@ pub enum FunctionContext {
     /// Function that iterates over elements (map, select, sort_by, etc.)
     /// Inner value is the function name for debugging/display.
     ElementIterator(&'static str),
-    // TODO: Add WithEntries variant to suggest .key and .value fields
-    // inside with_entries() expressions
+    /// Inside with_entries() - suggests .key and .value fields
+    WithEntries,
 }
 
 /// Information about an open brace/bracket/paren
@@ -139,8 +139,10 @@ impl BraceTracker {
             .find(|f| f.name == func_name)
             .map(|f| f.name)?;
 
-        // Check if it's an element-context function
-        if is_element_context_function(static_name) {
+        // Check for with_entries first (specific case)
+        if static_name == "with_entries" {
+            Some(FunctionContext::WithEntries)
+        } else if is_element_context_function(static_name) {
             Some(FunctionContext::ElementIterator(static_name))
         } else {
             None
@@ -172,6 +174,16 @@ impl BraceTracker {
             info.pos < pos
                 && info.brace_type == BraceType::Paren
                 && matches!(info.context, Some(FunctionContext::ElementIterator(_)))
+        })
+    }
+
+    /// Check if the cursor position is inside any with_entries() function.
+    /// This checks ALL enclosing parens, not just the innermost one.
+    pub fn is_in_with_entries_context(&self, pos: usize) -> bool {
+        self.open_braces.iter().any(|info| {
+            info.pos < pos
+                && info.brace_type == BraceType::Paren
+                && matches!(info.context, Some(FunctionContext::WithEntries))
         })
     }
 

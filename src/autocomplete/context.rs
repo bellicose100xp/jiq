@@ -1,4 +1,4 @@
-use super::autocomplete_state::Suggestion;
+use super::autocomplete_state::{JsonFieldType, Suggestion, SuggestionType};
 use super::brace_tracker::BraceTracker;
 use super::jq_functions::filter_builtins;
 use super::result_analyzer::ResultAnalyzer;
@@ -35,6 +35,7 @@ pub fn get_suggestions(
     // Suppress .[].field suggestions inside element-context functions (map, select, etc.)
     // where iteration is already provided by the function
     let suppress_array_brackets = brace_tracker.is_in_element_context(cursor_pos);
+    let in_with_entries = brace_tracker.is_in_with_entries_context(cursor_pos);
 
     match context {
         SuggestionContext::FieldContext => {
@@ -71,7 +72,7 @@ pub fn get_suggestions(
                     | None
             ) || has_whitespace_before_dot;
 
-            let suggestions = if let (Some(result), Some(typ)) = (result_parsed, result_type) {
+            let mut suggestions = if let (Some(result), Some(typ)) = (result_parsed, result_type) {
                 ResultAnalyzer::analyze_parsed_result(
                     &result,
                     typ,
@@ -81,6 +82,31 @@ pub fn get_suggestions(
             } else {
                 Vec::new()
             };
+
+            // Inject .key and .value suggestions when inside with_entries()
+            if in_with_entries {
+                let prefix = if needs_leading_dot { "." } else { "" };
+
+                // Insert .value first so .key ends up at position 0
+                suggestions.insert(
+                    0,
+                    Suggestion::new_with_type(
+                        format!("{}value", prefix),
+                        SuggestionType::Field,
+                        None,
+                    )
+                    .with_description("Entry value from with_entries()"),
+                );
+                suggestions.insert(
+                    0,
+                    Suggestion::new_with_type(
+                        format!("{}key", prefix),
+                        SuggestionType::Field,
+                        Some(JsonFieldType::String),
+                    )
+                    .with_description("Entry key from with_entries()"),
+                );
+            }
 
             if partial.is_empty() {
                 suggestions

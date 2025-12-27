@@ -447,3 +447,91 @@ fn test_brace_info_struct() {
         Some(FunctionContext::ElementIterator("select"))
     ));
 }
+
+// ============================================================================
+// With Entries Context Detection Tests
+// ============================================================================
+
+#[test]
+fn test_with_entries_context_basic() {
+    let mut tracker = BraceTracker::new();
+    tracker.rebuild("with_entries(.");
+    assert!(tracker.is_in_with_entries_context(14));
+}
+
+#[test]
+fn test_with_entries_context_with_key() {
+    let mut tracker = BraceTracker::new();
+    tracker.rebuild("with_entries(.key");
+    assert!(tracker.is_in_with_entries_context(17));
+}
+
+#[test]
+fn test_with_entries_context_with_value() {
+    let mut tracker = BraceTracker::new();
+    tracker.rebuild("with_entries(.value");
+    assert!(tracker.is_in_with_entries_context(19));
+}
+
+#[test]
+fn test_with_entries_context_after_pipe() {
+    let mut tracker = BraceTracker::new();
+    tracker.rebuild("with_entries(. | .");
+    assert!(tracker.is_in_with_entries_context(18));
+}
+
+#[test]
+fn test_with_entries_context_with_select() {
+    let mut tracker = BraceTracker::new();
+    tracker.rebuild("with_entries(select(.");
+    assert!(tracker.is_in_with_entries_context(21));
+    assert!(tracker.is_in_element_context(21));
+}
+
+#[test]
+fn test_with_entries_context_closed() {
+    let mut tracker = BraceTracker::new();
+    tracker.rebuild("with_entries(.key) | .");
+    assert!(!tracker.is_in_with_entries_context(22));
+}
+
+#[test]
+fn test_with_entries_context_whitespace_before_paren() {
+    let mut tracker = BraceTracker::new();
+    tracker.rebuild("with_entries (.");
+    assert!(tracker.is_in_with_entries_context(15));
+}
+
+#[test]
+fn test_with_entries_context_nested() {
+    let mut tracker = BraceTracker::new();
+    tracker.rebuild("with_entries(with_entries(.");
+    assert!(tracker.is_in_with_entries_context(26));
+}
+
+#[test]
+fn test_with_entries_not_element_context() {
+    let mut tracker = BraceTracker::new();
+    tracker.rebuild("with_entries(.");
+    assert!(!tracker.is_in_element_context(14));
+}
+
+#[test]
+fn test_with_entries_context_with_object_construction() {
+    let mut tracker = BraceTracker::new();
+    tracker.rebuild("with_entries({key: .key, value: .");
+    assert!(tracker.is_in_with_entries_context(33));
+}
+
+#[test]
+fn test_no_with_entries_context_outside() {
+    let mut tracker = BraceTracker::new();
+    tracker.rebuild(".field");
+    assert!(!tracker.is_in_with_entries_context(6));
+}
+
+#[test]
+fn test_function_context_with_entries_debug() {
+    let ctx = FunctionContext::WithEntries;
+    assert!(format!("{:?}", ctx).contains("WithEntries"));
+}
