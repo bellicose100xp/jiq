@@ -1,0 +1,7 @@
+---
+source: src/input/input_render_tests.rs
+expression: output
+---
+"┌ Query [INSERT] ─────────────────────────────── Press Ctrl+A for AI Assistant ┐"
+"│                                                                              │"
+"└──────────────────────────────────────────────────────────────────────────────┘"

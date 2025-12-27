@@ -17,3 +17,7 @@ impl From<std::io::Error> for JiqError {
         JiqError::Io(err.to_string())
     }
 }
+
+#[cfg(test)]
+#[path = "error_tests.rs"]
+mod error_tests;

@@ -104,3 +104,7 @@ pub fn render_field(app: &mut App, frame: &mut Frame, area: Rect) {
         frame.render_widget(paragraph, area);
     }
 }
+
+#[cfg(test)]
+#[path = "input_render_tests.rs"]
+mod input_render_tests;

@@ -14,3 +14,7 @@ impl SuggestionCache {
         Self::default()
     }
 }
+
+#[cfg(test)]
+#[path = "cache_tests.rs"]
+mod cache_tests;

@@ -1,0 +1,19 @@
+---
+source: src/autocomplete/autocomplete_render_tests.rs
+expression: output
+---
+"                                                                                "
+"                                                                                "
+"                                                                                "
+"                                                                                "
+"                                                                                "
+"                                                                                "
+"  ┌ Suggestions ───────────┐                                                    "
+"  │► name    [field: String│                                                    "
+"  │  map(f)  [function]    │                                                    "
+"  │  //      [operator]    │                                                    "
+"  │  []      [iterator]    │                                                    "
+"  └────────────────────────┘                                                    "
+"                                                                                "
+"                                                                                "
+"                                                                                "

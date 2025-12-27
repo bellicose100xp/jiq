@@ -1,0 +1,7 @@
+---
+source: src/input/input_render_tests.rs
+expression: output
+---
+"┌ Query [OPERATOR(d)] ────────────────────────── Press Ctrl+A for AI Assistant ┐"
+"│.name                                                                         │"
+"└──────────────────────────────────────────────────────────────────────────────┘"

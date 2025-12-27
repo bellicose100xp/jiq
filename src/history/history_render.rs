@@ -102,3 +102,7 @@ pub fn render_popup(app: &mut App, frame: &mut Frame, input_area: Rect) {
     search_textarea.set_style(Style::default().fg(Color::White).bg(Color::Black));
     frame.render_widget(&*search_textarea, search_area);
 }
+
+#[cfg(test)]
+#[path = "history_render_tests.rs"]
+mod history_render_tests;

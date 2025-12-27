@@ -1,0 +1,7 @@
+---
+source: src/input/input_render_tests.rs
+expression: output
+---
+"┌ Query [INSERT] rl+A for AI Assistant ┐"
+"│.name                                 │"
+"└──────────────────────────────────────┘"

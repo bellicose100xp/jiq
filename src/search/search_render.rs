@@ -39,3 +39,7 @@ pub fn render_bar(app: &mut App, frame: &mut Frame, area: Rect) {
     search_textarea.set_cursor_line_style(Style::default());
     frame.render_widget(&*search_textarea, inner_area);
 }
+
+#[cfg(test)]
+#[path = "search_render_tests.rs"]
+mod search_render_tests;

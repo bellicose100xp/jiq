@@ -67,3 +67,7 @@ pub const HELP_ENTRIES: &[(&str, &str)] = &[
 ];
 
 pub const HELP_FOOTER: &str = "j/k: scroll | g/G: top/bottom | F1/q/?: close";
+
+#[cfg(test)]
+#[path = "help_content_tests.rs"]
+mod help_content_tests;
