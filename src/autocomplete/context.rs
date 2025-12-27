@@ -32,6 +32,10 @@ pub fn get_suggestions(
     let before_cursor = &query[..cursor_pos.min(query.len())];
     let (context, partial) = analyze_context(before_cursor, brace_tracker);
 
+    // Suppress .[].field suggestions inside element-context functions (map, select, etc.)
+    // where iteration is already provided by the function
+    let suppress_array_brackets = brace_tracker.is_in_element_context(cursor_pos);
+
     match context {
         SuggestionContext::FieldContext => {
             let char_before_dot = find_char_before_field_access(before_cursor, &partial);
@@ -68,7 +72,12 @@ pub fn get_suggestions(
             ) || has_whitespace_before_dot;
 
             let suggestions = if let (Some(result), Some(typ)) = (result_parsed, result_type) {
-                ResultAnalyzer::analyze_parsed_result(&result, typ, needs_leading_dot)
+                ResultAnalyzer::analyze_parsed_result(
+                    &result,
+                    typ,
+                    needs_leading_dot,
+                    suppress_array_brackets,
+                )
             } else {
                 Vec::new()
             };
@@ -91,8 +100,9 @@ pub fn get_suggestions(
                 return Vec::new();
             }
 
+            // Pass true to suppress .[] suggestion - it's never applicable for object keys
             let suggestions = if let (Some(result), Some(typ)) = (result_parsed, result_type) {
-                ResultAnalyzer::analyze_parsed_result(&result, typ, false)
+                ResultAnalyzer::analyze_parsed_result(&result, typ, false, true)
             } else {
                 Vec::new()
             };

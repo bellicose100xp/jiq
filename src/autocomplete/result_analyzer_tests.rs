@@ -39,7 +39,8 @@ fn test_analyze_simple_object() {
     let suggestions = ResultAnalyzer::analyze_parsed_result(
         &parsed,
         ResultType::Object,
-        true, // After operator like | or at start
+        true,  // After operator like | or at start
+        false, // Not in element context
     );
 
     assert_eq!(suggestions.len(), 3);
@@ -53,7 +54,8 @@ fn test_analyze_nested_object() {
     // Nested object after operator
     let result = r#"{"user": {"name": "Alice", "profile": {"city": "NYC"}}}"#;
     let parsed = parse_json(result);
-    let suggestions = ResultAnalyzer::analyze_parsed_result(&parsed, ResultType::Object, true);
+    let suggestions =
+        ResultAnalyzer::analyze_parsed_result(&parsed, ResultType::Object, true, false);
 
     // Should only return top-level fields
     assert_eq!(suggestions.len(), 1);
@@ -66,7 +68,7 @@ fn test_analyze_array_of_objects_after_operator() {
     let result = r#"[{"id": 1, "name": "a"}, {"id": 2, "name": "b"}]"#;
     let parsed = parse_json(result);
     let suggestions =
-        ResultAnalyzer::analyze_parsed_result(&parsed, ResultType::ArrayOfObjects, true);
+        ResultAnalyzer::analyze_parsed_result(&parsed, ResultType::ArrayOfObjects, true, false);
 
     // Should return .[] and element field suggestions with leading dot
     assert!(suggestions.iter().any(|s| s.text == ".[]"));
@@ -80,7 +82,7 @@ fn test_analyze_array_of_objects_after_continuation() {
     let result = r#"[{"id": 1, "name": "a"}, {"id": 2, "name": "b"}]"#;
     let parsed = parse_json(result);
     let suggestions =
-        ResultAnalyzer::analyze_parsed_result(&parsed, ResultType::ArrayOfObjects, false);
+        ResultAnalyzer::analyze_parsed_result(&parsed, ResultType::ArrayOfObjects, false, false);
 
     // Should return [] and element field suggestions without leading dot
     assert!(suggestions.iter().any(|s| s.text == "[]"));
@@ -93,7 +95,8 @@ fn test_analyze_empty_array() {
     // Empty array after operator
     let result = "[]";
     let parsed = parse_json(result);
-    let suggestions = ResultAnalyzer::analyze_parsed_result(&parsed, ResultType::Array, true);
+    let suggestions =
+        ResultAnalyzer::analyze_parsed_result(&parsed, ResultType::Array, true, false);
 
     // Should only return .[] for empty arrays
     assert_eq!(suggestions.len(), 1);
@@ -105,7 +108,8 @@ fn test_analyze_empty_object() {
     // Empty object
     let result = "{}";
     let parsed = parse_json(result);
-    let suggestions = ResultAnalyzer::analyze_parsed_result(&parsed, ResultType::Object, true);
+    let suggestions =
+        ResultAnalyzer::analyze_parsed_result(&parsed, ResultType::Object, true, false);
 
     assert_eq!(suggestions.len(), 0);
 }
@@ -122,7 +126,8 @@ fn test_analyze_pretty_printed_object() {
   "age": 30
 }"#;
     let parsed = parse_json(result);
-    let suggestions = ResultAnalyzer::analyze_parsed_result(&parsed, ResultType::Object, true);
+    let suggestions =
+        ResultAnalyzer::analyze_parsed_result(&parsed, ResultType::Object, true, false);
 
     assert_eq!(suggestions.len(), 2);
     assert!(suggestions.iter().any(|s| s.text == ".name"));
@@ -140,8 +145,12 @@ fn test_multivalue_destructured_objects_after_bracket() {
 {"name": "Bob", "age": 25}
 {"name": "Charlie", "age": 35}"#;
     let parsed = parse_json(result);
-    let suggestions =
-        ResultAnalyzer::analyze_parsed_result(&parsed, ResultType::DestructuredObjects, false);
+    let suggestions = ResultAnalyzer::analyze_parsed_result(
+        &parsed,
+        ResultType::DestructuredObjects,
+        false,
+        false,
+    );
 
     // Should parse first object only, no leading dot
     assert_eq!(suggestions.len(), 2);
@@ -155,8 +164,12 @@ fn test_multivalue_destructured_objects_after_operator() {
     let result = r#"{"clusterArn": "arn1", "name": "svc1"}
 {"clusterArn": "arn2", "name": "svc2"}"#;
     let parsed = parse_json(result);
-    let suggestions =
-        ResultAnalyzer::analyze_parsed_result(&parsed, ResultType::DestructuredObjects, true);
+    let suggestions = ResultAnalyzer::analyze_parsed_result(
+        &parsed,
+        ResultType::DestructuredObjects,
+        true,
+        false,
+    );
 
     // Should parse first object with leading dot
     assert_eq!(suggestions.len(), 2);
@@ -176,8 +189,12 @@ fn test_multivalue_pretty_printed_destructured_after_bracket() {
   "name": "svc2"
 }"#;
     let parsed = parse_json(result);
-    let suggestions =
-        ResultAnalyzer::analyze_parsed_result(&parsed, ResultType::DestructuredObjects, false);
+    let suggestions = ResultAnalyzer::analyze_parsed_result(
+        &parsed,
+        ResultType::DestructuredObjects,
+        false,
+        false,
+    );
 
     // Should parse first object, no leading dot
     assert_eq!(suggestions.len(), 2);
@@ -192,7 +209,8 @@ fn test_multivalue_mixed_types() {
 "hello"
 {"field": "value"}"#;
     let parsed = parse_json(result);
-    let suggestions = ResultAnalyzer::analyze_parsed_result(&parsed, ResultType::Number, true);
+    let suggestions =
+        ResultAnalyzer::analyze_parsed_result(&parsed, ResultType::Number, true, false);
 
     // Primitives have no field suggestions
     assert_eq!(suggestions.len(), 0);
@@ -208,8 +226,12 @@ fn test_multivalue_with_whitespace() {
 {"key2": "val2"}
 "#;
     let parsed = parse_json(result);
-    let suggestions =
-        ResultAnalyzer::analyze_parsed_result(&parsed, ResultType::DestructuredObjects, true);
+    let suggestions = ResultAnalyzer::analyze_parsed_result(
+        &parsed,
+        ResultType::DestructuredObjects,
+        true,
+        false,
+    );
 
     // Should skip empty lines and parse first object with leading dot
     assert_eq!(suggestions.len(), 1);
@@ -226,7 +248,8 @@ fn test_object_constructor_suggestions_after_operator() {
     // Result is object with ONLY "name" and "cap" fields
     let result = r#"{"name": "MyService", "cap": 10}"#;
     let parsed = parse_json(result);
-    let suggestions = ResultAnalyzer::analyze_parsed_result(&parsed, ResultType::Object, true);
+    let suggestions =
+        ResultAnalyzer::analyze_parsed_result(&parsed, ResultType::Object, true, false);
 
     assert_eq!(suggestions.len(), 2);
     assert!(suggestions.iter().any(|s| s.text == ".name"));
@@ -242,7 +265,8 @@ fn test_array_constructor_suggestions() {
     // After `[.field1, .field2]` the result is a primitive array
     let result = r#"["value1", "value2"]"#;
     let parsed = parse_json(result);
-    let suggestions = ResultAnalyzer::analyze_parsed_result(&parsed, ResultType::Array, true);
+    let suggestions =
+        ResultAnalyzer::analyze_parsed_result(&parsed, ResultType::Array, true, false);
 
     // Should suggest .[] for array access
     assert!(suggestions.iter().any(|s| s.text == ".[]"));
@@ -256,16 +280,28 @@ fn test_array_constructor_suggestions() {
 fn test_primitive_results() {
     // Primitives have no field suggestions
     assert_eq!(
-        ResultAnalyzer::analyze_parsed_result(&parse_json("42"), ResultType::Number, true).len(),
-        0
-    );
-    assert_eq!(
-        ResultAnalyzer::analyze_parsed_result(&parse_json(r#""hello""#), ResultType::String, true)
+        ResultAnalyzer::analyze_parsed_result(&parse_json("42"), ResultType::Number, true, false)
             .len(),
         0
     );
     assert_eq!(
-        ResultAnalyzer::analyze_parsed_result(&parse_json("true"), ResultType::Boolean, true).len(),
+        ResultAnalyzer::analyze_parsed_result(
+            &parse_json(r#""hello""#),
+            ResultType::String,
+            true,
+            false
+        )
+        .len(),
+        0
+    );
+    assert_eq!(
+        ResultAnalyzer::analyze_parsed_result(
+            &parse_json("true"),
+            ResultType::Boolean,
+            true,
+            false
+        )
+        .len(),
         0
     );
 }
@@ -273,7 +309,7 @@ fn test_primitive_results() {
 #[test]
 fn test_null_result() {
     let parsed = parse_json("null");
-    let suggestions = ResultAnalyzer::analyze_parsed_result(&parsed, ResultType::Null, true);
+    let suggestions = ResultAnalyzer::analyze_parsed_result(&parsed, ResultType::Null, true, false);
     assert_eq!(suggestions.len(), 0);
 }
 
@@ -281,7 +317,7 @@ fn test_null_result() {
 fn test_empty_string_result() {
     // Empty result treated as null
     let parsed = parse_json("");
-    let suggestions = ResultAnalyzer::analyze_parsed_result(&parsed, ResultType::Null, true);
+    let suggestions = ResultAnalyzer::analyze_parsed_result(&parsed, ResultType::Null, true, false);
     assert_eq!(suggestions.len(), 0);
 }
 
@@ -290,7 +326,7 @@ fn test_invalid_json_result() {
     // Invalid JSON treated as null - returns empty gracefully
     let result = "not valid json {]";
     let parsed = parse_json(result);
-    let suggestions = ResultAnalyzer::analyze_parsed_result(&parsed, ResultType::Null, true);
+    let suggestions = ResultAnalyzer::analyze_parsed_result(&parsed, ResultType::Null, true, false);
     assert_eq!(suggestions.len(), 0);
 }
 
@@ -313,7 +349,7 @@ fn test_very_large_result() {
 
     let parsed = parse_json(&result);
     let suggestions =
-        ResultAnalyzer::analyze_parsed_result(&parsed, ResultType::ArrayOfObjects, true);
+        ResultAnalyzer::analyze_parsed_result(&parsed, ResultType::ArrayOfObjects, true, false);
 
     // Should extract fields from first array element with leading dot
     assert!(suggestions.iter().any(|s| s.text == ".[]"));
@@ -332,7 +368,7 @@ fn test_array_with_nulls_in_result() {
     let result = r#"[null, null, {"field": "value"}]"#;
     let parsed = parse_json(result);
     let suggestions =
-        ResultAnalyzer::analyze_parsed_result(&parsed, ResultType::ArrayOfObjects, true);
+        ResultAnalyzer::analyze_parsed_result(&parsed, ResultType::ArrayOfObjects, true, false);
 
     // Should suggest based on first element (null has no fields)
     assert!(suggestions.iter().any(|s| s.text == ".[]"));
@@ -345,7 +381,7 @@ fn test_bounded_scan_in_results() {
     let result = r#"[{"a": 1}, {"b": 2}, {"c": 3}]"#;
     let parsed = parse_json(result);
     let suggestions =
-        ResultAnalyzer::analyze_parsed_result(&parsed, ResultType::ArrayOfObjects, true);
+        ResultAnalyzer::analyze_parsed_result(&parsed, ResultType::ArrayOfObjects, true, false);
 
     // Should only have fields from first element with leading dot
     assert!(suggestions.iter().any(|s| s.text == ".[]"));
@@ -368,8 +404,12 @@ fn test_destructured_objects_after_bracket_no_prefix() {
     let result = r#"{"serviceArn": "arn1", "config": {}}
 {"serviceArn": "arn2", "config": {}}"#;
     let parsed = parse_json(result);
-    let suggestions =
-        ResultAnalyzer::analyze_parsed_result(&parsed, ResultType::DestructuredObjects, false);
+    let suggestions = ResultAnalyzer::analyze_parsed_result(
+        &parsed,
+        ResultType::DestructuredObjects,
+        false,
+        false,
+    );
 
     // Should suggest fields without any prefix
     assert!(suggestions.iter().any(|s| s.text == "serviceArn"));
@@ -384,8 +424,12 @@ fn test_destructured_objects_after_pipe_with_prefix() {
     let result = r#"{"serviceArn": "arn1"}
 {"serviceArn": "arn2"}"#;
     let parsed = parse_json(result);
-    let suggestions =
-        ResultAnalyzer::analyze_parsed_result(&parsed, ResultType::DestructuredObjects, true);
+    let suggestions = ResultAnalyzer::analyze_parsed_result(
+        &parsed,
+        ResultType::DestructuredObjects,
+        true,
+        false,
+    );
 
     // Should suggest fields WITH leading dot
     assert!(suggestions.iter().any(|s| s.text == ".serviceArn"));
@@ -399,7 +443,7 @@ fn test_array_of_objects_after_dot_no_prefix() {
     let result = r#"[{"id": 1}, {"id": 2}]"#;
     let parsed = parse_json(result);
     let suggestions =
-        ResultAnalyzer::analyze_parsed_result(&parsed, ResultType::ArrayOfObjects, false);
+        ResultAnalyzer::analyze_parsed_result(&parsed, ResultType::ArrayOfObjects, false, false);
 
     // Should suggest [] and [].field without leading dot
     assert!(suggestions.iter().any(|s| s.text == "[]"));
@@ -414,7 +458,7 @@ fn test_array_of_objects_after_pipe_with_prefix() {
     let result = r#"[{"id": 1}, {"id": 2}]"#;
     let parsed = parse_json(result);
     let suggestions =
-        ResultAnalyzer::analyze_parsed_result(&parsed, ResultType::ArrayOfObjects, true);
+        ResultAnalyzer::analyze_parsed_result(&parsed, ResultType::ArrayOfObjects, true, false);
 
     // Should suggest .[] and .[].field with leading dot
     assert!(suggestions.iter().any(|s| s.text == ".[]"));
@@ -428,7 +472,8 @@ fn test_single_object_after_bracket_no_prefix() {
     // After .user[0]. → single object, no leading dot
     let result = r#"{"name": "Alice", "age": 30}"#;
     let parsed = parse_json(result);
-    let suggestions = ResultAnalyzer::analyze_parsed_result(&parsed, ResultType::Object, false);
+    let suggestions =
+        ResultAnalyzer::analyze_parsed_result(&parsed, ResultType::Object, false, false);
 
     // Should suggest fields without leading dot
     assert!(suggestions.iter().any(|s| s.text == "name"));
@@ -441,7 +486,8 @@ fn test_single_object_after_operator_with_prefix() {
     // After .user | . → single object, needs leading dot
     let result = r#"{"name": "Alice", "age": 30}"#;
     let parsed = parse_json(result);
-    let suggestions = ResultAnalyzer::analyze_parsed_result(&parsed, ResultType::Object, true);
+    let suggestions =
+        ResultAnalyzer::analyze_parsed_result(&parsed, ResultType::Object, true, false);
 
     // Should suggest fields WITH leading dot
     assert!(suggestions.iter().any(|s| s.text == ".name"));
@@ -454,7 +500,8 @@ fn test_primitive_array_after_operator() {
     // Array of primitives after operator
     let result = "[1, 2, 3]";
     let parsed = parse_json(result);
-    let suggestions = ResultAnalyzer::analyze_parsed_result(&parsed, ResultType::Array, true);
+    let suggestions =
+        ResultAnalyzer::analyze_parsed_result(&parsed, ResultType::Array, true, false);
 
     // Should only suggest .[]
     assert_eq!(suggestions.len(), 1);
@@ -466,7 +513,8 @@ fn test_primitive_array_after_continuation() {
     // Array of primitives after continuation
     let result = "[1, 2, 3]";
     let parsed = parse_json(result);
-    let suggestions = ResultAnalyzer::analyze_parsed_result(&parsed, ResultType::Array, false);
+    let suggestions =
+        ResultAnalyzer::analyze_parsed_result(&parsed, ResultType::Array, false, false);
 
     // Should only suggest [] (no leading dot)
     assert_eq!(suggestions.len(), 1);
@@ -485,7 +533,8 @@ fn test_field_type_detection() {
             "arr": [1, 2, 3]
         }"#;
     let parsed = parse_json(result);
-    let suggestions = ResultAnalyzer::analyze_parsed_result(&parsed, ResultType::Object, true);
+    let suggestions =
+        ResultAnalyzer::analyze_parsed_result(&parsed, ResultType::Object, true, false);
 
     // Verify types are correctly detected
     let str_field = suggestions.iter().find(|s| s.text == ".str").unwrap();
@@ -511,4 +560,157 @@ fn test_field_type_detection() {
         arr_field.field_type,
         Some(JsonFieldType::ArrayOf(_))
     ));
+}
+
+// ============================================================================
+// Element Context Tests
+// ============================================================================
+
+#[test]
+fn test_array_suggestions_in_element_context() {
+    // Inside map(), should suggest .field not .[].field
+    let result = r#"[{"id": 1, "name": "a"}, {"id": 2, "name": "b"}]"#;
+    let parsed = parse_json(result);
+    let suggestions = ResultAnalyzer::analyze_parsed_result(
+        &parsed,
+        ResultType::ArrayOfObjects,
+        true, // needs_leading_dot
+        true, // in_element_context
+    );
+
+    // Should NOT have .[] pattern (iteration already provided by map/select/etc.)
+    assert!(
+        !suggestions.iter().any(|s| s.text == ".[]"),
+        "Should not suggest .[] in element context"
+    );
+    // Should have .field (NOT .[].field)
+    assert!(suggestions.iter().any(|s| s.text == ".id"));
+    assert!(suggestions.iter().any(|s| s.text == ".name"));
+    // Should NOT have .[].field
+    assert!(!suggestions.iter().any(|s| s.text == ".[].id"));
+    assert!(!suggestions.iter().any(|s| s.text == ".[].name"));
+}
+
+#[test]
+fn test_array_suggestions_outside_element_context() {
+    // Outside map(), should suggest .[].field
+    let result = r#"[{"id": 1, "name": "a"}, {"id": 2, "name": "b"}]"#;
+    let parsed = parse_json(result);
+    let suggestions = ResultAnalyzer::analyze_parsed_result(
+        &parsed,
+        ResultType::ArrayOfObjects,
+        true,  // needs_leading_dot
+        false, // NOT in_element_context
+    );
+
+    // Should have .[].field (original behavior)
+    assert!(suggestions.iter().any(|s| s.text == ".[].id"));
+    assert!(suggestions.iter().any(|s| s.text == ".[].name"));
+    // Should NOT have .field without []
+    assert!(!suggestions.iter().any(|s| s.text == ".id"));
+    assert!(!suggestions.iter().any(|s| s.text == ".name"));
+}
+
+#[test]
+fn test_element_context_preserves_field_types() {
+    // Type info should still be present in element context
+    let result = r#"[{"str": "hello", "num": 42, "obj": {}}]"#;
+    let parsed = parse_json(result);
+    let suggestions = ResultAnalyzer::analyze_parsed_result(
+        &parsed,
+        ResultType::ArrayOfObjects,
+        true,
+        true, // in_element_context
+    );
+
+    let str_field = suggestions.iter().find(|s| s.text == ".str").unwrap();
+    assert!(matches!(str_field.field_type, Some(JsonFieldType::String)));
+
+    let num_field = suggestions.iter().find(|s| s.text == ".num").unwrap();
+    assert!(matches!(num_field.field_type, Some(JsonFieldType::Number)));
+
+    let obj_field = suggestions.iter().find(|s| s.text == ".obj").unwrap();
+    assert!(matches!(obj_field.field_type, Some(JsonFieldType::Object)));
+}
+
+#[test]
+fn test_element_context_with_needs_leading_dot_false() {
+    // In element context without leading dot (e.g., after .[]. inside map)
+    let result = r#"[{"id": 1}]"#;
+    let parsed = parse_json(result);
+    let suggestions = ResultAnalyzer::analyze_parsed_result(
+        &parsed,
+        ResultType::ArrayOfObjects,
+        false, // no leading dot
+        true,  // in_element_context
+    );
+
+    // Should have field without leading dot
+    assert!(suggestions.iter().any(|s| s.text == "id"));
+    // Should NOT have .id or [].id
+    assert!(!suggestions.iter().any(|s| s.text == ".id"));
+    assert!(!suggestions.iter().any(|s| s.text == "[].id"));
+}
+
+#[test]
+fn test_element_context_does_not_suggest_iterator() {
+    // In element context, .[] should NOT be suggested since iteration is already provided
+    let result = r#"[{"id": 1}]"#;
+    let parsed = parse_json(result);
+    let suggestions = ResultAnalyzer::analyze_parsed_result(
+        &parsed,
+        ResultType::ArrayOfObjects,
+        true,
+        true, // in_element_context
+    );
+
+    assert!(
+        !suggestions.iter().any(|s| s.text == ".[]"),
+        "Should not suggest .[] in element context"
+    );
+    // But field suggestions should still be present
+    assert!(suggestions.iter().any(|s| s.text == ".id"));
+}
+
+#[test]
+fn test_element_context_does_not_affect_other_types() {
+    // Object type should be unaffected by element context
+    let result = r#"{"name": "test"}"#;
+    let parsed = parse_json(result);
+
+    let suggestions_in = ResultAnalyzer::analyze_parsed_result(
+        &parsed,
+        ResultType::Object,
+        true,
+        true, // in_element_context
+    );
+
+    let suggestions_out = ResultAnalyzer::analyze_parsed_result(
+        &parsed,
+        ResultType::Object,
+        true,
+        false, // NOT in_element_context
+    );
+
+    // Both should produce the same result for Object type
+    assert_eq!(suggestions_in.len(), suggestions_out.len());
+    assert!(suggestions_in.iter().any(|s| s.text == ".name"));
+    assert!(suggestions_out.iter().any(|s| s.text == ".name"));
+}
+
+#[test]
+fn test_element_context_empty_array() {
+    // Empty array in element context
+    let result = "[]";
+    let parsed = parse_json(result);
+    let suggestions = ResultAnalyzer::analyze_parsed_result(
+        &parsed,
+        ResultType::Array,
+        true,
+        true, // in_element_context
+    );
+
+    // Should only have .[]
+    assert_eq!(suggestions.len(), 1);
+    assert_eq!(suggestions[0].text, ".[]");
 }

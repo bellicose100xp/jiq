@@ -30,35 +30,59 @@ impl ResultAnalyzer {
     ///
     /// Optimized path that avoids re-parsing on every keystroke.
     /// Critical for large files where parsing takes 50-100ms.
+    ///
+    /// When `suppress_array_brackets` is true, field suggestions for arrays will
+    /// omit the `[]` prefix. This applies when:
+    /// - Inside element-context functions (map, select, etc.)
+    /// - Inside object construction {.field}
     pub fn analyze_parsed_result(
         value: &Arc<Value>,
         result_type: ResultType,
         needs_leading_dot: bool,
+        suppress_array_brackets: bool,
     ) -> Vec<Suggestion> {
-        Self::extract_suggestions_for_type(value, result_type, needs_leading_dot)
+        Self::extract_suggestions_for_type(
+            value,
+            result_type,
+            needs_leading_dot,
+            suppress_array_brackets,
+        )
     }
 
     fn extract_suggestions_for_type(
         value: &Value,
         result_type: ResultType,
         needs_leading_dot: bool,
+        suppress_array_brackets: bool,
     ) -> Vec<Suggestion> {
         match result_type {
             ResultType::ArrayOfObjects => {
                 let prefix = dot_prefix(needs_leading_dot);
-                let mut suggestions = vec![Suggestion::new_with_type(
-                    format!("{}[]", prefix),
-                    SuggestionType::Pattern,
-                    None,
-                )];
+                let mut suggestions = Vec::new();
+
+                // Only suggest .[] when not suppressing array brackets
+                if !suppress_array_brackets {
+                    suggestions.push(Suggestion::new_with_type(
+                        format!("{}[]", prefix),
+                        SuggestionType::Pattern,
+                        None,
+                    ));
+                }
 
                 if let Value::Array(arr) = value
                     && let Some(Value::Object(map)) = arr.first()
                 {
                     for (key, val) in map {
                         let field_type = Self::detect_json_type(val);
+                        // When suppressing brackets, suggest ".field"
+                        // Otherwise, suggest ".[].field"
+                        let field_text = if suppress_array_brackets {
+                            format!("{}{}", prefix, key)
+                        } else {
+                            format!("{}[].{}", prefix, key)
+                        };
                         suggestions.push(Suggestion::new_with_type(
-                            format!("{}[].{}", prefix, key),
+                            field_text,
                             SuggestionType::Field,
                             Some(field_type),
                         ));

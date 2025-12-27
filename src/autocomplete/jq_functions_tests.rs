@@ -273,4 +273,141 @@ proptest! {
             func.signature
         );
     }
+
+    /// All element context functions should be recognized by is_element_context_function
+    #[test]
+    fn prop_element_context_functions_recognized(
+        func in prop_oneof![
+            Just("map"),
+            Just("select"),
+            Just("sort_by"),
+            Just("group_by"),
+            Just("unique_by"),
+            Just("min_by"),
+            Just("max_by"),
+            Just("recurse"),
+            Just("walk")
+        ]
+    ) {
+        prop_assert!(
+            is_element_context_function(func),
+            "Function '{}' should be recognized as element context function",
+            func
+        );
+    }
+
+    /// Non-element functions should not be recognized as element context
+    #[test]
+    fn prop_non_element_functions_not_recognized(
+        func in prop_oneof![
+            Just("limit"),
+            Just("has"),
+            Just("del"),
+            Just("getpath"),
+            Just("split"),
+            Just("join"),
+            Just("test"),
+            Just("match"),
+            Just("keys"),
+            Just("values"),
+            Just("length"),
+            Just("first"),
+            Just("last")
+        ]
+    ) {
+        prop_assert!(
+            !is_element_context_function(func),
+            "Function '{}' should NOT be recognized as element context function",
+            func
+        );
+    }
+}
+
+// ============================================================================
+// Element Context Functions Tests
+// ============================================================================
+
+#[test]
+fn test_element_context_functions_contains_map() {
+    assert!(
+        ELEMENT_CONTEXT_FUNCTIONS.contains("map"),
+        "ELEMENT_CONTEXT_FUNCTIONS should contain 'map'"
+    );
+}
+
+#[test]
+fn test_element_context_functions_contains_all_expected() {
+    let expected = [
+        "map",
+        "select",
+        "sort_by",
+        "group_by",
+        "unique_by",
+        "min_by",
+        "max_by",
+        "recurse",
+        "walk",
+    ];
+
+    for func in expected {
+        assert!(
+            ELEMENT_CONTEXT_FUNCTIONS.contains(func),
+            "ELEMENT_CONTEXT_FUNCTIONS should contain '{}'",
+            func
+        );
+    }
+}
+
+#[test]
+fn test_element_context_functions_excludes_non_element() {
+    let non_element = [
+        "limit", "has", "del", "getpath", "keys", "values", "length", "add",
+    ];
+
+    for func in non_element {
+        assert!(
+            !ELEMENT_CONTEXT_FUNCTIONS.contains(func),
+            "ELEMENT_CONTEXT_FUNCTIONS should NOT contain '{}'",
+            func
+        );
+    }
+}
+
+#[test]
+fn test_is_element_context_function_helper() {
+    assert!(is_element_context_function("map"));
+    assert!(is_element_context_function("select"));
+    assert!(is_element_context_function("sort_by"));
+    assert!(is_element_context_function("group_by"));
+    assert!(is_element_context_function("unique_by"));
+    assert!(is_element_context_function("min_by"));
+    assert!(is_element_context_function("max_by"));
+    assert!(is_element_context_function("recurse"));
+    assert!(is_element_context_function("walk"));
+
+    assert!(!is_element_context_function("limit"));
+    assert!(!is_element_context_function("has"));
+    assert!(!is_element_context_function("del"));
+    assert!(!is_element_context_function("unknown_function"));
+}
+
+#[test]
+fn test_element_context_functions_count() {
+    assert_eq!(
+        ELEMENT_CONTEXT_FUNCTIONS.len(),
+        9,
+        "ELEMENT_CONTEXT_FUNCTIONS should contain exactly 9 functions"
+    );
+}
+
+#[test]
+fn test_element_context_functions_all_in_metadata() {
+    for func in ELEMENT_CONTEXT_FUNCTIONS.iter() {
+        let found = JQ_FUNCTION_METADATA.iter().any(|f| f.name == *func);
+        assert!(
+            found,
+            "Element context function '{}' should be in JQ_FUNCTION_METADATA",
+            func
+        );
+    }
 }
