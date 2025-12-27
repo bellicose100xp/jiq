@@ -1,4 +1,5 @@
 use super::autocomplete_state::{Suggestion, SuggestionType};
+use std::collections::HashSet;
 use std::sync::LazyLock;
 
 /// Metadata for a jq built-in function
@@ -218,6 +219,32 @@ pub static JQ_FUNCTION_METADATA: &[JqFunction] = &[
     ),
     JqFunction::new("env", "env", "Access environment variables", false),
 ];
+
+/// Functions that provide element context for their arguments.
+/// Inside these functions, `.` refers to each element of the input array,
+/// so autocomplete should suggest `.field` instead of `.[].field`.
+pub static ELEMENT_CONTEXT_FUNCTIONS: LazyLock<HashSet<&'static str>> = LazyLock::new(|| {
+    [
+        "map",
+        "select",
+        "sort_by",
+        "group_by",
+        "unique_by",
+        "min_by",
+        "max_by",
+        "recurse",
+        "walk",
+    ]
+    .into_iter()
+    .collect()
+});
+
+/// Check if a function provides element context for its arguments.
+/// When true, autocomplete inside this function should suggest element fields
+/// directly (`.field`) rather than array iteration (`.[].field`).
+pub fn is_element_context_function(name: &str) -> bool {
+    ELEMENT_CONTEXT_FUNCTIONS.contains(name)
+}
 
 /// Static list of all jq built-in functions, operators, and patterns
 /// Built once at first access and reused for performance

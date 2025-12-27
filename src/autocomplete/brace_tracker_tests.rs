@@ -241,4 +241,209 @@ proptest! {
             "is_in_object should match context_at == Curly"
         );
     }
+
+    /// Element-context functions should always be detected
+    #[test]
+    fn prop_element_context_functions_always_detected(
+        func in "(map|select|sort_by|group_by|unique_by|min_by|max_by|recurse|walk)",
+        partial in "[a-z]{0,5}"
+    ) {
+        let query = format!("{}(.{}", func, partial);
+        let mut tracker = BraceTracker::new();
+        tracker.rebuild(&query);
+        prop_assert!(
+            tracker.is_in_element_context(query.len()),
+            "Should detect element context in '{}' at position {}",
+            query,
+            query.len()
+        );
+    }
+
+    /// Non-element functions should never trigger element context
+    #[test]
+    fn prop_non_element_functions_never_detected(
+        func in "(limit|has|del|getpath|split|join|test|match)",
+        partial in "[a-z]{0,5}"
+    ) {
+        let query = format!("{}(.{}", func, partial);
+        let mut tracker = BraceTracker::new();
+        tracker.rebuild(&query);
+        prop_assert!(
+            !tracker.is_in_element_context(query.len()),
+            "Should NOT detect element context in '{}' at position {}",
+            query,
+            query.len()
+        );
+    }
+}
+
+// ============================================================================
+// Element Context Detection Tests
+// ============================================================================
+
+#[test]
+fn test_element_context_in_map() {
+    let mut tracker = BraceTracker::new();
+    tracker.rebuild("map(.");
+    assert!(tracker.is_in_element_context(5));
+}
+
+#[test]
+fn test_element_context_in_select() {
+    let mut tracker = BraceTracker::new();
+    tracker.rebuild("select(.");
+    assert!(tracker.is_in_element_context(8));
+}
+
+#[test]
+fn test_element_context_all_element_functions() {
+    let functions = [
+        "map",
+        "select",
+        "sort_by",
+        "group_by",
+        "unique_by",
+        "min_by",
+        "max_by",
+        "recurse",
+        "walk",
+    ];
+    for func in functions {
+        let query = format!("{}(.field", func);
+        let mut tracker = BraceTracker::new();
+        tracker.rebuild(&query);
+        assert!(
+            tracker.is_in_element_context(query.len()),
+            "Function '{}' should provide element context",
+            func
+        );
+    }
+}
+
+#[test]
+fn test_no_element_context_outside_function() {
+    let mut tracker = BraceTracker::new();
+    tracker.rebuild(".field");
+    assert!(!tracker.is_in_element_context(6));
+}
+
+#[test]
+fn test_no_element_context_in_limit() {
+    let mut tracker = BraceTracker::new();
+    tracker.rebuild("limit(5; .");
+    assert!(!tracker.is_in_element_context(10));
+}
+
+#[test]
+fn test_no_element_context_in_has() {
+    let mut tracker = BraceTracker::new();
+    tracker.rebuild("has(.");
+    assert!(!tracker.is_in_element_context(5));
+}
+
+#[test]
+fn test_element_context_nested_in_limit() {
+    // map(limit(5; .field)) - cursor inside limit but map provides element context
+    let mut tracker = BraceTracker::new();
+    tracker.rebuild("map(limit(5; .");
+    assert!(
+        tracker.is_in_element_context(14),
+        "Should detect element context from outer map even when inside limit"
+    );
+}
+
+#[test]
+fn test_element_context_with_object_inside() {
+    // map({name: .name}) - cursor inside object construction
+    let mut tracker = BraceTracker::new();
+    tracker.rebuild("map({name: .");
+    assert!(tracker.is_in_element_context(12));
+}
+
+#[test]
+fn test_element_context_with_array_inside() {
+    // map([.x, .y]) - cursor inside array construction
+    let mut tracker = BraceTracker::new();
+    tracker.rebuild("map([.");
+    assert!(tracker.is_in_element_context(6));
+}
+
+#[test]
+fn test_no_element_context_grouping_parens() {
+    // (.x + .y) - just grouping, no function
+    let mut tracker = BraceTracker::new();
+    tracker.rebuild("(.x + .");
+    assert!(!tracker.is_in_element_context(7));
+}
+
+#[test]
+fn test_element_context_after_pipe_in_function() {
+    // map(. | .field) - still inside map after pipe
+    let mut tracker = BraceTracker::new();
+    tracker.rebuild("map(. | .");
+    assert!(tracker.is_in_element_context(10));
+}
+
+#[test]
+fn test_element_context_string_with_paren() {
+    // "(" | map(.field) - paren in string should be ignored
+    let mut tracker = BraceTracker::new();
+    tracker.rebuild("\"(\" | map(.");
+    assert!(tracker.is_in_element_context(11));
+}
+
+#[test]
+fn test_element_context_closed_function() {
+    // map(.field) | . - after map is closed
+    let mut tracker = BraceTracker::new();
+    tracker.rebuild("map(.field) | .");
+    assert!(!tracker.is_in_element_context(15));
+}
+
+#[test]
+fn test_element_context_nested_element_functions() {
+    // map(select(.active)) - nested element context functions
+    let mut tracker = BraceTracker::new();
+    tracker.rebuild("map(select(.");
+    assert!(tracker.is_in_element_context(12));
+}
+
+#[test]
+fn test_element_context_whitespace_before_paren() {
+    // map (.field) - space between function and paren
+    let mut tracker = BraceTracker::new();
+    tracker.rebuild("map (.");
+    assert!(tracker.is_in_element_context(6));
+}
+
+#[test]
+fn test_no_element_context_unknown_function() {
+    // myfunc(.field) - user-defined function not in metadata
+    let mut tracker = BraceTracker::new();
+    tracker.rebuild("myfunc(.");
+    assert!(!tracker.is_in_element_context(8));
+}
+
+#[test]
+fn test_function_context_enum_debug() {
+    // Verify FunctionContext can be debugged
+    let ctx = FunctionContext::ElementIterator("map");
+    assert!(format!("{:?}", ctx).contains("ElementIterator"));
+    assert!(format!("{:?}", ctx).contains("map"));
+}
+
+#[test]
+fn test_brace_info_struct() {
+    // Verify BraceInfo fields are accessible
+    let info = BraceInfo {
+        pos: 5,
+        brace_type: BraceType::Paren,
+        context: Some(FunctionContext::ElementIterator("select")),
+    };
+    assert_eq!(info.pos, 5);
+    assert_eq!(info.brace_type, BraceType::Paren);
+    assert!(matches!(
+        info.context,
+        Some(FunctionContext::ElementIterator("select"))
+    ));
 }
