@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.7.2] - 2025-12-27
+
+### Added
+- **Autocomplete suggestions inside `with_entries()`** - Suggests `.key` and `.value` fields for object entry manipulation
+  - `.key` and `.value` appear as the first two suggestions when cursor is inside `with_entries()`
+  - Data-driven suggestions from the JSON structure also appear alongside
+  - Context-aware: suggestions disappear after closing parenthesis
+  - Works with nested functions like `with_entries(select(.key | ...))`
+
+### Tests
+- 30 new tests for `with_entries` context detection and suggestion behavior
+  - 13 unit tests for `BraceTracker` WithEntries context detection
+  - 17 integration tests for full suggestion flow
+- Total test count: 1536 → 1566 tests, all passing
+
 ## [3.7.1] - 2025-12-26
 
 ### Fixed
