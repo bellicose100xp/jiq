@@ -680,8 +680,10 @@ fn test_enter_executes_pending_query_before_exit() {
     let mut app = test_app(TEST_JSON);
     app.input.editor_mode = EditorMode::Insert;
 
-    // Type a query without executing
-    app.handle_key_event(key(KeyCode::Char('.')));
+    // Type a query without executing - use a query that won't trigger autocomplete
+    app.handle_key_event(key(KeyCode::Char('[')));
+    app.handle_key_event(key(KeyCode::Char('0')));
+    app.handle_key_event(key(KeyCode::Char(']')));
 
     // Debouncer should have pending query
     assert!(app.debouncer.has_pending());

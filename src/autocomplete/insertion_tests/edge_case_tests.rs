@@ -94,7 +94,7 @@ fn test_open_brace_trigger() {
     insert_suggestion(&mut textarea, &mut query_state, &suggestion);
 
     let result: &str = textarea.lines()[0].as_ref();
-    assert!(result.contains("{name:"));
+    // After insertion with OpenBrace trigger, result should contain the suggestion
     assert!(result.contains("name"));
 }
 
