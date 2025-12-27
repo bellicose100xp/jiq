@@ -3,6 +3,8 @@
 // Test submodules
 #[path = "insertion_tests/cursor_positioning_tests.rs"]
 mod cursor_positioning_tests;
+#[path = "insertion_tests/edge_case_tests.rs"]
+mod edge_case_tests;
 #[path = "insertion_tests/field_context_tests.rs"]
 mod field_context_tests;
 #[path = "insertion_tests/function_context_tests.rs"]

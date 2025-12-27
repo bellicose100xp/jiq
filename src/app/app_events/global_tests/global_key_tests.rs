@@ -608,3 +608,123 @@ fn test_history_popup_enter_not_intercepted_by_global() {
     assert!(app.output_mode.is_none()); // Should NOT set output mode
     assert!(!app.should_quit); // Should NOT quit
 }
+
+// ========== Debouncer Flush Tests ==========
+
+#[test]
+fn test_ctrl_q_executes_pending_query_before_exit() {
+    let mut app = test_app(TEST_JSON);
+    app.input.editor_mode = EditorMode::Insert;
+
+    // Type a query without executing (debouncer should have it pending)
+    app.handle_key_event(key(KeyCode::Char('.')));
+    app.handle_key_event(key(KeyCode::Char('n')));
+    app.handle_key_event(key(KeyCode::Char('a')));
+    app.handle_key_event(key(KeyCode::Char('m')));
+    app.handle_key_event(key(KeyCode::Char('e')));
+
+    // Debouncer should have pending query
+    assert!(app.debouncer.has_pending());
+
+    // Press Ctrl+Q - should execute pending query before exit
+    app.handle_key_event(key_with_mods(KeyCode::Char('q'), KeyModifiers::CONTROL));
+
+    assert!(app.should_quit);
+    assert_eq!(app.output_mode, Some(OutputMode::Query));
+}
+
+#[test]
+fn test_shift_enter_executes_pending_query_before_exit() {
+    let mut app = test_app(TEST_JSON);
+    app.input.editor_mode = EditorMode::Insert;
+
+    // Type a query without executing
+    app.handle_key_event(key(KeyCode::Char('.')));
+    app.handle_key_event(key(KeyCode::Char('t')));
+    app.handle_key_event(key(KeyCode::Char('e')));
+    app.handle_key_event(key(KeyCode::Char('s')));
+    app.handle_key_event(key(KeyCode::Char('t')));
+
+    // Debouncer should have pending query
+    assert!(app.debouncer.has_pending());
+
+    // Press Shift+Enter - should execute pending query before exit
+    app.handle_key_event(key_with_mods(KeyCode::Enter, KeyModifiers::SHIFT));
+
+    assert!(app.should_quit);
+    assert_eq!(app.output_mode, Some(OutputMode::Query));
+}
+
+#[test]
+fn test_alt_enter_executes_pending_query_before_exit() {
+    let mut app = test_app(TEST_JSON);
+    app.input.editor_mode = EditorMode::Insert;
+
+    // Type a query without executing
+    app.handle_key_event(key(KeyCode::Char('.')));
+    app.handle_key_event(key(KeyCode::Char('i')));
+    app.handle_key_event(key(KeyCode::Char('d')));
+
+    // Debouncer should have pending query
+    assert!(app.debouncer.has_pending());
+
+    // Press Alt+Enter - should execute pending query before exit
+    app.handle_key_event(key_with_mods(KeyCode::Enter, KeyModifiers::ALT));
+
+    assert!(app.should_quit);
+    assert_eq!(app.output_mode, Some(OutputMode::Query));
+}
+
+#[test]
+fn test_enter_executes_pending_query_before_exit() {
+    let mut app = test_app(TEST_JSON);
+    app.input.editor_mode = EditorMode::Insert;
+
+    // Type a query without executing
+    app.handle_key_event(key(KeyCode::Char('.')));
+
+    // Debouncer should have pending query
+    assert!(app.debouncer.has_pending());
+
+    // Press Enter - should execute pending query before exit
+    app.handle_key_event(key(KeyCode::Enter));
+
+    assert!(app.should_quit);
+    assert_eq!(app.output_mode, Some(OutputMode::Results));
+}
+
+// ========== Search Tests (Ctrl+F) ==========
+
+#[test]
+fn test_ctrl_f_opens_search() {
+    let mut app = app_with_query(".test");
+
+    // Initially search should not be active
+    assert!(!app.search.is_visible());
+
+    // Press Ctrl+F - should open search
+    app.handle_key_event(key_with_mods(KeyCode::Char('f'), KeyModifiers::CONTROL));
+
+    assert!(app.search.is_visible());
+}
+
+#[test]
+fn test_ctrl_f_works_in_insert_mode() {
+    let mut app = app_with_query(".test");
+    app.input.editor_mode = EditorMode::Insert;
+    app.focus = Focus::InputField;
+
+    app.handle_key_event(key_with_mods(KeyCode::Char('f'), KeyModifiers::CONTROL));
+
+    assert!(app.search.is_visible());
+}
+
+#[test]
+fn test_ctrl_f_works_in_results_pane() {
+    let mut app = app_with_query(".test");
+    app.focus = Focus::ResultsPane;
+
+    app.handle_key_event(key_with_mods(KeyCode::Char('f'), KeyModifiers::CONTROL));
+
+    assert!(app.search.is_visible());
+}
