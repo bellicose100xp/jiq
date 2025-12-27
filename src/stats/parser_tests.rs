@@ -492,3 +492,46 @@ fn test_parse_stream() {
     let result = StatsParser::parse("{}\n{}\n{}");
     assert_eq!(result, ResultStats::Stream { count: 3 });
 }
+
+#[test]
+fn test_parse_empty_string() {
+    let result = StatsParser::parse("");
+    assert_eq!(result, ResultStats::Null);
+}
+
+#[test]
+fn test_parse_whitespace_only() {
+    let result = StatsParser::parse("   ");
+    assert_eq!(result, ResultStats::Null);
+}
+
+#[test]
+fn test_parse_unknown_character() {
+    // Edge case: starts with a character that's not recognized
+    let result = StatsParser::parse("@invalid");
+    assert_eq!(result, ResultStats::Null);
+}
+
+#[test]
+fn test_detect_element_type_with_escape_in_string() {
+    // Array with escaped quotes in strings
+    let result = StatsParser::parse(r#"["a\"b", "c\\d"]"#);
+    match result {
+        ResultStats::Array { element_type, .. } => {
+            assert_eq!(element_type, ElementType::Strings);
+        }
+        _ => panic!("Expected Array"),
+    }
+}
+
+#[test]
+fn test_is_stream_with_escape_sequences() {
+    // Stream with escaped characters
+    let result = StatsParser::parse("\"a\\\"b\"\n\"c\\\\d\"");
+    match result {
+        ResultStats::Stream { count } => {
+            assert_eq!(count, 2);
+        }
+        _ => panic!("Expected Stream"),
+    }
+}

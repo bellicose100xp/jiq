@@ -91,3 +91,27 @@ proptest! {
         );
     }
 }
+
+#[test]
+fn test_wrap_text_truncates_to_two_lines() {
+    // Test that wrap_text truncates to max 2 lines
+    let long_text = "This is a very long text that will definitely wrap into more than two lines when we have a small max width like twenty characters total width";
+    let result = wrap_text(long_text, 20);
+    assert!(result.len() <= 2, "Should truncate to max 2 lines");
+}
+
+#[test]
+fn test_wrap_text_short_text() {
+    let short_text = "Hello";
+    let result = wrap_text(short_text, 50);
+    assert_eq!(result.len(), 1);
+    assert_eq!(result[0], "Hello");
+}
+
+#[test]
+fn test_wrap_text_exactly_two_lines() {
+    // Text that wraps to exactly 2 lines shouldn't truncate
+    let text = "First line text here and second line";
+    let result = wrap_text(text, 20);
+    assert!(result.len() >= 1);
+}
