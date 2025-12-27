@@ -161,7 +161,10 @@ fn test_json_type_info_object_with_many_keys() {
     assert_eq!(info.root_type, "Object");
     assert_eq!(info.top_level_keys.len(), 7);
     // Schema hint should show truncation for >5 keys
-    assert!(info.schema_hint.contains("more"), "Should show truncation indicator for >5 keys");
+    assert!(
+        info.schema_hint.contains("more"),
+        "Should show truncation indicator for >5 keys"
+    );
 }
 
 #[test]

@@ -113,5 +113,5 @@ fn test_wrap_text_exactly_two_lines() {
     // Text that wraps to exactly 2 lines shouldn't truncate
     let text = "First line text here and second line";
     let result = wrap_text(text, 20);
-    assert!(result.len() >= 1);
+    assert!(!result.is_empty());
 }
