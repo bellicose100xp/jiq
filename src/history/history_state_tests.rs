@@ -186,3 +186,38 @@ fn test_reset_cycling() {
     let entry = state.cycle_previous();
     assert_eq!(entry, Some(".first".to_string()));
 }
+
+#[test]
+fn test_default_creates_new_instance() {
+    let state = HistoryState::default();
+    assert!(!state.is_visible());
+}
+
+#[test]
+fn test_add_entry_in_memory_ignores_empty() {
+    let mut state = HistoryState::empty();
+    state.add_entry_in_memory("");
+    assert_eq!(state.total_count(), 0);
+
+    state.add_entry_in_memory("   ");
+    assert_eq!(state.total_count(), 0);
+}
+
+#[test]
+fn test_add_entry_ignores_empty() {
+    let mut state = HistoryState::empty();
+    state.add_entry("");
+    assert_eq!(state.total_count(), 0);
+
+    state.add_entry("  \t\n  ");
+    assert_eq!(state.total_count(), 0);
+}
+
+#[test]
+fn test_cycle_next_when_not_cycling() {
+    let mut state = create_test_state(vec![".first", ".second"]);
+
+    // cycle_next should return None when not actively cycling
+    let result = state.cycle_next();
+    assert_eq!(result, None);
+}
