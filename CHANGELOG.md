@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.7.1] - 2025-12-26
+
+### Fixed
+- **Autocomplete suggestions inside element-context functions** - `.array | map(.<tab>)` now correctly suggests `.field` instead of `.[].field`
+  - Functions like `map()`, `select()`, `sort_by()`, `group_by()`, `unique_by()`, `min_by()`, `max_by()`, `recurse()`, and `walk()` already provide element iteration
+  - Autocomplete now detects this context and omits the redundant `[].` prefix
+  - `.[]` suggestion also suppressed inside these functions since iteration is already provided
+  - ObjectKeyContext (`{na<tab>`) correctly suppresses `.[]` suggestion
+
+### Added
+- `ELEMENT_CONTEXT_FUNCTIONS` HashSet for O(1) lookup of element-iterating functions
+- `FunctionContext` enum and `BraceInfo` struct in `BraceTracker` for tracking function context
+- `is_in_element_context()` method to detect cursor position inside element-iterating functions
+- `suppress_array_brackets` parameter in `ResultAnalyzer` for context-aware suggestions
+
+### Tests
+- 51 new tests for element context detection and suggestion behavior
+  - Unit tests for `BraceTracker` function context detection
+  - Property-based tests for element context functions
+  - Integration tests for full suggestion flow
+  - Regression tests for existing behavior
+- Total test count: 1416 → 1467 tests, all passing
+
 ## [3.7.0] - 2025-12-23
 
 ### Performance
