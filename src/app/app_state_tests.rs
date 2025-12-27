@@ -523,13 +523,15 @@ proptest! {
 fn test_new_with_bedrock_provider() {
     use crate::config::ai_types::{AiConfig, AiProviderType, BedrockConfig};
 
-    let mut config = Config::default();
-    config.ai = AiConfig {
-        enabled: true,
-        provider: Some(AiProviderType::Bedrock),
-        bedrock: BedrockConfig {
-            region: Some("us-east-1".to_string()),
-            model: Some("anthropic.claude-3-sonnet".to_string()),
+    let config = Config {
+        ai: AiConfig {
+            enabled: true,
+            provider: Some(AiProviderType::Bedrock),
+            bedrock: BedrockConfig {
+                region: Some("us-east-1".to_string()),
+                model: Some("anthropic.claude-3-sonnet".to_string()),
+                ..Default::default()
+            },
             ..Default::default()
         },
         ..Default::default()
@@ -545,13 +547,14 @@ fn test_new_with_bedrock_provider() {
 fn test_new_with_openai_provider() {
     use crate::config::ai_types::{AiConfig, AiProviderType, OpenAiConfig};
 
-    let mut config = Config::default();
-    config.ai = AiConfig {
-        enabled: true,
-        provider: Some(AiProviderType::Openai),
-        openai: OpenAiConfig {
-            api_key: Some("test-key".to_string()),
-            model: Some("gpt-4".to_string()),
+    let config = Config {
+        ai: AiConfig {
+            enabled: true,
+            provider: Some(AiProviderType::Openai),
+            openai: OpenAiConfig {
+                api_key: Some("test-key".to_string()),
+                model: Some("gpt-4".to_string()),
+            },
             ..Default::default()
         },
         ..Default::default()
@@ -567,13 +570,14 @@ fn test_new_with_openai_provider() {
 fn test_new_with_gemini_provider() {
     use crate::config::ai_types::{AiConfig, AiProviderType, GeminiConfig};
 
-    let mut config = Config::default();
-    config.ai = AiConfig {
-        enabled: true,
-        provider: Some(AiProviderType::Gemini),
-        gemini: GeminiConfig {
-            api_key: Some("test-key".to_string()),
-            model: Some("gemini-pro".to_string()),
+    let config = Config {
+        ai: AiConfig {
+            enabled: true,
+            provider: Some(AiProviderType::Gemini),
+            gemini: GeminiConfig {
+                api_key: Some("test-key".to_string()),
+                model: Some("gemini-pro".to_string()),
+            },
             ..Default::default()
         },
         ..Default::default()
