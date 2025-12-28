@@ -398,7 +398,7 @@ fn test_success_prompt_excludes_base_query() {
 fn test_base_query_result_truncation_in_context() {
     use crate::ai::context::MAX_JSON_SAMPLE_LENGTH;
 
-    let long_result = "x".repeat(5000);
+    let long_result = "x".repeat(30000);
     let ctx = QueryContext::new(
         ".invalid".to_string(),
         8,

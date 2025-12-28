@@ -5,9 +5,10 @@
 
 use crate::stats::parser::StatsParser;
 use crate::stats::types::ResultStats;
+use serde_json;
 
 /// Maximum length for JSON sample in context (characters)
-pub const MAX_JSON_SAMPLE_LENGTH: usize = 2000;
+pub const MAX_JSON_SAMPLE_LENGTH: usize = 25000;
 
 /// Additional context parameters for AI queries
 #[derive(Debug, Clone)]
@@ -167,11 +168,11 @@ pub struct QueryContext {
     pub query: String,
     /// Cursor position in the query
     pub cursor_pos: usize,
-    /// Truncated sample of input JSON (max 2000 chars)
+    /// Truncated sample of input JSON (max 25000 chars)
     pub input_sample: String,
     /// Current output (if successful)
     pub output: Option<String>,
-    /// Truncated sample of output JSON (max 2000 chars) for successful queries
+    /// Truncated sample of output JSON (max 25000 chars) for successful queries
     pub output_sample: Option<String>,
     /// Error message (if query failed)
     pub error: Option<String>,
@@ -183,7 +184,7 @@ pub struct QueryContext {
     pub input_schema: Option<String>,
     /// Last working query before this one (failure context only)
     pub base_query: Option<String>,
-    /// Output of the base query (failure context only, truncated to max 2000 chars)
+    /// Output of the base query (failure context only, truncated to max 25000 chars)
     pub base_query_result: Option<String>,
 }
 
@@ -232,13 +233,20 @@ impl QueryContext {
 }
 
 /// Truncate JSON to a maximum length, trying to preserve valid structure
+///
+/// First minifies the JSON by parsing and re-serializing to remove whitespace,
+/// then truncates if the result still exceeds max_len.
 pub fn truncate_json(json: &str, max_len: usize) -> String {
-    if json.len() <= max_len {
-        return json.to_string();
+    let minified = match serde_json::from_str::<serde_json::Value>(json) {
+        Ok(value) => serde_json::to_string(&value).unwrap_or_else(|_| json.to_string()),
+        Err(_) => json.to_string(),
+    };
+
+    if minified.len() <= max_len {
+        return minified;
     }
 
-    // Simple truncation with ellipsis indicator
-    let truncated = &json[..max_len];
+    let truncated = &minified[..max_len];
     format!("{}... [truncated]", truncated)
 }
 

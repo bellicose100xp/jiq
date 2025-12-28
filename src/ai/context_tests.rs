@@ -80,7 +80,35 @@ fn test_json_type_info_from_null() {
 fn test_truncate_json_short() {
     let json = r#"{"short": true}"#;
     let truncated = truncate_json(json, 1000);
-    assert_eq!(truncated, json);
+    assert_eq!(truncated, r#"{"short":true}"#);
+}
+
+#[test]
+fn test_truncate_json_minifies() {
+    let json = r#"{
+  "name": "test",
+  "age": 30
+}"#;
+    let truncated = truncate_json(json, 1000);
+    assert!(
+        truncated.len() < json.len(),
+        "Minified JSON should be shorter"
+    );
+    assert!(
+        !truncated.contains('\n'),
+        "Minified JSON should not contain newlines"
+    );
+    assert!(
+        !truncated.contains("  "),
+        "Minified JSON should not contain extra spaces"
+    );
+
+    let original_value: serde_json::Value = serde_json::from_str(json).unwrap();
+    let truncated_value: serde_json::Value = serde_json::from_str(&truncated).unwrap();
+    assert_eq!(
+        original_value, truncated_value,
+        "Minified JSON should have same content"
+    );
 }
 
 #[test]
@@ -196,7 +224,7 @@ fn test_extract_top_level_keys_with_backslashes() {
 
 // **Feature: ai-assistant, Property 15: Context completeness**
 // *For any* app state, the built QueryContext should include: query text,
-// cursor position, error (if any), truncated JSON sample (≤1000 chars),
+// cursor position, error (if any), truncated JSON sample (≤25000 chars),
 // and JSON type info.
 // **Validates: Requirements 7.1, 7.2, 7.3**
 proptest! {
@@ -233,7 +261,7 @@ proptest! {
 
 // **Feature: ai-assistant, Property 16: JSON truncation bound**
 // *For any* JSON input string, the truncated sample in QueryContext should
-// have length ≤ 1000 characters.
+// have length ≤ 25000 characters.
 // **Validates: Requirements 7.2**
 proptest! {
     #![proptest_config(ProptestConfig::with_cases(100))]
@@ -258,11 +286,16 @@ proptest! {
             json.len()
         );
 
-        // If original was short enough, should be unchanged
-        if json.len() <= MAX_JSON_SAMPLE_LENGTH {
+        // If minified version is short enough, should not be truncated
+        let minified = serde_json::from_str::<serde_json::Value>(&json)
+            .ok()
+            .and_then(|v| serde_json::to_string(&v).ok())
+            .unwrap_or(json.clone());
+
+        if minified.len() <= MAX_JSON_SAMPLE_LENGTH {
             prop_assert_eq!(
-                truncated, json,
-                "Short JSON should not be truncated"
+                truncated, minified,
+                "Short JSON should not be truncated after minification"
             );
         } else {
             prop_assert!(

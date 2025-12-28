@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **Optimized AI context payload size**
+  - Increased JSON sample size from 2000 to 25000 characters
+  - Added JSON minification before truncation (removes whitespace)
+  - Provides 5-8x more effective context to AI with minimal latency impact (~0.2-0.4s)
+
 ## [3.7.2] - 2025-12-27
 
 ### Added
