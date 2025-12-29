@@ -19,7 +19,7 @@ expression: output
 "                                                                                                    "
 "                                                                                                    "
 "                                                                                                    "
-"                                                       ┌ Anthropic ───────── claude-3-5-sonnet... ┐ "
+"                                                       ┌ Anthropic ────── (1/2) claude-3-5-son... ┐ "
 "                                                       │1. [Fix] .first                           │ "
 "                                                       │   First                                  │ "
 "                                                       │                                          │ "
