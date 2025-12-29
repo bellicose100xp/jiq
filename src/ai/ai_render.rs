@@ -30,7 +30,7 @@ mod content;
 /// Calculate height of each suggestion
 ///
 /// Returns a vector where each element is the height (in lines) of the
-/// corresponding suggestion, NOT including spacing between suggestions.
+/// corresponding suggestion, including spacing line after each (except last).
 fn calculate_suggestion_heights(ai_state: &AiState, max_width: u16) -> Vec<u16> {
     use crate::ai::render::text::wrap_text;
 
@@ -59,6 +59,11 @@ fn calculate_suggestion_heights(ai_state: &AiState, max_width: u16) -> Vec<u16> 
             suggestion_height = suggestion_height.saturating_add(desc_lines as u16);
         }
 
+        // Add spacing line after each suggestion except the last
+        if i < ai_state.suggestions.len() - 1 {
+            suggestion_height = suggestion_height.saturating_add(1);
+        }
+
         heights.push(suggestion_height);
     }
 
@@ -68,14 +73,7 @@ fn calculate_suggestion_heights(ai_state: &AiState, max_width: u16) -> Vec<u16> 
 /// Calculate total height needed for suggestions (including spacing)
 fn calculate_suggestions_height(ai_state: &AiState, max_width: u16) -> u16 {
     let heights = calculate_suggestion_heights(ai_state, max_width);
-    let mut total_height = heights.iter().sum::<u16>();
-
-    // Add spacing between suggestions (1 line after each except last)
-    if !heights.is_empty() {
-        total_height = total_height.saturating_add((heights.len() - 1) as u16);
-    }
-
-    total_height
+    heights.iter().sum::<u16>()
 }
 
 /// Render suggestions as individual widgets with background highlighting
@@ -113,10 +111,6 @@ fn render_suggestions_as_widgets(
         // Skip if suggestion is fully above viewport
         if suggestion_end <= scroll_offset {
             current_y = suggestion_end;
-            // Add spacing after each suggestion except the last
-            if i < ai_state.suggestions.len() - 1 {
-                current_y = current_y.saturating_add(1);
-            }
             continue;
         }
 
@@ -202,6 +196,11 @@ fn render_suggestions_as_widgets(
             }
         }
 
+        // Add spacing line after each suggestion except the last
+        if i < ai_state.suggestions.len() - 1 {
+            lines.push(Line::from(""));
+        }
+
         // Render the suggestion
         let style = if is_selected {
             Style::default().bg(Color::DarkGray)
@@ -214,10 +213,6 @@ fn render_suggestions_as_widgets(
 
         // Move to next suggestion
         current_y = suggestion_end;
-        // Add spacing after each suggestion except the last
-        if i < ai_state.suggestions.len() - 1 {
-            current_y = current_y.saturating_add(1);
-        }
     }
 }
 
@@ -291,8 +286,36 @@ pub fn render_popup(ai_state: &mut AiState, frame: &mut Frame, input_area: Rect)
         Span::raw(" "),
     ]);
 
-    // Calculate max width for model name (50% of border width)
-    let max_model_width = (popup_area.width / 2).saturating_sub(2);
+    let counter = if ai_state.suggestions.len() > 1 {
+        let current = ai_state
+            .selection
+            .get_selected()
+            .map(|i| i + 1)
+            .unwrap_or(1);
+        let total = ai_state.suggestions.len();
+        Line::from(Span::styled(
+            format!(" ({}/{}) ", current, total),
+            Style::default().fg(Color::Yellow),
+        ))
+    } else {
+        Line::default()
+    };
+
+    let counter_width = if ai_state.suggestions.len() > 1 {
+        let current = ai_state
+            .selection
+            .get_selected()
+            .map(|i| i + 1)
+            .unwrap_or(1);
+        let total = ai_state.suggestions.len();
+        format!(" ({}/{}) ", current, total).len() as u16
+    } else {
+        0
+    };
+
+    let max_model_width = (popup_area.width / 2)
+        .saturating_sub(2)
+        .saturating_sub(counter_width / 2);
     let model_display = if ai_state.model_name.len() > max_model_width as usize {
         format!(
             "{}...",
@@ -323,6 +346,7 @@ pub fn render_popup(ai_state: &mut AiState, frame: &mut Frame, input_area: Rect)
     let block = Block::default()
         .borders(Borders::ALL)
         .title(title)
+        .title_top(counter.alignment(ratatui::layout::Alignment::Center))
         .title_top(model_name_title.alignment(ratatui::layout::Alignment::Right))
         .title_bottom(hints.alignment(ratatui::layout::Alignment::Center))
         .border_style(Style::default().fg(Color::Green))
