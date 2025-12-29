@@ -190,8 +190,7 @@ pub fn handle_execution_result(
                     Some(error.to_string()),
                     params,
                 );
-                let word_limit = ai_state.word_limit;
-                let prompt = build_prompt(&context, word_limit);
+                let prompt = build_prompt(&context);
                 ai_state.send_request(prompt);
             }
         }
@@ -209,8 +208,7 @@ pub fn handle_execution_result(
                         base_query_result: None,
                     },
                 );
-                let word_limit = ai_state.word_limit;
-                let prompt = build_prompt(&context, word_limit);
+                let prompt = build_prompt(&context);
                 ai_state.send_request(prompt);
             }
         }

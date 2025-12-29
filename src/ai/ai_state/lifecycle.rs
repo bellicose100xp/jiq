@@ -30,7 +30,6 @@ impl AiState {
             in_flight_request_id: None,
             current_cancel_token: None,
             suggestions: Vec::new(),
-            word_limit: 200,
             selection: SelectionState::new(),
             previous_popup_height: None,
         }
@@ -66,7 +65,6 @@ impl AiState {
             in_flight_request_id: None,
             current_cancel_token: None,
             suggestions: Vec::new(),
-            word_limit: 200,
             selection: SelectionState::new(),
             previous_popup_height: None,
         }

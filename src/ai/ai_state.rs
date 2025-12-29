@@ -102,9 +102,6 @@ pub struct AiState {
     /// Parsed suggestions from AI response
     /// Empty if response couldn't be parsed into structured suggestions
     pub suggestions: Vec<Suggestion>,
-    /// Current word limit based on popup dimensions
-    /// Updated when popup is rendered, used for next AI request
-    pub word_limit: u16,
     /// Selection state for suggestion navigation
     /// Tracks which suggestion is selected and navigation mode
     pub selection: SelectionState,

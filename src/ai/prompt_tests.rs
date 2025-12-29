@@ -19,7 +19,7 @@ fn test_build_error_prompt_includes_query() {
         base_query_result: None,
     };
 
-    let prompt = build_error_prompt(&ctx, 200);
+    let prompt = build_error_prompt(&ctx);
     assert!(prompt.contains(".name"));
     assert!(prompt.contains("syntax error"));
     assert!(prompt.contains("Cursor position: 5"));
@@ -41,7 +41,7 @@ fn test_build_error_prompt_includes_json_sample() {
         base_query_result: None,
     };
 
-    let prompt = build_error_prompt(&ctx, 200);
+    let prompt = build_error_prompt(&ctx);
     assert!(prompt.contains(r#"{"key": "value"}"#));
 }
 
@@ -61,7 +61,7 @@ fn test_build_error_prompt_includes_schema() {
         base_query_result: None,
     };
 
-    let prompt = build_error_prompt(&ctx, 200);
+    let prompt = build_error_prompt(&ctx);
     assert!(prompt.contains("## Input JSON Schema"));
     assert!(prompt.contains(r#"{"name":"string","age":"number"}"#));
 }
@@ -153,7 +153,7 @@ fn test_build_success_prompt_includes_query() {
         base_query_result: None,
     };
 
-    let prompt = build_success_prompt(&ctx, 200);
+    let prompt = build_success_prompt(&ctx);
     assert!(prompt.contains(".items[]"));
     assert!(prompt.contains("optimize"));
 }
@@ -174,7 +174,7 @@ fn test_build_success_prompt_includes_output_sample() {
         base_query_result: None,
     };
 
-    let prompt = build_success_prompt(&ctx, 200);
+    let prompt = build_success_prompt(&ctx);
     assert!(prompt.contains(r#""test""#));
     assert!(prompt.contains("Query Output Sample"));
 }
@@ -195,7 +195,7 @@ fn test_build_success_prompt_includes_schema() {
         base_query_result: None,
     };
 
-    let prompt = build_success_prompt(&ctx, 200);
+    let prompt = build_success_prompt(&ctx);
     assert!(prompt.contains("## Input JSON Schema"));
     assert!(prompt.contains(r#"["number"]"#));
 }
@@ -216,7 +216,7 @@ fn test_build_prompt_dispatches_to_error_prompt() {
         base_query_result: None,
     };
 
-    let prompt = build_prompt(&ctx, 200);
+    let prompt = build_prompt(&ctx);
     // Error prompt contains "troubleshoot" and error message
     assert!(prompt.contains("troubleshoot"));
     assert!(prompt.contains("syntax error"));
@@ -238,30 +238,10 @@ fn test_build_prompt_dispatches_to_success_prompt() {
         base_query_result: None,
     };
 
-    let prompt = build_prompt(&ctx, 200);
+    let prompt = build_prompt(&ctx);
     // Success prompt contains "optimize"
     assert!(prompt.contains("optimize"));
     assert!(!prompt.contains("troubleshoot"));
-}
-
-#[test]
-fn test_build_prompt_includes_word_limit() {
-    let ctx = QueryContext {
-        query: ".name".to_string(),
-        cursor_pos: 5,
-        input_sample: "{}".to_string(),
-        output: None,
-        output_sample: None,
-        error: Some("error".to_string()),
-        json_type_info: JsonTypeInfo::default(),
-        is_success: false,
-        input_schema: None,
-        base_query: None,
-        base_query_result: None,
-    };
-
-    let prompt = build_prompt(&ctx, 300);
-    assert!(prompt.contains("300 words"));
 }
 
 #[test]
@@ -280,7 +260,7 @@ fn test_build_error_prompt_includes_structured_format() {
         base_query_result: None,
     };
 
-    let prompt = build_error_prompt(&ctx, 200);
+    let prompt = build_error_prompt(&ctx);
     assert!(prompt.contains("[Fix]"));
     assert!(prompt.contains("[Optimize]"));
     assert!(prompt.contains("[Next]"));
@@ -303,7 +283,7 @@ fn test_build_success_prompt_includes_structured_format() {
         base_query_result: None,
     };
 
-    let prompt = build_success_prompt(&ctx, 200);
+    let prompt = build_success_prompt(&ctx);
     assert!(prompt.contains("[Optimize]"));
     assert!(prompt.contains("[Next]"));
     assert!(prompt.contains("numbered suggestions"));
@@ -325,7 +305,7 @@ fn test_build_prompt_includes_natural_language_instructions() {
         base_query_result: None,
     };
 
-    let prompt = build_error_prompt(&ctx, 200);
+    let prompt = build_error_prompt(&ctx);
     assert!(prompt.contains("Natural Language"));
     assert!(prompt.contains("natural language"));
 }
@@ -346,7 +326,7 @@ fn test_error_prompt_includes_base_query() {
         base_query_result: Some(r#""test""#.to_string()),
     };
 
-    let prompt = build_error_prompt(&ctx, 200);
+    let prompt = build_error_prompt(&ctx);
     assert!(prompt.contains("## Last Working Query"));
     assert!(prompt.contains(".name"));
     assert!(prompt.contains("## Its Output"));
@@ -369,7 +349,7 @@ fn test_error_prompt_without_base_query() {
         base_query_result: None,
     };
 
-    let prompt = build_error_prompt(&ctx, 200);
+    let prompt = build_error_prompt(&ctx);
     assert!(!prompt.contains("Last Working Query"));
 }
 
@@ -389,7 +369,7 @@ fn test_success_prompt_excludes_base_query() {
         base_query_result: Some("old result".to_string()),
     };
 
-    let prompt = build_success_prompt(&ctx, 200);
+    let prompt = build_success_prompt(&ctx);
     assert!(!prompt.contains("Last Working Query"));
     assert!(!prompt.contains(".old"));
 }

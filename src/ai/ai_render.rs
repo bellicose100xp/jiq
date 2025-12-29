@@ -21,7 +21,6 @@ use super::render::layout;
 pub use self::content::build_content;
 pub use layout::{
     AUTOCOMPLETE_RESERVED_WIDTH, calculate_popup_area, calculate_popup_area_with_height,
-    calculate_word_limit,
 };
 
 // Module declarations - only content is local
@@ -189,7 +188,7 @@ fn render_suggestions_as_widgets(
 /// Render the AI assistant popup
 ///
 /// # Arguments
-/// * `ai_state` - The current AI state (mutable to update word_limit)
+/// * `ai_state` - The current AI state
 /// * `frame` - The frame to render to
 /// * `input_area` - The input bar area (popup renders above this)
 pub fn render_popup(ai_state: &mut AiState, frame: &mut Frame, input_area: Rect) {
@@ -242,8 +241,6 @@ pub fn render_popup(ai_state: &mut AiState, frame: &mut Frame, input_area: Rect)
             None => return,
         }
     };
-
-    ai_state.word_limit = calculate_word_limit(popup_area.width, popup_area.height);
 
     popup::clear_area(frame, popup_area);
 

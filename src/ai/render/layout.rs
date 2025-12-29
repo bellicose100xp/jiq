@@ -102,13 +102,3 @@ pub fn calculate_popup_area_with_height(
         height: popup_height,
     })
 }
-
-/// Calculate dynamic word limit based on popup dimensions
-///
-/// Formula: (width - 4) * (height - 2) / 5, clamped to 100-800
-pub fn calculate_word_limit(width: u16, height: u16) -> u16 {
-    let content_width = width.saturating_sub(4);
-    let content_height = height.saturating_sub(2);
-    let raw_limit = (content_width as u32 * content_height as u32) / 5;
-    raw_limit.clamp(100, 800) as u16
-}

@@ -169,51 +169,6 @@ proptest! {
     }
 }
 
-// **Feature: ai-assistant-phase2, Property 4: Word limit formula correctness**
-// *For any* popup dimensions (w, h), the word limit SHALL equal clamp((w-4)*(h-2)/5, 100, 800).
-// **Validates: Requirements 7.1, 7.2, 7.3**
-proptest! {
-    #![proptest_config(ProptestConfig::with_cases(100))]
-
-    #[test]
-    fn prop_word_limit_formula_correctness(
-        width in 40u16..200u16,
-        height in 6u16..50u16
-    ) {
-        let result = calculate_word_limit(width, height);
-        let content_width = width.saturating_sub(4);
-        let content_height = height.saturating_sub(2);
-        let expected_raw = (content_width as u32 * content_height as u32) / 5;
-        let expected = expected_raw.clamp(100, 800) as u16;
-
-        prop_assert_eq!(
-            result, expected,
-            "Word limit for {}x{} should be {} (raw: {})",
-            width, height, expected, expected_raw
-        );
-    }
-}
-
-// **Feature: ai-assistant-phase2, Property 5: Word limit determinism**
-// *For any* given popup dimensions, calling calculate_word_limit multiple times SHALL return the same value.
-// **Validates: Requirements 7.5**
-proptest! {
-    #![proptest_config(ProptestConfig::with_cases(100))]
-
-    #[test]
-    fn prop_word_limit_determinism(
-        width in 40u16..200u16,
-        height in 6u16..50u16
-    ) {
-        let result1 = calculate_word_limit(width, height);
-        let result2 = calculate_word_limit(width, height);
-        let result3 = calculate_word_limit(width, height);
-
-        prop_assert_eq!(result1, result2, "Word limit should be deterministic");
-        prop_assert_eq!(result2, result3, "Word limit should be deterministic");
-    }
-}
-
 // =========================================================================
 // Unit Tests
 // =========================================================================
@@ -287,52 +242,4 @@ fn test_calculate_popup_area_minimum_viable() {
 
     let area = area.unwrap();
     assert!(area.width >= AI_POPUP_MIN_WIDTH);
-}
-
-// =========================================================================
-// Word Limit Unit Tests (Phase 2)
-// =========================================================================
-
-#[test]
-fn test_word_limit_minimum_clamp() {
-    // Very small dimensions should clamp to 100
-    let result = calculate_word_limit(10, 5);
-    assert_eq!(result, 100);
-}
-
-#[test]
-fn test_word_limit_maximum_clamp() {
-    // Very large dimensions should clamp to 800
-    let result = calculate_word_limit(200, 100);
-    assert_eq!(result, 800);
-}
-
-#[test]
-fn test_word_limit_typical_small() {
-    // 44 width, 8 height: (44-4)*(8-2)/5 = 40*6/5 = 48 -> clamped to 100
-    let result = calculate_word_limit(44, 8);
-    assert_eq!(result, 100);
-}
-
-#[test]
-fn test_word_limit_typical_medium() {
-    // 60 width, 15 height: (60-4)*(15-2)/5 = 56*13/5 = 145
-    let result = calculate_word_limit(60, 15);
-    assert_eq!(result, 145);
-}
-
-#[test]
-fn test_word_limit_typical_large() {
-    // 80 width, 20 height: (80-4)*(20-2)/5 = 76*18/5 = 273
-    let result = calculate_word_limit(80, 20);
-    assert_eq!(result, 273);
-}
-
-#[test]
-fn test_word_limit_boundary_100() {
-    // Find dimensions that give exactly 100 (or just above)
-    // (w-4)*(h-2)/5 = 100 -> (w-4)*(h-2) = 500
-    // e.g., 44 width, 14 height: 40*12/5 = 96 -> clamped to 100
-    let result = calculate_word_limit(44, 14);
-    assert_eq!(result, 100);
 }

@@ -9,11 +9,11 @@ use super::context::QueryContext;
 ///
 /// Dispatches to either error troubleshooting or success optimization prompt
 /// based on the `is_success` field in the context.
-pub fn build_prompt(context: &QueryContext, word_limit: u16) -> String {
+pub fn build_prompt(context: &QueryContext) -> String {
     if context.is_success {
-        build_success_prompt(context, word_limit)
+        build_success_prompt(context)
     } else {
-        build_error_prompt(context, word_limit)
+        build_error_prompt(context)
     }
 }
 
@@ -22,15 +22,10 @@ pub fn build_prompt(context: &QueryContext, word_limit: u16) -> String {
 /// Creates a prose prompt that includes the query, error message,
 /// JSON sample, and structure information to help the AI provide
 /// relevant assistance.
-pub fn build_error_prompt(context: &QueryContext, word_limit: u16) -> String {
+pub fn build_error_prompt(context: &QueryContext) -> String {
     let mut prompt = String::new();
 
     prompt.push_str("You are a jq query assistant helping troubleshoot errors.\n");
-    prompt.push_str("CRITICAL: Your response will be displayed in a popup window.\n");
-    prompt.push_str(&format!(
-        "Keep your ENTIRE response under {} words.\n\n",
-        word_limit
-    ));
 
     prompt.push_str("## Current Query\n");
     prompt.push_str(&format!("```\n{}\n```\n", context.query));
@@ -92,11 +87,6 @@ pub fn build_error_prompt(context: &QueryContext, word_limit: u16) -> String {
         "Entire query is natural language. Interpret intent and provide [Next] suggestions.\n\n",
     );
 
-    prompt.push_str(&format!(
-        "REMEMBER: Total response must be under {} words.\n",
-        word_limit
-    ));
-
     prompt
 }
 
@@ -104,15 +94,10 @@ pub fn build_error_prompt(context: &QueryContext, word_limit: u16) -> String {
 ///
 /// Creates a prose prompt that includes the query, output sample,
 /// and structure information to help the AI suggest optimizations.
-pub fn build_success_prompt(context: &QueryContext, word_limit: u16) -> String {
+pub fn build_success_prompt(context: &QueryContext) -> String {
     let mut prompt = String::new();
 
     prompt.push_str("You are a jq query assistant helping optimize queries.\n");
-    prompt.push_str("CRITICAL: Your response will be displayed in a popup window.\n");
-    prompt.push_str(&format!(
-        "Keep your ENTIRE response under {} words.\n\n",
-        word_limit
-    ));
 
     prompt.push_str("## Current Query\n");
     prompt.push_str(&format!("```\n{}\n```\n\n", context.query));
@@ -160,11 +145,6 @@ pub fn build_success_prompt(context: &QueryContext, word_limit: u16) -> String {
     prompt.push_str(
         "Entire query is natural language. Interpret intent and provide [Next] suggestions.\n\n",
     );
-
-    prompt.push_str(&format!(
-        "REMEMBER: Total response must be under {} words.\n",
-        word_limit
-    ));
 
     prompt
 }
