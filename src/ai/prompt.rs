@@ -70,14 +70,27 @@ pub fn build_error_prompt(context: &QueryContext, word_limit: u16) -> String {
     );
     prompt.push_str("Each query must be valid jq syntax on a single line.\n\n");
 
-    prompt.push_str("## Natural Language\n");
+    prompt.push_str("## Natural Language in Query\n");
+    prompt.push_str("The query may contain natural language. Two patterns:\n\n");
+    prompt.push_str("### Pattern A: `<jq_query> <natural_language>`\n");
+    prompt.push_str("User has a partial jq query followed by natural language.\n");
+    prompt.push_str("The natural language could be:\n");
+    prompt.push_str("- Debugging: 'why no results', 'why empty'\n");
+    prompt.push_str("- Extending: 'how to filter by age', 'add sorting'\n");
+    prompt.push_str("- Understanding: 'what does this do'\n");
+    prompt.push_str("- Alternatives: 'is there a better way'\n");
+    prompt.push_str("- Next steps: 'now get their names too'\n\n");
+    prompt.push_str("You must:\n");
+    prompt.push_str("1. IDENTIFY the jq query portion (valid jq syntax before natural language)\n");
+    prompt.push_str("2. UNDERSTAND what the user is asking about that query\n");
+    prompt.push_str("3. RESPOND appropriately (debug, extend, explain, or suggest alternatives)\n");
     prompt.push_str(
-        "If the query contains natural language (e.g., 'how to get emails', 'filter by age'),\n",
+        "CRITICAL: Do NOT suggest 'remove trailing text'. ADDRESS the user's intent!\n\n",
     );
+    prompt.push_str("### Pattern B: `<natural_language>` only\n");
     prompt.push_str(
-        "interpret the user's intent and provide jq query suggestions using [Next] type.\n",
+        "Entire query is natural language. Interpret intent and provide [Next] suggestions.\n\n",
     );
-    prompt.push_str("Natural language can appear anywhere in the query, not just at the end.\n\n");
 
     prompt.push_str(&format!(
         "REMEMBER: Total response must be under {} words.\n",
@@ -126,14 +139,27 @@ pub fn build_success_prompt(context: &QueryContext, word_limit: u16) -> String {
         "If the query is already optimal, provide [Next] suggestions for related operations.\n\n",
     );
 
-    prompt.push_str("## Natural Language\n");
+    prompt.push_str("## Natural Language in Query\n");
+    prompt.push_str("The query may contain natural language. Two patterns:\n\n");
+    prompt.push_str("### Pattern A: `<jq_query> <natural_language>`\n");
+    prompt.push_str("User has a partial jq query followed by natural language.\n");
+    prompt.push_str("The natural language could be:\n");
+    prompt.push_str("- Debugging: 'why no results', 'why empty'\n");
+    prompt.push_str("- Extending: 'how to filter by age', 'add sorting'\n");
+    prompt.push_str("- Understanding: 'what does this do'\n");
+    prompt.push_str("- Alternatives: 'is there a better way'\n");
+    prompt.push_str("- Next steps: 'now get their names too'\n\n");
+    prompt.push_str("You must:\n");
+    prompt.push_str("1. IDENTIFY the jq query portion (valid jq syntax before natural language)\n");
+    prompt.push_str("2. UNDERSTAND what the user is asking about that query\n");
+    prompt.push_str("3. RESPOND appropriately (debug, extend, explain, or suggest alternatives)\n");
     prompt.push_str(
-        "If the query contains natural language (e.g., 'how to get emails', 'filter by age'),\n",
+        "CRITICAL: Do NOT suggest 'remove trailing text'. ADDRESS the user's intent!\n\n",
     );
+    prompt.push_str("### Pattern B: `<natural_language>` only\n");
     prompt.push_str(
-        "interpret the user's intent and provide jq query suggestions using [Next] type.\n",
+        "Entire query is natural language. Interpret intent and provide [Next] suggestions.\n\n",
     );
-    prompt.push_str("Natural language can appear anywhere in the query, not just at the end.\n\n");
 
     prompt.push_str(&format!(
         "REMEMBER: Total response must be under {} words.\n",
