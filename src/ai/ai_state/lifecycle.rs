@@ -97,6 +97,7 @@ impl AiState {
         self.in_flight_request_id = Some(self.request_id);
         self.suggestions.clear();
         self.selection.clear_selection();
+        self.selection.clear_layout();
     }
 
     /// Mark the request as complete
@@ -107,6 +108,7 @@ impl AiState {
         self.previous_response = None;
         self.in_flight_request_id = None;
         self.suggestions = parse_suggestions(&self.response);
+        self.selection.clear_layout();
     }
 
     /// Set an error state

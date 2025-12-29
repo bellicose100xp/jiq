@@ -7,3 +7,4 @@
 cc 07da8fa5d74e0a766c9395eacc99792a0c8ebc72ec91f9bb0027c036b9e8cd93 # shrinks to suggestion_count = 2, selected_index = 0
 cc 7c38b483080456eeb35180ecf9e50fbd5736600ce7010fabfc8f0b468fcae4af # shrinks to suggestion_count = 5, selected_index = 2
 cc a7cb30aa910a0b0df03ea831365e8804326499152d7d2c7eecb2bd1df22a60a0 # shrinks to suggestion_count = 9, selected_index = 4
+cc 54a9a76076ffa6cf31c4c689c454e87af769af2d54e2ff73d1995f4c81160c7b # shrinks to suggestion_count = 6, selected_index = 5
