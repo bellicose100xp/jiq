@@ -84,7 +84,10 @@ pub fn calculate_popup_area_with_height(
 
     // Add border height (top + bottom) and title/hints height
     let needed_height = content_height.saturating_add(4); // 2 for borders + 2 for title/hints
-    let popup_height = needed_height.min(available_height).max(MIN_HEIGHT);
+
+    // Apply MAX_HEIGHT_PERCENT constraint
+    let max_height = (available_height * MAX_HEIGHT_PERCENT) / 100;
+    let popup_height = needed_height.min(max_height).max(MIN_HEIGHT);
 
     if popup_height < MIN_HEIGHT {
         return None;

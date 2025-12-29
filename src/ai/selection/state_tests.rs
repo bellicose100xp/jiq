@@ -79,6 +79,160 @@ fn test_navigate_with_zero_suggestions() {
 }
 
 // =========================================================================
+// Scroll Behavior Tests
+// =========================================================================
+
+#[test]
+fn test_update_layout_calculates_positions() {
+    let mut state = SelectionState::new();
+    let heights = vec![3, 5, 2, 4];
+    state.update_layout(heights.clone(), 10);
+
+    assert_eq!(state.viewport_height, 10);
+    assert_eq!(state.suggestion_heights, heights);
+    // Y positions: 0, 3+1=4, 4+5+1=10, 10+2+1=13
+    assert_eq!(state.suggestion_y_positions, vec![0, 4, 10, 13]);
+}
+
+#[test]
+fn test_scroll_offset_getter() {
+    let mut state = SelectionState::new();
+    assert_eq!(state.scroll_offset(), 0);
+
+    state.scroll_offset = 5;
+    assert_eq!(state.scroll_offset(), 5);
+}
+
+#[test]
+fn test_clear_layout() {
+    let mut state = SelectionState::new();
+    state.scroll_offset = 10;
+    state.viewport_height = 20;
+    state.suggestion_y_positions = vec![0, 5, 10];
+    state.suggestion_heights = vec![3, 4, 2];
+
+    state.clear_layout();
+
+    assert_eq!(state.scroll_offset, 0);
+    assert_eq!(state.viewport_height, 0);
+    assert!(state.suggestion_y_positions.is_empty());
+    assert!(state.suggestion_heights.is_empty());
+}
+
+#[test]
+fn test_scroll_down_when_selection_below_viewport() {
+    let mut state = SelectionState::new();
+    // Setup: 4 suggestions with heights [5, 5, 5, 5], viewport height = 10
+    // Y positions: 0, 6, 12, 18
+    state.update_layout(vec![5, 5, 5, 5], 10);
+    state.scroll_offset = 0;
+    state.selected_index = Some(2); // Select suggestion at Y=12, ends at Y=17
+
+    state.ensure_selected_visible();
+
+    // Viewport is 0-10, suggestion is 12-17, should scroll to show it
+    // scroll_offset should be 17 - 10 = 7
+    assert_eq!(state.scroll_offset, 7);
+}
+
+#[test]
+fn test_scroll_up_when_selection_above_viewport() {
+    let mut state = SelectionState::new();
+    // Setup: 4 suggestions with heights [5, 5, 5, 5], viewport height = 10
+    state.update_layout(vec![5, 5, 5, 5], 10);
+    state.scroll_offset = 10; // Viewing Y=10-20
+    state.selected_index = Some(0); // Select suggestion at Y=0
+
+    state.ensure_selected_visible();
+
+    // Suggestion at Y=0 is above viewport, should scroll to 0
+    assert_eq!(state.scroll_offset, 0);
+}
+
+#[test]
+fn test_no_scroll_when_selection_visible() {
+    let mut state = SelectionState::new();
+    // Setup: suggestions with heights [5, 5, 5], viewport height = 10
+    state.update_layout(vec![5, 5, 5], 10);
+    state.scroll_offset = 0; // Viewing Y=0-10
+    state.selected_index = Some(1); // Select suggestion at Y=6, ends at Y=11
+
+    state.ensure_selected_visible();
+
+    // Suggestion overlaps viewport, no scroll needed... wait, it ends at 11 which is beyond viewport
+    // Actually it WILL scroll. Let me recalculate.
+    // Suggestion at Y=6, height=5, ends at Y=11
+    // Viewport is 0-10, so suggestion_end (11) > viewport_end (10)
+    // Should scroll to 11 - 10 = 1
+    assert_eq!(state.scroll_offset, 1);
+}
+
+#[test]
+fn test_navigate_next_scrolls_to_selection() {
+    let mut state = SelectionState::new();
+    // 5 tall suggestions, viewport = 10, so can only see ~1.5 suggestions at a time
+    state.update_layout(vec![8, 8, 8, 8, 8], 10);
+    state.scroll_offset = 0;
+    state.selected_index = Some(0);
+
+    // Navigate to next suggestion (index 1, Y=9, ends at Y=17)
+    state.navigate_next(5);
+
+    assert_eq!(state.selected_index, Some(1));
+    // Viewport 0-10, suggestion 9-17, should scroll to show it
+    assert_eq!(state.scroll_offset, 7);
+}
+
+#[test]
+fn test_navigate_previous_scrolls_to_selection() {
+    let mut state = SelectionState::new();
+    // 5 suggestions with varying heights
+    state.update_layout(vec![5, 5, 5, 5, 5], 10);
+    state.scroll_offset = 15; // Viewing Y=15-25
+    state.selected_index = Some(4); // At last suggestion, Y=24
+
+    // Navigate to previous (index 3, Y=18, ends at Y=23)
+    state.navigate_previous(5);
+
+    assert_eq!(state.selected_index, Some(3));
+    // Suggestion 18-23 is within viewport 15-25, no scroll needed... wait let me recalculate
+    // Actually viewport is 15-25, suggestion is 18-23, fully visible, no scroll needed
+    assert_eq!(state.scroll_offset, 15);
+}
+
+#[test]
+fn test_wrap_forward_resets_scroll() {
+    let mut state = SelectionState::new();
+    state.update_layout(vec![5, 5, 5, 5], 10);
+    state.scroll_offset = 10;
+    state.selected_index = Some(3);
+
+    // Wrap from last to first
+    state.navigate_next(4);
+
+    assert_eq!(state.selected_index, Some(0));
+    // Should scroll to show first suggestion at Y=0
+    assert_eq!(state.scroll_offset, 0);
+}
+
+#[test]
+fn test_wrap_backward_scrolls_to_last() {
+    let mut state = SelectionState::new();
+    // 4 suggestions, Y positions: 0, 6, 12, 18
+    state.update_layout(vec![5, 5, 5, 5], 10);
+    state.scroll_offset = 0;
+    state.selected_index = Some(0);
+
+    // Wrap from first to last
+    state.navigate_previous(4);
+
+    assert_eq!(state.selected_index, Some(3));
+    // Last suggestion at Y=18, height=5, ends at Y=23
+    // Viewport height=10, should scroll to 23-10=13
+    assert_eq!(state.scroll_offset, 13);
+}
+
+// =========================================================================
 // Property-Based Tests
 // =========================================================================
 

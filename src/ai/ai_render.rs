@@ -5,7 +5,7 @@
 
 use ratatui::{
     Frame,
-    layout::{Constraint, Direction, Layout, Rect},
+    layout::Rect,
     style::{Color, Modifier, Style},
     text::{Line, Span},
     widgets::{Block, Borders, Paragraph, Wrap},
@@ -27,11 +27,14 @@ pub use layout::{
 #[path = "render/content.rs"]
 mod content;
 
-/// Calculate total height needed for suggestions
-fn calculate_suggestions_height(ai_state: &AiState, max_width: u16) -> u16 {
+/// Calculate height of each suggestion
+///
+/// Returns a vector where each element is the height (in lines) of the
+/// corresponding suggestion, NOT including spacing between suggestions.
+fn calculate_suggestion_heights(ai_state: &AiState, max_width: u16) -> Vec<u16> {
     use crate::ai::render::text::wrap_text;
 
-    let mut total_height = 0u16;
+    let mut heights = Vec::with_capacity(ai_state.suggestions.len());
 
     for (i, suggestion) in ai_state.suggestions.iter().enumerate() {
         let type_label = suggestion.suggestion_type.label();
@@ -47,19 +50,29 @@ fn calculate_suggestions_height(ai_state: &AiState, max_width: u16) -> u16 {
         // Calculate query lines
         let query_max_width = max_width.saturating_sub(prefix_len as u16) as usize;
         let query_lines = wrap_text(&suggestion.query, query_max_width);
-        total_height = total_height.saturating_add(query_lines.len() as u16);
+        let mut suggestion_height = query_lines.len() as u16;
 
         // Calculate description lines
         if !suggestion.description.is_empty() {
             let desc_max_width = max_width.saturating_sub(3) as usize;
             let desc_lines = wrap_text(&suggestion.description, desc_max_width).len();
-            total_height = total_height.saturating_add(desc_lines as u16);
+            suggestion_height = suggestion_height.saturating_add(desc_lines as u16);
         }
 
-        // Add spacing between suggestions (except after last one)
-        if i < ai_state.suggestions.len() - 1 {
-            total_height = total_height.saturating_add(1);
-        }
+        heights.push(suggestion_height);
+    }
+
+    heights
+}
+
+/// Calculate total height needed for suggestions (including spacing)
+fn calculate_suggestions_height(ai_state: &AiState, max_width: u16) -> u16 {
+    let heights = calculate_suggestion_heights(ai_state, max_width);
+    let mut total_height = heights.iter().sum::<u16>();
+
+    // Add spacing between suggestions (1 line after each except last)
+    if !heights.is_empty() {
+        total_height = total_height.saturating_add((heights.len() - 1) as u16);
     }
 
     total_height
@@ -67,18 +80,65 @@ fn calculate_suggestions_height(ai_state: &AiState, max_width: u16) -> u16 {
 
 /// Render suggestions as individual widgets with background highlighting
 fn render_suggestions_as_widgets(
-    ai_state: &AiState,
+    ai_state: &mut AiState,
     frame: &mut Frame,
     inner_area: Rect,
     max_width: u16,
 ) {
     use crate::ai::render::text::wrap_text;
 
-    // Pre-calculate lines and heights for each suggestion
-    let mut suggestion_blocks: Vec<(Vec<Line<'static>>, bool)> = Vec::new();
+    // Calculate heights and update selection state layout
+    let heights = calculate_suggestion_heights(ai_state, max_width);
+    ai_state
+        .selection
+        .update_layout(heights.clone(), inner_area.height);
+
+    // Ensure selected suggestion is visible after layout update
+    // This is necessary because navigation happens before layout is computed
+    if ai_state.selection.get_selected().is_some() {
+        ai_state.selection.ensure_selected_visible();
+    }
+
+    let scroll_offset = ai_state.selection.scroll_offset();
+    let viewport_end = scroll_offset.saturating_add(inner_area.height);
     let selected_index = ai_state.selection.get_selected();
 
+    // Track current Y position (in content space, not screen space)
+    let mut current_y = 0u16;
+
     for (i, suggestion) in ai_state.suggestions.iter().enumerate() {
+        let suggestion_height = heights[i];
+        let suggestion_end = current_y.saturating_add(suggestion_height);
+
+        // Skip if suggestion is fully above viewport
+        if suggestion_end <= scroll_offset {
+            current_y = suggestion_end;
+            // Add spacing after each suggestion except the last
+            if i < ai_state.suggestions.len() - 1 {
+                current_y = current_y.saturating_add(1);
+            }
+            continue;
+        }
+
+        // Stop if suggestion starts below viewport
+        if current_y >= viewport_end {
+            break;
+        }
+
+        // Calculate render area in screen space
+        let render_y = inner_area
+            .y
+            .saturating_add(current_y.saturating_sub(scroll_offset));
+        let visible_height = suggestion_height.min(viewport_end.saturating_sub(current_y));
+
+        let render_area = Rect {
+            x: inner_area.x,
+            y: render_y,
+            width: inner_area.width,
+            height: visible_height,
+        };
+
+        // Build suggestion lines
         let mut lines: Vec<Line> = Vec::new();
         let is_selected = selected_index == Some(i);
 
@@ -142,36 +202,7 @@ fn render_suggestions_as_widgets(
             }
         }
 
-        suggestion_blocks.push((lines, is_selected));
-    }
-
-    // Calculate layout constraints: each suggestion + 1 line spacing after each (except last)
-    // Use Length for exact sizing to avoid extra space allocation
-    let mut constraints: Vec<Constraint> = Vec::new();
-    for (i, (lines, _)) in suggestion_blocks.iter().enumerate() {
-        // Add constraint for the suggestion content - use Length for exact height
-        constraints.push(Constraint::Length(lines.len() as u16));
-        // Add 1-line spacing after each suggestion except the last
-        if i < suggestion_blocks.len() - 1 {
-            constraints.push(Constraint::Length(1));
-        }
-    }
-
-    // Create layout
-    let chunks = Layout::default()
-        .direction(Direction::Vertical)
-        .constraints(constraints)
-        .split(inner_area);
-
-    // Render each suggestion in its chunk (skipping spacing chunks)
-    let mut chunk_idx = 0;
-    for (lines, is_selected) in suggestion_blocks {
-        // Skip if chunk has zero height (layout ran out of space)
-        if chunk_idx >= chunks.len() || chunks[chunk_idx].height == 0 {
-            chunk_idx += 2; // Skip this suggestion and its spacing
-            continue;
-        }
-
+        // Render the suggestion
         let style = if is_selected {
             Style::default().bg(Color::DarkGray)
         } else {
@@ -179,9 +210,14 @@ fn render_suggestions_as_widgets(
         };
 
         let paragraph = Paragraph::new(lines).style(style);
+        frame.render_widget(paragraph, render_area);
 
-        frame.render_widget(paragraph, chunks[chunk_idx]);
-        chunk_idx += 2; // Move to next suggestion (skip spacing chunk)
+        // Move to next suggestion
+        current_y = suggestion_end;
+        // Add spacing after each suggestion except the last
+        if i < ai_state.suggestions.len() - 1 {
+            current_y = current_y.saturating_add(1);
+        }
     }
 }
 

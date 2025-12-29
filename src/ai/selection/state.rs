@@ -12,6 +12,14 @@ pub struct SelectionState {
     selected_index: Option<usize>,
     /// Whether navigation mode is active (user has used Alt+Up/Down/j/k)
     navigation_active: bool,
+    /// Current vertical scroll offset in lines
+    scroll_offset: u16,
+    /// Viewport height in lines
+    viewport_height: u16,
+    /// Y position (in lines) where each suggestion starts
+    suggestion_y_positions: Vec<u16>,
+    /// Height (in lines) of each suggestion
+    suggestion_heights: Vec<u16>,
 }
 
 impl SelectionState {
@@ -20,6 +28,10 @@ impl SelectionState {
         Self {
             selected_index: None,
             navigation_active: false,
+            scroll_offset: 0,
+            viewport_height: 0,
+            suggestion_y_positions: Vec::new(),
+            suggestion_heights: Vec::new(),
         }
     }
 
@@ -81,6 +93,9 @@ impl SelectionState {
                 self.selected_index = Some(0);
             }
         }
+
+        // Ensure the newly selected suggestion is visible
+        self.ensure_selected_visible();
     }
 
     /// Navigate to the previous suggestion (Alt+Up or Alt+k)
@@ -115,6 +130,77 @@ impl SelectionState {
                 self.selected_index = Some(suggestion_count - 1);
             }
         }
+
+        // Ensure the newly selected suggestion is visible
+        self.ensure_selected_visible();
+    }
+
+    /// Update layout information for suggestion scrolling
+    ///
+    /// Stores the height of each suggestion and calculates Y positions.
+    /// This must be called before rendering to enable proper scrolling.
+    ///
+    /// # Arguments
+    /// * `heights` - Height (in lines) of each suggestion
+    /// * `viewport` - Visible viewport height in lines
+    pub fn update_layout(&mut self, heights: Vec<u16>, viewport: u16) {
+        self.viewport_height = viewport;
+        self.suggestion_heights = heights;
+
+        // Calculate Y positions (cumulative heights with spacing)
+        self.suggestion_y_positions.clear();
+        let mut current_y = 0u16;
+        for (i, &height) in self.suggestion_heights.iter().enumerate() {
+            self.suggestion_y_positions.push(current_y);
+            current_y = current_y.saturating_add(height);
+            // Add spacing after each suggestion except the last
+            if i < self.suggestion_heights.len() - 1 {
+                current_y = current_y.saturating_add(1);
+            }
+        }
+    }
+
+    /// Adjust scroll offset to ensure the selected suggestion is visible
+    ///
+    /// Scrolls up if selection is above viewport, down if below viewport.
+    pub fn ensure_selected_visible(&mut self) {
+        let Some(selected_idx) = self.selected_index else {
+            return;
+        };
+
+        if selected_idx >= self.suggestion_y_positions.len() {
+            return;
+        }
+
+        let suggestion_start = self.suggestion_y_positions[selected_idx];
+        let suggestion_height = self
+            .suggestion_heights
+            .get(selected_idx)
+            .copied()
+            .unwrap_or(1);
+        let suggestion_end = suggestion_start.saturating_add(suggestion_height);
+
+        // If suggestion starts above viewport, scroll up
+        if suggestion_start < self.scroll_offset {
+            self.scroll_offset = suggestion_start;
+        }
+        // If suggestion ends below viewport, scroll down
+        else if suggestion_end > self.scroll_offset.saturating_add(self.viewport_height) {
+            self.scroll_offset = suggestion_end.saturating_sub(self.viewport_height);
+        }
+    }
+
+    /// Get the current scroll offset in lines
+    pub fn scroll_offset(&self) -> u16 {
+        self.scroll_offset
+    }
+
+    /// Clear layout information (called when suggestions change)
+    pub fn clear_layout(&mut self) {
+        self.scroll_offset = 0;
+        self.viewport_height = 0;
+        self.suggestion_y_positions.clear();
+        self.suggestion_heights.clear();
     }
 }
 
