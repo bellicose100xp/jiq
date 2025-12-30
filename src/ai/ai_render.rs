@@ -123,7 +123,11 @@ fn render_suggestions_as_widgets(
         let render_y = inner_area
             .y
             .saturating_add(current_y.saturating_sub(scroll_offset));
-        let visible_height = suggestion_height.min(viewport_end.saturating_sub(current_y));
+
+        // Calculate visible portion accounting for scrolling off both top and bottom
+        let visible_start = current_y.max(scroll_offset);
+        let visible_end = suggestion_end.min(viewport_end);
+        let visible_height = visible_end.saturating_sub(visible_start);
 
         let render_area = Rect {
             x: inner_area.x,
@@ -208,7 +212,16 @@ fn render_suggestions_as_widgets(
             Style::default()
         };
 
-        let paragraph = Paragraph::new(lines).style(style);
+        // Calculate scroll offset for lines that are clipped off the top
+        let line_scroll_offset = if current_y < scroll_offset {
+            scroll_offset.saturating_sub(current_y)
+        } else {
+            0
+        };
+
+        let paragraph = Paragraph::new(lines)
+            .style(style)
+            .scroll((line_scroll_offset, 0));
         frame.render_widget(paragraph, render_area);
 
         // Move to next suggestion
