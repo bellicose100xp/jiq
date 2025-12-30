@@ -280,7 +280,7 @@ pub fn render_popup(ai_state: &mut AiState, frame: &mut Frame, input_area: Rect)
         Span::styled(
             &ai_state.provider_name,
             Style::default()
-                .fg(Color::Green)
+                .fg(Color::Magenta)
                 .add_modifier(Modifier::BOLD),
         ),
         Span::raw(" "),
@@ -349,7 +349,7 @@ pub fn render_popup(ai_state: &mut AiState, frame: &mut Frame, input_area: Rect)
         .title_top(counter.alignment(ratatui::layout::Alignment::Center))
         .title_top(model_name_title.alignment(ratatui::layout::Alignment::Right))
         .title_bottom(hints.alignment(ratatui::layout::Alignment::Center))
-        .border_style(Style::default().fg(Color::Green))
+        .border_style(Style::default().fg(Color::Magenta))
         .style(Style::default().bg(Color::Black));
 
     // Check if we have suggestions - use widget-based rendering for better backgrounds

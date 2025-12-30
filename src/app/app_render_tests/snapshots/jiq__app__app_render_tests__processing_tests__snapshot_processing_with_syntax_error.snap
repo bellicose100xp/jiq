@@ -2,7 +2,7 @@
 source: src/app/app_render_tests/processing_tests.rs
 expression: output
 ---
-"┌⠸  ⚠ Syntax Error (String - last successful query result) ────────────────────┐"
+"┌⠸  ⚠ Syntax Error | String | Showing last successful result ──────────────────┐"
 "│"Alice"                                                                       │"
 "│                                                                              │"
 "│                                                                              │"

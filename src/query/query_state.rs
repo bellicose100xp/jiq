@@ -74,6 +74,8 @@ pub struct QueryState {
     pub(crate) cached_line_count: u32,
     /// Cached max line width (computed once per result, not per render)
     pub(crate) cached_max_line_width: u16,
+    /// Whether current result is null/empty (valid query but no results)
+    pub is_empty_result: bool,
 
     // Async execution support
     /// Channel to send query requests to worker
@@ -150,6 +152,7 @@ impl QueryState {
             base_type_for_suggestions,
             cached_line_count,
             cached_max_line_width,
+            is_empty_result: false,
             request_tx: Some(request_tx),
             response_rx: Some(response_rx),
             next_request_id: 1, // Reserve 0 for worker errors
@@ -178,6 +181,8 @@ impl QueryState {
             .lines()
             .filter(|line| !line.trim().is_empty())
             .all(|line| line.trim() == "null");
+
+        self.is_empty_result = is_only_nulls;
 
         if !is_only_nulls {
             // Cache line count and max width BEFORE moving output
@@ -366,6 +371,8 @@ impl QueryState {
                     .filter(|line| !line.trim().is_empty())
                     .all(|line| line.trim() == "null");
 
+                self.is_empty_result = is_only_nulls;
+
                 // Clear in-flight tracking immediately
                 self.in_flight_request_id = None;
                 self.current_cancel_token = None;
@@ -407,6 +414,7 @@ impl QueryState {
                     self.in_flight_request_id = None;
                     self.current_cancel_token = None;
                     self.result = Err(message);
+                    self.is_empty_result = false;
                     // Return the query that produced this error for AI context
                     return Some(query);
                 }

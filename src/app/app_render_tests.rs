@@ -27,3 +27,9 @@ mod processing_tests;
 
 #[cfg(test)]
 mod property_tests;
+
+#[cfg(test)]
+mod error_handling_tests;
+
+#[cfg(test)]
+mod result_state_tests;

@@ -27,7 +27,7 @@ impl App {
 
         crate::help::help_line_render::render_line(self, frame, help_area);
 
-        if self.ai.visible {
+        if self.ai.visible && self.query.is_some() {
             crate::ai::ai_render::render_popup(&mut self.ai, frame, input_area);
         } else if self.tooltip.should_show() {
             crate::tooltip::tooltip_render::render_popup(self, frame, input_area);

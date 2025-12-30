@@ -67,15 +67,10 @@ pub fn render_pane(app: &mut App, frame: &mut Frame, area: Rect) {
     };
 
     let is_pending = query_state.is_pending();
-    let border_color = if app.focus == crate::app::Focus::ResultsPane {
-        Color::Cyan
-    } else {
-        Color::DarkGray
-    };
+    let stats_info = app.stats.display().unwrap_or_else(|| "Results".to_string());
 
-    let title = if query_state.result.is_err() {
-        // Error title with optional rainbow spinner
-        let stats_info = app.stats.display().unwrap_or_default();
+    let (title, unfocused_border_color) = if query_state.result.is_err() {
+        // ERROR: Yellow text, yellow border (unfocused)
         let mut spans = Vec::new();
         if is_pending {
             let (spinner_char, spinner_color) = get_spinner(app.frame_count);
@@ -90,29 +85,61 @@ pub fn render_pane(app: &mut App, frame: &mut Frame, area: Rect) {
         ));
         if !stats_info.is_empty() {
             spans.push(Span::styled(
-                format!("({} - last successful query result) ", stats_info),
-                Style::default().fg(Color::Gray),
+                format!("| {} | Showing last successful result ", stats_info),
+                Style::default().fg(Color::Yellow),
             ));
         }
-        Line::from(spans)
-    } else {
-        // Normal title with optional rainbow spinner
-        let stats_info = app.stats.display().unwrap_or_else(|| "Results".to_string());
+        (Line::from(spans), Color::Yellow)
+    } else if query_state.is_empty_result {
+        // EMPTY: Gray text, gray border (unfocused)
+        let mut spans = Vec::new();
         if is_pending {
             let (spinner_char, spinner_color) = get_spinner(app.frame_count);
-            Line::from(vec![
-                Span::styled(
-                    format!("{} ", spinner_char),
-                    Style::default().fg(spinner_color),
-                ),
-                Span::styled(format!("{} ", stats_info), Style::default().fg(Color::Cyan)),
-            ])
-        } else {
-            Line::from(Span::styled(
-                format!(" {} ", stats_info),
-                Style::default().fg(Color::Cyan),
-            ))
+            spans.push(Span::styled(
+                format!("{} ", spinner_char),
+                Style::default().fg(spinner_color),
+            ));
         }
+        spans.push(Span::styled(
+            format!(
+                " ∅ No Results | {} | Showing last non-empty result ",
+                stats_info
+            ),
+            Style::default().fg(Color::Gray),
+        ));
+        (Line::from(spans), Color::DarkGray)
+    } else {
+        // SUCCESS: Green text, green border (unfocused)
+        if is_pending {
+            let (spinner_char, spinner_color) = get_spinner(app.frame_count);
+            (
+                Line::from(vec![
+                    Span::styled(
+                        format!("{} ", spinner_char),
+                        Style::default().fg(spinner_color),
+                    ),
+                    Span::styled(
+                        format!("{} ", stats_info),
+                        Style::default().fg(Color::Green),
+                    ),
+                ]),
+                Color::Green,
+            )
+        } else {
+            (
+                Line::from(Span::styled(
+                    format!(" {} ", stats_info),
+                    Style::default().fg(Color::Green),
+                )),
+                Color::Green,
+            )
+        }
+    };
+
+    let border_color = if app.focus == crate::app::Focus::ResultsPane {
+        Color::Cyan
+    } else {
+        unfocused_border_color
     };
 
     // Always render from cached pre-rendered text

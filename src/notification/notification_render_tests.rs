@@ -59,3 +59,12 @@ fn snapshot_notification_styled() {
     let output = render_notification_to_string(&mut notification, 80, 24);
     assert_snapshot!(output);
 }
+
+#[test]
+fn snapshot_notification_error_brief() {
+    let mut notification = NotificationState::new();
+    notification.show_error("Failed to load file");
+
+    let output = render_notification_to_string(&mut notification, 80, 24);
+    assert_snapshot!(output);
+}

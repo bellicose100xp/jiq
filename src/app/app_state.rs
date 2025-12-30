@@ -148,10 +148,10 @@ impl App {
                         self.trigger_ai_request();
                     }
                 }
-                Err(e) => {
+                Err(_e) => {
                     // Keep loader for state tracking
-                    self.notification
-                        .show_error(&format!("Failed to load file: {}", e));
+                    // Show brief notification - full error details in results area
+                    self.notification.show_error("Failed to load file");
                 }
             }
         }
