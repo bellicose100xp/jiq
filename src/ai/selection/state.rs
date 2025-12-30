@@ -141,22 +141,18 @@ impl SelectionState {
     /// This must be called before rendering to enable proper scrolling.
     ///
     /// # Arguments
-    /// * `heights` - Height (in lines) of each suggestion
+    /// * `heights` - Height (in lines) of each suggestion (spacing already included)
     /// * `viewport` - Visible viewport height in lines
     pub fn update_layout(&mut self, heights: Vec<u16>, viewport: u16) {
         self.viewport_height = viewport;
         self.suggestion_heights = heights;
 
-        // Calculate Y positions (cumulative heights with spacing)
+        // Calculate Y positions (heights already include spacing lines)
         self.suggestion_y_positions.clear();
         let mut current_y = 0u16;
-        for (i, &height) in self.suggestion_heights.iter().enumerate() {
+        for &height in self.suggestion_heights.iter() {
             self.suggestion_y_positions.push(current_y);
             current_y = current_y.saturating_add(height);
-            // Add spacing after each suggestion except the last
-            if i < self.suggestion_heights.len() - 1 {
-                current_y = current_y.saturating_add(1);
-            }
         }
     }
 

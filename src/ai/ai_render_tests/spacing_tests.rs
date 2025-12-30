@@ -193,3 +193,112 @@ fn snapshot_no_spacing_after_last_suggestion() {
     assert!(output.contains("[Next] .last"));
     assert_snapshot!(output);
 }
+
+#[test]
+fn snapshot_spacing_maintained_with_first_option_selected() {
+    // Regression test for spacing bug: verify spacing is consistent when first option is selected
+    let mut state = AiState::new_with_config(
+        true,
+        true,
+        "Anthropic".to_string(),
+        "claude-3-5-sonnet-20241022".to_string(),
+    );
+    state.visible = true;
+    state.response = "AI response".to_string();
+    state.suggestions = vec![
+        Suggestion {
+            query: ".first".to_string(),
+            description: "First suggestion".to_string(),
+            suggestion_type: SuggestionType::Fix,
+        },
+        Suggestion {
+            query: ".second".to_string(),
+            description: "Second suggestion".to_string(),
+            suggestion_type: SuggestionType::Next,
+        },
+        Suggestion {
+            query: ".third".to_string(),
+            description: "Third suggestion".to_string(),
+            suggestion_type: SuggestionType::Optimize,
+        },
+    ];
+
+    // Select first option
+    state.selection.select_index(0);
+
+    let output = render_ai_popup_to_string(&mut state, 100, 30);
+    assert_snapshot!(output);
+}
+
+#[test]
+fn snapshot_spacing_maintained_with_middle_option_selected() {
+    // Regression test for spacing bug: verify spacing is consistent when middle option is selected
+    let mut state = AiState::new_with_config(
+        true,
+        true,
+        "Anthropic".to_string(),
+        "claude-3-5-sonnet-20241022".to_string(),
+    );
+    state.visible = true;
+    state.response = "AI response".to_string();
+    state.suggestions = vec![
+        Suggestion {
+            query: ".first".to_string(),
+            description: "First suggestion".to_string(),
+            suggestion_type: SuggestionType::Fix,
+        },
+        Suggestion {
+            query: ".second".to_string(),
+            description: "Second suggestion".to_string(),
+            suggestion_type: SuggestionType::Next,
+        },
+        Suggestion {
+            query: ".third".to_string(),
+            description: "Third suggestion".to_string(),
+            suggestion_type: SuggestionType::Optimize,
+        },
+    ];
+
+    // Select middle option
+    state.selection.select_index(1);
+
+    let output = render_ai_popup_to_string(&mut state, 100, 30);
+    assert_snapshot!(output);
+}
+
+#[test]
+fn snapshot_spacing_maintained_with_last_option_selected() {
+    // Regression test for spacing bug: verify spacing is consistent when last option is selected
+    // This is the critical test case that would fail with the double-spacing bug
+    let mut state = AiState::new_with_config(
+        true,
+        true,
+        "Anthropic".to_string(),
+        "claude-3-5-sonnet-20241022".to_string(),
+    );
+    state.visible = true;
+    state.response = "AI response".to_string();
+    state.suggestions = vec![
+        Suggestion {
+            query: ".first".to_string(),
+            description: "First suggestion".to_string(),
+            suggestion_type: SuggestionType::Fix,
+        },
+        Suggestion {
+            query: ".second".to_string(),
+            description: "Second suggestion".to_string(),
+            suggestion_type: SuggestionType::Next,
+        },
+        Suggestion {
+            query: ".third".to_string(),
+            description: "Third suggestion".to_string(),
+            suggestion_type: SuggestionType::Optimize,
+        },
+    ];
+
+    // Select last option - this would trigger the spacing bug before the fix
+    state.selection.select_index(2);
+
+    let output = render_ai_popup_to_string(&mut state, 100, 30);
+    assert_snapshot!(output);
+}
