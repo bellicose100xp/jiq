@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.8.2] - 2025-12-29
+
+### Fixed
+- **AI suggestion spacing** - Fixed spacing disappearing when selecting last AI suggestion
+  - Cursor now remains in the correct position after accepting the final suggestion
+  - Prevents text collapsing when selecting the last item in the suggestion list
+
+### Changed
+- **AI popup border color** - Updated AI assistant popup border color for better visual distinction
+  - Improved visual clarity and consistency with other UI elements
+
 ## [3.8.1] - 2025-12-29
 
 ### Added
