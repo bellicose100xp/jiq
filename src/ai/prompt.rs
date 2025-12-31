@@ -52,15 +52,16 @@ pub fn build_error_prompt(context: &QueryContext) -> String {
     }
 
     prompt.push_str("## Response Format\n");
-    prompt.push_str("Provide 3-5 numbered suggestions in this EXACT format:\n\n");
-    prompt.push_str("1. [Fix] corrected_jq_query_here\n");
-    prompt.push_str("   Brief explanation (1 sentence)\n\n");
-    prompt.push_str("2. [Optimize] alternative_query_if_applicable\n");
-    prompt.push_str("   Why this is better (1 sentence)\n\n");
     prompt.push_str(
-        "Use [Fix] for error corrections, [Optimize] for improvements, [Next] for next steps.\n",
+        "Return ONLY a raw JSON object (no markdown, no code fences) with this EXACT structure:\n",
     );
-    prompt.push_str("Each query must be valid jq syntax on a single line.\n\n");
+    prompt.push_str(r#"{"suggestions": [{"type": "fix", "query": "jq_query", "details": "1 line description"}]}"#);
+    prompt.push_str("\n\n");
+    prompt.push_str("- type: \"fix\" for error corrections, \"optimize\" for improvements, \"next\" for next steps\n");
+    prompt.push_str("- query: valid jq syntax, single line\n");
+    prompt.push_str("- details: brief 1-sentence explanation\n");
+    prompt.push_str("- Provide 3-5 suggestions\n");
+    prompt.push_str("- IMPORTANT: Return raw JSON only, do NOT wrap in ```json code fences\n\n");
 
     prompt.push_str("## Natural Language in Query\n");
     prompt.push_str("The query may contain natural language. Two patterns:\n\n");
@@ -127,16 +128,21 @@ pub fn build_success_prompt(context: &QueryContext) -> String {
     }
 
     prompt.push_str("## Response Format\n");
-    prompt.push_str("Provide 3-5 numbered suggestions in this EXACT format:\n\n");
-    prompt.push_str("1. [Optimize] optimized_jq_query_here\n");
-    prompt.push_str("   Brief explanation (1 sentence)\n\n");
-    prompt.push_str("2. [Next] next_step_query_if_applicable\n");
-    prompt.push_str("   What this does (1 sentence)\n\n");
-    prompt.push_str("Use [Optimize] for improvements, [Next] for next steps or related queries.\n");
-    prompt.push_str("Each query must be valid jq syntax on a single line.\n");
     prompt.push_str(
-        "If the query is already optimal, provide [Next] suggestions for related operations.\n\n",
+        "Return ONLY a raw JSON object (no markdown, no code fences) with this EXACT structure:\n",
     );
+    prompt.push_str(r#"{"suggestions": [{"type": "optimize", "query": "jq_query", "details": "1 line description"}]}"#);
+    prompt.push_str("\n\n");
+    prompt.push_str(
+        "- type: \"optimize\" for improvements, \"next\" for next steps or related queries\n",
+    );
+    prompt.push_str("- query: valid jq syntax, single line\n");
+    prompt.push_str("- details: brief 1-sentence explanation\n");
+    prompt.push_str("- Provide 3-5 suggestions\n");
+    prompt.push_str(
+        "- If the query is already optimal, provide \"next\" suggestions for related operations\n",
+    );
+    prompt.push_str("- IMPORTANT: Return raw JSON only, do NOT wrap in ```json code fences\n\n");
 
     prompt.push_str("## Natural Language in Query\n");
     prompt.push_str("The query may contain natural language. Two patterns:\n\n");

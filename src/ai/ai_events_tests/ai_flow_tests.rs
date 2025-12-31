@@ -231,7 +231,7 @@ fn test_base_query_passed_on_error() {
     if let Ok(AiRequest::Query { prompt, .. }) = rx.try_recv() {
         assert!(prompt.contains("## Last Working Query"));
         assert!(prompt.contains(".name"));
-        assert!(prompt.contains("## Its Output"));
+        assert!(prompt.contains("## Last Working Query Output"));
         assert!(prompt.contains(r#""test""#));
     } else {
         panic!("Expected Query request");
