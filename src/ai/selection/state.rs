@@ -35,12 +35,12 @@ impl SelectionState {
         }
     }
 
-    /// Select a specific suggestion index (for direct Alt+1-5 selection)
+    /// Select a specific suggestion index (test helper)
     ///
-    /// This does NOT activate navigation mode since it's a direct selection.
+    /// Note: Production code uses navigate_next/prev instead.
+    #[cfg(test)]
     pub fn select_index(&mut self, index: usize) {
         self.selected_index = Some(index);
-        // Direct selection doesn't activate navigation mode
         self.navigation_active = false;
     }
 

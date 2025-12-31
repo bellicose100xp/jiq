@@ -60,9 +60,8 @@ impl Default for NotificationStyle {
 pub struct Notification {
     pub message: String,
     pub style: NotificationStyle,
-    /// The type of notification (Info, Warning, Error).
-    ///
-    /// Currently only used in tests for assertions, but kept as useful metadata.
+    /// The type of notification (test assertion metadata)
+    #[allow(dead_code)]
     pub notification_type: NotificationType,
     pub created_at: Instant,
     pub duration: Option<Duration>,
@@ -120,10 +119,10 @@ impl NotificationState {
         self.show_with_type(message, NotificationType::Error);
     }
 
-    /// Dismiss the current notification.
+    /// Dismiss the current notification (test helper)
     ///
-    /// This method is kept for future use with permanent error notifications that
-    /// need to be dismissed by user action (e.g., pressing a key).
+    /// Note: Production code uses auto-expiry via clear_if_expired().
+    #[cfg(test)]
     pub fn dismiss(&mut self) {
         self.current = None;
     }

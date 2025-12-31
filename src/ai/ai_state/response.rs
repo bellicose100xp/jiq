@@ -128,6 +128,7 @@ impl AiState {
     }
 
     /// Check if there's an in-flight request
+    #[cfg(test)]
     pub fn has_in_flight_request(&self) -> bool {
         self.in_flight_request_id.is_some()
     }

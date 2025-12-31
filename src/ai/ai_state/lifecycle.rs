@@ -7,10 +7,11 @@ use super::super::suggestion::parse_suggestions;
 use crate::ai::ai_state::AiState;
 
 impl AiState {
-    /// Create a new AiState
+    /// Create a new AiState (test helper)
     ///
     /// # Arguments
     /// * `enabled` - Whether AI features are enabled (from config)
+    #[cfg(test)]
     pub fn new(enabled: bool) -> Self {
         Self {
             visible: false,
@@ -74,7 +75,8 @@ impl AiState {
         self.visible = !self.visible;
     }
 
-    /// Close the AI popup (Esc key handler)
+    /// Close the AI popup (test helper)
+    #[cfg(test)]
     pub fn close(&mut self) {
         self.visible = false;
     }
@@ -118,10 +120,10 @@ impl AiState {
         self.in_flight_request_id = None;
     }
 
-    /// Clear AI response and error when query becomes successful
+    /// Clear AI response and error when query becomes successful (test helper)
     ///
-    /// This should be called when the query transitions from error to success
-    /// to remove stale error explanations.
+    /// Note: Production code uses clear_stale_response() instead.
+    #[cfg(test)]
     pub fn clear_on_success(&mut self) {
         self.response.clear();
         self.error = None;
