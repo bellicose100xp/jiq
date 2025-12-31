@@ -136,3 +136,48 @@ fn test_async_cancellation_during_preprocessing() {
     // Should not be pending
     assert!(!state.is_pending(), "Should not be pending after cancel");
 }
+
+#[test]
+fn test_async_updates_context_cache() {
+    let json = r#"{"name": "test", "value": 42}"#;
+    let mut state = QueryState::new(json.to_string());
+
+    let initial_context_cache = state.last_successful_result_for_context.clone();
+    assert!(initial_context_cache.is_some());
+
+    // Execute async query
+    state.execute_async(".name");
+    assert!(wait_for_completion(&mut state, 2));
+
+    let updated_context_cache = state.last_successful_result_for_context.clone();
+    assert!(updated_context_cache.is_some());
+
+    // Should be different after async update
+    assert_ne!(
+        initial_context_cache, updated_context_cache,
+        "Async execution should update context cache"
+    );
+}
+
+#[test]
+fn test_async_null_preserves_context_cache() {
+    let json = r#"{"services": [{"name": "a"}, {"name": "b"}]}"#;
+    let mut state = QueryState::new(json.to_string());
+
+    // Execute successful query
+    state.execute_async(".services[]");
+    assert!(wait_for_completion(&mut state, 2));
+
+    let cached_context = state.last_successful_result_for_context.clone();
+    assert!(cached_context.is_some());
+
+    // Execute query that returns multiple nulls
+    state.execute_async(".services[].nonexistent");
+    assert!(wait_for_completion(&mut state, 2));
+
+    // Context cache should be preserved
+    assert_eq!(
+        state.last_successful_result_for_context, cached_context,
+        "Async null results should preserve context cache"
+    );
+}

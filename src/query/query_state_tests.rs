@@ -843,6 +843,100 @@ fn test_normalize_handles_complex_patterns() {
 }
 
 // ============================================================================
+// AI Context Cache Tests
+// ============================================================================
+
+#[test]
+fn test_new_populates_context_cache() {
+    let json = r#"{"name": "test"}"#;
+    let state = QueryState::new(json.to_string());
+
+    assert!(
+        state.last_successful_result_for_context.is_some(),
+        "new() should populate AI context cache"
+    );
+}
+
+#[test]
+fn test_successful_query_updates_context_cache() {
+    let json = r#"{"name": "test", "value": 42}"#;
+    let mut state = QueryState::new(json.to_string());
+
+    state.execute(".name");
+    assert!(state.result.is_ok());
+    assert!(
+        state.last_successful_result_for_context.is_some(),
+        "Context cache should be populated after successful query"
+    );
+}
+
+#[test]
+fn test_null_result_preserves_context_cache() {
+    let json = r#"{"name": "test", "age": 30}"#;
+    let mut state = QueryState::new(json.to_string());
+
+    let initial_context_cache = state.last_successful_result_for_context.clone();
+    assert!(initial_context_cache.is_some());
+
+    // Execute a query that returns null
+    state.execute(".nonexistent");
+    assert!(state.result.is_ok());
+    assert!(state.result.as_ref().unwrap().contains("null"));
+
+    // Context cache should NOT be updated
+    assert_eq!(
+        state.last_successful_result_for_context, initial_context_cache,
+        "Context cache should be preserved for null-only results"
+    );
+}
+
+#[test]
+fn test_context_cache_contains_processed_data() {
+    use crate::ai::context::MAX_JSON_SAMPLE_LENGTH;
+
+    let large_json = format!(r#"{{"data": "{}"}}"#, "x".repeat(50_000));
+    let mut state = QueryState::new(large_json);
+
+    state.execute(".");
+    assert!(state.result.is_ok());
+
+    let context_cache = state.last_successful_result_for_context.as_ref().unwrap();
+    let unformatted = state.last_successful_result_unformatted.as_ref().unwrap();
+
+    // Context cache should be shorter than unformatted (processed)
+    assert!(
+        context_cache.len() < unformatted.len(),
+        "Context cache should be minified/truncated"
+    );
+    assert!(
+        context_cache.len() <= MAX_JSON_SAMPLE_LENGTH + 15,
+        "Context cache should be bounded"
+    );
+}
+
+#[test]
+fn test_context_cache_updated_when_result_changes() {
+    let json = r#"{"name": "test", "value": 42}"#;
+    let mut state = QueryState::new(json.to_string());
+
+    let initial_context_cache = state.last_successful_result_for_context.clone();
+    assert!(initial_context_cache.is_some());
+
+    // Execute different query
+    state.execute(".name");
+    assert!(state.result.is_ok());
+
+    let updated_context_cache = state.last_successful_result_for_context.clone();
+    assert!(updated_context_cache.is_some());
+
+    // Should be different
+    assert_ne!(
+        initial_context_cache, updated_context_cache,
+        "Context cache should update when result changes"
+    );
+}
+
+// ============================================================================
 // Rendered Cache Tests
 // ============================================================================
 
