@@ -8,6 +8,7 @@ fn empty_params() -> ContextParams<'static> {
         input_schema: None,
         base_query: None,
         base_query_result: None,
+        is_empty_result: false,
     }
 }
 
@@ -124,6 +125,7 @@ fn test_query_context_is_complete() {
         error: None,
         json_type_info: JsonTypeInfo::default(),
         is_success: true,
+        is_empty_result: false,
         input_schema: None,
         base_query: None,
         base_query_result: None,
@@ -652,6 +654,7 @@ fn test_query_context_applies_prepare_to_base_query_result() {
         input_schema: None,
         base_query: Some(".base"),
         base_query_result: Some(&large_result),
+        is_empty_result: false,
     };
 
     let ctx = QueryContext::new(

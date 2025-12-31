@@ -220,6 +220,7 @@ impl App {
                     .last_successful_result
                     .as_deref()
                     .map(|s| s.as_ref()),
+                is_empty_result: query_state.is_empty_result,
             },
         );
     }

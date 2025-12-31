@@ -8,6 +8,7 @@ fn empty_params() -> ContextParams<'static> {
         input_schema: None,
         base_query: None,
         base_query_result: None,
+        is_empty_result: false,
     }
 }
 
@@ -210,6 +211,7 @@ fn test_schema_passed_to_ai_on_success() {
             input_schema: schema,
             base_query: None,
             base_query_result: None,
+            is_empty_result: false,
         },
     );
 
@@ -244,6 +246,7 @@ fn test_base_query_passed_on_error() {
             input_schema: schema,
             base_query: Some(".name"),
             base_query_result: Some(r#""test""#),
+            is_empty_result: false,
         },
     );
 
@@ -279,6 +282,7 @@ fn test_base_query_not_passed_on_success() {
             input_schema: None,
             base_query: Some(".old"), // Even though provided
             base_query_result: Some("old output"),
+            is_empty_result: false,
         },
     );
 

@@ -8,6 +8,7 @@ fn empty_params() -> ContextParams<'static> {
         input_schema: None,
         base_query: None,
         base_query_result: None,
+        is_empty_result: false,
     }
 }
 

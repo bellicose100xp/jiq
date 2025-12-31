@@ -14,6 +14,7 @@ fn test_build_error_prompt_includes_query() {
         error: Some("syntax error".to_string()),
         json_type_info: JsonTypeInfo::default(),
         is_success: false,
+        is_empty_result: false,
         input_schema: None,
         base_query: None,
         base_query_result: None,
@@ -26,7 +27,7 @@ fn test_build_error_prompt_includes_query() {
 }
 
 #[test]
-fn test_build_error_prompt_includes_json_sample() {
+fn test_build_error_prompt_excludes_json_sample() {
     let ctx = QueryContext {
         query: ".".to_string(),
         cursor_pos: 1,
@@ -36,13 +37,14 @@ fn test_build_error_prompt_includes_json_sample() {
         error: Some("error".to_string()),
         json_type_info: JsonTypeInfo::default(),
         is_success: false,
+        is_empty_result: false,
         input_schema: None,
         base_query: None,
         base_query_result: None,
     };
 
     let prompt = build_error_prompt(&ctx);
-    assert!(prompt.contains(r#"{"key": "value"}"#));
+    assert!(!prompt.contains("## Input JSON Sample"));
 }
 
 #[test]
@@ -56,6 +58,7 @@ fn test_build_error_prompt_includes_schema() {
         error: Some("error".to_string()),
         json_type_info: JsonTypeInfo::default(),
         is_success: false,
+        is_empty_result: false,
         input_schema: Some(r#"{"name":"string","age":"number"}"#.to_string()),
         base_query: None,
         base_query_result: None,
@@ -83,6 +86,7 @@ fn test_build_help_prompt_basic() {
             schema_hint: "Array of 3 numbers".to_string(),
         },
         is_success: true,
+        is_empty_result: false,
         input_schema: None,
         base_query: None,
         base_query_result: None,
@@ -106,6 +110,7 @@ fn test_build_help_prompt_uses_output_sample() {
         error: None,
         json_type_info: JsonTypeInfo::default(),
         is_success: true,
+        is_empty_result: false,
         input_schema: None,
         base_query: None,
         base_query_result: None,
@@ -128,6 +133,7 @@ fn test_build_help_prompt_truncates_output_when_no_sample() {
         error: None,
         json_type_info: JsonTypeInfo::default(),
         is_success: true,
+        is_empty_result: false,
         input_schema: None,
         base_query: None,
         base_query_result: None,
@@ -148,6 +154,7 @@ fn test_build_success_prompt_includes_query() {
         error: None,
         json_type_info: JsonTypeInfo::default(),
         is_success: true,
+        is_empty_result: false,
         input_schema: None,
         base_query: None,
         base_query_result: None,
@@ -169,6 +176,7 @@ fn test_build_success_prompt_includes_output_sample() {
         error: None,
         json_type_info: JsonTypeInfo::default(),
         is_success: true,
+        is_empty_result: false,
         input_schema: None,
         base_query: None,
         base_query_result: None,
@@ -190,6 +198,7 @@ fn test_build_success_prompt_includes_schema() {
         error: None,
         json_type_info: JsonTypeInfo::default(),
         is_success: true,
+        is_empty_result: false,
         input_schema: Some(r#"["number"]"#.to_string()),
         base_query: None,
         base_query_result: None,
@@ -211,6 +220,7 @@ fn test_build_prompt_dispatches_to_error_prompt() {
         error: Some("syntax error".to_string()),
         json_type_info: JsonTypeInfo::default(),
         is_success: false,
+        is_empty_result: false,
         input_schema: None,
         base_query: None,
         base_query_result: None,
@@ -233,6 +243,7 @@ fn test_build_prompt_dispatches_to_success_prompt() {
         error: None,
         json_type_info: JsonTypeInfo::default(),
         is_success: true,
+        is_empty_result: false,
         input_schema: None,
         base_query: None,
         base_query_result: None,
@@ -255,6 +266,7 @@ fn test_build_error_prompt_includes_structured_format() {
         error: Some("error".to_string()),
         json_type_info: JsonTypeInfo::default(),
         is_success: false,
+        is_empty_result: false,
         input_schema: None,
         base_query: None,
         base_query_result: None,
@@ -278,6 +290,7 @@ fn test_build_success_prompt_includes_structured_format() {
         error: None,
         json_type_info: JsonTypeInfo::default(),
         is_success: true,
+        is_empty_result: false,
         input_schema: None,
         base_query: None,
         base_query_result: None,
@@ -300,6 +313,7 @@ fn test_build_prompt_includes_natural_language_instructions() {
         error: Some("error".to_string()),
         json_type_info: JsonTypeInfo::default(),
         is_success: false,
+        is_empty_result: false,
         input_schema: None,
         base_query: None,
         base_query_result: None,
@@ -321,6 +335,7 @@ fn test_error_prompt_includes_base_query() {
         error: Some("field not found".to_string()),
         json_type_info: JsonTypeInfo::default(),
         is_success: false,
+        is_empty_result: false,
         input_schema: None,
         base_query: Some(".name".to_string()),
         base_query_result: Some(r#""test""#.to_string()),
@@ -344,6 +359,7 @@ fn test_error_prompt_without_base_query() {
         error: Some("error".to_string()),
         json_type_info: JsonTypeInfo::default(),
         is_success: false,
+        is_empty_result: false,
         input_schema: None,
         base_query: None,
         base_query_result: None,
@@ -364,13 +380,14 @@ fn test_success_prompt_excludes_base_query() {
         error: None,
         json_type_info: JsonTypeInfo::default(),
         is_success: true,
+        is_empty_result: false,
         input_schema: None,
         base_query: Some(".old".to_string()), // Even if set
         base_query_result: Some("old result".to_string()),
     };
 
     let prompt = build_success_prompt(&ctx);
-    assert!(!prompt.contains("Last Working Query"));
+    assert!(!prompt.contains("Last Non-Empty Query"));
     assert!(!prompt.contains(".old"));
 }
 
@@ -389,6 +406,7 @@ fn test_base_query_result_truncation_in_context() {
             input_schema: None,
             base_query: Some(".base"),
             base_query_result: Some(&long_result),
+            is_empty_result: false,
         },
     );
 

@@ -202,11 +202,7 @@ pub fn handle_execution_result(
                     json_input,
                     Some(output.clone()),
                     None,
-                    ContextParams {
-                        input_schema: params.input_schema,
-                        base_query: None, // Not needed on success
-                        base_query_result: None,
-                    },
+                    params,
                 );
                 let prompt = build_prompt(&context);
                 ai_state.send_request(prompt);

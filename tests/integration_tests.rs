@@ -600,6 +600,7 @@ fn test_handle_execution_result_does_not_change_visibility_on_error() {
             input_schema: None,
             base_query: None,
             base_query_result: None,
+            is_empty_result: false,
         },
     );
 
@@ -624,6 +625,7 @@ fn test_handle_execution_result_does_not_change_visibility_on_error() {
             input_schema: None,
             base_query: None,
             base_query_result: None,
+            is_empty_result: false,
         },
     );
 
@@ -659,6 +661,7 @@ fn test_handle_execution_result_does_not_change_visibility_on_success() {
             input_schema: None,
             base_query: None,
             base_query_result: None,
+            is_empty_result: false,
         },
     );
 
@@ -683,6 +686,7 @@ fn test_handle_execution_result_does_not_change_visibility_on_success() {
             input_schema: None,
             base_query: None,
             base_query_result: None,
+            is_empty_result: false,
         },
     );
 
@@ -762,6 +766,7 @@ fn test_visibility_control_mechanisms_complete() {
             input_schema: None,
             base_query: None,
             base_query_result: None,
+            is_empty_result: false,
         },
     );
     assert!(
@@ -781,6 +786,7 @@ fn test_visibility_control_mechanisms_complete() {
             input_schema: None,
             base_query: None,
             base_query_result: None,
+            is_empty_result: false,
         },
     );
     assert!(

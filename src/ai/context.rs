@@ -21,6 +21,8 @@ pub struct ContextParams<'a> {
     pub base_query: Option<&'a str>,
     /// Result of last successful query (for error context)
     pub base_query_result: Option<&'a str>,
+    /// Whether current result is empty/null (from QueryState)
+    pub is_empty_result: bool,
 }
 
 /// Information about the JSON structure for AI context
@@ -182,11 +184,13 @@ pub struct QueryContext {
     pub json_type_info: JsonTypeInfo,
     /// Whether the query executed successfully
     pub is_success: bool,
-    /// Full nested JSON schema (pre-computed, passed in)
+    /// Whether current result is empty/null (valid query but no results)
+    pub is_empty_result: bool,
+    /// Truncated JSON schema (pre-computed, max 25000 chars)
     pub input_schema: Option<String>,
-    /// Last working query before this one (failure context only)
+    /// Query that produced displayed result (error case, or success with empty/null result)
     pub base_query: Option<String>,
-    /// Output of the base query (failure context only, truncated to max 25000 chars)
+    /// Output of base_query (truncated to max 25000 chars)
     pub base_query_result: Option<String>,
 }
 
@@ -220,7 +224,10 @@ impl QueryContext {
             error,
             json_type_info,
             is_success,
-            input_schema: params.input_schema.map(|s| s.to_string()),
+            is_empty_result: params.is_empty_result,
+            input_schema: params
+                .input_schema
+                .map(|s| prepare_json_for_context(s, MAX_JSON_SAMPLE_LENGTH)),
             base_query: params.base_query.map(|s| s.to_string()),
             base_query_result,
         }

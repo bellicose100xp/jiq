@@ -41,9 +41,6 @@ pub fn build_error_prompt(context: &QueryContext) -> String {
         prompt.push_str(&format!("```json\n{}\n```\n\n", schema));
     }
 
-    prompt.push_str("## Input JSON Sample\n");
-    prompt.push_str(&format!("```json\n{}\n```\n\n", context.input_sample));
-
     if let Some(ref base_query) = context.base_query {
         prompt.push_str("## Last Working Query\n");
         prompt.push_str(&format!("```\n{}\n```\n\n", base_query));
@@ -100,7 +97,8 @@ pub fn build_success_prompt(context: &QueryContext) -> String {
     prompt.push_str("You are a jq query assistant helping optimize queries.\n");
 
     prompt.push_str("## Current Query\n");
-    prompt.push_str(&format!("```\n{}\n```\n\n", context.query));
+    prompt.push_str(&format!("```\n{}\n```\n", context.query));
+    prompt.push_str(&format!("Cursor position: {}\n\n", context.cursor_pos));
 
     if let Some(ref schema) = context.input_schema {
         prompt.push_str("## Input JSON Schema\n");
@@ -110,6 +108,18 @@ pub fn build_success_prompt(context: &QueryContext) -> String {
     if let Some(ref output_sample) = context.output_sample {
         prompt.push_str("## Query Output Sample\n");
         prompt.push_str(&format!("```json\n{}\n```\n\n", output_sample));
+    }
+
+    if context.is_empty_result
+        && let Some(ref base_query) = context.base_query
+    {
+        prompt.push_str("## Last Non-Empty Query\n");
+        prompt.push_str(&format!("```\n{}\n```\n\n", base_query));
+
+        if let Some(ref result) = context.base_query_result {
+            prompt.push_str("## Its Output (displayed in results)\n");
+            prompt.push_str(&format!("```json\n{}\n```\n\n", result));
+        }
     }
 
     prompt.push_str("## Response Format\n");
