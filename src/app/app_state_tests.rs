@@ -601,6 +601,138 @@ fn test_trigger_ai_request_when_query_none() {
     // Should return early without error
 }
 
+#[test]
+fn test_trigger_ai_request_strips_ansi_from_success_output() {
+    let json_input = r#"{"name": "test", "age": 30}"#.to_string();
+    let config = Config::default();
+    let loader = create_test_loader(json_input);
+    let mut app = App::new_with_loader(loader, &config);
+
+    app.poll_file_loader();
+
+    app.ai.configured = true;
+    app.ai.visible = true;
+    let (tx, rx) = std::sync::mpsc::channel();
+    let (_response_tx, response_rx) = std::sync::mpsc::channel();
+    app.ai.request_tx = Some(tx);
+    app.ai.response_rx = Some(response_rx);
+
+    app.ai.set_last_query_hash(".initial");
+
+    app.input.textarea.insert_str(".name");
+    if let Some(query_state) = &mut app.query {
+        query_state.result = Ok("\x1b[0;32m\"test\"\x1b[0m\n".to_string());
+        query_state.last_successful_result =
+            Some(Arc::new("\x1b[0;32m\"test\"\x1b[0m\n".to_string()));
+        query_state.last_successful_result_unformatted = Some(Arc::new("\"test\"\n".to_string()));
+    }
+
+    app.trigger_ai_request();
+
+    if let Ok(crate::ai::ai_state::AiRequest::Query { prompt, .. }) = rx.try_recv() {
+        assert!(
+            !prompt.contains("\x1b["),
+            "Prompt should not contain ANSI escape codes"
+        );
+        assert!(
+            prompt.contains("\"test\""),
+            "Prompt should contain the unformatted output"
+        );
+    } else {
+        panic!("Expected Query request");
+    }
+}
+
+#[test]
+fn test_trigger_ai_request_strips_ansi_from_base_query_result() {
+    let json_input = r#"{"name": "test", "age": 30}"#.to_string();
+    let config = Config::default();
+    let loader = create_test_loader(json_input);
+    let mut app = App::new_with_loader(loader, &config);
+
+    app.poll_file_loader();
+
+    app.ai.configured = true;
+    app.ai.visible = true;
+    let (tx, rx) = std::sync::mpsc::channel();
+    let (_response_tx, response_rx) = std::sync::mpsc::channel();
+    app.ai.request_tx = Some(tx);
+    app.ai.response_rx = Some(response_rx);
+
+    app.ai.set_last_query_hash(".name");
+
+    app.input.textarea.insert_str(".invalid");
+    if let Some(query_state) = &mut app.query {
+        query_state.result = Err("field not found".to_string());
+        query_state.last_successful_result =
+            Some(Arc::new("\x1b[0;32m\"test\"\x1b[0m\n".to_string()));
+        query_state.last_successful_result_unformatted = Some(Arc::new("\"test\"\n".to_string()));
+        query_state.base_query_for_suggestions = Some(".name".to_string());
+    }
+
+    app.trigger_ai_request();
+
+    if let Ok(crate::ai::ai_state::AiRequest::Query { prompt, .. }) = rx.try_recv() {
+        assert!(
+            !prompt.contains("\x1b["),
+            "Prompt should not contain ANSI escape codes in base_query_result"
+        );
+        if prompt.contains("Its Output") {
+            assert!(
+                prompt.contains("\"test\""),
+                "Prompt should contain unformatted base query result"
+            );
+        }
+    } else {
+        panic!("Expected Query request");
+    }
+}
+
+#[test]
+fn test_trigger_ai_request_empty_result_uses_unformatted() {
+    let json_input = r#"{"items": []}"#.to_string();
+    let config = Config::default();
+    let loader = create_test_loader(json_input);
+    let mut app = App::new_with_loader(loader, &config);
+
+    app.poll_file_loader();
+
+    app.ai.configured = true;
+    app.ai.visible = true;
+    let (tx, rx) = std::sync::mpsc::channel();
+    let (_response_tx, response_rx) = std::sync::mpsc::channel();
+    app.ai.request_tx = Some(tx);
+    app.ai.response_rx = Some(response_rx);
+
+    app.ai.set_last_query_hash(".previous");
+
+    app.input.textarea.insert_str(".empty");
+    if let Some(query_state) = &mut app.query {
+        query_state.result = Ok("null\n".to_string());
+        query_state.is_empty_result = true;
+        query_state.last_successful_result =
+            Some(Arc::new("\x1b[0;32m\"previous\"\x1b[0m\n".to_string()));
+        query_state.last_successful_result_unformatted =
+            Some(Arc::new("\"previous\"\n".to_string()));
+        query_state.base_query_for_suggestions = Some(".previous".to_string());
+    }
+
+    app.trigger_ai_request();
+
+    if let Ok(crate::ai::ai_state::AiRequest::Query { prompt, .. }) = rx.try_recv() {
+        assert!(
+            !prompt.contains("\x1b["),
+            "Prompt should not contain ANSI codes even with empty result"
+        );
+        assert!(
+            prompt.contains("\"previous\""),
+            "Prompt should contain unformatted previous result"
+        );
+    } else {
+        panic!("Expected Query request");
+    }
+}
+
 #[cfg(test)]
 #[path = "app_state_tests/dirty_flag_tests.rs"]
 mod dirty_flag_tests;

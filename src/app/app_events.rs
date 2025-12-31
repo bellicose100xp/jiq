@@ -196,9 +196,19 @@ impl App {
             if self.ai.visible && !completed_query.is_empty() {
                 let query_state = self.query.as_ref().unwrap();
                 let cursor_pos = self.input.textarea.cursor().1;
+
+                let ai_result: Result<String, String> = match &query_state.result {
+                    Ok(_) => query_state
+                        .last_successful_result_unformatted
+                        .as_ref()
+                        .map(|s| Ok(s.as_ref().clone()))
+                        .unwrap_or_else(|| Ok(String::new())),
+                    Err(e) => Err(e.clone()),
+                };
+
                 crate::ai::ai_events::handle_query_result(
                     &mut self.ai,
-                    &query_state.result,
+                    &ai_result,
                     &completed_query, // Use query from response, not current input!
                     cursor_pos,
                     query_state.executor.json_input(),
@@ -206,7 +216,7 @@ impl App {
                         input_schema: self.input_json_schema.as_deref(),
                         base_query: query_state.base_query_for_suggestions.as_deref(),
                         base_query_result: query_state
-                            .last_successful_result
+                            .last_successful_result_unformatted
                             .as_deref()
                             .map(|s| s.as_ref()),
                         is_empty_result: query_state.is_empty_result,
