@@ -225,9 +225,7 @@ impl QueryContext {
             json_type_info,
             is_success,
             is_empty_result: params.is_empty_result,
-            input_schema: params
-                .input_schema
-                .map(|s| prepare_json_for_context(s, MAX_JSON_SAMPLE_LENGTH)),
+            input_schema: params.input_schema.map(|s| s.to_string()),
             base_query: params.base_query.map(|s| s.to_string()),
             base_query_result,
         }
@@ -280,6 +278,15 @@ pub fn truncate_json(json: &str, max_len: usize) -> String {
     // Simple truncation with ellipsis indicator
     let truncated = &json[..max_len];
     format!("{}... [truncated]", truncated)
+}
+
+/// Prepare schema for AI context
+///
+/// Schema is already minified from serde_json::to_string() in extract_json_schema.
+/// This function just truncates to max length. Called once on file load since schema
+/// never changes during the session.
+pub fn prepare_schema_for_context(schema: &str) -> String {
+    truncate_json(schema, MAX_JSON_SAMPLE_LENGTH)
 }
 
 #[cfg(test)]

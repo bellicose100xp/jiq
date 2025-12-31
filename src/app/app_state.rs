@@ -136,7 +136,8 @@ impl App {
                 Ok(json_input) => {
                     self.query = Some(QueryState::new(json_input.clone()));
 
-                    self.input_json_schema = crate::json::extract_json_schema_dynamic(&json_input);
+                    self.input_json_schema = crate::json::extract_json_schema_dynamic(&json_input)
+                        .map(|s| crate::ai::context::prepare_schema_for_context(&s));
 
                     // Initialize stats for initial result
                     self.update_stats();

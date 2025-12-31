@@ -770,3 +770,30 @@ proptest! {
         );
     }
 }
+
+#[test]
+fn test_prepare_schema_for_context_returns_unchanged_when_under_limit() {
+    let schema = r#"{"name":"string","age":"number"}"#;
+    let result = prepare_schema_for_context(schema);
+    assert_eq!(result, schema);
+}
+
+#[test]
+fn test_prepare_schema_for_context_truncates_when_over_limit() {
+    let schema = "x".repeat(MAX_JSON_SAMPLE_LENGTH + 100);
+    let result = prepare_schema_for_context(&schema);
+    assert!(result.len() <= MAX_JSON_SAMPLE_LENGTH + 20);
+    assert!(result.contains("... [truncated]"));
+    assert_eq!(
+        &result[..MAX_JSON_SAMPLE_LENGTH],
+        &schema[..MAX_JSON_SAMPLE_LENGTH]
+    );
+}
+
+#[test]
+fn test_prepare_schema_for_context_exactly_at_limit() {
+    let schema = "x".repeat(MAX_JSON_SAMPLE_LENGTH);
+    let result = prepare_schema_for_context(&schema);
+    assert_eq!(result, schema);
+    assert!(!result.contains("truncated"));
+}
