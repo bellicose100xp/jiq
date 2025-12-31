@@ -59,11 +59,15 @@ impl QueryContext {
     ) -> Self {
         let is_success = error.is_none();
 
-        // Early exit for empty/null output to skip processing
-        let output_sample = output
-            .as_ref()
-            .filter(|o| !o.trim().is_empty() && o.trim() != "null")
-            .map(|o| prepare_json_for_context(o, max_context_length));
+        // Use is_empty_result to determine if output should be shown
+        // This flag correctly identifies empty output or output consisting entirely of nulls
+        let output_sample = if params.is_empty_result {
+            None
+        } else {
+            output
+                .as_ref()
+                .map(|o| prepare_json_for_context(o, max_context_length))
+        };
 
         // base_query_result is now already processed
         let base_query_result = params.base_query_result.map(|s| s.to_string());

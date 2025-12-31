@@ -46,7 +46,7 @@ pub fn build_error_prompt(context: &QueryContext) -> String {
         prompt.push_str(&format!("```\n{}\n```\n\n", base_query));
 
         if let Some(ref result) = context.base_query_result {
-            prompt.push_str("## Its Output\n");
+            prompt.push_str("## Last Working Query Output\n");
             prompt.push_str(&format!("```json\n{}\n```\n\n", result));
         }
     }
@@ -106,8 +106,12 @@ pub fn build_success_prompt(context: &QueryContext) -> String {
     }
 
     if let Some(ref output_sample) = context.output_sample {
-        prompt.push_str("## Query Output Sample\n");
+        prompt.push_str("## Current Query Output\n");
         prompt.push_str(&format!("```json\n{}\n```\n\n", output_sample));
+    } else if context.is_empty_result {
+        prompt.push_str("## Current Query Output\n");
+        prompt
+            .push_str("The current query output is empty or consists entirely of null values.\n\n");
     }
 
     if context.is_empty_result
@@ -117,7 +121,7 @@ pub fn build_success_prompt(context: &QueryContext) -> String {
         prompt.push_str(&format!("```\n{}\n```\n\n", base_query));
 
         if let Some(ref result) = context.base_query_result {
-            prompt.push_str("## Its Output (displayed in results)\n");
+            prompt.push_str("## Last Non-Empty Query Output (displayed in results)\n");
             prompt.push_str(&format!("```json\n{}\n```\n\n", result));
         }
     }
