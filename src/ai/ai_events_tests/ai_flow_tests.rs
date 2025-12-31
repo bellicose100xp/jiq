@@ -35,14 +35,7 @@ fn test_full_flow_error_result() {
     // Simulate: query change → jq executes → error result
     let error_result: Result<String, String> =
         Err("jq: error: .invalid is not defined".to_string());
-    handle_execution_result(
-        &mut ai_state,
-        &error_result,
-        ".invalid",
-        8,
-        r#"{"name": "test"}"#,
-        empty_params(),
-    );
+    handle_execution_result(&mut ai_state, &error_result, ".invalid", 8, empty_params());
 
     // Verify the flow:
     // 1. In-flight request was cleared (cancellation handled via token)
@@ -92,14 +85,7 @@ fn test_full_flow_success_result() {
 
     // Simulate: query change → jq executes → success result
     let success_result: Result<String, String> = Ok(r#""test_value""#.to_string());
-    handle_execution_result(
-        &mut ai_state,
-        &success_result,
-        ".name",
-        5,
-        r#"{"name": "test_value"}"#,
-        empty_params(),
-    );
+    handle_execution_result(&mut ai_state, &success_result, ".name", 5, empty_params());
 
     // Verify the flow:
     // 1. In-flight request was cleared (cancellation handled via token)
@@ -151,14 +137,7 @@ fn test_rapid_typing_sends_multiple_requests() {
             Ok(r#""test""#.to_string())
         };
 
-        handle_execution_result(
-            &mut ai_state,
-            &result,
-            query,
-            query.len(),
-            r#"{"name": "test"}"#,
-            empty_params(),
-        );
+        handle_execution_result(&mut ai_state, &result, query, query.len(), empty_params());
 
         last_request_id = ai_state.current_request_id();
     }
@@ -206,7 +185,6 @@ fn test_schema_passed_to_ai_on_success() {
         &result,
         ".name",
         5,
-        r#"{"name": "test", "age": 30}"#,
         ContextParams {
             input_schema: schema,
             base_query: None,
@@ -241,7 +219,6 @@ fn test_base_query_passed_on_error() {
         &result,
         ".invalid",
         8,
-        r#"{"name": "test"}"#,
         ContextParams {
             input_schema: schema,
             base_query: Some(".name"),
@@ -277,7 +254,6 @@ fn test_base_query_not_passed_on_success() {
         &result,
         ".name",
         5,
-        "{}",
         ContextParams {
             input_schema: None,
             base_query: Some(".old"), // Even though provided
