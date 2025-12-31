@@ -3,11 +3,13 @@
 //! Builds context from app state for AI requests including query, cursor position,
 //! error messages, and JSON structure information.
 
-/// Maximum length for JSON sample in context (characters)
-pub const MAX_JSON_SAMPLE_LENGTH: usize = 50_000;
+/// Maximum length for JSON sample in context (100KB characters)
+pub const MAX_JSON_SAMPLE_LENGTH: usize = 100_000;
 
-/// Minification threshold ratio relative to MAX_JSON_SAMPLE_LENGTH
-pub const MINIFY_THRESHOLD_RATIO: usize = 10;
+/// Maximum input size for attempting minification (5MB)
+/// Files larger than this skip minification to bound parse cost
+/// At 300MB/s parse speed, 5MB = ~17ms - imperceptible after 150ms debounce
+pub const MINIFY_SIZE_LIMIT: usize = 5_000_000;
 
 /// Additional context parameters for AI queries
 #[derive(Debug, Clone)]
@@ -90,25 +92,17 @@ fn try_minify_json(json: &str) -> Option<String> {
 /// Prepare JSON for context with smart minification and truncation
 ///
 /// Logic:
-/// 1. If size <= max_len: return as-is (no processing needed)
-/// 2. If size <= max_len * MINIFY_THRESHOLD_RATIO: try minify, then truncate if needed
-/// 3. If size > threshold OR minification fails: just truncate
+/// 1. For files under 5MB: always minify for consistent dense output
+/// 2. For files >= 5MB: skip minification to bound parse cost
+/// 3. Truncate result if needed to max_len
 pub fn prepare_json_for_context(json: &str, max_len: usize) -> String {
-    let original_len = json.len();
+    let content = if json.len() <= MINIFY_SIZE_LIMIT {
+        try_minify_json(json).unwrap_or_else(|| json.to_string())
+    } else {
+        json.to_string()
+    };
 
-    if original_len <= max_len {
-        return json.to_string();
-    }
-
-    let minify_threshold = max_len * MINIFY_THRESHOLD_RATIO;
-
-    if original_len <= minify_threshold
-        && let Some(minified) = try_minify_json(json)
-    {
-        return truncate_json(&minified, max_len);
-    }
-
-    truncate_json(json, max_len)
+    truncate_json(&content, max_len)
 }
 
 /// Truncate JSON to a maximum length, trying to preserve valid structure
