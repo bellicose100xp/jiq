@@ -187,6 +187,8 @@ impl BraceTracker {
         })
     }
 
+    /// Check if tracker is stale (test helper)
+    #[cfg(test)]
     pub fn is_stale(&self, current_query: &str) -> bool {
         self.query_snapshot != current_query
     }
