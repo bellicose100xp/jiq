@@ -38,7 +38,18 @@ fn test_suggestion_type_labels() {
 }
 
 #[test]
-fn test_parse_suggestions_single() {
+fn test_parse_suggestions_single_json() {
+    let response = r#"{"suggestions": [{"type": "fix", "query": ".users[] | select(.active)", "details": "Filters to only active users"}]}"#;
+    let suggestions = parse_suggestions(response);
+
+    assert_eq!(suggestions.len(), 1);
+    assert_eq!(suggestions[0].query, ".users[] | select(.active)");
+    assert_eq!(suggestions[0].description, "Filters to only active users");
+    assert_eq!(suggestions[0].suggestion_type, SuggestionType::Fix);
+}
+
+#[test]
+fn test_parse_suggestions_single_legacy_text() {
     let response = "1. [Fix] .users[] | select(.active)\n   Filters to only active users";
     let suggestions = parse_suggestions(response);
 
@@ -49,7 +60,31 @@ fn test_parse_suggestions_single() {
 }
 
 #[test]
-fn test_parse_suggestions_multiple() {
+fn test_parse_suggestions_multiple_json() {
+    let response = r#"{
+        "suggestions": [
+            {"type": "fix", "query": ".users[] | select(.active)", "details": "Filters to only active users"},
+            {"type": "next", "query": ".users[] | .email", "details": "Extracts email addresses"},
+            {"type": "optimize", "query": ".users | map(.name)", "details": "More efficient mapping"}
+        ]
+    }"#;
+
+    let suggestions = parse_suggestions(response);
+
+    assert_eq!(suggestions.len(), 3);
+
+    assert_eq!(suggestions[0].query, ".users[] | select(.active)");
+    assert_eq!(suggestions[0].suggestion_type, SuggestionType::Fix);
+
+    assert_eq!(suggestions[1].query, ".users[] | .email");
+    assert_eq!(suggestions[1].suggestion_type, SuggestionType::Next);
+
+    assert_eq!(suggestions[2].query, ".users | map(.name)");
+    assert_eq!(suggestions[2].suggestion_type, SuggestionType::Optimize);
+}
+
+#[test]
+fn test_parse_suggestions_multiple_legacy_text() {
     let response = r#"1. [Fix] .users[] | select(.active)
    Filters to only active users
 
@@ -74,7 +109,7 @@ fn test_parse_suggestions_multiple() {
 }
 
 #[test]
-fn test_parse_suggestions_multiline_description() {
+fn test_parse_suggestions_multiline_description_legacy() {
     let response =
         "1. [Fix] .data[]\n   This is a longer description\n   that spans multiple lines";
     let suggestions = parse_suggestions(response);
@@ -92,8 +127,7 @@ fn test_parse_suggestions_empty_response() {
 }
 
 #[test]
-fn test_parse_suggestions_with_backticks() {
-    // Test that backticks around queries are stripped
+fn test_parse_suggestions_with_backticks_legacy() {
     let response = "1. [Fix] `.users[] | select(.active)`\n   Filters to only active users";
     let suggestions = parse_suggestions(response);
 
@@ -104,38 +138,59 @@ fn test_parse_suggestions_with_backticks() {
 }
 
 #[test]
-fn test_parse_suggestions_with_backticks_multiple() {
-    let response = r#"1. [Fix] `.users[] | select(.active)`
-   Filters to only active users
+fn test_parse_suggestions_invalid_json() {
+    let response = r#"{"suggestions": [{"type": "fix" INVALID JSON"#;
+    let suggestions = parse_suggestions(response);
+    assert!(suggestions.is_empty());
+}
 
-2. [Next] `.users[] | .email`
-   Extracts email addresses"#;
+#[test]
+fn test_parse_suggestions_missing_field() {
+    let response = r#"{"suggestions": [{"type": "fix", "query": ".users[]"}]}"#;
+    let suggestions = parse_suggestions(response);
+    assert!(suggestions.is_empty());
+}
 
+#[test]
+fn test_parse_suggestions_invalid_type() {
+    let response =
+        r#"{"suggestions": [{"type": "invalid", "query": ".users[]", "details": "test"}]}"#;
+    let suggestions = parse_suggestions(response);
+    assert!(suggestions.is_empty());
+}
+
+#[test]
+fn test_parse_suggestions_with_markdown_fences() {
+    let response = r#"```json
+{
+    "suggestions": [
+        {"type": "fix", "query": ".users[]", "details": "Extract users"}
+    ]
+}
+```"#;
+    let suggestions = parse_suggestions(response);
+
+    assert_eq!(suggestions.len(), 1);
+    assert_eq!(suggestions[0].query, ".users[]");
+    assert_eq!(suggestions[0].description, "Extract users");
+    assert_eq!(suggestions[0].suggestion_type, SuggestionType::Fix);
+}
+
+#[test]
+fn test_parse_suggestions_with_markdown_fences_multiline() {
+    let response = r#"```json
+{
+    "suggestions": [
+        {"type": "optimize", "query": ".users[] | select(.active)", "details": "Filter active users"},
+        {"type": "next", "query": ".users[] | .email", "details": "Get emails"}
+    ]
+}
+```"#;
     let suggestions = parse_suggestions(response);
 
     assert_eq!(suggestions.len(), 2);
     assert_eq!(suggestions[0].query, ".users[] | select(.active)");
     assert_eq!(suggestions[1].query, ".users[] | .email");
-}
-
-#[test]
-fn test_parse_suggestions_without_backticks_unchanged() {
-    // Ensure queries without backticks still work
-    let response = "1. [Fix] .users[]\n   Test";
-    let suggestions = parse_suggestions(response);
-
-    assert_eq!(suggestions.len(), 1);
-    assert_eq!(suggestions[0].query, ".users[]");
-}
-
-#[test]
-fn test_parse_suggestions_single_backtick_not_stripped() {
-    // Single backtick should not be stripped (not a pair)
-    let response = "1. [Fix] `.users[]\n   Test";
-    let suggestions = parse_suggestions(response);
-
-    assert_eq!(suggestions.len(), 1);
-    assert_eq!(suggestions[0].query, "`.users[]");
 }
 
 #[test]
@@ -169,8 +224,23 @@ proptest! {
     #![proptest_config(ProptestConfig::with_cases(100))]
 
     #[test]
-    fn prop_suggestion_parsing_extracts_queries(
-        // Query must start with a non-space character to be valid
+    fn prop_suggestion_parsing_extracts_queries_json(
+        query in "\\.[a-zA-Z0-9_|\\[\\]]{1,30}",
+        desc in "[a-zA-Z ]{1,50}",
+        suggestion_type in prop::sample::select(vec!["fix", "optimize", "next"]),
+    ) {
+        let response = format!(
+            r#"{{"suggestions": [{{"type": "{}", "query": "{}", "details": "{}"}}]}}"#,
+            suggestion_type, query, desc
+        );
+        let suggestions = parse_suggestions(&response);
+
+        prop_assert_eq!(suggestions.len(), 1, "Should parse exactly one suggestion");
+        prop_assert_eq!(&suggestions[0].query, query.trim(), "Query should match");
+    }
+
+    #[test]
+    fn prop_suggestion_parsing_extracts_queries_legacy(
         query in "\\.[a-zA-Z0-9_|\\[\\]]{1,30}",
         desc in "[a-zA-Z ]{1,50}",
         suggestion_type in prop::sample::select(vec!["Fix", "Optimize", "Next"]),

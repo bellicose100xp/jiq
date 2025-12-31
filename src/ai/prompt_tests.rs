@@ -77,7 +77,7 @@ fn test_build_success_prompt_includes_output_sample() {
 
     let prompt = build_success_prompt(&ctx);
     assert!(prompt.contains(r#""test""#));
-    assert!(prompt.contains("Query Output Sample"));
+    assert!(prompt.contains("## Current Query Output"));
 }
 
 #[test]
@@ -152,10 +152,11 @@ fn test_build_error_prompt_includes_structured_format() {
     };
 
     let prompt = build_error_prompt(&ctx);
-    assert!(prompt.contains("[Fix]"));
-    assert!(prompt.contains("[Optimize]"));
-    assert!(prompt.contains("[Next]"));
-    assert!(prompt.contains("numbered suggestions"));
+    assert!(prompt.contains("JSON object"));
+    assert!(prompt.contains("suggestions"));
+    assert!(prompt.contains("\"type\":"));
+    assert!(prompt.contains("\"query\":"));
+    assert!(prompt.contains("\"details\":"));
 }
 
 #[test]
@@ -173,9 +174,11 @@ fn test_build_success_prompt_includes_structured_format() {
     };
 
     let prompt = build_success_prompt(&ctx);
-    assert!(prompt.contains("[Optimize]"));
-    assert!(prompt.contains("[Next]"));
-    assert!(prompt.contains("numbered suggestions"));
+    assert!(prompt.contains("JSON object"));
+    assert!(prompt.contains("suggestions"));
+    assert!(prompt.contains("\"type\":"));
+    assert!(prompt.contains("\"query\":"));
+    assert!(prompt.contains("\"details\":"));
 }
 
 #[test]
@@ -214,7 +217,7 @@ fn test_error_prompt_includes_base_query() {
     let prompt = build_error_prompt(&ctx);
     assert!(prompt.contains("## Last Working Query"));
     assert!(prompt.contains(".name"));
-    assert!(prompt.contains("## Its Output"));
+    assert!(prompt.contains("## Last Working Query Output"));
     assert!(prompt.contains(r#""test""#));
 }
 

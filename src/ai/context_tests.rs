@@ -305,7 +305,12 @@ fn test_query_context_with_empty_output_skips_processing() {
         1,
         Some("".to_string()),
         None,
-        empty_params(),
+        ContextParams {
+            input_schema: None,
+            base_query: None,
+            base_query_result: None,
+            is_empty_result: true,
+        },
         MAX_JSON_SAMPLE_LENGTH,
     );
 
@@ -320,7 +325,12 @@ fn test_query_context_with_null_output_skips_processing() {
         1,
         Some("null".to_string()),
         None,
-        empty_params(),
+        ContextParams {
+            input_schema: None,
+            base_query: None,
+            base_query_result: None,
+            is_empty_result: true,
+        },
         MAX_JSON_SAMPLE_LENGTH,
     );
 

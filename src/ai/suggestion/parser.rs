@@ -1,15 +1,36 @@
 //! Suggestion parsing for AI responses
 //!
-//! Parses structured suggestions from AI response text in the format:
-//! ```text
-//! 1. [Fix] .users[] | select(.active)
-//!    Filters to only active users
-//!
-//! 2. [Next] .users[] | .email
-//!    Extracts email addresses from users
+//! Parses structured suggestions from AI responses in JSON format:
+//! ```json
+//! {
+//!   "suggestions": [
+//!     {"type": "fix", "query": ".users[] | select(.active)", "details": "Filters to only active users"},
+//!     {"type": "next", "query": ".users[] | .email", "details": "Extracts email addresses"}
+//!   ]
+//! }
 //! ```
 
 use ratatui::style::Color;
+use serde::Deserialize;
+
+// =========================================================================
+// JSON Response Types
+// =========================================================================
+
+/// AI response wrapper containing suggestions array
+#[derive(Deserialize, Debug)]
+struct AiResponse {
+    suggestions: Vec<JsonSuggestion>,
+}
+
+/// Single suggestion in JSON format from AI
+#[derive(Deserialize, Debug)]
+struct JsonSuggestion {
+    #[serde(rename = "type")]
+    suggestion_type: String,
+    query: String,
+    details: String,
+}
 
 // =========================================================================
 // Suggestion Types
@@ -80,7 +101,87 @@ pub struct Suggestion {
 // Parsing Functions
 // =========================================================================
 
-/// Parse suggestions from AI response text
+/// Parse suggestions from AI response
+///
+/// Tries JSON format first, falls back to legacy text format
+///
+/// # Requirements
+/// - 5.2: Parse suggestions from AI responses
+/// - 5.3: Extract query string from each suggestion
+/// - 5.9: Return empty vec if parsing fails (fallback to raw response)
+pub fn parse_suggestions(response: &str) -> Vec<Suggestion> {
+    // Strip markdown code fences if present
+    let cleaned_response = strip_markdown_fences(response);
+
+    // Try JSON format first
+    if let Ok(parsed) = parse_suggestions_json(&cleaned_response)
+        && !parsed.is_empty()
+    {
+        return parsed;
+    }
+
+    // Fallback to legacy text format
+    parse_suggestions_text(response)
+}
+
+/// Strip markdown code fences from response
+///
+/// Handles patterns like:
+/// ```json
+/// {"suggestions": [...]}
+/// ```
+fn strip_markdown_fences(response: &str) -> String {
+    let trimmed = response.trim();
+
+    // Check for markdown code fence pattern
+    if let Some(first_newline) = trimmed.find('\n') {
+        let first_line = &trimmed[..first_newline];
+
+        // Check if it starts with ```json or ```
+        if first_line.trim().starts_with("```") {
+            // Find the closing ```
+            let content_start = first_newline + 1;
+            if let Some(closing_fence_pos) = trimmed[content_start..].rfind("\n```") {
+                let content_end = content_start + closing_fence_pos;
+                return trimmed[content_start..content_end].trim().to_string();
+            }
+        }
+    }
+
+    // No code fences found, return original
+    response.to_string()
+}
+
+/// Parse suggestions from JSON format
+///
+/// Expected format:
+/// ```json
+/// {
+///   "suggestions": [
+///     {"type": "fix", "query": ".users[]", "details": "Description"}
+///   ]
+/// }
+/// ```
+fn parse_suggestions_json(response: &str) -> Result<Vec<Suggestion>, serde_json::Error> {
+    let ai_response: AiResponse = serde_json::from_str(response)?;
+
+    let suggestions = ai_response
+        .suggestions
+        .into_iter()
+        .filter_map(|json_sugg| {
+            let suggestion_type = SuggestionType::parse_type(&json_sugg.suggestion_type)?;
+            Some(Suggestion {
+                query: json_sugg.query,
+                description: json_sugg.details,
+                suggestion_type,
+            })
+        })
+        .collect();
+
+    Ok(suggestions)
+}
+
+/// Parse suggestions from legacy text format
 ///
 /// Expected format:
 /// ```text
@@ -90,12 +191,7 @@ pub struct Suggestion {
 /// 2. [Next] .users[] | .email
 ///    Extracts email addresses from users
 /// ```
-///
-/// # Requirements
-/// - 5.2: Parse "N. [Type] jq_query_here" format
-/// - 5.3: Extract query string from each suggestion
-/// - 5.9: Return empty vec if parsing fails (fallback to raw response)
-pub fn parse_suggestions(response: &str) -> Vec<Suggestion> {
+fn parse_suggestions_text(response: &str) -> Vec<Suggestion> {
     let mut suggestions = Vec::new();
     let lines: Vec<&str> = response.lines().collect();
     let mut i = 0;
