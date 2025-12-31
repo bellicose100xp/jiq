@@ -13,71 +13,6 @@ fn empty_params() -> ContextParams<'static> {
 }
 
 #[test]
-fn test_json_type_info_from_object() {
-    let json = r#"{"name": "test", "age": 30, "active": true}"#;
-    let info = JsonTypeInfo::from_json(json);
-
-    assert_eq!(info.root_type, "Object");
-    assert!(info.top_level_keys.contains(&"name".to_string()));
-    assert!(info.top_level_keys.contains(&"age".to_string()));
-    assert!(info.top_level_keys.contains(&"active".to_string()));
-    assert!(info.schema_hint.contains("Object with keys"));
-}
-
-#[test]
-fn test_json_type_info_from_array_of_objects() {
-    let json = r#"[{"id": 1}, {"id": 2}]"#;
-    let info = JsonTypeInfo::from_json(json);
-
-    assert_eq!(info.root_type, "Array");
-    assert_eq!(info.element_count, Some(2));
-    assert_eq!(info.element_type, Some("objects".to_string()));
-}
-
-#[test]
-fn test_json_type_info_from_array_of_numbers() {
-    let json = "[1, 2, 3, 4, 5]";
-    let info = JsonTypeInfo::from_json(json);
-
-    assert_eq!(info.root_type, "Array");
-    assert_eq!(info.element_count, Some(5));
-    assert_eq!(info.element_type, Some("numbers".to_string()));
-}
-
-#[test]
-fn test_json_type_info_from_string() {
-    let json = r#""hello world""#;
-    let info = JsonTypeInfo::from_json(json);
-
-    assert_eq!(info.root_type, "String");
-    assert_eq!(info.schema_hint, "String value");
-}
-
-#[test]
-fn test_json_type_info_from_number() {
-    let json = "42";
-    let info = JsonTypeInfo::from_json(json);
-
-    assert_eq!(info.root_type, "Number");
-}
-
-#[test]
-fn test_json_type_info_from_boolean() {
-    let json = "true";
-    let info = JsonTypeInfo::from_json(json);
-
-    assert_eq!(info.root_type, "Boolean");
-}
-
-#[test]
-fn test_json_type_info_from_null() {
-    let json = "null";
-    let info = JsonTypeInfo::from_json(json);
-
-    assert_eq!(info.root_type, "Null");
-}
-
-#[test]
 fn test_truncate_json_short() {
     let json = r#"{"short": true}"#;
     let truncated = truncate_json(json, 1000);
@@ -95,11 +30,9 @@ fn test_truncate_json_long() {
 #[test]
 fn test_query_context_new() {
     let query = ".name".to_string();
-    let json = r#"{"name": "test"}"#;
     let ctx = QueryContext::new(
         query.clone(),
         5,
-        json,
         None,
         Some("error".to_string()),
         empty_params(),
@@ -113,17 +46,15 @@ fn test_query_context_new() {
 
 #[test]
 fn test_query_context_is_complete() {
-    let ctx = QueryContext::new(".".to_string(), 1, "{}", None, None, empty_params());
+    let ctx = QueryContext::new(".".to_string(), 1, None, None, empty_params());
     assert!(ctx.is_complete());
 
     let ctx_empty_query = QueryContext {
         query: String::new(),
         cursor_pos: 0,
-        input_sample: "{}".to_string(),
         output: None,
         output_sample: None,
         error: None,
-        json_type_info: JsonTypeInfo::default(),
         is_success: true,
         is_empty_result: false,
         input_schema: None,
@@ -131,258 +62,6 @@ fn test_query_context_is_complete() {
         base_query_result: None,
     };
     assert!(!ctx_empty_query.is_complete());
-}
-
-#[test]
-fn test_extract_top_level_keys_simple() {
-    let json = r#"{"a": 1, "b": 2, "c": 3}"#;
-    let keys = JsonTypeInfo::extract_top_level_keys(json);
-    assert_eq!(keys, vec!["a", "b", "c"]);
-}
-
-#[test]
-fn test_extract_top_level_keys_nested() {
-    let json = r#"{"outer": {"inner": 1}, "other": 2}"#;
-    let keys = JsonTypeInfo::extract_top_level_keys(json);
-    assert_eq!(keys, vec!["outer", "other"]);
-}
-
-#[test]
-fn test_extract_top_level_keys_with_array() {
-    let json = r#"{"items": [1, 2, 3], "count": 3}"#;
-    let keys = JsonTypeInfo::extract_top_level_keys(json);
-    assert_eq!(keys, vec!["items", "count"]);
-}
-
-#[test]
-fn test_json_type_info_object_with_many_keys() {
-    // Test truncation when object has more than 5 keys
-    let json = r#"{"key1": 1, "key2": 2, "key3": 3, "key4": 4, "key5": 5, "key6": 6, "key7": 7}"#;
-    let info = JsonTypeInfo::from_json(json);
-
-    assert_eq!(info.root_type, "Object");
-    assert_eq!(info.top_level_keys.len(), 7);
-    // Schema hint should show truncation for >5 keys
-    assert!(
-        info.schema_hint.contains("more"),
-        "Should show truncation indicator for >5 keys"
-    );
-}
-
-#[test]
-fn test_json_type_info_from_stream() {
-    // Test Stream result type (multiple JSON values on separate lines)
-    let json = "{\"a\":1}\n{\"b\":2}\n{\"c\":3}";
-    let info = JsonTypeInfo::from_json(json);
-
-    assert_eq!(info.root_type, "Stream");
-    assert_eq!(info.element_count, Some(3));
-    assert!(info.schema_hint.contains("Stream of 3 values"));
-}
-
-#[test]
-fn test_extract_top_level_keys_with_escaped_quotes() {
-    // Test handling of escaped quotes in JSON keys
-    let json = r#"{"key\"with\"quotes": 1, "normal": 2}"#;
-    let keys = JsonTypeInfo::extract_top_level_keys(json);
-    assert_eq!(keys, vec!["key\\\"with\\\"quotes", "normal"]);
-}
-
-#[test]
-fn test_extract_top_level_keys_with_backslashes() {
-    // Test handling of backslashes in JSON values
-    let json = r#"{"path": "C:\\Program Files\\", "other": "value"}"#;
-    let keys = JsonTypeInfo::extract_top_level_keys(json);
-    assert_eq!(keys, vec!["path", "other"]);
-}
-
-// **Feature: ai-assistant, Property 15: Context completeness**
-// *For any* app state, the built QueryContext should include: query text,
-// cursor position, error (if any), truncated JSON sample (≤1000 chars),
-// and JSON type info.
-// **Validates: Requirements 7.1, 7.2, 7.3**
-proptest! {
-    #![proptest_config(ProptestConfig::with_cases(100))]
-
-    #[test]
-    fn prop_context_completeness(
-        query in "[.a-zA-Z0-9_]{1,50}",
-        cursor_pos in 0usize..50,
-        json_content in "[a-zA-Z0-9]{0,100}",
-        has_error in proptest::bool::ANY,
-        error_msg in "[a-zA-Z ]{0,50}"
-    ) {
-        let json = format!(r#"{{"data": "{}"}}"#, json_content);
-        let error = if has_error { Some(error_msg) } else { None };
-
-        let ctx = QueryContext::new(
-            query.clone(),
-            cursor_pos.min(query.len()),
-            &json,
-            None,
-            error.clone(),
-            empty_params(),
-        );
-
-        // Verify all required fields are present
-        prop_assert_eq!(&ctx.query, &query, "Query text should match");
-        prop_assert!(ctx.cursor_pos <= query.len(), "Cursor should be valid");
-        prop_assert!(!ctx.input_sample.is_empty(), "Input sample should exist");
-        prop_assert_eq!(&ctx.error, &error, "Error should match");
-        prop_assert!(!ctx.json_type_info.root_type.is_empty(), "Type info should exist");
-    }
-}
-
-// **Feature: ai-assistant, Property 16: JSON truncation bound**
-// *For any* JSON input string, the truncated sample in QueryContext should
-// have length ≤ 1000 characters.
-// **Validates: Requirements 7.2**
-proptest! {
-    #![proptest_config(ProptestConfig::with_cases(100))]
-
-    #[test]
-    fn prop_json_truncation_bound(
-        json_size in 0usize..5000
-    ) {
-        // Generate JSON of specified size
-        let json = format!(r#"{{"data": "{}"}}"#, "x".repeat(json_size));
-
-        let truncated = truncate_json(&json, MAX_JSON_SAMPLE_LENGTH);
-
-        // Truncated length should be bounded
-        // Note: truncated string includes "... [truncated]" suffix (15 chars)
-        let max_with_suffix = MAX_JSON_SAMPLE_LENGTH + 15;
-        prop_assert!(
-            truncated.len() <= max_with_suffix,
-            "Truncated JSON length {} exceeds max {} for input size {}",
-            truncated.len(),
-            max_with_suffix,
-            json.len()
-        );
-
-        // If original was short enough, should be unchanged
-        if json.len() <= MAX_JSON_SAMPLE_LENGTH {
-            prop_assert_eq!(
-                truncated, json,
-                "Short JSON should not be truncated"
-            );
-        } else {
-            prop_assert!(
-                truncated.ends_with("... [truncated]"),
-                "Long JSON should have truncation marker"
-            );
-        }
-    }
-}
-
-// **Feature: ai-assistant, Property 19: AI request on error includes error context**
-// *For any* query execution that produces an error, the AI request context
-// should include the error message.
-// **Validates: Requirements 3.3**
-proptest! {
-    #![proptest_config(ProptestConfig::with_cases(100))]
-
-    #[test]
-    fn prop_error_context_includes_error_message(
-        query in "[.a-zA-Z0-9_]{1,50}",
-        cursor_pos in 0usize..50,
-        json_content in "[a-zA-Z0-9]{0,100}",
-        error_msg in "[a-zA-Z ]{1,100}"  // Non-empty error message
-    ) {
-        let json = format!(r#"{{"data": "{}"}}"#, json_content);
-
-        // Create context with error (simulating failed query)
-        let ctx = QueryContext::new(
-            query.clone(),
-            cursor_pos.min(query.len()),
-            &json,
-            None,  // No output on error
-            Some(error_msg.clone()),
-            empty_params(),
-        );
-
-        // Verify error context is properly set
-        prop_assert!(!ctx.is_success, "Context should indicate failure");
-        prop_assert!(ctx.error.is_some(), "Error should be present");
-        prop_assert_eq!(
-            ctx.error.as_ref().unwrap(),
-            &error_msg,
-            "Error message should match"
-        );
-        prop_assert!(ctx.output.is_none(), "Output should be None on error");
-        prop_assert!(ctx.output_sample.is_none(), "Output sample should be None on error");
-    }
-}
-
-// **Feature: ai-assistant, Property 20: AI request on success includes output context**
-// *For any* query execution that succeeds, the AI request context should
-// include the query output (truncated if needed).
-// **Validates: Requirements 3.4**
-proptest! {
-    #![proptest_config(ProptestConfig::with_cases(100))]
-
-    #[test]
-    fn prop_success_context_includes_output(
-        query in "[.a-zA-Z0-9_]{1,50}",
-        cursor_pos in 0usize..50,
-        json_content in "[a-zA-Z0-9]{0,100}",
-        output_content in "[a-zA-Z0-9 ]{1,200}"  // Non-empty output
-    ) {
-        let json = format!(r#"{{"data": "{}"}}"#, json_content);
-        let output = format!(r#""{}""#, output_content);
-
-        // Create context with output (simulating successful query)
-        let ctx = QueryContext::new(
-            query.clone(),
-            cursor_pos.min(query.len()),
-            &json,
-            Some(output.clone()),
-            None,  // No error on success
-            empty_params(),
-        );
-
-        // Verify success context is properly set
-        prop_assert!(ctx.is_success, "Context should indicate success");
-        prop_assert!(ctx.error.is_none(), "Error should be None on success");
-        prop_assert!(ctx.output.is_some(), "Output should be present");
-        prop_assert_eq!(
-            ctx.output.as_ref().unwrap(),
-            &output,
-            "Output should match"
-        );
-        prop_assert!(ctx.output_sample.is_some(), "Output sample should be present");
-    }
-
-    #[test]
-    fn prop_success_context_output_sample_bounded(
-        query in "[.a-zA-Z0-9_]{1,50}",
-        output_size in 0usize..3000
-    ) {
-        let json = r#"{"data": "test"}"#;
-        let output = "x".repeat(output_size);
-
-        // Create context with potentially large output
-        let ctx = QueryContext::new(
-            query.clone(),
-            0,
-            json,
-            Some(output.clone()),
-            None,
-            empty_params(),
-        );
-
-        // Verify output_sample is bounded
-        if let Some(ref sample) = ctx.output_sample {
-            let max_with_suffix = MAX_JSON_SAMPLE_LENGTH + 15;
-            prop_assert!(
-                sample.len() <= max_with_suffix,
-                "Output sample length {} exceeds max {} for output size {}",
-                sample.len(),
-                max_with_suffix,
-                output.len()
-            );
-        }
-    }
 }
 
 // === try_minify_json Tests ===
@@ -610,23 +289,6 @@ fn test_prepare_json_fallback_truncates_to_correct_length() {
 // === Integration Tests ===
 
 #[test]
-fn test_query_context_applies_prepare_to_input_sample() {
-    let large_json = format!(r#"{{ "data": "{}" }}"#, "x".repeat(30_000));
-    assert!(large_json.len() > MAX_JSON_SAMPLE_LENGTH);
-
-    let ctx = QueryContext::new(
-        ".data".to_string(),
-        5,
-        &large_json,
-        None,
-        None,
-        empty_params(),
-    );
-
-    assert!(ctx.input_sample.len() <= MAX_JSON_SAMPLE_LENGTH + 15);
-}
-
-#[test]
 fn test_query_context_applies_prepare_to_output_sample() {
     let large_output = format!(r#"{{ "result": "{}" }}"#, "x".repeat(30_000));
     assert!(large_output.len() > MAX_JSON_SAMPLE_LENGTH);
@@ -634,7 +296,6 @@ fn test_query_context_applies_prepare_to_output_sample() {
     let ctx = QueryContext::new(
         ".".to_string(),
         1,
-        "{}",
         Some(large_output.clone()),
         None,
         empty_params(),
@@ -646,21 +307,47 @@ fn test_query_context_applies_prepare_to_output_sample() {
 }
 
 #[test]
-fn test_query_context_applies_prepare_to_base_query_result() {
-    let large_result = format!(r#"{{ "base": "{}" }}"#, "x".repeat(30_000));
-    assert!(large_result.len() > MAX_JSON_SAMPLE_LENGTH);
+fn test_query_context_with_empty_output_skips_processing() {
+    // Empty output should not be processed
+    let ctx = QueryContext::new(
+        ".".to_string(),
+        1,
+        Some("".to_string()),
+        None,
+        empty_params(),
+    );
+
+    assert!(ctx.output_sample.is_none());
+}
+
+#[test]
+fn test_query_context_with_null_output_skips_processing() {
+    // Null output should not be processed
+    let ctx = QueryContext::new(
+        ".".to_string(),
+        1,
+        Some("null".to_string()),
+        None,
+        empty_params(),
+    );
+
+    assert!(ctx.output_sample.is_none());
+}
+
+#[test]
+fn test_query_context_passes_through_preprocessed_base_query_result() {
+    let preprocessed = "already processed and truncated";
 
     let params = ContextParams {
         input_schema: None,
         base_query: Some(".base"),
-        base_query_result: Some(&large_result),
+        base_query_result: Some(preprocessed),
         is_empty_result: false,
     };
 
     let ctx = QueryContext::new(
         ".invalid".to_string(),
         8,
-        "{}",
         None,
         Some("error".to_string()),
         params,
@@ -668,7 +355,7 @@ fn test_query_context_applies_prepare_to_base_query_result() {
 
     assert!(ctx.base_query_result.is_some());
     let result = ctx.base_query_result.unwrap();
-    assert!(result.len() <= MAX_JSON_SAMPLE_LENGTH + 15);
+    assert_eq!(result, preprocessed);
 }
 
 // === Edge Cases ===
@@ -768,6 +455,111 @@ proptest! {
             &garbage[..prefix_len],
             "Fallback should preserve original content prefix"
         );
+    }
+
+    #[test]
+    fn prop_context_completeness(
+        query in "[.a-zA-Z0-9_]{1,50}",
+        cursor_pos in 0usize..50,
+        has_error in proptest::bool::ANY,
+        error_msg in "[a-zA-Z ]{0,50}"
+    ) {
+        let error = if has_error { Some(error_msg) } else { None };
+
+        let ctx = QueryContext::new(
+            query.clone(),
+            cursor_pos.min(query.len()),
+            None,
+            error.clone(),
+            empty_params(),
+        );
+
+        // Verify required fields are present
+        prop_assert_eq!(&ctx.query, &query, "Query text should match");
+        prop_assert!(ctx.cursor_pos <= query.len(), "Cursor should be valid");
+        prop_assert_eq!(&ctx.error, &error, "Error should match");
+    }
+
+    #[test]
+    fn prop_error_context_includes_error_message(
+        query in "[.a-zA-Z0-9_]{1,50}",
+        cursor_pos in 0usize..50,
+        error_msg in "[a-zA-Z ]{1,100}"
+    ) {
+        let ctx = QueryContext::new(
+            query.clone(),
+            cursor_pos.min(query.len()),
+            None,
+            Some(error_msg.clone()),
+            empty_params(),
+        );
+
+        // Verify error context is properly set
+        prop_assert!(!ctx.is_success, "Context should indicate failure");
+        prop_assert!(ctx.error.is_some(), "Error should be present");
+        prop_assert_eq!(
+            ctx.error.as_ref().unwrap(),
+            &error_msg,
+            "Error message should match"
+        );
+        prop_assert!(ctx.output.is_none(), "Output should be None on error");
+        prop_assert!(ctx.output_sample.is_none(), "Output sample should be None on error");
+    }
+
+    #[test]
+    fn prop_success_context_includes_output(
+        query in "[.a-zA-Z0-9_]{1,50}",
+        cursor_pos in 0usize..50,
+        output_content in "[a-zA-Z0-9 ]{1,200}"
+    ) {
+        let output = format!(r#""{}""#, output_content);
+
+        let ctx = QueryContext::new(
+            query.clone(),
+            cursor_pos.min(query.len()),
+            Some(output.clone()),
+            None,
+            empty_params(),
+        );
+
+        // Verify success context is properly set
+        prop_assert!(ctx.is_success, "Context should indicate success");
+        prop_assert!(ctx.error.is_none(), "Error should be None on success");
+        prop_assert!(ctx.output.is_some(), "Output should be present");
+        prop_assert_eq!(
+            ctx.output.as_ref().unwrap(),
+            &output,
+            "Output should match"
+        );
+        prop_assert!(ctx.output_sample.is_some(), "Output sample should be present");
+    }
+
+    #[test]
+    fn prop_success_context_output_sample_bounded(
+        query in "[.a-zA-Z0-9_]{1,50}",
+        output_size in 1usize..3000
+    ) {
+        let output = "x".repeat(output_size);
+
+        let ctx = QueryContext::new(
+            query.clone(),
+            0,
+            Some(output.clone()),
+            None,
+            empty_params(),
+        );
+
+        // Verify output_sample is bounded
+        if let Some(ref sample) = ctx.output_sample {
+            let max_with_suffix = MAX_JSON_SAMPLE_LENGTH + 15;
+            prop_assert!(
+                sample.len() <= max_with_suffix,
+                "Output sample length {} exceeds max {} for output size {}",
+                sample.len(),
+                max_with_suffix,
+                output.len()
+            );
+        }
     }
 }
 

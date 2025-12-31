@@ -206,7 +206,6 @@ impl App {
 
         let query = self.input.query().to_string();
         let cursor_pos = self.input.textarea.cursor().1;
-        let json_input = query_state.executor.json_input().to_string();
 
         let ai_result: Result<String, String> = match &query_state.result {
             Ok(_) => query_state
@@ -222,12 +221,11 @@ impl App {
             &ai_result,
             &query,
             cursor_pos,
-            &json_input,
             crate::ai::context::ContextParams {
                 input_schema: self.input_json_schema.as_deref(),
                 base_query: query_state.base_query_for_suggestions.as_deref(),
                 base_query_result: query_state
-                    .last_successful_result_unformatted
+                    .last_successful_result_for_context
                     .as_deref()
                     .map(|s| s.as_ref()),
                 is_empty_result: query_state.is_empty_result,

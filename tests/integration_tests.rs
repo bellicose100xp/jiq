@@ -595,7 +595,6 @@ fn test_handle_execution_result_does_not_change_visibility_on_error() {
         &error_result,
         ".invalid",
         0,
-        r#"{"test": "data"}"#,
         jiq::ai::context::ContextParams {
             input_schema: None,
             base_query: None,
@@ -620,7 +619,6 @@ fn test_handle_execution_result_does_not_change_visibility_on_error() {
         &error_result,
         ".invalid2",
         0,
-        r#"{"test": "data"}"#,
         jiq::ai::context::ContextParams {
             input_schema: None,
             base_query: None,
@@ -656,7 +654,6 @@ fn test_handle_execution_result_does_not_change_visibility_on_success() {
         &success_result,
         ".test",
         0,
-        r#"{"test": "data"}"#,
         jiq::ai::context::ContextParams {
             input_schema: None,
             base_query: None,
@@ -681,7 +678,6 @@ fn test_handle_execution_result_does_not_change_visibility_on_success() {
         &success_result,
         ".test2",
         0,
-        r#"{"test": "data"}"#,
         jiq::ai::context::ContextParams {
             input_schema: None,
             base_query: None,
@@ -761,7 +757,6 @@ fn test_visibility_control_mechanisms_complete() {
         &error_result,
         ".err",
         0,
-        r#"{}"#,
         jiq::ai::context::ContextParams {
             input_schema: None,
             base_query: None,
@@ -781,7 +776,6 @@ fn test_visibility_control_mechanisms_complete() {
         &success_result,
         ".ok",
         0,
-        r#"{}"#,
         jiq::ai::context::ContextParams {
             input_schema: None,
             base_query: None,

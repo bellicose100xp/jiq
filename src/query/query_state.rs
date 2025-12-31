@@ -66,6 +66,9 @@ pub struct QueryState {
     /// Pre-rendered Text<'static> for display
     /// Avoids expensive into_text() conversion in render loop (~10x/sec)
     pub last_successful_result_rendered: Option<Text<'static>>,
+    /// Cached processed result for AI context (minified/truncated)
+    /// Updated only when last_successful_result_unformatted changes
+    pub last_successful_result_for_context: Option<Arc<String>>,
     /// Base query that produced the last successful result (for suggestions)
     pub base_query_for_suggestions: Option<String>,
     /// Type of the last successful result (for type-aware suggestions)
@@ -101,6 +104,15 @@ impl QueryState {
         let last_successful_result_unformatted = last_successful_result
             .as_ref()
             .map(|s| Arc::new(Self::strip_ansi_codes(s)));
+
+        // Pre-process for AI context
+        let last_successful_result_for_context =
+            last_successful_result_unformatted.as_ref().map(|s| {
+                Arc::new(crate::ai::context::prepare_json_for_context(
+                    s,
+                    crate::ai::context::MAX_JSON_SAMPLE_LENGTH,
+                ))
+            });
 
         let base_query_for_suggestions = Some(".".to_string());
         let base_type_for_suggestions = last_successful_result_unformatted
@@ -148,6 +160,7 @@ impl QueryState {
             last_successful_result_unformatted,
             last_successful_result_parsed,
             last_successful_result_rendered,
+            last_successful_result_for_context,
             base_query_for_suggestions,
             base_type_for_suggestions,
             cached_line_count,
@@ -205,6 +218,13 @@ impl QueryState {
             self.last_successful_result_rendered = Some(rendered);
             self.last_successful_result = Some(Arc::new(output));
             self.last_successful_result_unformatted = Some(Arc::new(unformatted.clone()));
+
+            // Pre-process for AI context (minified/truncated)
+            self.last_successful_result_for_context =
+                Some(Arc::new(crate::ai::context::prepare_json_for_context(
+                    &unformatted,
+                    crate::ai::context::MAX_JSON_SAMPLE_LENGTH,
+                )));
 
             // Critical: prevents re-parsing large files on EVERY keystroke
             self.last_successful_result_parsed =
@@ -385,9 +405,15 @@ impl QueryState {
                     // Update result and all caches
                     self.result = Ok(processed.output.as_ref().clone());
                     self.last_successful_result = Some(processed.output);
-                    self.last_successful_result_unformatted = Some(processed.unformatted);
+                    self.last_successful_result_unformatted = Some(processed.unformatted.clone());
                     self.last_successful_result_rendered = Some(rendered);
                     self.last_successful_result_parsed = processed.parsed;
+                    // Pre-process for AI context
+                    self.last_successful_result_for_context =
+                        Some(Arc::new(crate::ai::context::prepare_json_for_context(
+                            &processed.unformatted,
+                            crate::ai::context::MAX_JSON_SAMPLE_LENGTH,
+                        )));
                     self.cached_line_count = processed.line_count;
                     self.cached_max_line_width = processed.max_width;
                     self.base_query_for_suggestions = Some(processed.query.clone());

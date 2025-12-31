@@ -170,9 +170,6 @@ pub fn build_help_prompt(context: &QueryContext) -> String {
     prompt.push_str("## Current Query\n");
     prompt.push_str(&format!("```\n{}\n```\n\n", context.query));
 
-    prompt.push_str("## Input JSON Structure\n");
-    prompt.push_str(&format!("{}\n\n", context.json_type_info.schema_hint));
-
     if let Some(ref output_sample) = context.output_sample {
         prompt.push_str("## Current Output\n");
         prompt.push_str(&format!("```json\n{}\n```\n\n", output_sample));
