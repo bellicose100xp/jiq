@@ -612,6 +612,7 @@ fn test_trigger_ai_request_strips_ansi_from_success_output() {
 
     app.ai.configured = true;
     app.ai.visible = true;
+    app.ai.max_context_length = crate::ai::context::MAX_JSON_SAMPLE_LENGTH;
     let (tx, rx) = std::sync::mpsc::channel();
     let (_response_tx, response_rx) = std::sync::mpsc::channel();
     app.ai.request_tx = Some(tx);
@@ -625,6 +626,10 @@ fn test_trigger_ai_request_strips_ansi_from_success_output() {
         query_state.last_successful_result =
             Some(Arc::new("\x1b[0;32m\"test\"\x1b[0m\n".to_string()));
         query_state.last_successful_result_unformatted = Some(Arc::new("\"test\"\n".to_string()));
+        query_state.last_successful_result_for_context = Some(Arc::new(
+            crate::ai::context::prepare_json_for_context("\"test\"\n", app.ai.max_context_length),
+        ));
+        query_state.base_query_for_suggestions = Some(".name".to_string());
     }
 
     app.trigger_ai_request();
@@ -699,6 +704,7 @@ fn test_trigger_ai_request_empty_result_uses_unformatted() {
 
     app.ai.configured = true;
     app.ai.visible = true;
+    app.ai.max_context_length = crate::ai::context::MAX_JSON_SAMPLE_LENGTH;
     let (tx, rx) = std::sync::mpsc::channel();
     let (_response_tx, response_rx) = std::sync::mpsc::channel();
     app.ai.request_tx = Some(tx);
@@ -714,6 +720,11 @@ fn test_trigger_ai_request_empty_result_uses_unformatted() {
             Some(Arc::new("\x1b[0;32m\"previous\"\x1b[0m\n".to_string()));
         query_state.last_successful_result_unformatted =
             Some(Arc::new("\"previous\"\n".to_string()));
+        query_state.last_successful_result_for_context =
+            Some(Arc::new(crate::ai::context::prepare_json_for_context(
+                "\"previous\"\n",
+                app.ai.max_context_length,
+            )));
         query_state.base_query_for_suggestions = Some(".previous".to_string());
     }
 

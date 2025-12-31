@@ -4,7 +4,7 @@ use serde::Deserialize;
 
 /// Test constant for max context length (matches default)
 #[cfg(test)]
-pub const TEST_MAX_CONTEXT_LENGTH: u32 = 50_000;
+pub const TEST_MAX_CONTEXT_LENGTH: u32 = 100_000;
 
 // Model is now required - no default provided
 
@@ -13,9 +13,9 @@ fn default_max_tokens() -> u32 {
     512
 }
 
-/// Default max context length for JSON samples sent to AI (50KB of characters)
+/// Default max context length for JSON samples sent to AI (100KB of characters)
 fn default_max_context_length() -> u32 {
-    50_000
+    100_000
 }
 
 /// AI provider selection

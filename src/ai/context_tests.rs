@@ -3,6 +3,12 @@
 use super::*;
 use proptest::prelude::*;
 
+/// Test size for JSON that should exceed MAX_JSON_SAMPLE_LENGTH (100KB)
+const TEST_LARGE_JSON_SIZE: usize = 110_000;
+
+/// Test size for JSON that should exceed MINIFY_SIZE_LIMIT (5MB)
+const TEST_HUGE_JSON_SIZE: usize = 5_100_000;
+
 fn empty_params() -> ContextParams<'static> {
     ContextParams {
         input_schema: None,
@@ -127,17 +133,22 @@ fn test_try_minify_json_handles_already_minified() {
 // === prepare_json_for_context Tests ===
 
 #[test]
-fn test_prepare_json_returns_unchanged_when_under_limit() {
+fn test_prepare_json_minifies_short_json() {
     let json = r#"{"short": true}"#;
     let result = prepare_json_for_context(json, MAX_JSON_SAMPLE_LENGTH);
-    assert_eq!(result, json);
+    let minified = try_minify_json(json).unwrap();
+    assert_eq!(result, minified);
 }
 
 #[test]
-fn test_prepare_json_returns_unchanged_when_exactly_at_limit() {
-    let json = "x".repeat(MAX_JSON_SAMPLE_LENGTH);
-    let result = prepare_json_for_context(&json, MAX_JSON_SAMPLE_LENGTH);
-    assert_eq!(result, json);
+fn test_prepare_json_minifies_when_exactly_at_limit() {
+    let pretty_json = format!(
+        "{{ \"data\": \"{}\" }}",
+        "x".repeat(MAX_JSON_SAMPLE_LENGTH - 20)
+    );
+    let result = prepare_json_for_context(&pretty_json, MAX_JSON_SAMPLE_LENGTH);
+    let minified = try_minify_json(&pretty_json).unwrap();
+    assert_eq!(result, truncate_json(&minified, MAX_JSON_SAMPLE_LENGTH));
 }
 
 #[test]
@@ -147,11 +158,11 @@ fn test_prepare_json_minifies_moderate_sized_json() {
   "data": "{}",
   "count": 100
 }}"#,
-        "x".repeat(30_000)
+        "x".repeat(TEST_LARGE_JSON_SIZE)
     );
     let original_len = pretty_json.len();
     assert!(original_len > MAX_JSON_SAMPLE_LENGTH);
-    assert!(original_len <= MAX_JSON_SAMPLE_LENGTH * MINIFY_THRESHOLD_RATIO);
+    assert!(original_len <= MINIFY_SIZE_LIMIT);
 
     let result = prepare_json_for_context(&pretty_json, MAX_JSON_SAMPLE_LENGTH);
 
@@ -160,9 +171,9 @@ fn test_prepare_json_minifies_moderate_sized_json() {
 }
 
 #[test]
-fn test_prepare_json_skips_minify_above_threshold() {
-    let large_json = format!(r#"{{"data": "{}"}}"#, "x".repeat(260_000));
-    assert!(large_json.len() > MAX_JSON_SAMPLE_LENGTH * MINIFY_THRESHOLD_RATIO);
+fn test_prepare_json_skips_minify_above_limit() {
+    let large_json = format!(r#"{{"data": "{}"}}"#, "x".repeat(TEST_HUGE_JSON_SIZE));
+    assert!(large_json.len() > MINIFY_SIZE_LIMIT);
 
     let result = prepare_json_for_context(&large_json, MAX_JSON_SAMPLE_LENGTH);
 
@@ -171,13 +182,12 @@ fn test_prepare_json_skips_minify_above_threshold() {
 }
 
 #[test]
-fn test_prepare_json_minifies_at_threshold_boundary() {
-    let threshold_size = MAX_JSON_SAMPLE_LENGTH * MINIFY_THRESHOLD_RATIO;
+fn test_prepare_json_minifies_at_boundary() {
     let overhead = r#"{ "data": "" }"#.len();
-    let padding = "x".repeat(threshold_size - overhead);
+    let padding = "x".repeat(MINIFY_SIZE_LIMIT - overhead);
     let json = format!(r#"{{ "data": "{}" }}"#, padding);
 
-    assert_eq!(json.len(), threshold_size);
+    assert_eq!(json.len(), MINIFY_SIZE_LIMIT);
 
     let result = prepare_json_for_context(&json, MAX_JSON_SAMPLE_LENGTH);
 
@@ -185,9 +195,8 @@ fn test_prepare_json_minifies_at_threshold_boundary() {
 }
 
 #[test]
-fn test_prepare_json_skips_minify_just_over_threshold() {
-    let threshold_size = MAX_JSON_SAMPLE_LENGTH * MINIFY_THRESHOLD_RATIO;
-    let json = format!(r#"{{"data": "{}"}}"#, "x".repeat(threshold_size + 1));
+fn test_prepare_json_skips_minify_just_over_limit() {
+    let json = format!(r#"{{"data": "{}"}}"#, "x".repeat(MINIFY_SIZE_LIMIT + 1));
 
     let result = prepare_json_for_context(&json, MAX_JSON_SAMPLE_LENGTH);
 
@@ -202,10 +211,10 @@ fn test_prepare_json_truncates_after_minify_if_still_over() {
   "large": "{}",
   "more": "data"
 }}"#,
-        "x".repeat(50_000)
+        "x".repeat(TEST_LARGE_JSON_SIZE)
     );
     assert!(pretty_json.len() > MAX_JSON_SAMPLE_LENGTH);
-    assert!(pretty_json.len() <= MAX_JSON_SAMPLE_LENGTH * MINIFY_THRESHOLD_RATIO);
+    assert!(pretty_json.len() <= MINIFY_SIZE_LIMIT);
 
     let result = prepare_json_for_context(&pretty_json, MAX_JSON_SAMPLE_LENGTH);
 
@@ -239,7 +248,7 @@ fn test_prepare_json_no_truncate_if_minify_brings_under() {
 
 #[test]
 fn test_prepare_json_falls_back_on_invalid_json() {
-    let invalid_json = format!("not valid json {}", "x".repeat(30_000));
+    let invalid_json = format!("not valid json {}", "x".repeat(TEST_LARGE_JSON_SIZE));
     assert!(invalid_json.len() > MAX_JSON_SAMPLE_LENGTH);
 
     let result = prepare_json_for_context(&invalid_json, MAX_JSON_SAMPLE_LENGTH);
@@ -257,7 +266,8 @@ fn test_prepare_json_falls_back_on_empty_input() {
 
 #[test]
 fn test_prepare_json_fallback_truncates_to_correct_length() {
-    let invalid_json = "invalid".repeat(10_000);
+    const TEST_INVALID_JSON_REPEATS: usize = 20_000;
+    let invalid_json = "invalid".repeat(TEST_INVALID_JSON_REPEATS);
     assert!(invalid_json.len() > MAX_JSON_SAMPLE_LENGTH);
 
     let result = prepare_json_for_context(&invalid_json, MAX_JSON_SAMPLE_LENGTH);
@@ -270,7 +280,7 @@ fn test_prepare_json_fallback_truncates_to_correct_length() {
 
 #[test]
 fn test_query_context_applies_prepare_to_output_sample() {
-    let large_output = format!(r#"{{ "result": "{}" }}"#, "x".repeat(30_000));
+    let large_output = format!(r#"{{ "result": "{}" }}"#, "x".repeat(TEST_LARGE_JSON_SIZE));
     assert!(large_output.len() > MAX_JSON_SAMPLE_LENGTH);
 
     let ctx = QueryContext::new(
@@ -348,7 +358,8 @@ fn test_query_context_passes_through_preprocessed_base_query_result() {
 fn test_prepare_json_handles_unicode_content() {
     let unicode_json = r#"{"emoji": "🎉🎊", "chinese": "你好", "arabic": "مرحبا"}"#;
     let result = prepare_json_for_context(unicode_json, MAX_JSON_SAMPLE_LENGTH);
-    assert_eq!(result, unicode_json);
+    let minified = try_minify_json(unicode_json).unwrap();
+    assert_eq!(result, minified);
 }
 
 #[test]
@@ -368,7 +379,8 @@ fn test_prepare_json_handles_special_json_values() {
     let special_json =
         r#"{"null":null,"true":true,"false":false,"number":123.45,"escaped":"\"quoted\""}"#;
     let result = prepare_json_for_context(special_json, MAX_JSON_SAMPLE_LENGTH);
-    assert_eq!(result, special_json);
+    let minified = try_minify_json(special_json).unwrap();
+    assert_eq!(result, minified);
 }
 
 // === Property-Based Tests ===

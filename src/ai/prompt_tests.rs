@@ -259,7 +259,8 @@ fn test_success_prompt_excludes_base_query() {
 fn test_base_query_result_truncation_in_context() {
     use crate::ai::context::MAX_JSON_SAMPLE_LENGTH;
 
-    let long_result = "x".repeat(30_000);
+    const TEST_LARGE_JSON_SIZE: usize = 110_000;
+    let long_result = "x".repeat(TEST_LARGE_JSON_SIZE);
     let preprocessed =
         crate::ai::context::prepare_json_for_context(&long_result, MAX_JSON_SAMPLE_LENGTH);
 
