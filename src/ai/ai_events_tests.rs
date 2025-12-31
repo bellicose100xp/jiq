@@ -16,8 +16,6 @@ mod property_tests;
 mod query_result_tests;
 #[path = "ai_events_tests/selection_tests.rs"]
 mod selection_tests;
-#[path = "ai_events_tests/toggle_tests.rs"]
-mod toggle_tests;
 
 // Re-export common test utilities for use in submodules
 pub(crate) use super::ai_events::*;

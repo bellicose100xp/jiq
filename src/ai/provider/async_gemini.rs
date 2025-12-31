@@ -39,13 +39,11 @@ impl AsyncGeminiClient {
     }
 
     /// Returns the stored API key (used in tests)
-    #[allow(dead_code)]
     pub fn api_key(&self) -> &str {
         &self.api_key
     }
 
     /// Returns the stored model (used in tests)
-    #[allow(dead_code)]
     pub fn model(&self) -> &str {
         &self.model
     }

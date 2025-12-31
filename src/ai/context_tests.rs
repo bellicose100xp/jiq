@@ -41,27 +41,6 @@ fn test_query_context_new() {
     assert_eq!(ctx.query, query);
     assert_eq!(ctx.cursor_pos, 5);
     assert_eq!(ctx.error, Some("error".to_string()));
-    assert!(ctx.is_complete());
-}
-
-#[test]
-fn test_query_context_is_complete() {
-    let ctx = QueryContext::new(".".to_string(), 1, None, None, empty_params());
-    assert!(ctx.is_complete());
-
-    let ctx_empty_query = QueryContext {
-        query: String::new(),
-        cursor_pos: 0,
-        output: None,
-        output_sample: None,
-        error: None,
-        is_success: true,
-        is_empty_result: false,
-        input_schema: None,
-        base_query: None,
-        base_query_result: None,
-    };
-    assert!(!ctx_empty_query.is_complete());
 }
 
 // === try_minify_json Tests ===
@@ -502,7 +481,6 @@ proptest! {
             &error_msg,
             "Error message should match"
         );
-        prop_assert!(ctx.output.is_none(), "Output should be None on error");
         prop_assert!(ctx.output_sample.is_none(), "Output sample should be None on error");
     }
 
@@ -525,12 +503,6 @@ proptest! {
         // Verify success context is properly set
         prop_assert!(ctx.is_success, "Context should indicate success");
         prop_assert!(ctx.error.is_none(), "Error should be None on success");
-        prop_assert!(ctx.output.is_some(), "Output should be present");
-        prop_assert_eq!(
-            ctx.output.as_ref().unwrap(),
-            &output,
-            "Output should match"
-        );
         prop_assert!(ctx.output_sample.is_some(), "Output sample should be present");
     }
 

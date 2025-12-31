@@ -8,7 +8,6 @@ fn test_build_error_prompt_includes_query() {
     let ctx = QueryContext {
         query: ".name".to_string(),
         cursor_pos: 5,
-        output: None,
         output_sample: None,
         error: Some("syntax error".to_string()),
         is_success: false,
@@ -29,7 +28,6 @@ fn test_build_error_prompt_includes_schema() {
     let ctx = QueryContext {
         query: ".".to_string(),
         cursor_pos: 1,
-        output: None,
         output_sample: None,
         error: Some("error".to_string()),
         is_success: false,
@@ -49,7 +47,6 @@ fn test_build_success_prompt_includes_query() {
     let ctx = QueryContext {
         query: ".items[]".to_string(),
         cursor_pos: 8,
-        output: Some("1\n2\n3".to_string()),
         output_sample: Some("1\n2\n3".to_string()),
         error: None,
         is_success: true,
@@ -69,7 +66,6 @@ fn test_build_success_prompt_includes_output_sample() {
     let ctx = QueryContext {
         query: ".name".to_string(),
         cursor_pos: 5,
-        output: Some(r#""test""#.to_string()),
         output_sample: Some(r#""test""#.to_string()),
         error: None,
         is_success: true,
@@ -89,7 +85,6 @@ fn test_build_success_prompt_includes_schema() {
     let ctx = QueryContext {
         query: ".[]".to_string(),
         cursor_pos: 3,
-        output: Some("1\n2\n3".to_string()),
         output_sample: Some("1\n2\n3".to_string()),
         error: None,
         is_success: true,
@@ -109,7 +104,6 @@ fn test_build_prompt_dispatches_to_error_prompt() {
     let ctx = QueryContext {
         query: ".invalid".to_string(),
         cursor_pos: 8,
-        output: None,
         output_sample: None,
         error: Some("syntax error".to_string()),
         is_success: false,
@@ -129,7 +123,6 @@ fn test_build_prompt_dispatches_to_success_prompt() {
     let ctx = QueryContext {
         query: ".name".to_string(),
         cursor_pos: 5,
-        output: Some(r#""test""#.to_string()),
         output_sample: Some(r#""test""#.to_string()),
         error: None,
         is_success: true,
@@ -149,7 +142,6 @@ fn test_build_error_prompt_includes_structured_format() {
     let ctx = QueryContext {
         query: ".name".to_string(),
         cursor_pos: 5,
-        output: None,
         output_sample: None,
         error: Some("error".to_string()),
         is_success: false,
@@ -171,7 +163,6 @@ fn test_build_success_prompt_includes_structured_format() {
     let ctx = QueryContext {
         query: ".name".to_string(),
         cursor_pos: 5,
-        output: Some("test".to_string()),
         output_sample: Some("test".to_string()),
         error: None,
         is_success: true,
@@ -192,7 +183,6 @@ fn test_build_prompt_includes_natural_language_instructions() {
     let ctx = QueryContext {
         query: ".name".to_string(),
         cursor_pos: 5,
-        output: None,
         output_sample: None,
         error: Some("error".to_string()),
         is_success: false,
@@ -212,7 +202,6 @@ fn test_error_prompt_includes_base_query() {
     let ctx = QueryContext {
         query: ".invalid".to_string(),
         cursor_pos: 8,
-        output: None,
         output_sample: None,
         error: Some("field not found".to_string()),
         is_success: false,
@@ -234,7 +223,6 @@ fn test_error_prompt_without_base_query() {
     let ctx = QueryContext {
         query: ".invalid".to_string(),
         cursor_pos: 8,
-        output: None,
         output_sample: None,
         error: Some("error".to_string()),
         is_success: false,
@@ -253,7 +241,6 @@ fn test_success_prompt_excludes_base_query() {
     let ctx = QueryContext {
         query: ".name".to_string(),
         cursor_pos: 5,
-        output: Some("output".to_string()),
         output_sample: Some("output".to_string()),
         error: None,
         is_success: true,

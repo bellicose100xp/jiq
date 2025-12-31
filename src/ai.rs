@@ -6,7 +6,6 @@
 pub mod ai_events;
 pub mod ai_render;
 pub mod ai_state; // Made public for integration tests
-mod cache;
 pub mod context;
 pub mod prompt;
 mod provider;

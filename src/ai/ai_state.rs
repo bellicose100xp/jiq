@@ -58,7 +58,6 @@ pub enum AiResponse {
         /// Request ID that was cancelled
         /// Note: Not used in production code (token-based cancellation doesn't need it)
         /// but kept for debugging, logging, and test assertions
-        #[allow(dead_code)]
         request_id: u64,
     },
 }

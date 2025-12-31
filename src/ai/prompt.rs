@@ -159,35 +159,6 @@ pub fn build_success_prompt(context: &QueryContext) -> String {
     prompt
 }
 
-/// Build a general help prompt (for non-error queries)
-#[allow(dead_code)]
-pub fn build_help_prompt(context: &QueryContext) -> String {
-    let mut prompt = String::new();
-
-    prompt.push_str("You are a jq query assistant.\n");
-    prompt.push_str("Provide concise, helpful suggestions.\n\n");
-
-    prompt.push_str("## Current Query\n");
-    prompt.push_str(&format!("```\n{}\n```\n\n", context.query));
-
-    if let Some(ref output_sample) = context.output_sample {
-        prompt.push_str("## Current Output\n");
-        prompt.push_str(&format!("```json\n{}\n```\n\n", output_sample));
-    } else if let Some(ref output) = context.output {
-        let truncated_output = if output.len() > 500 {
-            format!("{}... [truncated]", &output[..500])
-        } else {
-            output.clone()
-        };
-        prompt.push_str("## Current Output\n");
-        prompt.push_str(&format!("```json\n{}\n```\n\n", truncated_output));
-    }
-
-    prompt.push_str("Suggest improvements or explain what the query does.\n");
-
-    prompt
-}
-
 #[cfg(test)]
 #[path = "prompt_tests.rs"]
 mod prompt_tests;

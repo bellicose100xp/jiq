@@ -187,7 +187,6 @@ impl BraceTracker {
         })
     }
 
-    #[allow(dead_code)]
     pub fn is_stale(&self, current_query: &str) -> bool {
         self.query_snapshot != current_query
     }

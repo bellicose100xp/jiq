@@ -6,7 +6,7 @@
 //! - Query changes → jq executes → result available → cancel in-flight → debounce → AI request
 //! - Both success and error results trigger AI requests with appropriate context
 
-use ratatui::crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
+use ratatui::crossterm::event::KeyEvent;
 use std::sync::mpsc::TryRecvError;
 
 use super::ai_state::{AiResponse, AiState};
@@ -16,30 +16,6 @@ use super::selection::{apply::apply_suggestion, keybindings};
 use crate::autocomplete::AutocompleteState;
 use crate::input::InputState;
 use crate::query::QueryState;
-
-/// Handle Ctrl+A to toggle AI popup visibility
-///
-/// Returns true if the key was handled, false otherwise.
-#[allow(dead_code)]
-pub fn handle_toggle_key(key: KeyEvent, ai_state: &mut AiState) -> bool {
-    if key.code == KeyCode::Char('a') && key.modifiers.contains(KeyModifiers::CONTROL) {
-        ai_state.toggle();
-        return true;
-    }
-    false
-}
-
-/// Handle Esc to close AI popup when visible
-///
-/// Returns true if the key was handled (popup was closed), false otherwise.
-#[allow(dead_code)]
-pub fn handle_close_key(key: KeyEvent, ai_state: &mut AiState) -> bool {
-    if key.code == KeyCode::Esc && ai_state.visible {
-        ai_state.close();
-        return true;
-    }
-    false
-}
 
 /// Handle suggestion selection events (Alt+1-5, Alt+Up/Down/j/k, Enter)
 ///

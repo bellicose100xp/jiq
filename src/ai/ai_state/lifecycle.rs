@@ -11,7 +11,6 @@ impl AiState {
     ///
     /// # Arguments
     /// * `enabled` - Whether AI features are enabled (from config)
-    #[allow(dead_code)]
     pub fn new(enabled: bool) -> Self {
         Self {
             visible: false,
@@ -76,7 +75,6 @@ impl AiState {
     }
 
     /// Close the AI popup (Esc key handler)
-    #[allow(dead_code)]
     pub fn close(&mut self) {
         self.visible = false;
     }
@@ -124,7 +122,6 @@ impl AiState {
     ///
     /// This should be called when the query transitions from error to success
     /// to remove stale error explanations.
-    #[allow(dead_code)]
     pub fn clear_on_success(&mut self) {
         self.response.clear();
         self.error = None;

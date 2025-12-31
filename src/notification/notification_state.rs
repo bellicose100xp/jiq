@@ -62,9 +62,7 @@ pub struct Notification {
     pub style: NotificationStyle,
     /// The type of notification (Info, Warning, Error).
     ///
-    /// TODO: Remove #[allow(dead_code)] when this field is used in production code.
     /// Currently only used in tests for assertions, but kept as useful metadata.
-    #[allow(dead_code)]
     pub notification_type: NotificationType,
     pub created_at: Instant,
     pub duration: Option<Duration>,
@@ -117,19 +115,15 @@ impl NotificationState {
 
     /// Show an error notification (red, permanent until dismissed).
     ///
-    /// TODO: Remove #[allow(dead_code)] when this method is used in production code.
     /// This method is kept for future use (e.g., critical errors that block operation).
-    #[allow(dead_code)]
     pub fn show_error(&mut self, message: &str) {
         self.show_with_type(message, NotificationType::Error);
     }
 
     /// Dismiss the current notification.
     ///
-    /// TODO: Remove #[allow(dead_code)] when this method is used in production code.
     /// This method is kept for future use with permanent error notifications that
     /// need to be dismissed by user action (e.g., pressing a key).
-    #[allow(dead_code)]
     pub fn dismiss(&mut self) {
         self.current = None;
     }

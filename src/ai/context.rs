@@ -29,8 +29,6 @@ pub struct QueryContext {
     pub query: String,
     /// Cursor position in the query
     pub cursor_pos: usize,
-    /// Current output (if successful)
-    pub output: Option<String>,
     /// Truncated sample of output JSON (max 25000 chars) for successful queries
     pub output_sample: Option<String>,
     /// Error message (if query failed)
@@ -70,7 +68,6 @@ impl QueryContext {
         Self {
             query,
             cursor_pos,
-            output,
             output_sample,
             error,
             is_success,
@@ -79,12 +76,6 @@ impl QueryContext {
             base_query: params.base_query.map(|s| s.to_string()),
             base_query_result,
         }
-    }
-
-    /// Check if context has all required fields populated
-    #[allow(dead_code)]
-    pub fn is_complete(&self) -> bool {
-        !self.query.is_empty()
     }
 }
 

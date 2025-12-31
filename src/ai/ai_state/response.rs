@@ -128,7 +128,6 @@ impl AiState {
     }
 
     /// Check if there's an in-flight request
-    #[allow(dead_code)]
     pub fn has_in_flight_request(&self) -> bool {
         self.in_flight_request_id.is_some()
     }

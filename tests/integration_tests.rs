@@ -170,7 +170,6 @@ fn test_ai_state_transitions() {
     // This tests the logical flow of: idle → loading → streaming → complete
 
     #[derive(Debug, PartialEq)]
-    #[allow(dead_code)]
     enum State {
         Idle,
         Loading,
