@@ -1,6 +1,7 @@
 //! Tests for OpenAI provider configuration validation
 
 use super::*;
+use crate::config::ai_types::TEST_MAX_CONTEXT_LENGTH;
 
 // =========================================================================
 // Property-Based Tests for OpenAI Provider
@@ -28,6 +29,7 @@ proptest! {
                 model: Some(model),
             },
             gemini: GeminiConfig::default(),
+        max_context_length: TEST_MAX_CONTEXT_LENGTH,
         };
 
         let result = AsyncAiProvider::from_config(&config);
@@ -59,6 +61,7 @@ proptest! {
                 model: Some(model),
             },
             gemini: GeminiConfig::default(),
+        max_context_length: TEST_MAX_CONTEXT_LENGTH,
         };
 
         let result = AsyncAiProvider::from_config(&config);
@@ -99,6 +102,7 @@ proptest! {
                 model: Some(model),
             },
             gemini: GeminiConfig::default(),
+        max_context_length: TEST_MAX_CONTEXT_LENGTH,
         };
 
         let result = AsyncAiProvider::from_config(&config);
@@ -137,6 +141,7 @@ proptest! {
                 model: None,
             },
             gemini: GeminiConfig::default(),
+        max_context_length: TEST_MAX_CONTEXT_LENGTH,
         };
 
         let result = AsyncAiProvider::from_config(&config);
@@ -177,6 +182,7 @@ proptest! {
                 model: Some(empty_model),
             },
             gemini: GeminiConfig::default(),
+        max_context_length: TEST_MAX_CONTEXT_LENGTH,
         };
 
         let result = AsyncAiProvider::from_config(&config);
@@ -225,6 +231,7 @@ mod openai_error_snapshots {
                 model: Some("gpt-4o-mini".to_string()),
             },
             gemini: GeminiConfig::default(),
+            max_context_length: TEST_MAX_CONTEXT_LENGTH,
         };
 
         let result = AsyncAiProvider::from_config(&config);
@@ -245,6 +252,7 @@ mod openai_error_snapshots {
                 model: None,
             },
             gemini: GeminiConfig::default(),
+            max_context_length: TEST_MAX_CONTEXT_LENGTH,
         };
 
         let result = AsyncAiProvider::from_config(&config);
@@ -265,6 +273,7 @@ mod openai_error_snapshots {
                 model: Some("gpt-4o-mini".to_string()),
             },
             gemini: GeminiConfig::default(),
+            max_context_length: TEST_MAX_CONTEXT_LENGTH,
         };
 
         let result = AsyncAiProvider::from_config(&config);
@@ -285,6 +294,7 @@ mod openai_error_snapshots {
                 model: Some("   ".to_string()),
             },
             gemini: GeminiConfig::default(),
+            max_context_length: TEST_MAX_CONTEXT_LENGTH,
         };
 
         let result = AsyncAiProvider::from_config(&config);

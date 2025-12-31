@@ -3,6 +3,7 @@
 //! **Validates: Full-width background highlighting for selected suggestions**
 
 use super::*;
+use crate::ai::ai_state::lifecycle::TEST_MAX_CONTEXT_LENGTH;
 use crate::ai::ai_state::{Suggestion, SuggestionType};
 use insta::assert_snapshot;
 use ratatui::Terminal;
@@ -39,6 +40,7 @@ fn snapshot_first_suggestion_selected() {
         true,
         "Anthropic".to_string(),
         "claude-3-5-sonnet-20241022".to_string(),
+        TEST_MAX_CONTEXT_LENGTH,
     );
     state.visible = true;
     state.response = "AI response with suggestions".to_string();
@@ -74,6 +76,7 @@ fn snapshot_middle_suggestion_selected() {
         true,
         "Anthropic".to_string(),
         "claude-3-5-sonnet-20241022".to_string(),
+        TEST_MAX_CONTEXT_LENGTH,
     );
     state.visible = true;
     state.response = "AI response with suggestions".to_string();
@@ -110,6 +113,7 @@ fn snapshot_last_suggestion_selected() {
         true,
         "Anthropic".to_string(),
         "claude-3-5-sonnet-20241022".to_string(),
+        TEST_MAX_CONTEXT_LENGTH,
     );
     state.visible = true;
     state.response = "AI response with suggestions".to_string();
@@ -147,6 +151,7 @@ fn snapshot_selected_with_wrapped_query() {
         true,
         "Anthropic".to_string(),
         "claude-3-5-sonnet-20241022".to_string(),
+        TEST_MAX_CONTEXT_LENGTH,
     );
     state.visible = true;
     state.response = "AI response with suggestions".to_string();
@@ -178,6 +183,7 @@ fn snapshot_selected_with_long_description() {
         true,
         "Anthropic".to_string(),
         "claude-3-5-sonnet-20241022".to_string(),
+        TEST_MAX_CONTEXT_LENGTH,
     );
     state.visible = true;
     state.response = "AI response with suggestions".to_string();
@@ -208,6 +214,7 @@ fn snapshot_single_suggestion_selected() {
         true,
         "Anthropic".to_string(),
         "claude-3-5-sonnet-20241022".to_string(),
+        TEST_MAX_CONTEXT_LENGTH,
     );
     state.visible = true;
     state.response = "AI response with suggestions".to_string();
@@ -231,6 +238,7 @@ fn snapshot_selection_cycling() {
         true,
         "Anthropic".to_string(),
         "claude-3-5-sonnet-20241022".to_string(),
+        TEST_MAX_CONTEXT_LENGTH,
     );
     state.visible = true;
     state.response = "AI response with suggestions".to_string();

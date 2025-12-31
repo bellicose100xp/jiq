@@ -162,6 +162,7 @@ pub fn handle_execution_result(
                     None,
                     Some(error.to_string()),
                     params,
+                    ai_state.max_context_length,
                 );
                 let prompt = build_prompt(&context);
                 ai_state.send_request(prompt);
@@ -175,6 +176,7 @@ pub fn handle_execution_result(
                     Some(output.clone()),
                     None,
                     params,
+                    ai_state.max_context_length,
                 );
                 let prompt = build_prompt(&context);
                 ai_state.send_request(prompt);

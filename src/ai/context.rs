@@ -4,7 +4,7 @@
 //! error messages, and JSON structure information.
 
 /// Maximum length for JSON sample in context (characters)
-pub const MAX_JSON_SAMPLE_LENGTH: usize = 25_000;
+pub const MAX_JSON_SAMPLE_LENGTH: usize = 50_000;
 
 /// Minification threshold ratio relative to MAX_JSON_SAMPLE_LENGTH
 pub const MINIFY_THRESHOLD_RATIO: usize = 10;
@@ -53,6 +53,7 @@ impl QueryContext {
         output: Option<String>,
         error: Option<String>,
         params: ContextParams,
+        max_context_length: usize,
     ) -> Self {
         let is_success = error.is_none();
 
@@ -60,7 +61,7 @@ impl QueryContext {
         let output_sample = output
             .as_ref()
             .filter(|o| !o.trim().is_empty() && o.trim() != "null")
-            .map(|o| prepare_json_for_context(o, MAX_JSON_SAMPLE_LENGTH));
+            .map(|o| prepare_json_for_context(o, max_context_length));
 
         // base_query_result is now already processed
         let base_query_result = params.base_query_result.map(|s| s.to_string());
@@ -126,8 +127,8 @@ pub fn truncate_json(json: &str, max_len: usize) -> String {
 /// Schema is already minified from serde_json::to_string() in extract_json_schema.
 /// This function just truncates to max length. Called once on file load since schema
 /// never changes during the session.
-pub fn prepare_schema_for_context(schema: &str) -> String {
-    truncate_json(schema, MAX_JSON_SAMPLE_LENGTH)
+pub fn prepare_schema_for_context(schema: &str, max_context_length: usize) -> String {
+    truncate_json(schema, max_context_length)
 }
 
 #[cfg(test)]

@@ -91,8 +91,13 @@ impl App {
             None => String::new(),
         };
 
-        let ai_state =
-            AiState::new_with_config(config.ai.enabled, ai_configured, provider_name, model_name);
+        let ai_state = AiState::new_with_config(
+            config.ai.enabled,
+            ai_configured,
+            provider_name,
+            model_name,
+            config.ai.max_context_length as usize,
+        );
 
         let tooltip_enabled = if ai_state.visible {
             false
@@ -137,7 +142,12 @@ impl App {
                     self.query = Some(QueryState::new(json_input.clone()));
 
                     self.input_json_schema = crate::json::extract_json_schema_dynamic(&json_input)
-                        .map(|s| crate::ai::context::prepare_schema_for_context(&s));
+                        .map(|s| {
+                            crate::ai::context::prepare_schema_for_context(
+                                &s,
+                                self.ai.max_context_length,
+                            )
+                        });
 
                     // Initialize stats for initial result
                     self.update_stats();

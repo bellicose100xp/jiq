@@ -39,11 +39,13 @@ impl AsyncGeminiClient {
     }
 
     /// Returns the stored API key (used in tests)
+    #[cfg(test)]
     pub fn api_key(&self) -> &str {
         &self.api_key
     }
 
     /// Returns the stored model (used in tests)
+    #[cfg(test)]
     pub fn model(&self) -> &str {
         &self.model
     }

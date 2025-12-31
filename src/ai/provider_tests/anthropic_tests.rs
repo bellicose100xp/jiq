@@ -1,6 +1,7 @@
 //! Tests for Anthropic provider configuration validation
 
 use super::*;
+use crate::config::ai_types::TEST_MAX_CONTEXT_LENGTH;
 
 // =========================================================================
 // Property-Based Tests for AsyncAiProvider (Anthropic)
@@ -28,6 +29,7 @@ proptest! {
             bedrock: BedrockConfig::default(),
             openai: OpenAiConfig::default(),
             gemini: GeminiConfig::default(),
+        max_context_length: TEST_MAX_CONTEXT_LENGTH,
         };
 
         let result = AsyncAiProvider::from_config(&config);
@@ -64,6 +66,7 @@ proptest! {
             bedrock: BedrockConfig::default(),
             openai: OpenAiConfig::default(),
             gemini: GeminiConfig::default(),
+        max_context_length: TEST_MAX_CONTEXT_LENGTH,
         };
 
         let result = AsyncAiProvider::from_config(&config);
@@ -100,6 +103,7 @@ proptest! {
             bedrock: BedrockConfig::default(),
             openai: OpenAiConfig::default(),
             gemini: GeminiConfig::default(),
+        max_context_length: TEST_MAX_CONTEXT_LENGTH,
         };
 
         let result = AsyncAiProvider::from_config(&config);
@@ -126,6 +130,7 @@ proptest! {
             bedrock: BedrockConfig::default(),
             openai: OpenAiConfig::default(),
             gemini: GeminiConfig::default(),
+        max_context_length: TEST_MAX_CONTEXT_LENGTH,
         };
 
         let result = AsyncAiProvider::from_config(&config);
@@ -164,6 +169,7 @@ fn test_async_from_config_missing_api_key() {
         bedrock: BedrockConfig::default(),
         openai: OpenAiConfig::default(),
         gemini: GeminiConfig::default(),
+        max_context_length: TEST_MAX_CONTEXT_LENGTH,
     };
 
     let result = AsyncAiProvider::from_config(&config);
@@ -184,6 +190,7 @@ fn test_async_from_config_empty_api_key() {
         bedrock: BedrockConfig::default(),
         openai: OpenAiConfig::default(),
         gemini: GeminiConfig::default(),
+        max_context_length: TEST_MAX_CONTEXT_LENGTH,
     };
 
     let result = AsyncAiProvider::from_config(&config);
@@ -204,6 +211,7 @@ fn test_async_from_config_whitespace_api_key() {
         bedrock: BedrockConfig::default(),
         openai: OpenAiConfig::default(),
         gemini: GeminiConfig::default(),
+        max_context_length: TEST_MAX_CONTEXT_LENGTH,
     };
 
     let result = AsyncAiProvider::from_config(&config);
@@ -224,6 +232,7 @@ fn test_async_from_config_valid_api_key() {
         bedrock: BedrockConfig::default(),
         openai: OpenAiConfig::default(),
         gemini: GeminiConfig::default(),
+        max_context_length: TEST_MAX_CONTEXT_LENGTH,
     };
 
     let result = AsyncAiProvider::from_config(&config);
@@ -243,6 +252,7 @@ fn test_async_from_config_disabled() {
         bedrock: BedrockConfig::default(),
         openai: OpenAiConfig::default(),
         gemini: GeminiConfig::default(),
+        max_context_length: TEST_MAX_CONTEXT_LENGTH,
     };
 
     let result = AsyncAiProvider::from_config(&config);

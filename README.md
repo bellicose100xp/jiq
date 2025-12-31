@@ -292,6 +292,9 @@ backend = "auto"
 enabled = true
 # Provider: "anthropic" (default), "openai", "gemini", or "bedrock"
 provider = "anthropic"
+# Character limit at which JSON schema and output samples are truncated (default: 50000)
+# Larger values send more context to AI but increase token usage/costs
+max_context_length = 50000
 
 [ai.anthropic]
 # Get your API key from: https://console.anthropic.com/settings/keys

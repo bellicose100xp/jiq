@@ -1,6 +1,7 @@
 //! Content building tests for AI render module
 
 use super::*;
+use crate::ai::ai_state::lifecycle::TEST_MAX_CONTEXT_LENGTH;
 use crate::ai::render::text::wrap_text;
 use proptest::prelude::*;
 use ratatui::style::Color;
@@ -40,6 +41,7 @@ fn test_build_content_empty_state() {
         true,
         "Anthropic".to_string(),
         "claude-3-5-sonnet-20241022".to_string(),
+        TEST_MAX_CONTEXT_LENGTH,
     );
     let content = build_content(&state, 60);
 
@@ -54,6 +56,7 @@ fn test_build_content_not_configured() {
         false,
         "Anthropic".to_string(),
         "claude-3-5-sonnet-20241022".to_string(),
+        TEST_MAX_CONTEXT_LENGTH,
     );
     let content = build_content(&state, 60);
     let text: String = content
@@ -77,6 +80,7 @@ fn test_build_content_loading() {
         true,
         "Anthropic".to_string(),
         "claude-3-5-sonnet-20241022".to_string(),
+        TEST_MAX_CONTEXT_LENGTH,
     );
     state.loading = true;
 
@@ -98,6 +102,7 @@ fn test_build_content_error() {
         true,
         "Anthropic".to_string(),
         "claude-3-5-sonnet-20241022".to_string(),
+        TEST_MAX_CONTEXT_LENGTH,
     );
     state.error = Some("Network error".to_string());
 
@@ -120,6 +125,7 @@ fn test_build_content_response() {
         true,
         "Anthropic".to_string(),
         "claude-3-5-sonnet-20241022".to_string(),
+        TEST_MAX_CONTEXT_LENGTH,
     );
     state.response = "Try using .foo instead".to_string();
 
@@ -141,6 +147,7 @@ fn test_build_content_loading_with_previous() {
         true,
         "Anthropic".to_string(),
         "claude-3-5-sonnet-20241022".to_string(),
+        TEST_MAX_CONTEXT_LENGTH,
     );
     state.loading = true;
     state.previous_response = Some("Previous answer".to_string());
@@ -181,6 +188,7 @@ proptest! {
             false,  // configured = false
             provider_name,
             model_name,
+            TEST_MAX_CONTEXT_LENGTH,
         );
 
         let content = build_content(&state, max_width);
@@ -231,6 +239,7 @@ proptest! {
             false,  // configured = false
             provider_name,
             model_name,
+            TEST_MAX_CONTEXT_LENGTH,
         );
 
         let content = build_content(&state, max_width);
@@ -265,7 +274,7 @@ proptest! {
     fn prop_selection_number_rendering(suggestion_count in 1usize..=5) {
         use crate::ai::ai_state::{Suggestion, SuggestionType};
 
-        let mut state = AiState::new_with_config(true, true, "Anthropic".to_string(), "claude-3-5-sonnet-20241022".to_string());
+        let mut state = AiState::new_with_config(true, true, "Anthropic".to_string(), "claude-3-5-sonnet-20241022".to_string(), TEST_MAX_CONTEXT_LENGTH);
         state.visible = true;
         state.response = "AI response".to_string();
 
@@ -309,7 +318,7 @@ proptest! {
     fn prop_selection_number_limit(suggestion_count in 6usize..15) {
         use crate::ai::ai_state::{Suggestion, SuggestionType};
 
-        let mut state = AiState::new_with_config(true, true, "Anthropic".to_string(), "claude-3-5-sonnet-20241022".to_string());
+        let mut state = AiState::new_with_config(true, true, "Anthropic".to_string(), "claude-3-5-sonnet-20241022".to_string(), TEST_MAX_CONTEXT_LENGTH);
         state.visible = true;
         state.response = "AI response".to_string();
 
@@ -368,7 +377,7 @@ proptest! {
 
         prop_assume!(selected_index < suggestion_count);
 
-        let mut state = AiState::new_with_config(true, true, "Anthropic".to_string(), "claude-3-5-sonnet-20241022".to_string());
+        let mut state = AiState::new_with_config(true, true, "Anthropic".to_string(), "claude-3-5-sonnet-20241022".to_string(), TEST_MAX_CONTEXT_LENGTH);
         state.visible = true;
         state.response = "AI response".to_string();
 

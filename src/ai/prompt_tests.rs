@@ -274,6 +274,7 @@ fn test_base_query_result_truncation_in_context() {
             base_query_result: Some(&preprocessed),
             is_empty_result: false,
         },
+        MAX_JSON_SAMPLE_LENGTH,
     );
 
     assert!(ctx.base_query_result.is_some());

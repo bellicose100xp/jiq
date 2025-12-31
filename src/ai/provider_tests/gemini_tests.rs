@@ -1,6 +1,7 @@
 //! Tests for Gemini provider configuration validation
 
 use super::*;
+use crate::config::ai_types::TEST_MAX_CONTEXT_LENGTH;
 
 // =========================================================================
 // Property-Based Tests for Gemini Provider
@@ -29,6 +30,7 @@ proptest! {
                 api_key: Some(whitespace_key),
                 model: Some(model),
             },
+        max_context_length: TEST_MAX_CONTEXT_LENGTH,
         };
 
         let result = AsyncAiProvider::from_config(&config);
@@ -156,6 +158,7 @@ fn test_gemini_from_config_missing_api_key() {
             api_key: None,
             model: Some("gemini-2.0-flash".to_string()),
         },
+        max_context_length: TEST_MAX_CONTEXT_LENGTH,
     };
 
     let result = AsyncAiProvider::from_config(&config);
@@ -180,6 +183,7 @@ fn test_gemini_from_config_missing_model() {
             api_key: Some("AIzaSyTest123".to_string()),
             model: None,
         },
+        max_context_length: TEST_MAX_CONTEXT_LENGTH,
     };
 
     let result = AsyncAiProvider::from_config(&config);
@@ -204,6 +208,7 @@ fn test_gemini_from_config_valid_creates_client() {
             api_key: Some("AIzaSyTest123".to_string()),
             model: Some("gemini-2.0-flash".to_string()),
         },
+        max_context_length: TEST_MAX_CONTEXT_LENGTH,
     };
 
     let result = AsyncAiProvider::from_config(&config);
@@ -227,6 +232,7 @@ fn test_gemini_provider_name() {
             api_key: Some("AIzaSyTest123".to_string()),
             model: Some("gemini-2.0-flash".to_string()),
         },
+        max_context_length: TEST_MAX_CONTEXT_LENGTH,
     };
 
     let provider = AsyncAiProvider::from_config(&config).unwrap();

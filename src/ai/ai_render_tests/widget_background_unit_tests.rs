@@ -3,6 +3,7 @@
 //! **Validates: Widget-level background application for selected suggestions**
 
 use super::*;
+use crate::ai::ai_state::lifecycle::TEST_MAX_CONTEXT_LENGTH;
 use crate::ai::ai_state::{Suggestion, SuggestionType};
 use ratatui::Terminal;
 use ratatui::backend::TestBackend;
@@ -34,6 +35,7 @@ fn test_selected_suggestion_has_background() {
         true,
         "Anthropic".to_string(),
         "claude-3-5-sonnet-20241022".to_string(),
+        TEST_MAX_CONTEXT_LENGTH,
     );
     state.visible = true;
     state.response = "AI response with suggestions".to_string();
@@ -120,6 +122,7 @@ fn test_unselected_suggestion_no_background() {
         true,
         "Anthropic".to_string(),
         "claude-3-5-sonnet-20241022".to_string(),
+        TEST_MAX_CONTEXT_LENGTH,
     );
     state.visible = true;
     state.response = "AI response with suggestions".to_string();

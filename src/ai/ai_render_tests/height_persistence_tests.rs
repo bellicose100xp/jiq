@@ -3,6 +3,7 @@
 //! **Validates: Popup maintains consistent height during loading transitions**
 
 use super::*;
+use crate::ai::ai_state::lifecycle::TEST_MAX_CONTEXT_LENGTH;
 use crate::ai::ai_state::{Suggestion, SuggestionType};
 use ratatui::Terminal;
 use ratatui::backend::TestBackend;
@@ -61,6 +62,7 @@ fn test_height_stored_after_rendering_suggestions() {
         true,
         "Anthropic".to_string(),
         "claude-3-5-sonnet-20241022".to_string(),
+        TEST_MAX_CONTEXT_LENGTH,
     );
     state.visible = true;
     state.response = "AI response".to_string();
@@ -97,6 +99,7 @@ fn test_height_maintained_during_loading() {
         true,
         "Anthropic".to_string(),
         "claude-3-5-sonnet-20241022".to_string(),
+        TEST_MAX_CONTEXT_LENGTH,
     );
     state.visible = true;
     state.response = "AI response".to_string();
@@ -135,6 +138,7 @@ fn test_height_adjusts_with_new_suggestions() {
         true,
         "Anthropic".to_string(),
         "claude-3-5-sonnet-20241022".to_string(),
+        TEST_MAX_CONTEXT_LENGTH,
     );
     state.visible = true;
     state.response = "AI response".to_string();
@@ -201,6 +205,7 @@ fn test_no_height_stored_for_error_state() {
         true,
         "Anthropic".to_string(),
         "claude-3-5-sonnet-20241022".to_string(),
+        TEST_MAX_CONTEXT_LENGTH,
     );
     state.visible = true;
     state.error = Some("API Error".to_string());
@@ -223,6 +228,7 @@ fn test_height_persistence_across_multiple_loads() {
         true,
         "Anthropic".to_string(),
         "claude-3-5-sonnet-20241022".to_string(),
+        TEST_MAX_CONTEXT_LENGTH,
     );
     state.visible = true;
     state.response = "AI response".to_string();

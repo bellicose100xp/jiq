@@ -3,6 +3,7 @@
 //! **Validates: Requirements 2.3, 4.2, 6.1**
 
 use super::*;
+use crate::ai::ai_state::lifecycle::TEST_MAX_CONTEXT_LENGTH;
 use insta::assert_snapshot;
 use ratatui::Terminal;
 use ratatui::backend::TestBackend;
@@ -39,6 +40,7 @@ fn snapshot_ai_popup_empty_state() {
         true,
         "Anthropic".to_string(),
         "claude-3-5-sonnet-20241022".to_string(),
+        TEST_MAX_CONTEXT_LENGTH,
     );
     state.visible = true;
 
@@ -53,6 +55,7 @@ fn snapshot_ai_popup_loading_state() {
         true,
         "Anthropic".to_string(),
         "claude-3-5-sonnet-20241022".to_string(),
+        TEST_MAX_CONTEXT_LENGTH,
     );
     state.visible = true;
     state.loading = true;
@@ -68,6 +71,7 @@ fn snapshot_ai_popup_error_state() {
         true,
         "Anthropic".to_string(),
         "claude-3-5-sonnet-20241022".to_string(),
+        TEST_MAX_CONTEXT_LENGTH,
     );
     state.visible = true;
     state.error = Some("API Error: Rate limit exceeded. Please try again later.".to_string());
@@ -83,6 +87,7 @@ fn snapshot_ai_popup_response_state() {
         true,
         "Anthropic".to_string(),
         "claude-3-5-sonnet-20241022".to_string(),
+        TEST_MAX_CONTEXT_LENGTH,
     );
     state.visible = true;
     state.response = "The error in your query `.foo[` is a missing closing bracket.\n\nTry using `.foo[]` to iterate over the array, or `.foo[0]` to access the first element.".to_string();
@@ -98,6 +103,7 @@ fn snapshot_ai_popup_loading_with_previous() {
         true,
         "Anthropic".to_string(),
         "claude-3-5-sonnet-20241022".to_string(),
+        TEST_MAX_CONTEXT_LENGTH,
     );
     state.visible = true;
     state.loading = true;
@@ -114,6 +120,7 @@ fn snapshot_ai_popup_not_visible() {
         true,
         "Anthropic".to_string(),
         "claude-3-5-sonnet-20241022".to_string(),
+        TEST_MAX_CONTEXT_LENGTH,
     );
     // Phase 2: Explicitly set visible to false to test hidden state
     state.visible = false;
@@ -129,6 +136,7 @@ fn snapshot_ai_popup_not_configured() {
         false,
         "Anthropic".to_string(),
         "claude-3-5-sonnet-20241022".to_string(),
+        TEST_MAX_CONTEXT_LENGTH,
     );
     state.visible = true;
 
@@ -149,6 +157,7 @@ fn snapshot_ai_popup_with_suggestions() {
         true,
         "Anthropic".to_string(),
         "claude-3-5-sonnet-20241022".to_string(),
+        TEST_MAX_CONTEXT_LENGTH,
     );
     state.visible = true;
     state.response =
@@ -182,6 +191,7 @@ fn snapshot_ai_popup_raw_response_fallback() {
         true,
         "Anthropic".to_string(),
         "claude-3-5-sonnet-20241022".to_string(),
+        TEST_MAX_CONTEXT_LENGTH,
     );
     state.visible = true;
     // Response without parseable suggestions - should fall back to raw display
@@ -205,6 +215,7 @@ fn snapshot_ai_popup_long_query_wrapping() {
         true,
         "Anthropic".to_string(),
         "claude-3-5-sonnet-20241022".to_string(),
+        TEST_MAX_CONTEXT_LENGTH,
     );
     state.visible = true;
     // Set response to non-empty so suggestions are displayed
@@ -241,6 +252,7 @@ fn snapshot_ai_popup_with_selection_numbers() {
         true,
         "Anthropic".to_string(),
         "claude-3-5-sonnet-20241022".to_string(),
+        TEST_MAX_CONTEXT_LENGTH,
     );
     state.visible = true;
     state.response = "AI response with suggestions".to_string();
@@ -275,6 +287,7 @@ fn snapshot_ai_popup_with_selected_suggestion() {
         true,
         "Anthropic".to_string(),
         "claude-3-5-sonnet-20241022".to_string(),
+        TEST_MAX_CONTEXT_LENGTH,
     );
     state.visible = true;
     state.response = "AI response with suggestions".to_string();
@@ -313,6 +326,7 @@ fn snapshot_ai_popup_with_selection_hints() {
         true,
         "Anthropic".to_string(),
         "claude-3-5-sonnet-20241022".to_string(),
+        TEST_MAX_CONTEXT_LENGTH,
     );
     state.visible = true;
     state.response = "AI response with suggestions".to_string();
@@ -335,6 +349,7 @@ fn snapshot_ai_popup_more_than_five_suggestions() {
         true,
         "Anthropic".to_string(),
         "claude-3-5-sonnet-20241022".to_string(),
+        TEST_MAX_CONTEXT_LENGTH,
     );
     state.visible = true;
     state.response = "AI response with many suggestions".to_string();
@@ -388,6 +403,7 @@ fn snapshot_ai_popup_bedrock_provider() {
         true,
         "Bedrock".to_string(),
         "anthropic.claude-3-5-sonnet-20241022-v2:0".to_string(),
+        TEST_MAX_CONTEXT_LENGTH,
     );
     state.visible = true;
     state.response = "This is a response from Bedrock provider".to_string();
@@ -398,8 +414,13 @@ fn snapshot_ai_popup_bedrock_provider() {
 
 #[test]
 fn snapshot_ai_popup_openai_provider() {
-    let mut state =
-        AiState::new_with_config(true, true, "OpenAI".to_string(), "gpt-4o-mini".to_string());
+    let mut state = AiState::new_with_config(
+        true,
+        true,
+        "OpenAI".to_string(),
+        "gpt-4o-mini".to_string(),
+        TEST_MAX_CONTEXT_LENGTH,
+    );
     state.visible = true;
     state.response = "This is a response from OpenAI provider".to_string();
 

@@ -175,7 +175,6 @@ fn test_ai_state_transitions() {
         Loading,
         Streaming,
         Complete,
-        Error,
     }
 
     let mut state = State::Idle;
@@ -584,8 +583,10 @@ fn test_handle_execution_result_does_not_change_visibility_on_error() {
     use jiq::ai::ai_state::AiState;
 
     // Test with visibility = false
-    let mut ai_state = AiState::new(true);
-    ai_state.visible = false;
+    let mut ai_state = AiState {
+        visible: false,
+        ..Default::default()
+    };
     let initial_visibility = ai_state.visible;
 
     let error_result: Result<String, String> = Err("syntax error".to_string());
@@ -608,8 +609,10 @@ fn test_handle_execution_result_does_not_change_visibility_on_error() {
     );
 
     // Test with visibility = true
-    let mut ai_state = AiState::new(true);
-    ai_state.visible = true;
+    let mut ai_state = AiState {
+        visible: true,
+        ..Default::default()
+    };
     let initial_visibility = ai_state.visible;
 
     let error_result: Result<String, String> = Err("syntax error".to_string());
@@ -643,8 +646,10 @@ fn test_handle_execution_result_does_not_change_visibility_on_success() {
     use jiq::ai::ai_state::AiState;
 
     // Test with visibility = false
-    let mut ai_state = AiState::new(true);
-    ai_state.visible = false;
+    let mut ai_state = AiState {
+        visible: false,
+        ..Default::default()
+    };
     let initial_visibility = ai_state.visible;
 
     let success_result: Result<String, String> = Ok(r#"{"result": "value"}"#.to_string());
@@ -667,8 +672,10 @@ fn test_handle_execution_result_does_not_change_visibility_on_success() {
     );
 
     // Test with visibility = true
-    let mut ai_state = AiState::new(true);
-    ai_state.visible = true;
+    let mut ai_state = AiState {
+        visible: true,
+        ..Default::default()
+    };
     let initial_visibility = ai_state.visible;
 
     let success_result: Result<String, String> = Ok(r#"{"result": "value2"}"#.to_string());
@@ -736,8 +743,10 @@ fn test_visibility_control_mechanisms_complete() {
     );
 
     // Mechanism 2: Ctrl+A toggle is the only runtime control
-    let mut ai_state = AiState::new(true);
-    ai_state.visible = false;
+    let mut ai_state = AiState {
+        visible: false,
+        ..Default::default()
+    };
 
     ai_state.toggle(); // Simulates Ctrl+A
     assert!(ai_state.visible, "Toggle should change visibility");
@@ -746,8 +755,10 @@ fn test_visibility_control_mechanisms_complete() {
     assert!(!ai_state.visible, "Toggle should change visibility back");
 
     // Mechanism 3: Execution results do NOT change visibility
-    let mut ai_state = AiState::new(true);
-    ai_state.visible = false;
+    let mut ai_state = AiState {
+        visible: false,
+        ..Default::default()
+    };
 
     // Try error result
     let error_result: Result<String, String> = Err("error".to_string());

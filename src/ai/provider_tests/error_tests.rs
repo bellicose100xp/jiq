@@ -1,6 +1,7 @@
 //! Cross-cutting error handling tests for AI provider abstraction
 
 use super::*;
+use crate::config::ai_types::TEST_MAX_CONTEXT_LENGTH;
 
 // =========================================================================
 // Unit Tests for No Default Provider
@@ -20,6 +21,7 @@ fn test_from_config_returns_error_when_provider_is_none() {
         bedrock: BedrockConfig::default(),
         openai: OpenAiConfig::default(),
         gemini: GeminiConfig::default(),
+        max_context_length: TEST_MAX_CONTEXT_LENGTH,
     };
 
     let result = AsyncAiProvider::from_config(&config);
@@ -69,6 +71,7 @@ fn test_from_config_error_when_provider_none_even_with_all_credentials() {
             api_key: Some("gemini-key".to_string()),
             model: Some("gemini-pro".to_string()),
         },
+        max_context_length: TEST_MAX_CONTEXT_LENGTH,
     };
 
     let result = AsyncAiProvider::from_config(&config);
@@ -290,6 +293,7 @@ proptest! {
             bedrock: BedrockConfig::default(),
             openai: OpenAiConfig::default(),
             gemini: GeminiConfig::default(),
+        max_context_length: TEST_MAX_CONTEXT_LENGTH,
         };
 
         let provider = AsyncAiProvider::from_config(&config).unwrap();
@@ -342,6 +346,7 @@ proptest! {
             bedrock: BedrockConfig::default(),
             openai: OpenAiConfig::default(),
             gemini: GeminiConfig::default(),
+        max_context_length: TEST_MAX_CONTEXT_LENGTH,
         };
 
         let result = AsyncAiProvider::from_config(&config);
@@ -367,6 +372,7 @@ proptest! {
             bedrock: BedrockConfig::default(),
             openai: OpenAiConfig::default(),
             gemini: GeminiConfig::default(),
+        max_context_length: TEST_MAX_CONTEXT_LENGTH,
         };
 
         let result = AsyncAiProvider::from_config(&config);
@@ -392,6 +398,7 @@ proptest! {
             bedrock: BedrockConfig::default(),
             openai: OpenAiConfig::default(),
             gemini: GeminiConfig::default(),
+        max_context_length: TEST_MAX_CONTEXT_LENGTH,
         };
 
         let result = AsyncAiProvider::from_config(&config);
@@ -451,6 +458,7 @@ proptest! {
                 api_key: Some(api_key),
                 model: Some(model),
             },
+            max_context_length: TEST_MAX_CONTEXT_LENGTH,
         };
 
         let result = AsyncAiProvider::from_config(&config);

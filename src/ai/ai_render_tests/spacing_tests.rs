@@ -3,6 +3,7 @@
 //! **Validates: Consistent spacing between suggestions**
 
 use super::*;
+use crate::ai::ai_state::lifecycle::TEST_MAX_CONTEXT_LENGTH;
 use crate::ai::ai_state::{Suggestion, SuggestionType};
 use insta::assert_snapshot;
 use ratatui::Terminal;
@@ -39,6 +40,7 @@ fn snapshot_consistent_spacing_two_suggestions() {
         true,
         "Anthropic".to_string(),
         "claude-3-5-sonnet-20241022".to_string(),
+        TEST_MAX_CONTEXT_LENGTH,
     );
     state.visible = true;
     state.response = "AI response".to_string();
@@ -66,6 +68,7 @@ fn snapshot_consistent_spacing_three_suggestions() {
         true,
         "Anthropic".to_string(),
         "claude-3-5-sonnet-20241022".to_string(),
+        TEST_MAX_CONTEXT_LENGTH,
     );
     state.visible = true;
     state.response = "AI response".to_string();
@@ -98,6 +101,7 @@ fn snapshot_consistent_spacing_five_suggestions() {
         true,
         "Anthropic".to_string(),
         "claude-3-5-sonnet-20241022".to_string(),
+        TEST_MAX_CONTEXT_LENGTH,
     );
     state.visible = true;
     state.response = "AI response".to_string();
@@ -140,6 +144,7 @@ fn snapshot_spacing_with_varying_lengths() {
         true,
         "Anthropic".to_string(),
         "claude-3-5-sonnet-20241022".to_string(),
+        TEST_MAX_CONTEXT_LENGTH,
     );
     state.visible = true;
     state.response = "AI response".to_string();
@@ -172,6 +177,7 @@ fn snapshot_no_spacing_after_last_suggestion() {
         true,
         "Anthropic".to_string(),
         "claude-3-5-sonnet-20241022".to_string(),
+        TEST_MAX_CONTEXT_LENGTH,
     );
     state.visible = true;
     state.response = "AI response".to_string();
@@ -202,6 +208,7 @@ fn snapshot_spacing_maintained_with_first_option_selected() {
         true,
         "Anthropic".to_string(),
         "claude-3-5-sonnet-20241022".to_string(),
+        TEST_MAX_CONTEXT_LENGTH,
     );
     state.visible = true;
     state.response = "AI response".to_string();
@@ -238,6 +245,7 @@ fn snapshot_spacing_maintained_with_middle_option_selected() {
         true,
         "Anthropic".to_string(),
         "claude-3-5-sonnet-20241022".to_string(),
+        TEST_MAX_CONTEXT_LENGTH,
     );
     state.visible = true;
     state.response = "AI response".to_string();
@@ -275,6 +283,7 @@ fn snapshot_spacing_maintained_with_last_option_selected() {
         true,
         "Anthropic".to_string(),
         "claude-3-5-sonnet-20241022".to_string(),
+        TEST_MAX_CONTEXT_LENGTH,
     );
     state.visible = true;
     state.response = "AI response".to_string();

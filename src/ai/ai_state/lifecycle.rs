@@ -6,6 +6,10 @@ use super::super::selection::SelectionState;
 use super::super::suggestion::parse_suggestions;
 use crate::ai::ai_state::AiState;
 
+/// Default max context length for tests
+#[cfg(test)]
+pub const TEST_MAX_CONTEXT_LENGTH: usize = 50_000;
+
 impl AiState {
     /// Create a new AiState (test helper)
     ///
@@ -19,6 +23,7 @@ impl AiState {
             configured: false,
             provider_name: "AI".to_string(),
             model_name: String::new(),
+            max_context_length: TEST_MAX_CONTEXT_LENGTH,
             loading: false,
             error: None,
             response: String::new(),
@@ -42,11 +47,13 @@ impl AiState {
     /// * `configured` - Whether AI is properly configured (has API key)
     /// * `provider_name` - Name of the AI provider (e.g., "Anthropic", "Bedrock", "OpenAI")
     /// * `model_name` - Model name (e.g., "claude-3-5-sonnet-20241022", "gpt-4o-mini")
+    /// * `max_context_length` - Maximum character length for JSON context samples
     pub fn new_with_config(
         enabled: bool,
         configured: bool,
         provider_name: String,
         model_name: String,
+        max_context_length: usize,
     ) -> Self {
         Self {
             visible: enabled,
@@ -54,6 +61,7 @@ impl AiState {
             configured,
             provider_name,
             model_name,
+            max_context_length,
             loading: false,
             error: None,
             response: String::new(),

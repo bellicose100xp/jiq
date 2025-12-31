@@ -1,6 +1,7 @@
 //! Tests for model name display and truncation logic
 
 use super::*;
+use crate::ai::ai_state::lifecycle::TEST_MAX_CONTEXT_LENGTH;
 use proptest::prelude::*;
 
 /// Test that short model names are not truncated
@@ -193,6 +194,7 @@ fn snapshot_model_name_display() {
         true,
         "Anthropic".to_string(),
         "claude-3-5-sonnet-20241022".to_string(),
+        TEST_MAX_CONTEXT_LENGTH,
     );
     state.visible = true;
     state.response = "Test response".to_string();
@@ -227,6 +229,7 @@ fn snapshot_long_model_name_truncation() {
         true,
         "Bedrock".to_string(),
         "anthropic.claude-3-5-sonnet-20241022-v2:0-super-long-model-name".to_string(),
+        TEST_MAX_CONTEXT_LENGTH,
     );
     state.visible = true;
     state.response = "Test response".to_string();

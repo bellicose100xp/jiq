@@ -14,7 +14,7 @@ pub use super::suggestion::{Suggestion, SuggestionType};
 
 // Module declarations
 #[path = "ai_state/lifecycle.rs"]
-mod lifecycle;
+pub(crate) mod lifecycle;
 #[path = "ai_state/response.rs"]
 mod response;
 #[path = "ai_state/suggestions.rs"]
@@ -73,6 +73,8 @@ pub struct AiState {
     pub provider_name: String,
     /// Model name (e.g., "claude-3-5-sonnet-20241022", "gpt-4o-mini")
     pub model_name: String,
+    /// Maximum character length for JSON context samples
+    pub max_context_length: usize,
     /// Whether we're waiting for or receiving a response
     pub loading: bool,
     /// Current error message (if any)
@@ -110,6 +112,6 @@ pub struct AiState {
 
 impl Default for AiState {
     fn default() -> Self {
-        Self::new_with_config(false, false, "AI".to_string(), String::new())
+        Self::new_with_config(false, false, "AI".to_string(), String::new(), 50_000)
     }
 }

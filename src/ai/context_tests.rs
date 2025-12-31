@@ -36,6 +36,7 @@ fn test_query_context_new() {
         None,
         Some("error".to_string()),
         empty_params(),
+        MAX_JSON_SAMPLE_LENGTH,
     );
 
     assert_eq!(ctx.query, query);
@@ -278,6 +279,7 @@ fn test_query_context_applies_prepare_to_output_sample() {
         Some(large_output.clone()),
         None,
         empty_params(),
+        MAX_JSON_SAMPLE_LENGTH,
     );
 
     assert!(ctx.output_sample.is_some());
@@ -294,6 +296,7 @@ fn test_query_context_with_empty_output_skips_processing() {
         Some("".to_string()),
         None,
         empty_params(),
+        MAX_JSON_SAMPLE_LENGTH,
     );
 
     assert!(ctx.output_sample.is_none());
@@ -308,6 +311,7 @@ fn test_query_context_with_null_output_skips_processing() {
         Some("null".to_string()),
         None,
         empty_params(),
+        MAX_JSON_SAMPLE_LENGTH,
     );
 
     assert!(ctx.output_sample.is_none());
@@ -330,6 +334,7 @@ fn test_query_context_passes_through_preprocessed_base_query_result() {
         None,
         Some("error".to_string()),
         params,
+        MAX_JSON_SAMPLE_LENGTH,
     );
 
     assert!(ctx.base_query_result.is_some());
@@ -451,6 +456,7 @@ proptest! {
             None,
             error.clone(),
             empty_params(),
+            MAX_JSON_SAMPLE_LENGTH,
         );
 
         // Verify required fields are present
@@ -471,6 +477,7 @@ proptest! {
             None,
             Some(error_msg.clone()),
             empty_params(),
+            MAX_JSON_SAMPLE_LENGTH,
         );
 
         // Verify error context is properly set
@@ -498,6 +505,7 @@ proptest! {
             Some(output.clone()),
             None,
             empty_params(),
+            MAX_JSON_SAMPLE_LENGTH,
         );
 
         // Verify success context is properly set
@@ -519,6 +527,7 @@ proptest! {
             Some(output.clone()),
             None,
             empty_params(),
+            MAX_JSON_SAMPLE_LENGTH,
         );
 
         // Verify output_sample is bounded
@@ -538,14 +547,14 @@ proptest! {
 #[test]
 fn test_prepare_schema_for_context_returns_unchanged_when_under_limit() {
     let schema = r#"{"name":"string","age":"number"}"#;
-    let result = prepare_schema_for_context(schema);
+    let result = prepare_schema_for_context(schema, MAX_JSON_SAMPLE_LENGTH);
     assert_eq!(result, schema);
 }
 
 #[test]
 fn test_prepare_schema_for_context_truncates_when_over_limit() {
     let schema = "x".repeat(MAX_JSON_SAMPLE_LENGTH + 100);
-    let result = prepare_schema_for_context(&schema);
+    let result = prepare_schema_for_context(&schema, MAX_JSON_SAMPLE_LENGTH);
     assert!(result.len() <= MAX_JSON_SAMPLE_LENGTH + 20);
     assert!(result.contains("... [truncated]"));
     assert_eq!(
@@ -557,7 +566,7 @@ fn test_prepare_schema_for_context_truncates_when_over_limit() {
 #[test]
 fn test_prepare_schema_for_context_exactly_at_limit() {
     let schema = "x".repeat(MAX_JSON_SAMPLE_LENGTH);
-    let result = prepare_schema_for_context(&schema);
+    let result = prepare_schema_for_context(&schema, MAX_JSON_SAMPLE_LENGTH);
     assert_eq!(result, schema);
     assert!(!result.contains("truncated"));
 }

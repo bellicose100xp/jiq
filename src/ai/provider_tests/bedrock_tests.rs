@@ -1,6 +1,7 @@
 //! Tests for Bedrock provider configuration validation and error handling
 
 use super::*;
+use crate::config::ai_types::TEST_MAX_CONTEXT_LENGTH;
 
 // =========================================================================
 // Property-Based Tests for Bedrock Provider Validation
@@ -29,6 +30,7 @@ proptest! {
             },
             openai: OpenAiConfig::default(),
             gemini: GeminiConfig::default(),
+        max_context_length: TEST_MAX_CONTEXT_LENGTH,
         };
 
         let result = AsyncAiProvider::from_config(&config);
@@ -71,6 +73,7 @@ proptest! {
             },
             openai: OpenAiConfig::default(),
             gemini: GeminiConfig::default(),
+        max_context_length: TEST_MAX_CONTEXT_LENGTH,
         };
 
         let result = AsyncAiProvider::from_config(&config);
@@ -119,6 +122,7 @@ proptest! {
             },
             openai: OpenAiConfig::default(),
             gemini: GeminiConfig::default(),
+        max_context_length: TEST_MAX_CONTEXT_LENGTH,
         };
 
         let result = AsyncAiProvider::from_config(&config);
@@ -161,6 +165,7 @@ proptest! {
             },
             openai: OpenAiConfig::default(),
             gemini: GeminiConfig::default(),
+        max_context_length: TEST_MAX_CONTEXT_LENGTH,
         };
 
         let result = AsyncAiProvider::from_config(&config);
@@ -202,6 +207,7 @@ proptest! {
             },
             openai: OpenAiConfig::default(),
             gemini: GeminiConfig::default(),
+        max_context_length: TEST_MAX_CONTEXT_LENGTH,
         };
 
         let result = AsyncAiProvider::from_config(&config);

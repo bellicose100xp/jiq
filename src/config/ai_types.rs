@@ -2,11 +2,20 @@
 
 use serde::Deserialize;
 
+/// Test constant for max context length (matches default)
+#[cfg(test)]
+pub const TEST_MAX_CONTEXT_LENGTH: u32 = 50_000;
+
 // Model is now required - no default provided
 
 /// Default max tokens for AI responses (kept short to fit in non-scrollable window)
 fn default_max_tokens() -> u32 {
     512
+}
+
+/// Default max context length for JSON samples sent to AI (50KB of characters)
+fn default_max_context_length() -> u32 {
+    50_000
 }
 
 /// AI provider selection
@@ -79,6 +88,9 @@ pub struct AiConfig {
     /// Which AI provider to use (None when not configured)
     #[serde(default)]
     pub provider: Option<AiProviderType>,
+    /// Maximum character length for JSON context samples sent to AI
+    #[serde(default = "default_max_context_length")]
+    pub max_context_length: u32,
     /// Anthropic-specific configuration
     #[serde(default)]
     pub anthropic: AnthropicConfig,
