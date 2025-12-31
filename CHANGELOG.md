@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.8.3] - 2025-12-30
+
+### Fixed
+- **AI token overflow** - Fixed token overflow issues in AI prompts
+  - Removed redundant input sample from error prompts to reduce token usage
+  - Input schema now properly truncated to 25KB limit before being sent to AI
+  - Better token management prevents exceeding model context limits
+- **AI empty result context** - Enhanced AI context for empty/null query results
+  - AI now receives last non-empty query and its output when current query returns empty/null
+  - Success prompts include cursor position for better suggestion accuracy
+  - Improved suggestions for queries that filter down to empty results
+
 ## [3.8.2] - 2025-12-29
 
 ### Fixed
