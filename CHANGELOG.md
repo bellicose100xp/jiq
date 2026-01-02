@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.9.1] - 2026-01-02
+
+### Performance
+- **SIMD-accelerated ANSI stripping** - Uses memchr for faster ANSI color code removal
+  - Leverages SIMD instructions for improved performance on large result sets
+  - Optimizes query result preprocessing and rendering
+
+### Changed
+- Removed temporary debug statements for cleaner codebase
+- Updated README documentation
+
 ## [3.9.0] - 2025-12-31
 
 ### Added
