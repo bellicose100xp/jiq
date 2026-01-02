@@ -6,6 +6,7 @@ use ansi_to_tui::IntoText;
 use ratatui::text::{Line, Span, Text};
 
 use crate::query::executor::JqExecutor;
+use crate::query::worker::preprocess::strip_ansi_codes;
 use crate::query::worker::types::RenderedLine;
 use crate::query::worker::{QueryRequest, QueryResponse, spawn_worker};
 use serde_json::Value;
@@ -103,7 +104,7 @@ impl QueryState {
         let last_successful_result = result.as_ref().ok().map(|s| Arc::new(s.clone()));
         let last_successful_result_unformatted = last_successful_result
             .as_ref()
-            .map(|s| Arc::new(Self::strip_ansi_codes(s)));
+            .map(|s| Arc::new(strip_ansi_codes(s)));
 
         // Pre-process for AI context
         let last_successful_result_for_context =
@@ -188,7 +189,7 @@ impl QueryState {
     /// Only caches non-null results to avoid polluting suggestions with partial queries.
     fn update_successful_result(&mut self, output: String, query: &str) {
         // Partial queries like ".s" return "null"; keep last meaningful result for suggestions
-        let unformatted = Self::strip_ansi_codes(&output);
+        let unformatted = strip_ansi_codes(&output);
 
         let is_only_nulls = unformatted
             .lines()
@@ -563,35 +564,6 @@ impl QueryState {
                 })
                 .collect::<Vec<_>>(),
         )
-    }
-
-    /// Strip ANSI escape codes from a string
-    ///
-    /// jq outputs colored results with ANSI codes like:
-    /// - `\x1b[0m` (reset)
-    /// - `\x1b[1;39m` (bold)
-    /// - `\x1b[0;32m` (green)
-    fn strip_ansi_codes(s: &str) -> String {
-        let mut result = String::with_capacity(s.len());
-        let mut chars = s.chars().peekable();
-
-        while let Some(ch) = chars.next() {
-            if ch == '\x1b' {
-                // Found escape character, skip until 'm' (end of ANSI sequence)
-                if chars.peek() == Some(&'[') {
-                    chars.next(); // consume '['
-                    for c in chars.by_ref() {
-                        if c == 'm' {
-                            break;
-                        }
-                    }
-                }
-            } else {
-                result.push(ch);
-            }
-        }
-
-        result
     }
 
     /// Get the total number of lines in the current results

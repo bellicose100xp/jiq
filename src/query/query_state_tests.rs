@@ -1,6 +1,7 @@
 //! Tests for query_state
 
 use super::*;
+use crate::query::worker::preprocess::strip_ansi_codes;
 
 // Submodules
 #[path = "query_state_tests/async_preprocessing_tests.rs"]
@@ -136,7 +137,7 @@ fn test_null_results_dont_overwrite_cache() {
 #[test]
 fn test_strip_ansi_codes_simple() {
     let input = "\x1b[0m{\x1b[1;39m\"name\"\x1b[0m: \x1b[0;32m\"test\"\x1b[0m}";
-    let output = QueryState::strip_ansi_codes(input);
+    let output = strip_ansi_codes(input);
     assert_eq!(output, r#"{"name": "test"}"#);
     assert!(!output.contains("\x1b"));
 }
@@ -144,7 +145,7 @@ fn test_strip_ansi_codes_simple() {
 #[test]
 fn test_strip_ansi_codes_complex() {
     let input = "\x1b[1;39m{\x1b[0m\n  \x1b[0;34m\"key\"\x1b[0m: \x1b[0;32m\"value\"\x1b[0m\n\x1b[1;39m}\x1b[0m";
-    let output = QueryState::strip_ansi_codes(input);
+    let output = strip_ansi_codes(input);
     assert!(output.contains(r#""key""#));
     assert!(output.contains(r#""value""#));
     assert!(!output.contains("\x1b"));
@@ -153,14 +154,14 @@ fn test_strip_ansi_codes_complex() {
 #[test]
 fn test_strip_ansi_codes_no_codes() {
     let input = r#"{"name": "plain"}"#;
-    let output = QueryState::strip_ansi_codes(input);
+    let output = strip_ansi_codes(input);
     assert_eq!(output, input);
 }
 
 #[test]
 fn test_strip_ansi_codes_null_with_color() {
     let input = "\x1b[0;90mnull\x1b[0m";
-    let output = QueryState::strip_ansi_codes(input);
+    let output = strip_ansi_codes(input);
     assert_eq!(output, "null");
 }
 
