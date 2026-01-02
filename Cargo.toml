@@ -59,6 +59,9 @@ toml = "0.8"
 # Fuzzy matching (fzf-style)
 fuzzy-matcher = "0.3"
 
+# SIMD-accelerated byte searching
+memchr = "2.7"
+
 # Async HTTP client for AI API calls with streaming and cancellation support
 # Use rustls-tls for musl compatibility (avoids OpenSSL linking issues)
 reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "stream", "json"] }

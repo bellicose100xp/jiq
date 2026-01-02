@@ -1,7 +1,7 @@
 //! Tests for preprocessing functions
 
 use crate::query::query_state::ResultType;
-use crate::query::worker::preprocess::preprocess_result;
+use crate::query::worker::preprocess::{preprocess_result, strip_ansi_codes};
 use crate::query::worker::types::QueryError;
 use tokio_util::sync::CancellationToken;
 
@@ -202,4 +202,98 @@ fn test_preprocess_max_width_clamped_to_u16_max() {
         u16::MAX,
         "max_width should be clamped to u16::MAX"
     );
+}
+
+// Unit tests for strip_ansi_codes function
+
+#[test]
+fn test_strip_ansi_codes_basic_sgr() {
+    let input = "\x1b[0;32mgreen text\x1b[0m";
+    let result = strip_ansi_codes(input);
+    assert_eq!(result, "green text", "Should strip SGR sequences");
+}
+
+#[test]
+fn test_strip_ansi_codes_multiple_sequences() {
+    let input = "\x1b[1;39mbold\x1b[0m normal \x1b[0;32mgreen\x1b[0m";
+    let result = strip_ansi_codes(input);
+    assert_eq!(result, "bold normal green", "Should strip all sequences");
+}
+
+#[test]
+fn test_strip_ansi_codes_typical_jq_output() {
+    let input = "\x1b[1;39m{\x1b[0m\n  \x1b[0;34m\"name\"\x1b[0m: \x1b[0;32m\"Alice\"\x1b[0m,\n  \x1b[0;34m\"age\"\x1b[0m: \x1b[0;33m30\x1b[0m\n\x1b[1;39m}\x1b[0m";
+    let result = strip_ansi_codes(input);
+    assert_eq!(
+        result, "{\n  \"name\": \"Alice\",\n  \"age\": 30\n}",
+        "Should strip typical jq colored output"
+    );
+}
+
+#[test]
+fn test_strip_ansi_codes_empty_string() {
+    let input = "";
+    let result = strip_ansi_codes(input);
+    assert_eq!(result, "", "Should handle empty string");
+}
+
+#[test]
+fn test_strip_ansi_codes_no_escapes() {
+    let input = "plain text without escapes";
+    let result = strip_ansi_codes(input);
+    assert_eq!(
+        result, "plain text without escapes",
+        "Should return identical content for plain text"
+    );
+}
+
+#[test]
+fn test_strip_ansi_codes_only_escape_sequences() {
+    let input = "\x1b[0m\x1b[1;39m\x1b[0;32m";
+    let result = strip_ansi_codes(input);
+    assert_eq!(result, "", "Should result in empty string");
+}
+
+#[test]
+fn test_strip_ansi_codes_malformed_no_bracket() {
+    let input = "\x1bX some text";
+    let result = strip_ansi_codes(input);
+    assert_eq!(
+        result, "X some text",
+        "Should handle escape without bracket"
+    );
+}
+
+#[test]
+fn test_strip_ansi_codes_malformed_no_terminator() {
+    let input = "\x1b[0;32 no closing bracket";
+    let result = strip_ansi_codes(input);
+    assert_eq!(
+        result, "",
+        "Should consume everything after unclosed escape sequence"
+    );
+}
+
+#[test]
+fn test_strip_ansi_codes_preserves_utf8() {
+    let input = "\x1b[0;32m你好世界\x1b[0m emoji: 🎉";
+    let result = strip_ansi_codes(input);
+    assert_eq!(
+        result, "你好世界 emoji: 🎉",
+        "Should preserve UTF-8 characters"
+    );
+}
+
+#[test]
+fn test_strip_ansi_codes_consecutive_escapes() {
+    let input = "text\x1b[0m\x1b[1;39m\x1b[0;32mmore text";
+    let result = strip_ansi_codes(input);
+    assert_eq!(result, "textmore text", "Should handle consecutive escapes");
+}
+
+#[test]
+fn test_strip_ansi_codes_escape_at_boundaries() {
+    let input = "\x1b[0;32mstart\x1b[0m middle \x1b[1;39mend\x1b[0m";
+    let result = strip_ansi_codes(input);
+    assert_eq!(result, "start middle end", "Should handle boundary escapes");
 }

@@ -6,6 +6,7 @@
 use std::sync::Arc;
 
 use ansi_to_tui::IntoText;
+use memchr::memchr;
 use ratatui::text::Text;
 use serde_json::Value;
 use tokio_util::sync::CancellationToken;
@@ -119,33 +120,55 @@ fn parse_ansi_to_rendered_lines(
     Ok(rendered_lines)
 }
 
-/// Strip ANSI escape codes from a string
+/// Strip ANSI escape codes from a string using SIMD-accelerated scanning
 ///
 /// jq outputs colored results with ANSI codes like:
 /// - `\x1b[0m` (reset)
 /// - `\x1b[1;39m` (bold)
 /// - `\x1b[0;32m` (green)
-fn strip_ansi_codes(s: &str) -> String {
-    let mut result = String::with_capacity(s.len());
-    let mut chars = s.chars().peekable();
+///
+/// Uses memchr for fast byte-level scanning and bulk memory copies.
+pub fn strip_ansi_codes(s: &str) -> String {
+    let bytes = s.as_bytes();
+    let mut result = Vec::with_capacity(bytes.len());
+    let mut pos = 0;
 
-    while let Some(ch) = chars.next() {
-        if ch == '\x1b' {
-            // Found escape character, skip until 'm' (end of ANSI sequence)
-            if chars.peek() == Some(&'[') {
-                chars.next(); // consume '['
-                for c in chars.by_ref() {
-                    if c == 'm' {
-                        break;
-                    }
-                }
-            }
-        } else {
-            result.push(ch);
-        }
+    // Find each escape sequence using SIMD-accelerated search
+    while let Some(esc_offset) = memchr(b'\x1b', &bytes[pos..]) {
+        let esc_pos = pos + esc_offset;
+
+        // Bulk copy everything before escape
+        result.extend_from_slice(&bytes[pos..esc_pos]);
+
+        // Skip escape sequence
+        pos = skip_csi_sequence(bytes, esc_pos);
     }
 
-    result
+    // Copy remaining content after last escape
+    result.extend_from_slice(&bytes[pos..]);
+
+    // Safe: we only copied valid UTF-8 byte sequences from valid input
+    unsafe { String::from_utf8_unchecked(result) }
+}
+
+/// Skip a CSI (Control Sequence Introducer) sequence
+///
+/// CSI sequences have the format: ESC [ parameters m
+/// where parameters are numbers and semicolons
+fn skip_csi_sequence(bytes: &[u8], start: usize) -> usize {
+    let mut pos = start + 1; // Skip ESC
+
+    if pos < bytes.len() && bytes[pos] == b'[' {
+        pos += 1; // Skip '['
+        // Skip until 'm' (SGR terminator)
+        while pos < bytes.len() {
+            if bytes[pos] == b'm' {
+                return pos + 1;
+            }
+            pos += 1;
+        }
+    }
+    pos
 }
 
 /// Parse first JSON value from result text
