@@ -116,10 +116,6 @@ impl AiState {
     /// Returns true if there was an in-flight request to cancel, false otherwise.
     pub fn cancel_in_flight_request(&mut self) -> bool {
         if let Some(token) = self.current_cancel_token.take() {
-            log::debug!(
-                "Cancelling in-flight request {:?}",
-                self.in_flight_request_id
-            );
             token.cancel();
             self.in_flight_request_id = None;
             return true;

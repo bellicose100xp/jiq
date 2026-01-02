@@ -24,15 +24,6 @@ use super::state::SelectionState;
 /// - 1.1-1.5: Alt+1-5 selects corresponding suggestion
 /// - 2.1-2.4: Invalid selections are ignored
 pub fn handle_direct_selection(key: KeyEvent, suggestion_count: usize) -> Option<usize> {
-    // Log key event for troubleshooting
-    #[cfg(debug_assertions)]
-    log::debug!(
-        "handle_direct_selection: key={:?}, modifiers={:?}, suggestion_count={}",
-        key.code,
-        key.modifiers,
-        suggestion_count
-    );
-
     // Only handle Alt+digit keys
     if !key.modifiers.contains(KeyModifiers::ALT) {
         return None;
@@ -48,25 +39,14 @@ pub fn handle_direct_selection(key: KeyEvent, suggestion_count: usize) -> Option
         _ => return None,
     };
 
-    #[cfg(debug_assertions)]
-    log::debug!("Parsed digit: {}, index: {}", digit, digit - 1);
-
     // Convert to 0-based index
     let index = digit - 1;
 
     // Validate against suggestion count
     // Requirements 2.3, 2.4: Ignore if index >= suggestion_count
     if index < suggestion_count {
-        #[cfg(debug_assertions)]
-        log::debug!("Valid selection: index={}", index);
         Some(index)
     } else {
-        #[cfg(debug_assertions)]
-        log::debug!(
-            "Invalid selection: index={} >= count={}",
-            index,
-            suggestion_count
-        );
         None
     }
 }

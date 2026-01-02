@@ -182,7 +182,6 @@ impl AsyncBedrockClient {
 
                 // Check cancellation first (biased mode)
                 _ = cancel_token.cancelled() => {
-                    log::debug!("Request {} cancelled during streaming", request_id);
                     return Err(AiError::Cancelled);
                 }
 

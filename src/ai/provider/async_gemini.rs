@@ -172,7 +172,6 @@ impl AsyncGeminiClient {
 
                 // Check cancellation first (biased mode prioritizes this)
                 _ = cancel_token.cancelled() => {
-                    log::debug!("Request {} cancelled during streaming", request_id);
                     return Err(AiError::Cancelled);
                 }
 

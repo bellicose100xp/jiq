@@ -39,14 +39,6 @@ pub fn handle_suggestion_selection(
     query_state: &mut QueryState,
     autocomplete_state: &mut AutocompleteState,
 ) -> bool {
-    #[cfg(debug_assertions)]
-    log::debug!(
-        "handle_suggestion_selection: visible={}, suggestions={}, key={:?}",
-        ai_state.visible,
-        ai_state.suggestions.len(),
-        key.code
-    );
-
     if !ai_state.visible || ai_state.suggestions.is_empty() {
         return false;
     }
@@ -54,13 +46,7 @@ pub fn handle_suggestion_selection(
     let suggestion_count = ai_state.suggestions.len();
 
     if let Some(index) = keybindings::handle_direct_selection(key, suggestion_count) {
-        #[cfg(debug_assertions)]
-        log::debug!("Direct selection matched: index={}", index);
-
         if let Some(suggestion) = ai_state.suggestions.get(index) {
-            #[cfg(debug_assertions)]
-            log::debug!("Applying suggestion: query={}", suggestion.query);
-
             apply_suggestion(suggestion, input_state, query_state, autocomplete_state);
             ai_state.selection.clear_selection();
             return true;
@@ -222,22 +208,12 @@ fn process_response(ai_state: &mut AiState, response: AiResponse) {
     match response {
         AiResponse::Chunk { text, request_id } => {
             if request_id < current_request_id {
-                log::debug!(
-                    "Ignoring stale chunk from request {} (current: {})",
-                    request_id,
-                    current_request_id
-                );
                 return;
             }
             ai_state.append_chunk(&text);
         }
         AiResponse::Complete { request_id } => {
             if request_id < current_request_id {
-                log::debug!(
-                    "Ignoring stale complete from request {} (current: {})",
-                    request_id,
-                    current_request_id
-                );
                 return;
             }
             ai_state.complete_request();
@@ -249,7 +225,6 @@ fn process_response(ai_state: &mut AiState, response: AiResponse) {
         // The CancellationToken is tied to a specific request, so when
         // we receive Cancelled, it's always for the request we cancelled.
         AiResponse::Cancelled { request_id: _ } => {
-            log::debug!("Request cancelled via token");
             ai_state.loading = false;
             ai_state.in_flight_request_id = None;
         }

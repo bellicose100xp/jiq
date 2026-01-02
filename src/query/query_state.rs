@@ -230,12 +230,6 @@ impl QueryState {
             self.last_successful_result_parsed =
                 Self::parse_first_value(&unformatted).map(Arc::new);
 
-            if self.last_successful_result_parsed.is_none() {
-                log::debug!("Failed to parse result for autocomplete caching");
-            } else {
-                log::debug!("Successfully cached parsed result for autocomplete");
-            }
-
             // Trim trailing whitespace/incomplete operators: ".services | ." → ".services"
             let base_query = Self::normalize_base_query(query);
             self.base_query_for_suggestions = Some(base_query);
@@ -265,8 +259,6 @@ impl QueryState {
             self.next_request_id = 1;
         }
 
-        log::debug!("Sending query request {} for query: {}", request_id, query);
-
         // Create cancellation token
         let cancel_token = CancellationToken::new();
         self.current_cancel_token = Some(cancel_token.clone());
@@ -288,8 +280,6 @@ impl QueryState {
                 self.in_flight_request_id = None;
                 self.current_cancel_token = None;
                 self.result = Err("Query worker disconnected".to_string());
-            } else {
-                log::debug!("Query request {} sent successfully", request_id);
             }
         } else {
             log::error!("No request channel available");
@@ -300,7 +290,6 @@ impl QueryState {
     pub fn cancel_in_flight(&mut self) {
         if let Some(token) = self.current_cancel_token.take() {
             token.cancel();
-            log::debug!("Cancelled request {:?}", self.in_flight_request_id);
         }
         self.in_flight_request_id = None;
     }
@@ -315,10 +304,7 @@ impl QueryState {
         // Take the receiver temporarily to avoid borrow checker issues
         let rx = match self.response_rx.take() {
             Some(rx) => rx,
-            None => {
-                log::debug!("poll_response: no receiver available");
-                return None;
-            }
+            None => return None,
         };
 
         // Process all available responses
@@ -365,24 +351,10 @@ impl QueryState {
                 processed,
                 request_id,
             } => {
-                log::debug!(
-                    "Processing ProcessedSuccess response for request {}",
-                    request_id
-                );
                 // Ignore stale responses
                 if Some(request_id) != current_request_id {
-                    log::debug!(
-                        "Ignoring stale processed result from request {} (current: {:?})",
-                        request_id,
-                        current_request_id
-                    );
                     return None;
                 }
-
-                log::debug!(
-                    "Updating result from processed data for request {}",
-                    request_id
-                );
 
                 // Check if result is only nulls (same logic as sync path)
                 let is_only_nulls = processed
@@ -422,9 +394,6 @@ impl QueryState {
                     // Null result - preserve ALL cache including rendered output
                     // Only update self.result so it shows as "null" in error state
                     self.result = Ok(processed.output.as_ref().clone());
-                    log::debug!(
-                        "Null result - preserving all cached values including rendered output"
-                    );
                 }
 
                 Some(processed.query)
@@ -445,11 +414,6 @@ impl QueryState {
                     return Some(query);
                 }
 
-                log::debug!(
-                    "Ignoring stale error from request {} (current: {:?})",
-                    request_id,
-                    current_request_id
-                );
                 None
             }
             QueryResponse::Cancelled { request_id } => {

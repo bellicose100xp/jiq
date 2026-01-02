@@ -118,11 +118,7 @@ async fn worker_loop(
     // Check if provider was created successfully
     let provider = match provider_result {
         Ok(p) => Some(p),
-        Err(e) => {
-            // Log the error but don't send it yet - wait for a request
-            log::debug!("AI provider not configured: {}", e);
-            None
-        }
+        Err(_e) => None,
     };
 
     // Process requests until the channel is closed
@@ -139,8 +135,6 @@ async fn worker_loop(
             }
         }
     }
-
-    log::debug!("AI worker thread shutting down");
 }
 
 /// Handle a query request asynchronously
@@ -162,7 +156,6 @@ async fn handle_query_async(
     // Check if already cancelled before starting
     if cancel_token.is_cancelled() {
         let _ = response_tx.send(AiResponse::Cancelled { request_id });
-        log::debug!("Request {} cancelled before starting", request_id);
         return;
     }
 
@@ -177,13 +170,6 @@ async fn handle_query_async(
         }
     };
 
-    // Log which provider is being used
-    log::debug!(
-        "Using {} provider for request {}",
-        provider.provider_name(),
-        request_id
-    );
-
     // Stream the response with cancellation support
     // The async provider handles cancellation internally via tokio::select!
     match provider
@@ -197,7 +183,6 @@ async fn handle_query_async(
         Err(AiError::Cancelled) => {
             // Request was cancelled - send Cancelled response
             let _ = response_tx.send(AiResponse::Cancelled { request_id });
-            log::debug!("Request {} cancelled", request_id);
         }
         Err(e) => {
             let _ = response_tx.send(AiResponse::Error(e.to_string()));

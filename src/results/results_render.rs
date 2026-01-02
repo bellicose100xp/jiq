@@ -176,19 +176,6 @@ pub fn render_pane(app: &mut App, frame: &mut Frame, area: Rect) {
 
         // Apply search highlights only to visible viewport
         let final_text = if app.search.is_visible() && !app.search.matches().is_empty() {
-            #[cfg(debug_assertions)]
-            {
-                if let Some(current_match) = app.search.current_match() {
-                    log::debug!(
-                        "render: applying highlights, current_match at line={} col={} len={}, scroll=({}, {})",
-                        current_match.line,
-                        current_match.col,
-                        current_match.len,
-                        app.results_scroll.offset,
-                        app.results_scroll.h_offset
-                    );
-                }
-            }
             apply_search_highlights(
                 viewport_text,
                 &app.search,

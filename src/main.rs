@@ -105,6 +105,9 @@ fn main() -> Result<()> {
     // Output after terminal restore to prevent corruption
     handle_output(&app)?;
 
+    #[cfg(debug_assertions)]
+    log::debug!("=== JIQ DEBUG SESSION ENDED ===");
+
     Ok(())
 }
 

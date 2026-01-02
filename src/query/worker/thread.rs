@@ -86,20 +86,12 @@ fn worker_loop(
     request_rx: Receiver<QueryRequest>,
     response_tx: Sender<QueryResponse>,
 ) {
-    log::debug!("Query worker thread started");
     let executor = JqExecutor::new(json_input.to_string());
 
     // Process requests until channel closes
     while let Ok(request) = request_rx.recv() {
-        log::debug!(
-            "Worker received request {}: {}",
-            request.request_id,
-            request.query
-        );
         handle_request(&executor, request, &response_tx);
     }
-
-    log::debug!("Query worker thread shutting down");
 }
 
 /// Handle a single query request
@@ -117,35 +109,23 @@ fn handle_request(
     }
 
     // Execute query with cancellation support
-    log::debug!("Executing query {} with jq", request.request_id);
     let query = request.query.clone();
     match executor.execute_with_cancel(&request.query, &request.cancel_token) {
         Ok(output) => {
-            log::debug!(
-                "Query {} succeeded, preprocessing result",
-                request.request_id
-            );
-
             // Preprocess result (expensive operations done in worker thread)
             match preprocess_result(output, &query, &request.cancel_token) {
                 Ok(processed) => {
-                    log::debug!(
-                        "Query {} preprocessing complete, sending response",
-                        request.request_id
-                    );
                     let _ = response_tx.send(QueryResponse::ProcessedSuccess {
                         processed,
                         request_id: request.request_id,
                     });
                 }
                 Err(QueryError::Cancelled) => {
-                    log::debug!("Query {} preprocessing was cancelled", request.request_id);
                     let _ = response_tx.send(QueryResponse::Cancelled {
                         request_id: request.request_id,
                     });
                 }
                 Err(e) => {
-                    log::debug!("Query {} preprocessing failed: {}", request.request_id, e);
                     let _ = response_tx.send(QueryResponse::Error {
                         message: e.to_string(),
                         query: query.clone(),
@@ -155,13 +135,11 @@ fn handle_request(
             }
         }
         Err(QueryError::Cancelled) => {
-            log::debug!("Query {} was cancelled", request.request_id);
             let _ = response_tx.send(QueryResponse::Cancelled {
                 request_id: request.request_id,
             });
         }
         Err(e) => {
-            log::debug!("Query {} failed: {}", request.request_id, e);
             let _ = response_tx.send(QueryResponse::Error {
                 message: e.to_string(),
                 query: request.query,

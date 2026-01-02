@@ -1,8 +1,5 @@
 //! Query string manipulation utilities for autocomplete insertion
 
-#[cfg(debug_assertions)]
-use log::debug;
-
 /// Extract middle query: everything between base and current field being typed
 ///
 /// Examples:
@@ -38,16 +35,6 @@ pub fn extract_middle_query(
         before_cursor.len().saturating_sub(partial.len() + 1)
     };
 
-    #[cfg(debug_assertions)]
-    debug!(
-        "extract_middle_query: current_query='{}' before_cursor='{}' partial='{}' trigger_pos={} base_len={}",
-        current_query,
-        before_cursor,
-        partial,
-        trigger_pos_in_before_cursor,
-        base_query.len()
-    );
-
     // Middle is everything from end of base to (but not including) trigger
     let base_len = base_query.len();
     if trigger_pos_in_before_cursor <= base_len {
@@ -58,9 +45,6 @@ pub fn extract_middle_query(
     // Extract middle - preserve all whitespace as it may be significant
     // (e.g., "then " needs the space before the field access)
     let middle = current_query[base_len..trigger_pos_in_before_cursor].to_string();
-
-    #[cfg(debug_assertions)]
-    debug!("extract_middle_query: extracted_middle='{}'", middle);
 
     middle
 }

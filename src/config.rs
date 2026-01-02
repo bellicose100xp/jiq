@@ -27,13 +27,8 @@ pub struct ConfigResult {
 pub fn load_config() -> ConfigResult {
     let config_path = get_config_path();
 
-    #[cfg(debug_assertions)]
-    log::debug!("Loading config from {:?}", config_path);
-
     // If file doesn't exist, return defaults silently
     if !config_path.exists() {
-        #[cfg(debug_assertions)]
-        log::debug!("Config file does not exist, using defaults");
         return ConfigResult {
             config: Config::default(),
             warning: None,
@@ -42,11 +37,7 @@ pub fn load_config() -> ConfigResult {
 
     // Try to read the file
     let contents = match fs::read_to_string(&config_path) {
-        Ok(contents) => {
-            #[cfg(debug_assertions)]
-            log::debug!("Config file read successfully, {} bytes", contents.len());
-            contents
-        }
+        Ok(contents) => contents,
         Err(e) => {
             #[cfg(debug_assertions)]
             log::error!("Failed to read config file {:?}: {}", config_path, e);
@@ -59,14 +50,10 @@ pub fn load_config() -> ConfigResult {
 
     // Try to parse TOML
     match toml::from_str::<Config>(&contents) {
-        Ok(config) => {
-            #[cfg(debug_assertions)]
-            log::debug!("Config parsed successfully: {:?}", config.clipboard.backend);
-            ConfigResult {
-                config,
-                warning: None,
-            }
-        }
+        Ok(config) => ConfigResult {
+            config,
+            warning: None,
+        },
         Err(e) => {
             #[cfg(debug_assertions)]
             log::error!("Failed to parse config file {:?}: {}", config_path, e);

@@ -10,9 +10,6 @@ use crate::autocomplete::autocomplete_state::Suggestion;
 use crate::autocomplete::{SuggestionContext, analyze_context, find_char_before_field_access};
 use crate::query::{CharType, QueryState};
 
-#[cfg(debug_assertions)]
-use log::debug;
-
 // Re-export sub-module functions
 pub use self::cursor::move_cursor_to_column;
 pub use self::query_manipulation::extract_middle_query;
@@ -91,12 +88,6 @@ pub fn insert_suggestion(
             &query[cursor_pos..]
         );
 
-        #[cfg(debug_assertions)]
-        debug!(
-            "function_context_replacement: partial='{}' new_query='{}'",
-            partial, new_query
-        );
-
         textarea.delete_line_by_head();
         textarea.insert_str(&new_query);
 
@@ -115,12 +106,6 @@ pub fn insert_suggestion(
             &query[..replacement_start],
             suggestion_text,
             &query[cursor_pos..]
-        );
-
-        #[cfg(debug_assertions)]
-        debug!(
-            "object_key_context_replacement: partial='{}' new_query='{}'",
-            partial, new_query
         );
 
         textarea.delete_line_by_head();
@@ -210,9 +195,6 @@ pub fn insert_suggestion(
 
     textarea.delete_line_by_head();
     textarea.insert_str(&new_query);
-
-    #[cfg(debug_assertions)]
-    debug!("query_after_insertion: '{}'", textarea.lines()[0]);
 
     let target_pos = new_query.len();
     move_cursor_to_column(textarea, target_pos);
