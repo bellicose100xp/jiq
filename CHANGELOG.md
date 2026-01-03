@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.9.2] - 2026-01-02
+
+### Changed
+- Code cleanup and quality improvements
+  - Removed duplicate execute() method in query module
+  - Fixed clippy linting warnings for improved code quality
+
 ## [3.9.1] - 2026-01-02
 
 ### Performance
