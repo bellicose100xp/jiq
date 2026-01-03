@@ -7,7 +7,8 @@ use tokio_util::sync::CancellationToken;
 fn test_identity_filter() {
     let json = r#"{"name": "Alice", "age": 30}"#;
     let executor = JqExecutor::new(json.to_string());
-    let result = executor.execute(".");
+    let cancel_token = CancellationToken::new();
+    let result = executor.execute_with_cancel(".", &cancel_token);
 
     assert!(result.is_ok());
     let output = result.unwrap();
@@ -19,7 +20,8 @@ fn test_identity_filter() {
 fn test_empty_query_defaults_to_identity() {
     let json = r#"{"name": "Bob"}"#;
     let executor = JqExecutor::new(json.to_string());
-    let result = executor.execute("");
+    let cancel_token = CancellationToken::new();
+    let result = executor.execute_with_cancel("", &cancel_token);
 
     assert!(result.is_ok());
     let output = result.unwrap();
@@ -30,7 +32,8 @@ fn test_empty_query_defaults_to_identity() {
 fn test_field_selection() {
     let json = r#"{"name": "Charlie", "age": 25, "city": "NYC"}"#;
     let executor = JqExecutor::new(json.to_string());
-    let result = executor.execute(".name");
+    let cancel_token = CancellationToken::new();
+    let result = executor.execute_with_cancel(".name", &cancel_token);
 
     assert!(result.is_ok());
     let output = result.unwrap();
@@ -42,7 +45,8 @@ fn test_field_selection() {
 fn test_array_iteration() {
     let json = r#"[{"id": 1}, {"id": 2}, {"id": 3}]"#;
     let executor = JqExecutor::new(json.to_string());
-    let result = executor.execute(".[]");
+    let cancel_token = CancellationToken::new();
+    let result = executor.execute_with_cancel(".[]", &cancel_token);
 
     assert!(result.is_ok());
     let output = result.unwrap();
@@ -57,18 +61,20 @@ fn test_array_iteration() {
 fn test_invalid_query_returns_error() {
     let json = r#"{"name": "Dave"}"#;
     let executor = JqExecutor::new(json.to_string());
-    let result = executor.execute(".invalid.[syntax");
+    let cancel_token = CancellationToken::new();
+    let result = executor.execute_with_cancel(".invalid.[syntax", &cancel_token);
 
     assert!(result.is_err());
     let error = result.unwrap_err();
-    assert!(!error.is_empty());
+    assert!(!error.to_string().is_empty());
 }
 
 #[test]
 fn test_nested_field_access() {
     let json = r#"{"user": {"name": "Eve", "age": 28}}"#;
     let executor = JqExecutor::new(json.to_string());
-    let result = executor.execute(".user.name");
+    let cancel_token = CancellationToken::new();
+    let result = executor.execute_with_cancel(".user.name", &cancel_token);
 
     assert!(result.is_ok());
     let output = result.unwrap();
@@ -80,7 +86,8 @@ fn test_color_output_flag_present() {
     // This test verifies that ANSI color codes are present in output
     let json = r#"{"key": "value"}"#;
     let executor = JqExecutor::new(json.to_string());
-    let result = executor.execute(".");
+    let cancel_token = CancellationToken::new();
+    let result = executor.execute_with_cancel(".", &cancel_token);
 
     assert!(result.is_ok());
     let output = result.unwrap();

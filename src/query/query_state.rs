@@ -100,7 +100,10 @@ impl QueryState {
     /// Spawns a background worker thread for async query execution.
     pub fn new(json_input: String) -> Self {
         let executor = JqExecutor::new(json_input.clone());
-        let result = executor.execute(".");
+        let cancel_token = CancellationToken::new();
+        let result = executor
+            .execute_with_cancel(".", &cancel_token)
+            .map_err(|e| e.to_string());
         let last_successful_result = result.as_ref().ok().map(|s| Arc::new(s.clone()));
         let last_successful_result_unformatted = last_successful_result
             .as_ref()
@@ -178,7 +181,11 @@ impl QueryState {
     /// Execute a query and update results
     /// Only caches non-null results for autosuggestions
     pub fn execute(&mut self, query: &str) {
-        self.result = self.executor.execute(query);
+        let cancel_token = CancellationToken::new();
+        self.result = self
+            .executor
+            .execute_with_cancel(query, &cancel_token)
+            .map_err(|e| e.to_string());
         if let Ok(result) = &self.result {
             self.update_successful_result(result.clone(), query);
         }

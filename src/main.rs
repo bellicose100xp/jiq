@@ -197,7 +197,8 @@ fn handle_output(app: &App) -> Result<()> {
             if let Some(query_state) = &app.query {
                 let json_input = query_state.executor.json_input();
                 let executor = JqExecutor::new(json_input.to_string());
-                match executor.execute(app.query()) {
+                let cancel_token = tokio_util::sync::CancellationToken::new();
+                match executor.execute_with_cancel(app.query(), &cancel_token) {
                     Ok(result) => println!("{}", result),
                     Err(e) => eprintln!("Error: {}", e),
                 }
