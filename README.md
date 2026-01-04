@@ -10,7 +10,7 @@
 
 - **Real-time query execution** - See results as you type
 - **AI assistant** - Get intelligent query suggestions, error fixes, and natural language interpretation
-- **[EXPERIMENTAL] Context-aware autocomplete** - Next function or field suggestion with JSON type information for fields
+- **Context-aware autocomplete** - Next function or field suggestion with JSON type information for fields
 - **Function tooltip** - Quick reference help for jq functions with examples
 - **Search in results** - Find and navigate text in JSON output with highlighting
 - **Query history** - Searchable history of successful queries
