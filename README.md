@@ -324,7 +324,7 @@ model = "local-model"
 [ai.openai]
 api_key = "your-xai-api-key"
 base_url = "https://api.x.ai/v1"
-model = "grok-beta"
+model = "grok-4-fast-non-reasoning"
 
 # Groq
 [ai.openai]
@@ -335,8 +335,8 @@ model = "llama-3.3-70b-versatile"
 [ai.gemini]
 # Get your API key from: https://aistudio.google.com/apikey
 api_key = "AIza..."
-# Gemini model to use (e.g., "gemini-2.0-flash-exp", "gemini-1.5-flash")
-model = "gemini-3-flash"
+# Gemini model to use (e.g., "gemini-3-flash-preview", "gemini-1.5-flash")
+model = "gemini-3-flash-preview"
 
 [ai.bedrock]
 region = "us-east-1"
