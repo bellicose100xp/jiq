@@ -337,11 +337,11 @@ model = "llama3"
 base_url = "http://localhost:1234/v1"
 model = "local-model"
 
-# Groq (cloud)
+# x.ai Grok (cloud)
 [ai.openai]
-api_key = "your-groq-api-key"
-base_url = "https://api.groq.com/openai/v1"
-model = "llama-3.3-70b-versatile"
+api_key = "your-xai-api-key"
+base_url = "https://api.x.ai/v1"
+model = "grok-beta"
 
 # ─────────────────────────────────────────────────────────
 # Gemini
