@@ -297,25 +297,42 @@ provider = "anthropic"
 # Smaller values send less context and decrease token usage/costs
 max_context_length = 100000
 
+# ─────────────────────────────────────────────────────────
+# Anthropic
+# ─────────────────────────────────────────────────────────
 [ai.anthropic]
 # Get your API key from: https://console.anthropic.com/settings/keys
 api_key = "your-api-key-here"
 model = "claude-haiku-4-5-20251001"
 
+# ─────────────────────────────────────────────────────────
 # OpenAI
+# ─────────────────────────────────────────────────────────
 [ai.openai]
 # Get your OpenAI API key from: https://platform.openai.com/api-keys
 api_key = "sk-proj-..."
 model = "gpt-4o-mini"
 
-# OpenAI-compatible providers (use base_url):
+# ═════════════════════════════════════════════════════════
+# OpenAI-Compatible APIs
+# ═════════════════════════════════════════════════════════
+# Any API that follows the OpenAI format can be used by setting provider = "openai"
+# and configuring the base_url and model fields.
+#
+# Basic pattern:
+# [ai.openai]
+# base_url = "https://your-api-endpoint/v1"  # API endpoint URL
+# api_key = "your-api-key"                   # Optional: only if required by provider
+# model = "model-name"                       # Model identifier
 
-# Ollama
+# Example configurations:
+
+# Ollama (local)
 [ai.openai]
 base_url = "http://localhost:11434/v1"
 model = "llama3"
 
-# LM Studio
+# LM Studio (local)
 [ai.openai]
 base_url = "http://localhost:1234/v1"
 model = "local-model"
@@ -326,18 +343,18 @@ api_key = "your-xai-api-key"
 base_url = "https://api.x.ai/v1"
 model = "grok-4-fast-non-reasoning"
 
-# Groq
-[ai.openai]
-api_key = "your-groq-api-key"
-base_url = "https://api.groq.com/openai/v1"
-model = "llama-3.3-70b-versatile"
-
+# ─────────────────────────────────────────────────────────
+# Gemini
+# ─────────────────────────────────────────────────────────
 [ai.gemini]
 # Get your API key from: https://aistudio.google.com/apikey
 api_key = "AIza..."
 # Gemini model to use (e.g., "gemini-3-flash-preview", "gemini-1.5-flash")
 model = "gemini-3-flash-preview"
 
+# ─────────────────────────────────────────────────────────
+# AWS Bedrock
+# ─────────────────────────────────────────────────────────
 [ai.bedrock]
 region = "us-east-1"
 model = "global.anthropic.claude-haiku-4-5-20251001-v1:0"
