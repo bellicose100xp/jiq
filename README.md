@@ -290,7 +290,7 @@ backend = "auto"
 # - OpenAI: gpt-4o-mini
 # - Gemini: gemini-3-flash
 enabled = true
-# Provider: "anthropic" (default), "openai", "gemini", or "bedrock"
+# Provider: "anthropic", "openai", "gemini", or "bedrock"
 provider = "anthropic"
 # Character limit at which JSON schema and output samples are truncated (default: 100000)
 # Larger values send more context to AI but increase token usage/costs
