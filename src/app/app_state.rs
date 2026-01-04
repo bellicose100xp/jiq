@@ -63,7 +63,21 @@ impl App {
         let provider_name = match config.ai.provider {
             Some(crate::config::ai_types::AiProviderType::Anthropic) => "Anthropic",
             Some(crate::config::ai_types::AiProviderType::Bedrock) => "Bedrock",
-            Some(crate::config::ai_types::AiProviderType::Openai) => "OpenAI",
+            Some(crate::config::ai_types::AiProviderType::Openai) => {
+                // Check if using custom OpenAI-compatible endpoint
+                let is_custom = config
+                    .ai
+                    .openai
+                    .base_url
+                    .as_ref()
+                    .map(|url| !url.contains("api.openai.com"))
+                    .unwrap_or(false);
+                if is_custom {
+                    "OpenAI-compatible"
+                } else {
+                    "OpenAI"
+                }
+            }
             Some(crate::config::ai_types::AiProviderType::Gemini) => "Gemini",
             None => "Not Configured",
         }

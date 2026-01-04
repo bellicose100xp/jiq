@@ -77,7 +77,13 @@ impl AsyncAiProvider {
         match self {
             AsyncAiProvider::Anthropic(_) => "Anthropic",
             AsyncAiProvider::Bedrock(_) => "Bedrock",
-            AsyncAiProvider::Openai(_) => "OpenAI",
+            AsyncAiProvider::Openai(client) => {
+                if client.is_custom_endpoint() {
+                    "OpenAI-compatible"
+                } else {
+                    "OpenAI"
+                }
+            }
             AsyncAiProvider::Gemini(_) => "Gemini",
         }
     }
@@ -174,16 +180,30 @@ impl AsyncAiProvider {
                 Ok(provider)
             }
             AiProviderType::Openai => {
-                let api_key = config
+                // Helper: check if URL is OpenAI's API
+                let is_openai_url = config
                     .openai
-                    .api_key
+                    .base_url
                     .as_ref()
-                    .filter(|k| !k.trim().is_empty())
-                    .ok_or_else(|| AiError::NotConfigured {
-                        provider: "OpenAI".to_string(),
-                        message: "Missing API key. Add 'api_key' in [ai.openai] section."
-                            .to_string(),
-                    })?;
+                    .map(|u| u.contains("api.openai.com"))
+                    .unwrap_or(true); // default (None) = OpenAI
+
+                // API key required if using OpenAI (no base_url OR base_url is api.openai.com)
+                let api_key = if is_openai_url {
+                    config
+                        .openai
+                        .api_key
+                        .as_ref()
+                        .filter(|k| !k.trim().is_empty())
+                        .ok_or_else(|| AiError::NotConfigured {
+                            provider: "OpenAI".to_string(),
+                            message: "Missing API key. Add 'api_key' in [ai.openai] section."
+                                .to_string(),
+                        })?
+                        .clone()
+                } else {
+                    config.openai.api_key.clone().unwrap_or_default()
+                };
 
                 let model = config
                     .openai
@@ -195,8 +215,11 @@ impl AsyncAiProvider {
                         message: "Missing model. Add 'model' in [ai.openai] section.".to_string(),
                     })?;
 
-                let provider =
-                    AsyncAiProvider::Openai(AsyncOpenAiClient::new(api_key.clone(), model.clone()));
+                let provider = AsyncAiProvider::Openai(AsyncOpenAiClient::new(
+                    api_key,
+                    model.clone(),
+                    config.openai.base_url.clone(),
+                ));
 
                 // Use provider_name to avoid dead code warning
                 let _ = provider.provider_name();

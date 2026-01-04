@@ -288,12 +288,13 @@ backend = "auto"
 # For faster responses, prefer lightweight models:
 # - Anthropic: claude-haiku-4-5-20251001
 # - OpenAI: gpt-4o-mini
-# - Gemini: gemini-3-flash-preview, gemini-2.0-flash-exp or gemini-1.5-flash
+# - Gemini: gemini-3-flash
 enabled = true
 # Provider: "anthropic" (default), "openai", "gemini", or "bedrock"
 provider = "anthropic"
 # Character limit at which JSON schema and output samples are truncated (default: 100000)
 # Larger values send more context to AI but increase token usage/costs
+# Smaller values send less context and decrease token usage/costs
 max_context_length = 100000
 
 [ai.anthropic]
@@ -301,17 +302,41 @@ max_context_length = 100000
 api_key = "your-api-key-here"
 model = "claude-haiku-4-5-20251001"
 
+# OpenAI
 [ai.openai]
-# Get your API key from: https://platform.openai.com/api-keys
+# Get your OpenAI API key from: https://platform.openai.com/api-keys
 api_key = "sk-proj-..."
-# OpenAI model to use (e.g., "gpt-4o-mini", "gpt-4o")
 model = "gpt-4o-mini"
+
+# OpenAI-compatible providers (use base_url):
+
+# Ollama
+[ai.openai]
+base_url = "http://localhost:11434/v1"
+model = "llama3"
+
+# LM Studio
+[ai.openai]
+base_url = "http://localhost:1234/v1"
+model = "local-model"
+
+# x.ai Grok
+[ai.openai]
+api_key = "your-xai-api-key"
+base_url = "https://api.x.ai/v1"
+model = "grok-beta"
+
+# Groq
+[ai.openai]
+api_key = "your-groq-api-key"
+base_url = "https://api.groq.com/openai/v1"
+model = "llama-3.3-70b-versatile"
 
 [ai.gemini]
 # Get your API key from: https://aistudio.google.com/apikey
 api_key = "AIza..."
 # Gemini model to use (e.g., "gemini-2.0-flash-exp", "gemini-1.5-flash")
-model = "gemini-3-flash-preview"
+model = "gemini-3-flash"
 
 [ai.bedrock]
 region = "us-east-1"

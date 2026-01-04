@@ -26,16 +26,39 @@ pub struct AsyncOpenAiClient {
     client: Client,
     api_key: String,
     model: String,
+    api_url: String,
 }
 
 impl AsyncOpenAiClient {
     /// Create a new async OpenAI client
-    pub fn new(api_key: String, model: String) -> Self {
+    pub fn new(api_key: String, model: String, base_url: Option<String>) -> Self {
+        let api_url = Self::build_api_url(base_url);
         Self {
             client: Client::new(),
             api_key,
             model,
+            api_url,
         }
+    }
+
+    /// Build the API URL from an optional base URL
+    fn build_api_url(base_url: Option<String>) -> String {
+        match base_url {
+            Some(url) => {
+                let url = url.trim_end_matches('/');
+                if url.ends_with("/chat/completions") {
+                    url.to_string()
+                } else {
+                    format!("{}/chat/completions", url)
+                }
+            }
+            None => OPENAI_API_URL.to_string(),
+        }
+    }
+
+    /// Check if using a custom (non-OpenAI) endpoint
+    pub fn is_custom_endpoint(&self) -> bool {
+        !self.api_url.contains("api.openai.com")
     }
 
     /// Build the request body JSON for OpenAI Chat Completions API
@@ -111,7 +134,7 @@ impl AsyncOpenAiClient {
         // Make the POST request to OpenAI API
         let response = self
             .client
-            .post(OPENAI_API_URL)
+            .post(&self.api_url)
             .header("Authorization", format!("Bearer {}", self.api_key))
             .header("Content-Type", "application/json")
             .body(body)

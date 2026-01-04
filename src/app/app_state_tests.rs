@@ -554,6 +554,7 @@ fn test_new_with_openai_provider() {
             openai: OpenAiConfig {
                 api_key: Some("test-key".to_string()),
                 model: Some("gpt-4".to_string()),
+                base_url: None,
             },
             ..Default::default()
         },

@@ -68,6 +68,8 @@ pub struct OpenAiConfig {
     pub api_key: Option<String>,
     /// Model to use (required, e.g., "gpt-4o-mini")
     pub model: Option<String>,
+    /// Base URL for OpenAI-compatible API (optional, defaults to api.openai.com)
+    pub base_url: Option<String>,
 }
 
 /// Gemini-specific configuration
