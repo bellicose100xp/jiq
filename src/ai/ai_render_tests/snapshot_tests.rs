@@ -427,3 +427,19 @@ fn snapshot_ai_popup_openai_provider() {
     let output = render_ai_popup_to_string(&mut state, 100, 30);
     assert_snapshot!(output);
 }
+
+#[test]
+fn snapshot_ai_popup_openai_compatible_provider() {
+    let mut state = AiState::new_with_config(
+        true,
+        true,
+        "OpenAI-compatible".to_string(),
+        "grok-beta".to_string(),
+        TEST_MAX_CONTEXT_LENGTH,
+    );
+    state.visible = true;
+    state.response = "This is a response from OpenAI-compatible provider".to_string();
+
+    let output = render_ai_popup_to_string(&mut state, 100, 30);
+    assert_snapshot!(output);
+}

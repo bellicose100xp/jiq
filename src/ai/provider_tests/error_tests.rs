@@ -66,6 +66,7 @@ fn test_from_config_error_when_provider_none_even_with_all_credentials() {
         openai: OpenAiConfig {
             api_key: Some("openai-key".to_string()),
             model: Some("gpt-4".to_string()),
+            base_url: None,
         },
         gemini: GeminiConfig {
             api_key: Some("gemini-key".to_string()),
@@ -453,6 +454,7 @@ proptest! {
             openai: OpenAiConfig {
                 api_key: Some(api_key.clone()),
                 model: Some(model.clone()),
+                base_url: None,
             },
             gemini: GeminiConfig {
                 api_key: Some(api_key),

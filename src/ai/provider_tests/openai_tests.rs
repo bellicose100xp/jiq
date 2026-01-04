@@ -27,6 +27,7 @@ proptest! {
             openai: OpenAiConfig {
                 api_key: Some(api_key),
                 model: Some(model),
+                base_url: None,
             },
             gemini: GeminiConfig::default(),
         max_context_length: TEST_MAX_CONTEXT_LENGTH,
@@ -59,6 +60,7 @@ proptest! {
             openai: OpenAiConfig {
                 api_key: None,
                 model: Some(model),
+                base_url: None,
             },
             gemini: GeminiConfig::default(),
         max_context_length: TEST_MAX_CONTEXT_LENGTH,
@@ -100,6 +102,7 @@ proptest! {
             openai: OpenAiConfig {
                 api_key: Some(empty_key),
                 model: Some(model),
+                base_url: None,
             },
             gemini: GeminiConfig::default(),
         max_context_length: TEST_MAX_CONTEXT_LENGTH,
@@ -139,6 +142,7 @@ proptest! {
             openai: OpenAiConfig {
                 api_key: Some(api_key),
                 model: None,
+                base_url: None,
             },
             gemini: GeminiConfig::default(),
         max_context_length: TEST_MAX_CONTEXT_LENGTH,
@@ -180,6 +184,7 @@ proptest! {
             openai: OpenAiConfig {
                 api_key: Some(api_key),
                 model: Some(empty_model),
+                base_url: None,
             },
             gemini: GeminiConfig::default(),
         max_context_length: TEST_MAX_CONTEXT_LENGTH,
@@ -229,6 +234,7 @@ mod openai_error_snapshots {
             openai: OpenAiConfig {
                 api_key: None,
                 model: Some("gpt-4o-mini".to_string()),
+                base_url: None,
             },
             gemini: GeminiConfig::default(),
             max_context_length: TEST_MAX_CONTEXT_LENGTH,
@@ -250,6 +256,7 @@ mod openai_error_snapshots {
             openai: OpenAiConfig {
                 api_key: Some("sk-proj-test123".to_string()),
                 model: None,
+                base_url: None,
             },
             gemini: GeminiConfig::default(),
             max_context_length: TEST_MAX_CONTEXT_LENGTH,
@@ -271,6 +278,7 @@ mod openai_error_snapshots {
             openai: OpenAiConfig {
                 api_key: Some("   ".to_string()),
                 model: Some("gpt-4o-mini".to_string()),
+                base_url: None,
             },
             gemini: GeminiConfig::default(),
             max_context_length: TEST_MAX_CONTEXT_LENGTH,
@@ -292,6 +300,7 @@ mod openai_error_snapshots {
             openai: OpenAiConfig {
                 api_key: Some("sk-proj-test123".to_string()),
                 model: Some("   ".to_string()),
+                base_url: None,
             },
             gemini: GeminiConfig::default(),
             max_context_length: TEST_MAX_CONTEXT_LENGTH,
@@ -366,4 +375,64 @@ mod openai_error_snapshots {
         let error_message = format!("{}", error);
         assert_snapshot!(error_message);
     }
+}
+
+#[test]
+fn test_openai_provider_name_default() {
+    let config = AiConfig {
+        enabled: true,
+        provider: Some(AiProviderType::Openai),
+        anthropic: AnthropicConfig::default(),
+        bedrock: BedrockConfig::default(),
+        openai: OpenAiConfig {
+            api_key: Some("sk-test".to_string()),
+            model: Some("gpt-4o-mini".to_string()),
+            base_url: None,
+        },
+        gemini: GeminiConfig::default(),
+        max_context_length: TEST_MAX_CONTEXT_LENGTH,
+    };
+
+    let provider = AsyncAiProvider::from_config(&config).unwrap();
+    assert_eq!(provider.provider_name(), "OpenAI");
+}
+
+#[test]
+fn test_openai_provider_name_explicit_openai_url() {
+    let config = AiConfig {
+        enabled: true,
+        provider: Some(AiProviderType::Openai),
+        anthropic: AnthropicConfig::default(),
+        bedrock: BedrockConfig::default(),
+        openai: OpenAiConfig {
+            api_key: Some("sk-test".to_string()),
+            model: Some("gpt-4o-mini".to_string()),
+            base_url: Some("https://api.openai.com/v1".to_string()),
+        },
+        gemini: GeminiConfig::default(),
+        max_context_length: TEST_MAX_CONTEXT_LENGTH,
+    };
+
+    let provider = AsyncAiProvider::from_config(&config).unwrap();
+    assert_eq!(provider.provider_name(), "OpenAI");
+}
+
+#[test]
+fn test_openai_provider_name_custom_endpoint() {
+    let config = AiConfig {
+        enabled: true,
+        provider: Some(AiProviderType::Openai),
+        anthropic: AnthropicConfig::default(),
+        bedrock: BedrockConfig::default(),
+        openai: OpenAiConfig {
+            api_key: None,
+            model: Some("llama3".to_string()),
+            base_url: Some("http://localhost:11434/v1".to_string()),
+        },
+        gemini: GeminiConfig::default(),
+        max_context_length: TEST_MAX_CONTEXT_LENGTH,
+    };
+
+    let provider = AsyncAiProvider::from_config(&config).unwrap();
+    assert_eq!(provider.provider_name(), "OpenAI-compatible");
 }

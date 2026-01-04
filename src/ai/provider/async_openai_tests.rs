@@ -6,7 +6,8 @@ use proptest::prelude::*;
 
 #[test]
 fn test_async_openai_client_new() {
-    let client = AsyncOpenAiClient::new("sk-proj-test".to_string(), "gpt-4o-mini".to_string());
+    let client =
+        AsyncOpenAiClient::new("sk-proj-test".to_string(), "gpt-4o-mini".to_string(), None);
     // Verify it creates without panic
     assert!(format!("{:?}", client).contains("AsyncOpenAiClient"));
 }
@@ -28,6 +29,7 @@ proptest! {
         let client = AsyncOpenAiClient::new(
             api_key.clone(),
             model,
+            None,
         );
 
         // Verify the API key is stored correctly
@@ -60,6 +62,7 @@ proptest! {
         let client = AsyncOpenAiClient::new(
             api_key,
             model.clone(),
+            None,
         );
 
         // Verify the model is stored correctly
@@ -96,6 +99,7 @@ proptest! {
         let client = AsyncOpenAiClient::new(
             api_key,
             model.clone(),
+            None,
         );
 
         // Build the request body
@@ -156,7 +160,11 @@ proptest! {
 // Verify JSON structure matches API specification
 #[test]
 fn snapshot_request_body_format() {
-    let client = AsyncOpenAiClient::new("sk-proj-test123".to_string(), "gpt-4o-mini".to_string());
+    let client = AsyncOpenAiClient::new(
+        "sk-proj-test123".to_string(),
+        "gpt-4o-mini".to_string(),
+        None,
+    );
 
     let body = client
         .build_request_body("suggest jq filters for: extract user names")
@@ -193,6 +201,7 @@ proptest! {
         let client = AsyncOpenAiClient::new(
             api_key.clone(),
             model,
+            None,
         );
 
         // Verify the client stores the API key correctly
@@ -317,7 +326,7 @@ async fn test_cancellation_before_response() {
     use std::sync::mpsc;
     use tokio_util::sync::CancellationToken;
 
-    let client = AsyncOpenAiClient::new("sk-test-key".to_string(), "gpt-4o-mini".to_string());
+    let client = AsyncOpenAiClient::new("sk-test-key".to_string(), "gpt-4o-mini".to_string(), None);
 
     let (tx, _rx) = mpsc::channel();
     let cancel_token = CancellationToken::new();
@@ -440,6 +449,135 @@ fn test_channel_disconnection() {
         assert!(
             graceful_stop.is_ok(),
             "Should stop gracefully on disconnection"
+        );
+    }
+}
+
+// Tests for base_url support (Issue #65)
+
+#[test]
+fn test_default_openai_url() {
+    let client = AsyncOpenAiClient::new("sk-test".to_string(), "gpt-4o-mini".to_string(), None);
+    let debug_output = format!("{:?}", client);
+    assert!(
+        debug_output.contains("https://api.openai.com/v1/chat/completions"),
+        "Should use default OpenAI URL when base_url is None"
+    );
+}
+
+#[test]
+fn test_custom_base_url_without_trailing_slash() {
+    let client = AsyncOpenAiClient::new(
+        "test-key".to_string(),
+        "model".to_string(),
+        Some("http://localhost:11434/v1".to_string()),
+    );
+    let debug_output = format!("{:?}", client);
+    assert!(
+        debug_output.contains("http://localhost:11434/v1/chat/completions"),
+        "Should append /chat/completions to base_url"
+    );
+}
+
+#[test]
+fn test_custom_base_url_with_trailing_slash() {
+    let client = AsyncOpenAiClient::new(
+        "test-key".to_string(),
+        "model".to_string(),
+        Some("http://localhost:11434/v1/".to_string()),
+    );
+    let debug_output = format!("{:?}", client);
+    assert!(
+        debug_output.contains("http://localhost:11434/v1/chat/completions"),
+        "Should handle trailing slash correctly"
+    );
+}
+
+#[test]
+fn test_custom_base_url_with_endpoint() {
+    let client = AsyncOpenAiClient::new(
+        "test-key".to_string(),
+        "model".to_string(),
+        Some("http://localhost:11434/v1/chat/completions".to_string()),
+    );
+    let debug_output = format!("{:?}", client);
+    assert!(
+        debug_output.contains("http://localhost:11434/v1/chat/completions"),
+        "Should not duplicate /chat/completions when already present"
+    );
+}
+
+#[test]
+fn test_is_custom_endpoint_default() {
+    let client = AsyncOpenAiClient::new("sk-test".to_string(), "gpt-4o-mini".to_string(), None);
+    assert!(
+        !client.is_custom_endpoint(),
+        "Default OpenAI URL should not be considered custom"
+    );
+}
+
+#[test]
+fn test_is_custom_endpoint_openai_url() {
+    let client = AsyncOpenAiClient::new(
+        "sk-test".to_string(),
+        "gpt-4o-mini".to_string(),
+        Some("https://api.openai.com/v1".to_string()),
+    );
+    assert!(
+        !client.is_custom_endpoint(),
+        "Explicit OpenAI URL should not be considered custom"
+    );
+}
+
+#[test]
+fn test_is_custom_endpoint_ollama() {
+    let client = AsyncOpenAiClient::new(
+        "".to_string(),
+        "llama3".to_string(),
+        Some("http://localhost:11434/v1".to_string()),
+    );
+    assert!(
+        client.is_custom_endpoint(),
+        "Ollama URL should be considered custom"
+    );
+}
+
+#[test]
+fn test_is_custom_endpoint_groq() {
+    let client = AsyncOpenAiClient::new(
+        "test-key".to_string(),
+        "llama-3.3-70b".to_string(),
+        Some("https://api.groq.com/openai/v1".to_string()),
+    );
+    assert!(
+        client.is_custom_endpoint(),
+        "Groq URL should be considered custom"
+    );
+}
+
+proptest! {
+    #![proptest_config(ProptestConfig::with_cases(100))]
+
+    #[test]
+    fn prop_url_construction_formats(
+        base_url in "(http|https)://[a-z0-9.-]+:[0-9]{4}/v[0-9]/?",
+    ) {
+        let client = AsyncOpenAiClient::new(
+            "test-key".to_string(),
+            "test-model".to_string(),
+            Some(base_url.clone()),
+        );
+        let debug_output = format!("{:?}", client);
+
+        prop_assert!(
+            debug_output.contains("/chat/completions"),
+            "URL should always end with /chat/completions"
+        );
+
+        let has_single_endpoint = debug_output.matches("/chat/completions").count() == 1;
+        prop_assert!(
+            has_single_endpoint,
+            "URL should not duplicate /chat/completions"
         );
     }
 }
