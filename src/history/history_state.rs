@@ -18,6 +18,7 @@ pub struct HistoryState {
     filtered_indices: Vec<usize>,
     search_textarea: TextArea<'static>,
     selected_index: usize,
+    scroll_offset: usize,
     visible: bool,
     matcher: HistoryMatcher,
     persist_to_disk: bool,
@@ -40,6 +41,7 @@ impl HistoryState {
             filtered_indices,
             search_textarea: create_search_textarea(),
             selected_index: 0,
+            scroll_offset: 0,
             visible: false,
             matcher: HistoryMatcher::new(),
             persist_to_disk: true,
@@ -54,6 +56,7 @@ impl HistoryState {
             filtered_indices: Vec::new(),
             search_textarea: create_search_textarea(),
             selected_index: 0,
+            scroll_offset: 0,
             visible: false,
             matcher: HistoryMatcher::new(),
             persist_to_disk: false,
@@ -82,6 +85,7 @@ impl HistoryState {
         }
         self.update_filter();
         self.selected_index = 0;
+        self.scroll_offset = 0;
     }
 
     pub fn close(&mut self) {
@@ -89,6 +93,7 @@ impl HistoryState {
         self.search_textarea.select_all();
         self.search_textarea.cut();
         self.selected_index = 0;
+        self.scroll_offset = 0;
         self.filtered_indices = (0..self.entries.len()).collect();
     }
 
@@ -112,11 +117,13 @@ impl HistoryState {
     pub fn on_search_input_changed(&mut self) {
         self.update_filter();
         self.selected_index = 0;
+        self.scroll_offset = 0;
     }
 
     pub fn select_next(&mut self) {
         if !self.filtered_indices.is_empty() {
             self.selected_index = (self.selected_index + 1) % self.filtered_indices.len();
+            self.adjust_scroll_to_selection();
         }
     }
 
@@ -127,7 +134,21 @@ impl HistoryState {
             } else {
                 self.selected_index - 1
             };
+            self.adjust_scroll_to_selection();
         }
+    }
+
+    fn adjust_scroll_to_selection(&mut self) {
+        let visible_count = self.filtered_indices.len().min(MAX_VISIBLE_HISTORY);
+
+        if self.selected_index >= self.scroll_offset + visible_count {
+            self.scroll_offset = self.selected_index - visible_count + 1;
+        } else if self.selected_index < self.scroll_offset {
+            self.scroll_offset = self.selected_index;
+        }
+
+        let max_offset = self.filtered_indices.len().saturating_sub(visible_count);
+        self.scroll_offset = self.scroll_offset.min(max_offset);
     }
 
     pub fn selected_entry(&self) -> Option<&str> {
@@ -153,16 +174,16 @@ impl HistoryState {
         let entries: Vec<(usize, &str)> = self
             .filtered_indices
             .iter()
+            .skip(self.scroll_offset)
             .take(MAX_VISIBLE_HISTORY)
             .enumerate()
-            .filter_map(|(original_idx, &entry_idx)| {
+            .filter_map(|(display_idx, &entry_idx)| {
                 self.entries
                     .get(entry_idx)
-                    .map(|e| (original_idx, e.as_str()))
+                    .map(|e| (self.scroll_offset + display_idx, e.as_str()))
             })
             .collect();
 
-        // Reverse the display order but keep original indices for selection highlighting
         entries.into_iter().rev()
     }
 
