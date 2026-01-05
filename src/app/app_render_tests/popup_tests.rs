@@ -312,3 +312,39 @@ fn snapshot_tooltip_and_autocomplete_both_visible() {
     let output = render_to_string(&mut app, 120, 30);
     assert_snapshot!(output);
 }
+
+#[test]
+fn snapshot_history_popup_scrolled_middle() {
+    let json = r#"{"test": true}"#;
+    let mut app = test_app(json);
+
+    app.history = HistoryState::empty();
+    for i in 0..20 {
+        app.history.add_entry_in_memory(&format!(".entry{:02}", i));
+    }
+    app.history.open(None);
+
+    for _ in 0..16 {
+        app.history.select_next();
+    }
+
+    let output = render_to_string(&mut app, TEST_WIDTH, TEST_HEIGHT);
+    assert_snapshot!(output);
+}
+
+#[test]
+fn snapshot_history_popup_scrolled_bottom() {
+    let json = r#"{"test": true}"#;
+    let mut app = test_app(json);
+
+    app.history = HistoryState::empty();
+    for i in 0..20 {
+        app.history.add_entry_in_memory(&format!(".query{:02}", i));
+    }
+    app.history.open(None);
+
+    app.history.select_previous();
+
+    let output = render_to_string(&mut app, TEST_WIDTH, TEST_HEIGHT);
+    assert_snapshot!(output);
+}
