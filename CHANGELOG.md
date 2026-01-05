@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.10.1] - 2026-01-05
+
+### Fixed
+- **History popup scroll support** - History popup now supports mouse wheel and keyboard scrolling
+  - Added scroll support to navigate through long history lists
+  - Improves usability when viewing many saved queries
+
 ## [3.10.0] - 2026-01-03
 
 ### Added
