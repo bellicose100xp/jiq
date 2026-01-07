@@ -157,7 +157,6 @@ fn test_spawn_load_stdin_creates_loader() {
 fn test_load_stdin_sync_detects_terminal() {
     use std::io::IsTerminal;
 
-    // This test verifies the terminal detection logic exists
     // When stdin is a terminal (not piped), load_stdin_sync should error immediately
     if std::io::stdin().is_terminal() {
         let result = load_stdin_sync();
@@ -165,46 +164,13 @@ fn test_load_stdin_sync_detects_terminal() {
         match result.unwrap_err() {
             JiqError::Io(msg) => {
                 assert!(msg.contains("No input provided"));
+                assert!(msg.contains("Usage:"));
             }
             _ => panic!("Expected JiqError::Io"),
         }
     }
-}
-
-#[test]
-fn test_stdin_terminal_detection_with_subprocess() {
-    use std::process::{Command, Stdio};
-
-    // Test 1: With piped input (not a terminal)
-    let output = Command::new("cargo")
-        .args([
-            "test",
-            "--lib",
-            "stdin_helper_with_pipe",
-            "--",
-            "--nocapture",
-            "--ignored",
-        ])
-        .stdin(Stdio::piped())
-        .output()
-        .expect("Failed to run test");
-
-    assert!(output.status.success(), "Piped stdin test should pass");
-
-    // Test 2: Without piped input (is a terminal) - runs in normal test environment
-    // This is covered by test_load_stdin_sync_detects_terminal above
-}
-
-#[test]
-#[ignore]
-fn stdin_helper_with_pipe() {
-    // This helper test is run by test_stdin_terminal_detection_with_subprocess
-    // with piped stdin to verify the non-terminal branch
-    use std::io::IsTerminal;
-
-    // When run with piped stdin, this should be false
-    let is_term = std::io::stdin().is_terminal();
-    assert!(!is_term, "stdin should not be a terminal when piped");
+    // Note: The non-terminal branch (piped stdin) is tested in integration tests
+    // where stdin can be properly mocked with actual piped data
 }
 
 #[cfg(test)]
