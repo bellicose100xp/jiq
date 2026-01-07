@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.10.2] - 2026-01-07
+
+### Fixed
+- **Stdin terminal detection** - Immediately errors when stdin is not a terminal instead of blocking
+  - Prevents application from hanging when stdin is a pipe but not providing data
+  - Provides clear error message directing users to use file input or pipe JSON data
+  - Improved CI stability with more reliable subprocess tests
+
 ## [3.10.1] - 2026-01-05
 
 ### Fixed
