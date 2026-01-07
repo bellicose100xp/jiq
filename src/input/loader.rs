@@ -123,7 +123,13 @@ fn load_file_sync(path: &Path) -> Result<String, JiqError> {
 ///
 /// Reads from stdin and validates that it contains valid JSON.
 fn load_stdin_sync() -> Result<String, JiqError> {
-    use std::io::{self, Read};
+    use std::io::{self, IsTerminal, Read};
+
+    if io::stdin().is_terminal() {
+        return Err(JiqError::Io(
+            "No input provided. Usage: jiq <file> or echo '{}' | jiq".to_string(),
+        ));
+    }
 
     let mut buffer = String::new();
     io::stdin().read_to_string(&mut buffer)?;

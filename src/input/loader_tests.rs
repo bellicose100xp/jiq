@@ -153,6 +153,24 @@ fn test_spawn_load_stdin_creates_loader() {
     // Integration tests verify full stdin loading behavior
 }
 
+#[test]
+fn test_load_stdin_sync_detects_terminal() {
+    use std::io::IsTerminal;
+
+    // This test verifies the terminal detection logic exists
+    // When stdin is a terminal (not piped), load_stdin_sync should error immediately
+    if std::io::stdin().is_terminal() {
+        let result = load_stdin_sync();
+        assert!(result.is_err(), "Should error when stdin is a terminal");
+        match result.unwrap_err() {
+            JiqError::Io(msg) => {
+                assert!(msg.contains("No input provided"));
+            }
+            _ => panic!("Expected JiqError::Io"),
+        }
+    }
+}
+
 #[cfg(test)]
 mod property_tests {
     use super::*;
