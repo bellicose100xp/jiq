@@ -186,6 +186,8 @@ pub static JQ_FUNCTION_METADATA: &[JqFunction] = &[
     JqFunction::new("type", "type", "Get value type", false),
     JqFunction::new("tostring", "tostring", "Convert to string", false),
     JqFunction::new("tonumber", "tonumber", "Convert to number", false),
+    JqFunction::new("tojson", "tojson", "Convert value to JSON string", false),
+    JqFunction::new("fromjson", "fromjson", "Parse JSON string to value", false),
     JqFunction::new("arrays", "arrays", "Select arrays", false),
     JqFunction::new("objects", "objects", "Select objects", false),
     JqFunction::new("iterables", "iterables", "Select arrays/objects", false),
