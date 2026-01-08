@@ -657,6 +657,26 @@ pub static TOOLTIP_CONTENT: &[TooltipContent] = &[
         Some("Throws error on invalid input - use tonumber? // default"),
     ),
     TooltipContent::new(
+        "tojson",
+        "Convert value to JSON string",
+        &[
+            "tojson                  # encode value as JSON string",
+            ".config | tojson        # serialize object to JSON",
+            ".data | tojson | @base64 # encode JSON as base64",
+        ],
+        Some("Use @json format string for similar effect; tojson always valid JSON"),
+    ),
+    TooltipContent::new(
+        "fromjson",
+        "Parse JSON string to value",
+        &[
+            "fromjson                # parse JSON string",
+            ".payload | fromjson     # decode JSON field",
+            ".json_str | fromjson? // {} # safe parse with default",
+        ],
+        Some("Throws error on invalid JSON - use fromjson? // default for safety"),
+    ),
+    TooltipContent::new(
         "arrays",
         "Filter to keep only arrays",
         &[".[] | arrays            # keep only arrays"],

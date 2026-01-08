@@ -136,6 +136,8 @@ fn test_functions_not_requiring_args_have_needs_parens_false() {
         "env",
         "fromdate",
         "todate",
+        "tojson",
+        "fromjson",
     ];
 
     for name in functions_not_requiring_args {
