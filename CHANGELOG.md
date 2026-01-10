@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.10.4] - 2026-01-09
+
+### Fixed
+- **Autocomplete suggestions after question mark operator** - Suggestions no longer appear after bare `?` operator
+  - Prevents incorrect suggestions after try-catch operators
+  - Autocomplete properly detects when `?` is used as error suppression syntax
+- **Text duplication in mid-query suggestion insertion** - Fixed text duplication when accepting suggestions in the middle of a query
+  - Autocomplete now correctly replaces text at cursor position
+  - Prevents duplicate text from appearing when inserting suggestions
+
 ## [3.10.3] - 2026-01-07
 
 ### Added
