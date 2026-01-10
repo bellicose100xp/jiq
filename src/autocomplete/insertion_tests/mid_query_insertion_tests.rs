@@ -179,3 +179,67 @@ fn test_cursor_position_after_mid_query_insertion() {
         "Cursor should be after '.items', not at end"
     );
 }
+
+#[test]
+fn test_suggestion_at_query_start() {
+    let (mut textarea, mut query_state) = setup_insertion_test("");
+
+    textarea.insert_str("");
+    query_state.base_query_for_suggestions = Some(".".to_string());
+
+    position_cursor_at(&mut textarea, 0);
+
+    let suggestion = test_suggestion(".services");
+    insert_suggestion(&mut textarea, &mut query_state, &suggestion);
+
+    let result: &str = textarea.lines()[0].as_ref();
+    assert_eq!(result, ".services");
+}
+
+#[test]
+fn test_array_suggestion_at_partial_start() {
+    let (mut textarea, mut query_state) = setup_insertion_test("");
+
+    textarea.insert_str("x");
+    query_state.base_query_for_suggestions = Some(".".to_string());
+
+    position_cursor_at(&mut textarea, 1);
+
+    let suggestion = test_suggestion("[]");
+    insert_suggestion(&mut textarea, &mut query_state, &suggestion);
+
+    let result: &str = textarea.lines()[0].as_ref();
+    assert_eq!(result, "[]");
+}
+
+#[test]
+fn test_no_suggestions_after_bare_question_mark() {
+    let query = ".services[]?";
+    let cursor_pos = query.len();
+    let before_cursor = &query[..cursor_pos];
+
+    let mut brace_tracker = crate::autocomplete::BraceTracker::new();
+    brace_tracker.rebuild(before_cursor);
+    let (context, _partial) = crate::autocomplete::analyze_context(before_cursor, &brace_tracker);
+
+    assert_eq!(
+        context,
+        crate::autocomplete::SuggestionContext::FunctionContext
+    );
+}
+
+#[test]
+fn test_suggestions_after_question_mark_with_dot() {
+    let query = ".services[]?.";
+    let cursor_pos = query.len();
+    let before_cursor = &query[..cursor_pos];
+
+    let mut brace_tracker = crate::autocomplete::BraceTracker::new();
+    brace_tracker.rebuild(before_cursor);
+    let (context, _partial) = crate::autocomplete::analyze_context(before_cursor, &brace_tracker);
+
+    assert_eq!(
+        context,
+        crate::autocomplete::SuggestionContext::FieldContext
+    );
+}
