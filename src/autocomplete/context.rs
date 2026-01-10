@@ -182,12 +182,12 @@ pub fn analyze_context(
         };
         return (SuggestionContext::FieldContext, field_partial);
     } else if let Some(stripped) = partial.strip_prefix('?') {
-        let field_partial = if let Some(after_dot) = stripped.strip_prefix('.') {
-            after_dot.to_string()
+        if let Some(after_dot) = stripped.strip_prefix('.') {
+            return (SuggestionContext::FieldContext, after_dot.to_string());
         } else {
-            String::new()
-        };
-        return (SuggestionContext::FieldContext, field_partial);
+            // Bare '?' without following '.' - no suggestions
+            return (SuggestionContext::FunctionContext, String::new());
+        }
     }
 
     if start > 0 {

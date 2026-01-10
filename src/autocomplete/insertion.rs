@@ -148,18 +148,13 @@ pub fn insert_suggestion(
             } else if cursor_pos > partial.len() {
                 // User has edited - replace the ".partial" with array syntax
                 let pos_before_partial = cursor_pos - partial.len();
-                if pos_before_partial > 0 && query.chars().nth(pos_before_partial - 1) == Some('.')
-                {
-                    pos_before_partial - 1
-                } else {
-                    cursor_pos
-                }
+                // In FieldContext, there's always a '.' trigger before the partial
+                pos_before_partial - 1
             } else {
                 cursor_pos
             }
         } else {
-            // No base query - just append
-            cursor_pos
+            unreachable!("base_query is always Some - initialized in QueryState::new()")
         }
     } else if suggestion_text.starts_with('[')
         || suggestion_text.starts_with('{')
