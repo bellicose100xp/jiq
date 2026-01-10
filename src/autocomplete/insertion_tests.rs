@@ -9,6 +9,8 @@ mod edge_case_tests;
 mod field_context_tests;
 #[path = "insertion_tests/function_context_tests.rs"]
 mod function_context_tests;
+#[path = "insertion_tests/mid_query_insertion_tests.rs"]
+mod mid_query_insertion_tests;
 #[path = "insertion_tests/property_tests.rs"]
 mod property_tests;
 #[path = "insertion_tests/query_execution_tests.rs"]

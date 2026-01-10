@@ -32,24 +32,6 @@ pub enum ResultType {
     Null,
 }
 
-/// Type of character that precedes the trigger character
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum CharType {
-    PipeOperator, // |
-    Semicolon,    // ;
-    Comma,        // ,
-    Colon,        // :
-    OpenParen,    // (
-    OpenBracket,  // [
-    OpenBrace,    // {
-    CloseBracket, // ]
-    CloseBrace,   // }
-    CloseParen,   // )
-    QuestionMark, // ?
-    Dot,          // .
-    NoOp,         // Regular identifier character
-}
-
 /// Query execution state
 pub struct QueryState {
     pub executor: JqExecutor,
@@ -507,26 +489,6 @@ impl QueryState {
             Value::Number(_) => ResultType::Number,
             Value::Bool(_) => ResultType::Boolean,
             Value::Null => ResultType::Null,
-        }
-    }
-
-    /// Classify a character into its CharType
-    pub fn classify_char(ch: Option<char>) -> CharType {
-        match ch {
-            Some('|') => CharType::PipeOperator,
-            Some(';') => CharType::Semicolon,
-            Some(',') => CharType::Comma,
-            Some(':') => CharType::Colon,
-            Some('(') => CharType::OpenParen,
-            Some('[') => CharType::OpenBracket,
-            Some('{') => CharType::OpenBrace,
-            Some(']') => CharType::CloseBracket,
-            Some('}') => CharType::CloseBrace,
-            Some(')') => CharType::CloseParen,
-            Some('?') => CharType::QuestionMark,
-            Some('.') => CharType::Dot,
-            Some(_) => CharType::NoOp,
-            None => CharType::NoOp,
         }
     }
 
