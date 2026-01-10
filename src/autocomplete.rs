@@ -17,9 +17,7 @@ pub use brace_tracker::BraceTracker;
 pub use autocomplete_state::{
     AutocompleteState, JsonFieldType, Suggestion, SuggestionType, update_suggestions_from_app,
 };
-pub use context::{
-    SuggestionContext, analyze_context, find_char_before_field_access, get_suggestions,
-};
+pub use context::{SuggestionContext, analyze_context, get_suggestions};
 pub use insertion::insert_suggestion_from_app;
 
 use crate::query::ResultType;

@@ -1,4 +1,4 @@
-use crate::autocomplete::find_char_before_field_access;
+use crate::autocomplete::context::find_char_before_field_access;
 
 #[test]
 fn test_char_before_field_after_pipe() {
