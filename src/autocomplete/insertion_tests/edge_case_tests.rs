@@ -191,3 +191,26 @@ fn test_base_query_fallback_when_none() {
     let result: &str = textarea.lines()[0].as_ref();
     assert!(result.contains("field"));
 }
+
+#[test]
+fn test_array_iteration_when_cursor_at_partial_start() {
+    // Test edge case: cursor_pos <= partial_len in calculate_iteration_syntax_start
+    // This happens when accepting [] suggestion with cursor very close to start
+    let (mut textarea, mut query_state) = setup_insertion_test("");
+
+    textarea.delete_line_by_head();
+    textarea.insert_str(".a");
+
+    // Set base_query different from before_cursor to trigger the edited branch
+    query_state.base_query_for_suggestions = Some(".".to_string());
+    query_state.base_type_for_suggestions = Some(ResultType::Array);
+
+    // Accept [].items suggestion where cursor_pos (2) <= partial_len (1)
+    // This tests the else branch: cursor_pos when cursor_pos <= partial_len
+    let suggestion = test_suggestion("[].items");
+    insert_suggestion(&mut textarea, &mut query_state, &suggestion);
+
+    let result: &str = textarea.lines()[0].as_ref();
+    // Should insert at cursor position without going negative
+    assert!(result.contains("[].items"));
+}
