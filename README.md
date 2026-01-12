@@ -117,6 +117,7 @@ curl https://api.example.com/data | jiq
 | `←` / `→` | Move cursor |
 | `Home` / `End` | Jump to line start/end |
 | `Backspace` / `Delete` | Delete characters |
+| `Ctrl+d` / `Ctrl+u` | Scroll results half page down/up |
 | `ESC` | Switch to NORMAL mode / Close autocomplete |
 
 </details>
@@ -162,6 +163,11 @@ curl https://api.example.com/data | jiq
 | `u` | Undo |
 | `Ctrl+r` | Redo |
 
+**Results Navigation**
+| Key | Action |
+|-----|--------|
+| `Ctrl+d` / `Ctrl+u` | Scroll results half page down/up |
+
 </details>
 
 <details>
@@ -175,8 +181,8 @@ curl https://api.example.com/data | jiq
 | `H` / `L` | Scroll 10 columns |
 | `0` / `^` | Jump to left edge |
 | `$` | Jump to right edge |
-| `Ctrl+d` / `PageDown` | Scroll half page down |
-| `Ctrl+u` / `PageUp` | Scroll half page up |
+| `Ctrl+d` / `PageDown` | Scroll half page down (also works from input field) |
+| `Ctrl+u` / `PageUp` | Scroll half page up (also works from input field) |
 | `g` / `Home` | Jump to top |
 | `G` / `End` | Jump to bottom |
 

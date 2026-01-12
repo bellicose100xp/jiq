@@ -103,6 +103,16 @@ impl App {
             return;
         }
 
+        if key.code == KeyCode::Char('d') && key.modifiers.contains(KeyModifiers::CONTROL) {
+            self.results_scroll.page_down();
+            return;
+        }
+
+        if key.code == KeyCode::Char('u') && key.modifiers.contains(KeyModifiers::CONTROL) {
+            self.results_scroll.page_up();
+            return;
+        }
+
         if self.input.editor_mode == EditorMode::Insert && self.autocomplete.is_visible() {
             match key.code {
                 KeyCode::Down => {

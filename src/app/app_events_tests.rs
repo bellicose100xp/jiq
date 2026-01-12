@@ -1,7 +1,11 @@
 //! Tests for app_events
 
-use crate::test_utils::test_helpers::test_app;
+use crate::app::Focus;
+use crate::editor::EditorMode;
+use crate::test_utils::test_helpers::{app_with_query, key_with_mods, test_app};
 use proptest::prelude::*;
+use ratatui::crossterm::event::{KeyCode, KeyModifiers};
+use std::sync::Arc;
 
 #[test]
 fn test_paste_event_inserts_text() {
@@ -123,4 +127,114 @@ proptest! {
             "Query text should match pasted text"
         );
     }
+}
+
+#[test]
+fn test_ctrl_d_scrolls_results_from_input_field_insert_mode() {
+    let mut app = app_with_query(".");
+    app.focus = Focus::InputField;
+    app.input.editor_mode = EditorMode::Insert;
+
+    let content: String = (0..50).map(|i| format!("line{}\n", i)).collect();
+    let query_state = app.query.as_mut().unwrap();
+    query_state.result = Ok(content.clone());
+    query_state.last_successful_result = Some(Arc::new(content.clone()));
+    query_state.cached_line_count = content.lines().count() as u32;
+
+    let line_count = app.results_line_count_u32();
+    app.results_scroll.update_bounds(line_count, 20);
+    app.results_scroll.offset = 0;
+
+    app.handle_key_event(key_with_mods(KeyCode::Char('d'), KeyModifiers::CONTROL));
+
+    assert_eq!(app.results_scroll.offset, 10);
+    assert_eq!(app.focus, Focus::InputField);
+}
+
+#[test]
+fn test_ctrl_u_scrolls_results_from_input_field_insert_mode() {
+    let mut app = app_with_query(".");
+    app.focus = Focus::InputField;
+    app.input.editor_mode = EditorMode::Insert;
+    app.results_scroll.offset = 20;
+    app.results_scroll.viewport_height = 20;
+
+    app.handle_key_event(key_with_mods(KeyCode::Char('u'), KeyModifiers::CONTROL));
+
+    assert_eq!(app.results_scroll.offset, 10);
+    assert_eq!(app.focus, Focus::InputField);
+}
+
+#[test]
+fn test_ctrl_d_scrolls_results_from_input_field_normal_mode() {
+    let mut app = app_with_query(".");
+    app.focus = Focus::InputField;
+    app.input.editor_mode = EditorMode::Normal;
+
+    let content: String = (0..50).map(|i| format!("line{}\n", i)).collect();
+    let query_state = app.query.as_mut().unwrap();
+    query_state.result = Ok(content.clone());
+    query_state.last_successful_result = Some(Arc::new(content.clone()));
+    query_state.cached_line_count = content.lines().count() as u32;
+
+    let line_count = app.results_line_count_u32();
+    app.results_scroll.update_bounds(line_count, 20);
+    app.results_scroll.offset = 0;
+
+    app.handle_key_event(key_with_mods(KeyCode::Char('d'), KeyModifiers::CONTROL));
+
+    assert_eq!(app.results_scroll.offset, 10);
+    assert_eq!(app.focus, Focus::InputField);
+    assert_eq!(app.input.editor_mode, EditorMode::Normal);
+}
+
+#[test]
+fn test_ctrl_u_scrolls_results_from_input_field_normal_mode() {
+    let mut app = app_with_query(".");
+    app.focus = Focus::InputField;
+    app.input.editor_mode = EditorMode::Normal;
+    app.results_scroll.offset = 20;
+    app.results_scroll.viewport_height = 20;
+
+    app.handle_key_event(key_with_mods(KeyCode::Char('u'), KeyModifiers::CONTROL));
+
+    assert_eq!(app.results_scroll.offset, 10);
+    assert_eq!(app.focus, Focus::InputField);
+    assert_eq!(app.input.editor_mode, EditorMode::Normal);
+}
+
+#[test]
+fn test_ctrl_d_scrolls_results_from_input_field_operator_mode() {
+    let mut app = app_with_query(".");
+    app.focus = Focus::InputField;
+    app.input.editor_mode = EditorMode::Operator('d');
+
+    let content: String = (0..50).map(|i| format!("line{}\n", i)).collect();
+    let query_state = app.query.as_mut().unwrap();
+    query_state.result = Ok(content.clone());
+    query_state.last_successful_result = Some(Arc::new(content.clone()));
+    query_state.cached_line_count = content.lines().count() as u32;
+
+    let line_count = app.results_line_count_u32();
+    app.results_scroll.update_bounds(line_count, 20);
+    app.results_scroll.offset = 0;
+
+    app.handle_key_event(key_with_mods(KeyCode::Char('d'), KeyModifiers::CONTROL));
+
+    assert_eq!(app.results_scroll.offset, 10);
+    assert_eq!(app.focus, Focus::InputField);
+}
+
+#[test]
+fn test_ctrl_u_scrolls_results_from_input_field_operator_mode() {
+    let mut app = app_with_query(".");
+    app.focus = Focus::InputField;
+    app.input.editor_mode = EditorMode::Operator('c');
+    app.results_scroll.offset = 20;
+    app.results_scroll.viewport_height = 20;
+
+    app.handle_key_event(key_with_mods(KeyCode::Char('u'), KeyModifiers::CONTROL));
+
+    assert_eq!(app.results_scroll.offset, 10);
+    assert_eq!(app.focus, Focus::InputField);
 }
