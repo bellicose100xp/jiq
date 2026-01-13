@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.10.6] - 2026-01-13
+
+### Added
+- **Variable autosuggestion for jq variables** - Autocomplete now suggests jq variables (`$var`)
+  - Detects variable definitions in query (`as $var`, `| . as $var`)
+  - Suggests defined variables when typing `$`
+  - Handles multiple variable definitions and scoping
+  - Improves workflow when working with jq variable assignments
+- **Variable syntax highlighting** - Variables now highlighted in distinct color for better readability
+  - All `$variable` references shown in dedicated color
+  - Helps distinguish variables from other jq syntax elements
+
+### Internal
+- Comprehensive test coverage for variable autosuggestion edge cases
+- Refactored helper functions in context.rs for improved maintainability
+- Enhanced code documentation for autocomplete helper functions
+
 ## [3.10.5] - 2026-01-12
 
 ### Added
