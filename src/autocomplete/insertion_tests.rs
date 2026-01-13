@@ -15,6 +15,8 @@ mod mid_query_insertion_tests;
 mod property_tests;
 #[path = "insertion_tests/query_execution_tests.rs"]
 mod query_execution_tests;
+#[path = "insertion_tests/variable_insertion_tests.rs"]
+mod variable_insertion_tests;
 
 // Common test utilities
 pub(crate) use super::insertion::*;

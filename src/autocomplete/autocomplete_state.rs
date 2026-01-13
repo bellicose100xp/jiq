@@ -34,6 +34,7 @@ pub enum SuggestionType {
     Field,
     Operator,
     Pattern,
+    Variable,
 }
 
 impl fmt::Display for SuggestionType {
@@ -43,6 +44,7 @@ impl fmt::Display for SuggestionType {
             SuggestionType::Field => write!(f, "field"),
             SuggestionType::Operator => write!(f, "operator"),
             SuggestionType::Pattern => write!(f, "iterator"),
+            SuggestionType::Variable => write!(f, "variable"),
         }
     }
 }

@@ -6,6 +6,7 @@ pub mod insertion;
 pub mod jq_functions;
 mod result_analyzer;
 mod scan_state;
+mod variable_extractor;
 
 #[cfg(test)]
 #[path = "autocomplete/insertion_tests.rs"]

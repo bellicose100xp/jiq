@@ -80,6 +80,7 @@ pub fn render_popup(app: &App, frame: &mut Frame, input_area: Rect) {
                 SuggestionType::Field => Color::Cyan,
                 SuggestionType::Operator => Color::Magenta,
                 SuggestionType::Pattern => Color::Green,
+                SuggestionType::Variable => Color::Red,
             };
 
             let type_label = match &suggestion.suggestion_type {

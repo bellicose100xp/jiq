@@ -23,3 +23,6 @@ mod with_entries_context_tests;
 
 #[path = "context_tests/helper_tests.rs"]
 mod helper_tests;
+
+#[path = "context_tests/variable_context_tests.rs"]
+mod variable_context_tests;

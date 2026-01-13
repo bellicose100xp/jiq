@@ -2,6 +2,7 @@ use super::autocomplete_state::{JsonFieldType, Suggestion, SuggestionType};
 use super::brace_tracker::BraceTracker;
 use super::jq_functions::filter_builtins;
 use super::result_analyzer::ResultAnalyzer;
+use super::variable_extractor::extract_variables;
 use crate::query::ResultType;
 use serde_json::Value;
 use std::sync::Arc;
@@ -16,6 +17,17 @@ fn filter_suggestions_by_partial(suggestions: Vec<Suggestion>, partial: &str) ->
     suggestions
         .into_iter()
         .filter(|s| s.text.to_lowercase().contains(&partial_lower))
+        .collect()
+}
+
+/// Filters suggestions case-sensitively (for variables which are case-sensitive in jq).
+fn filter_suggestions_case_sensitive(
+    suggestions: Vec<Suggestion>,
+    partial: &str,
+) -> Vec<Suggestion> {
+    suggestions
+        .into_iter()
+        .filter(|s| s.text.contains(partial))
         .collect()
 }
 
@@ -249,12 +261,106 @@ fn filter_suggestions_by_partial_if_nonempty(
     }
 }
 
+/// Checks if cursor is in a variable definition context where suggestions should not be shown.
+/// This includes positions after `as `, `label `, or inside destructuring patterns.
+fn is_in_variable_definition_context(before_cursor: &str) -> bool {
+    let dollar_pos = before_cursor.rfind('$');
+    let dollar_pos = match dollar_pos {
+        Some(pos) => pos,
+        None => return false,
+    };
+
+    let text_before_dollar = &before_cursor[..dollar_pos];
+    let trimmed = text_before_dollar.trim_end();
+
+    if is_after_definition_keyword(trimmed) {
+        return true;
+    }
+
+    if is_in_destructuring_pattern(trimmed) {
+        return true;
+    }
+
+    false
+}
+
+/// Checks if text ends with a definition keyword (as, label).
+fn is_after_definition_keyword(trimmed: &str) -> bool {
+    if trimmed.ends_with("as") {
+        if trimmed.len() == 2 {
+            return true;
+        }
+        let char_before = trimmed.chars().nth(trimmed.len() - 3);
+        if let Some(ch) = char_before {
+            return !ch.is_alphanumeric() && ch != '_';
+        }
+        return true;
+    }
+
+    if trimmed.ends_with("label") {
+        if trimmed.len() == 5 {
+            return true;
+        }
+        let char_before = trimmed.chars().nth(trimmed.len() - 6);
+        if let Some(ch) = char_before {
+            return !ch.is_alphanumeric() && ch != '_';
+        }
+        return true;
+    }
+
+    false
+}
+
+/// Checks if text indicates we're inside a destructuring pattern after `as`.
+fn is_in_destructuring_pattern(trimmed: &str) -> bool {
+    if trimmed.ends_with('[')
+        || trimmed.ends_with('{')
+        || trimmed.ends_with(',')
+        || trimmed.ends_with(':')
+    {
+        return has_unclosed_as_destructure(trimmed);
+    }
+    false
+}
+
+/// Checks if there's an unclosed destructuring pattern after `as`.
+fn has_unclosed_as_destructure(text: &str) -> bool {
+    for pattern in &[" as [", " as[", " as {", " as{"] {
+        if let Some(pos) = text.rfind(pattern) {
+            let after_as = &text[pos + pattern.len()..];
+
+            let open_brackets = after_as.chars().filter(|c| *c == '[').count();
+            let closed_brackets = after_as.chars().filter(|c| *c == ']').count();
+            let open_braces = after_as.chars().filter(|c| *c == '{').count();
+            let closed_braces = after_as.chars().filter(|c| *c == '}').count();
+
+            if pattern.contains('[') && open_brackets >= closed_brackets {
+                return true;
+            }
+            if pattern.contains('{') && open_braces >= closed_braces {
+                return true;
+            }
+        }
+    }
+
+    if text.ends_with("as [")
+        || text.ends_with("as[")
+        || text.ends_with("as {")
+        || text.ends_with("as{")
+    {
+        return true;
+    }
+
+    false
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[allow(clippy::enum_variant_names)]
 pub enum SuggestionContext {
     FunctionContext,
     FieldContext,
     ObjectKeyContext,
+    VariableContext,
 }
 
 pub fn get_suggestions(
@@ -303,6 +409,14 @@ pub fn get_suggestions(
             let suggestions = get_field_suggestions(result_parsed, result_type, false, true);
             filter_suggestions_by_partial(suggestions, &partial)
         }
+        SuggestionContext::VariableContext => {
+            let all_vars = extract_variables(query);
+            let suggestions: Vec<Suggestion> = all_vars
+                .into_iter()
+                .map(|name| Suggestion::new_with_type(name, SuggestionType::Variable, None))
+                .collect();
+            filter_suggestions_case_sensitive(suggestions, &partial)
+        }
     }
 }
 
@@ -327,6 +441,10 @@ pub fn analyze_context(
 
     let (start, partial) = extract_partial_token(&chars, end);
 
+    if let Some(result) = context_from_variable_prefix(&partial, before_cursor) {
+        return result;
+    }
+
     if let Some(result) = context_from_field_prefix(&partial) {
         return result;
     }
@@ -338,6 +456,24 @@ pub fn analyze_context(
     }
 
     (SuggestionContext::FunctionContext, partial)
+}
+
+/// Determines context from variable prefix ($).
+/// Returns VariableContext if typing a variable usage, None if defining a variable.
+fn context_from_variable_prefix(
+    partial: &str,
+    before_cursor: &str,
+) -> Option<(SuggestionContext, String)> {
+    if !partial.starts_with('$') {
+        return None;
+    }
+
+    if is_in_variable_definition_context(before_cursor) {
+        return None;
+    }
+
+    let var_partial = partial.to_string();
+    Some((SuggestionContext::VariableContext, var_partial))
 }
 
 pub fn find_char_before_field_access(before_cursor: &str, partial: &str) -> Option<char> {

@@ -126,6 +126,24 @@ fn insert_object_key_suggestion(
     );
 }
 
+/// Insert variable suggestion (e.g., "$x", "$ENV")
+fn insert_variable_suggestion(
+    textarea: &mut TextArea<'_>,
+    query: &str,
+    cursor_pos: usize,
+    partial: &str,
+    suggestion: &Suggestion,
+) {
+    let replacement_start = cursor_pos.saturating_sub(partial.len());
+    replace_partial_at_cursor(
+        textarea,
+        query,
+        cursor_pos,
+        replacement_start,
+        &suggestion.text,
+    );
+}
+
 /// Insert field suggestion (e.g., ".name", "[].price", "{}.key")
 fn insert_field_suggestion(
     textarea: &mut TextArea<'_>,
@@ -202,6 +220,9 @@ pub fn insert_suggestion(
                 before_cursor,
                 base_query,
             );
+        }
+        SuggestionContext::VariableContext => {
+            insert_variable_suggestion(textarea, &query, cursor_pos, &partial, suggestion);
         }
     }
 }
