@@ -6,6 +6,11 @@ use crate::query::ResultType;
 use serde_json::Value;
 use std::sync::Arc;
 
+/// Filters suggestions by matching the incomplete text the user is typing (case-insensitive).
+///
+/// # Parameters
+/// - `suggestions`: List of available suggestions
+/// - `partial`: The incomplete text being typed (e.g., "na" when typing ".na|")
 fn filter_suggestions_by_partial(suggestions: Vec<Suggestion>, partial: &str) -> Vec<Suggestion> {
     let partial_lower = partial.to_lowercase();
     suggestions
@@ -14,6 +19,14 @@ fn filter_suggestions_by_partial(suggestions: Vec<Suggestion>, partial: &str) ->
         .collect()
 }
 
+/// Skips trailing whitespace backwards from a position in the character array.
+///
+/// # Parameters
+/// - `chars`: Character array of the query text
+/// - `start`: Position to skip backwards from (0-based index)
+///
+/// # Returns
+/// Position of the last non-whitespace character before `start`.
 fn skip_trailing_whitespace(chars: &[char], start: usize) -> usize {
     let mut i = start;
     while i > 0 && chars[i - 1].is_whitespace() {
@@ -22,6 +35,18 @@ fn skip_trailing_whitespace(chars: &[char], start: usize) -> usize {
     i
 }
 
+/// Extracts the incomplete token the user is currently typing by walking backwards to a delimiter.
+///
+/// # Parameters
+/// - `chars`: Character array of the query text before cursor
+/// - `end`: Cursor position (0-based index, where extraction should end)
+///
+/// # Returns
+/// Tuple of (token_start_position, partial_text)
+///
+/// # Example
+/// Query: `map(.ser|` with cursor at position 8
+/// Returns: (5, "ser")
 fn extract_partial_token(chars: &[char], end: usize) -> (usize, String) {
     let mut start = end;
     while start > 0 {
@@ -35,6 +60,19 @@ fn extract_partial_token(chars: &[char], end: usize) -> (usize, String) {
     (start, partial)
 }
 
+/// Determines context from field access prefixes (. or ?).
+///
+/// # Parameters
+/// - `partial`: The incomplete token (e.g., ".name", "?.field", "?")
+///
+/// # Returns
+/// Some(context, field_name) or None if no prefix match
+///
+/// # Examples
+/// - ".name" → FieldContext with "name"
+/// - ".user.name" → FieldContext with "name" (only last segment)
+/// - "?.field" → FieldContext with "field"
+/// - "?" → FunctionContext with ""
 fn context_from_field_prefix(partial: &str) -> Option<(SuggestionContext, String)> {
     if let Some(stripped) = partial.strip_prefix('.') {
         let field_partial = if let Some(last_dot_pos) = partial.rfind('.') {
@@ -53,6 +91,22 @@ fn context_from_field_prefix(partial: &str) -> Option<(SuggestionContext, String
     None
 }
 
+/// Infers context by examining the character before the partial token.
+///
+/// # Parameters
+/// - `chars`: Character array of the query text
+/// - `start`: Position where the partial token starts
+/// - `partial`: The incomplete token text
+/// - `before_cursor`: Full query text before cursor position
+/// - `brace_tracker`: Tracks nested braces/brackets for object detection
+///
+/// # Returns
+/// Some(context, partial) or None if no special context detected
+///
+/// # Examples
+/// - "| name" → FunctionContext (pipe before token)
+/// - ". name" → FieldContext (dot before token)
+/// - "{name" → ObjectKeyContext (inside object literal)
 fn infer_context_from_preceding_char(
     chars: &[char],
     start: usize,
@@ -80,6 +134,19 @@ fn infer_context_from_preceding_char(
     None
 }
 
+/// Determines if field suggestions should include a leading dot.
+///
+/// # Parameters
+/// - `before_cursor`: Query text before the cursor position
+/// - `partial`: The incomplete field name being typed
+///
+/// # Returns
+/// true if suggestions need a leading dot (e.g., after |, ;, or at query start)
+///
+/// # Examples
+/// - "| na" → true (after pipe delimiter)
+/// - ".name .ag" → true (whitespace before dot)
+/// - ".name.ag" → false (already has dot)
 fn needs_leading_dot(before_cursor: &str, partial: &str) -> bool {
     let char_before_dot = find_char_before_field_access(before_cursor, partial);
 
@@ -108,6 +175,16 @@ fn needs_leading_dot(before_cursor: &str, partial: &str) -> bool {
     ) || has_whitespace_before_dot
 }
 
+/// Gets field suggestions from parsed JSON result.
+///
+/// # Parameters
+/// - `result_parsed`: Optional parsed JSON data to extract fields from
+/// - `result_type`: Type of JSON result (Object, Array, etc.)
+/// - `needs_leading_dot`: Whether suggestions should include leading dot
+/// - `suppress_array_brackets`: Whether to suppress .[] suggestions (true inside map/select)
+///
+/// # Returns
+/// List of field suggestions, or empty list if no result available.
 fn get_field_suggestions(
     result_parsed: Option<Arc<Value>>,
     result_type: Option<ResultType>,
@@ -126,6 +203,14 @@ fn get_field_suggestions(
     }
 }
 
+/// Injects .key and .value suggestions for with_entries() context.
+///
+/// # Parameters
+/// - `suggestions`: Mutable list to inject special suggestions into
+/// - `needs_leading_dot`: Whether suggestions should include leading dot
+///
+/// # Notes
+/// Inserts .value first so .key ends up at position 0 (top of suggestion list).
 fn inject_with_entries_suggestions(suggestions: &mut Vec<Suggestion>, needs_leading_dot: bool) {
     let prefix = if needs_leading_dot { "." } else { "" };
 
@@ -145,6 +230,14 @@ fn inject_with_entries_suggestions(suggestions: &mut Vec<Suggestion>, needs_lead
     );
 }
 
+/// Filters suggestions by partial text only if partial is non-empty.
+///
+/// # Parameters
+/// - `suggestions`: List of suggestions to filter
+/// - `partial`: The incomplete text being typed
+///
+/// # Returns
+/// Filtered suggestions if partial is non-empty, otherwise all suggestions.
 fn filter_suggestions_by_partial_if_nonempty(
     suggestions: Vec<Suggestion>,
     partial: &str,
