@@ -283,4 +283,75 @@ mod extract_object_destructure_tests {
         let (vars, _) = result.unwrap();
         assert_eq!(vars, vec!["$i", "$o"]);
     }
+
+    #[test]
+    fn returns_none_when_not_starting_with_brace() {
+        let chars: Vec<char> = "name: $n".chars().collect();
+        let result = extract_object_destructure_variables(&chars, 0);
+        assert_eq!(result, None);
+    }
+
+    #[test]
+    fn returns_none_when_position_out_of_bounds() {
+        let chars: Vec<char> = "{}".chars().collect();
+        let result = extract_object_destructure_variables(&chars, 10);
+        assert_eq!(result, None);
+    }
+}
+
+mod guard_check_tests {
+    use super::*;
+
+    #[test]
+    fn extract_single_variable_returns_none_for_non_dollar() {
+        let chars: Vec<char> = "foo".chars().collect();
+        let result = extract_single_variable(&chars, 0);
+        assert_eq!(result, None);
+    }
+
+    #[test]
+    fn extract_single_variable_returns_none_for_out_of_bounds() {
+        let chars: Vec<char> = "$x".chars().collect();
+        let result = extract_single_variable(&chars, 10);
+        assert_eq!(result, None);
+    }
+
+    #[test]
+    fn extract_array_destructure_returns_none_for_non_bracket() {
+        let chars: Vec<char> = "$x, $y".chars().collect();
+        let result = extract_array_destructure_variables(&chars, 0);
+        assert_eq!(result, None);
+    }
+
+    #[test]
+    fn extract_array_destructure_returns_none_for_out_of_bounds() {
+        let chars: Vec<char> = "[]".chars().collect();
+        let result = extract_array_destructure_variables(&chars, 10);
+        assert_eq!(result, None);
+    }
+}
+
+mod extract_variables_after_keyword_tests {
+    use super::*;
+
+    #[test]
+    fn returns_none_when_no_variable_after_as() {
+        let chars: Vec<char> = "as".chars().collect();
+        let result = extract_variables_after_keyword(&chars, 0);
+        assert_eq!(result, None);
+    }
+
+    #[test]
+    fn returns_none_when_no_variable_after_label() {
+        let chars: Vec<char> = "label".chars().collect();
+        let result = extract_variables_after_keyword(&chars, 0);
+        assert_eq!(result, None);
+    }
+
+    #[test]
+    fn returns_none_when_invalid_syntax_after_as() {
+        let chars: Vec<char> = "as 123".chars().collect();
+        let result = extract_variables_after_keyword(&chars, 0);
+        assert_eq!(result, None);
+    }
 }

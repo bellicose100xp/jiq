@@ -23,6 +23,7 @@ fn test_suggestion_type_display() {
     assert_eq!(SuggestionType::Field.to_string(), "field");
     assert_eq!(SuggestionType::Operator.to_string(), "operator");
     assert_eq!(SuggestionType::Pattern.to_string(), "iterator");
+    assert_eq!(SuggestionType::Variable.to_string(), "variable");
 }
 
 #[test]

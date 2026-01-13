@@ -282,3 +282,43 @@ mod mid_query_editing {
         assert!(suggestions.contains(&"$y".to_string()));
     }
 }
+
+mod definition_context_edge_cases {
+    use super::*;
+
+    #[test]
+    fn no_dollar_sign_in_query() {
+        assert_context_is_not_variable("map(.x)");
+        assert_context_is_not_variable(". | select(.y > 5)");
+    }
+
+    #[test]
+    fn as_keyword_at_start() {
+        assert_context_is_not_variable("as $x");
+    }
+
+    #[test]
+    fn label_keyword_at_start() {
+        assert_context_is_not_variable("label $out");
+    }
+
+    #[test]
+    fn as_followed_by_array_bracket() {
+        assert_context_is_not_variable(". as [$");
+    }
+
+    #[test]
+    fn as_followed_by_object_brace() {
+        assert_context_is_not_variable(". as {$");
+    }
+
+    #[test]
+    fn as_with_opening_bracket_no_space() {
+        assert_context_is_not_variable(". as[$");
+    }
+
+    #[test]
+    fn as_with_opening_brace_no_space() {
+        assert_context_is_not_variable(". as{$");
+    }
+}

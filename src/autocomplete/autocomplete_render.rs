@@ -147,3 +147,7 @@ pub fn render_popup(app: &App, frame: &mut Frame, input_area: Rect) {
 
     frame.render_widget(list, popup_area);
 }
+
+#[cfg(test)]
+#[path = "autocomplete_render_tests.rs"]
+mod autocomplete_render_tests;
