@@ -139,7 +139,7 @@ fn test_just_dot() {
 fn test_variable_reference() {
     let spans = JqHighlighter::highlight("$foo");
     assert_eq!(spans.len(), 1);
-    assert_eq!(spans[0].style.fg, None);
+    assert_eq!(spans[0].style.fg, Some(Color::Red));
 }
 
 #[test]

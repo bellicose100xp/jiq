@@ -1,4 +1,27 @@
+//! Overlay utilities for syntax-highlighted text in scrolled viewports.
+//!
+//! This module provides functions for:
+//! - Extracting the visible portion of styled spans when horizontally scrolled
+//! - Inserting a cursor indicator into styled spans
+
 use ratatui::text::Span;
+
+/// Extracts the visible portion of spans for a scrolled viewport.
+///
+/// When the user scrolls horizontally in the input field, this function
+/// determines which parts of the styled text should be displayed.
+///
+/// # Parameters
+/// - `spans`: Complete styled text spans
+/// - `scroll_offset`: Horizontal scroll position (characters from left)
+/// - `viewport_width`: Width of visible area in characters
+///
+/// # Returns
+/// Vector of spans containing only text visible in the viewport.
+///
+/// # Example
+/// For text "Hello World" with scroll_offset=3 and viewport_width=5,
+/// returns spans for "lo Wo".
 pub fn extract_visible_spans(
     spans: &[Span<'static>],
     scroll_offset: usize,
@@ -39,6 +62,20 @@ pub fn extract_visible_spans(
 
     result
 }
+
+/// Inserts a cursor indicator at the specified position within spans.
+///
+/// Splits the span containing the cursor and applies a REVERSED style modifier
+/// to the cursor character for visibility. This makes the cursor character appear
+/// with inverted colors.
+///
+/// # Parameters
+/// - `spans`: Styled text spans
+/// - `cursor_pos`: Character position for cursor (0-indexed)
+///
+/// # Returns
+/// Vector of spans with cursor character styled with REVERSED modifier.
+/// If cursor_pos is beyond text length, appends a reversed space at the end.
 pub fn insert_cursor_into_spans(
     spans: Vec<Span<'static>>,
     cursor_pos: usize,

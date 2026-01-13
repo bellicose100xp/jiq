@@ -1,5 +1,5 @@
 ---
-source: src/syntax/mod.rs
+source: src/syntax_highlight_tests/snapshot_tests.rs
 expression: serialize_spans(&spans)
 ---
 - content: reduce
@@ -15,6 +15,7 @@ expression: serialize_spans(&spans)
   fg: yellow
 - content: " "
 - content: $x
+  fg: red
 - content: " "
 - content: (
   fg: magenta
@@ -29,5 +30,6 @@ expression: serialize_spans(&spans)
   fg: magenta
 - content: " "
 - content: $x
+  fg: red
 - content: )
   fg: magenta
