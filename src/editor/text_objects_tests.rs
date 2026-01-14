@@ -267,10 +267,28 @@ mod quote_bounds_tests {
     }
 
     #[test]
+    fn cursor_on_closing_single_quote() {
+        let text = "'hello'";
+        assert_eq!(
+            find_quote_bounds(text, 6, '\'', TextObjectScope::Inner),
+            Some((1, 6))
+        );
+    }
+
+    #[test]
     fn backticks() {
         let text = "`hello`";
         assert_eq!(
             find_quote_bounds(text, 3, '`', TextObjectScope::Inner),
+            Some((1, 6))
+        );
+    }
+
+    #[test]
+    fn cursor_on_closing_backtick() {
+        let text = "`hello`";
+        assert_eq!(
+            find_quote_bounds(text, 6, '`', TextObjectScope::Inner),
             Some((1, 6))
         );
     }
