@@ -98,9 +98,10 @@ fn main() -> Result<()> {
     };
 
     let app = App::new_with_loader(loader, &config_result.config);
-    let app = run(terminal, app, config_result)?;
+    let result = run(terminal, app, config_result);
 
     restore_terminal()?;
+    let app = result?;
 
     // Output after terminal restore to prevent corruption
     handle_output(&app)?;
@@ -119,15 +120,37 @@ fn validate_jq_exists() -> Result<(), JiqError> {
 
 /// Initialize terminal with raw mode, alternate screen, and bracketed paste
 fn init_terminal() -> Result<DefaultTerminal> {
+    let hook = std::panic::take_hook();
+    std::panic::set_hook(Box::new(move |info| {
+        let _ = execute!(stdout(), DisableBracketedPaste, LeaveAlternateScreen);
+        let _ = disable_raw_mode();
+        hook(info);
+    }));
+
     enable_raw_mode()?;
-    execute!(stdout(), EnterAlternateScreen, EnableBracketedPaste)?;
-    let terminal = ratatui::Terminal::new(ratatui::backend::CrosstermBackend::new(stdout()))?;
-    Ok(terminal)
+
+    // If any subsequent operations fail, ensure raw mode is disabled
+    match execute!(stdout(), EnterAlternateScreen, EnableBracketedPaste) {
+        Ok(_) => {}
+        Err(e) => {
+            let _ = disable_raw_mode();
+            return Err(e.into());
+        }
+    }
+
+    match ratatui::Terminal::new(ratatui::backend::CrosstermBackend::new(stdout())) {
+        Ok(terminal) => Ok(terminal),
+        Err(e) => {
+            let _ = execute!(stdout(), DisableBracketedPaste, LeaveAlternateScreen);
+            let _ = disable_raw_mode();
+            Err(e.into())
+        }
+    }
 }
 
 /// Restore terminal to normal state
 fn restore_terminal() -> Result<()> {
-    execute!(stdout(), DisableBracketedPaste, LeaveAlternateScreen)?;
+    let _ = execute!(stdout(), DisableBracketedPaste, LeaveAlternateScreen);
     disable_raw_mode()?;
     Ok(())
 }
