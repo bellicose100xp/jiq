@@ -622,6 +622,49 @@ mod pipe_bounds_tests {
         let result = find_pipe_bounds(text, 7, TextObjectScope::Around);
         assert_eq!(result, Some((7, 13)));
     }
+
+    #[test]
+    fn empty_string_returns_none() {
+        assert_eq!(find_pipe_bounds("", 0, TextObjectScope::Inner), None);
+        assert_eq!(find_pipe_bounds("", 0, TextObjectScope::Around), None);
+    }
+
+    #[test]
+    fn cursor_on_pipe_around_scope() {
+        let text = ".foo | bar";
+        // Cursor on the pipe character - around scope
+        assert_eq!(
+            find_pipe_bounds(text, 5, TextObjectScope::Around),
+            Some((0, 4))
+        );
+    }
+
+    #[test]
+    fn around_single_segment_no_pipes() {
+        let text = ".foo";
+        // Single segment with no pipes - around behaves like inner
+        assert_eq!(
+            find_pipe_bounds(text, 1, TextObjectScope::Around),
+            Some((0, 4))
+        );
+    }
+
+    #[test]
+    fn around_whitespace_only_segment_returns_none() {
+        let text = ".foo |   | bar";
+        // Cursor in whitespace-only segment - around returns None
+        assert_eq!(find_pipe_bounds(text, 7, TextObjectScope::Around), None);
+    }
+
+    #[test]
+    fn cursor_beyond_text_length() {
+        let text = ".foo";
+        // Cursor beyond text length should be clamped
+        assert_eq!(
+            find_pipe_bounds(text, 100, TextObjectScope::Inner),
+            Some((0, 4))
+        );
+    }
 }
 
 mod find_text_object_bounds_tests {
@@ -661,6 +704,15 @@ mod find_text_object_bounds_tests {
                 TextObjectScope::Inner
             ),
             find_bracket_bounds(text, 3, '(', ')', TextObjectScope::Inner)
+        );
+    }
+
+    #[test]
+    fn delegates_to_pipe() {
+        let text = ".foo | bar";
+        assert_eq!(
+            find_text_object_bounds(text, 7, TextObjectTarget::Pipe, TextObjectScope::Inner),
+            find_pipe_bounds(text, 7, TextObjectScope::Inner)
         );
     }
 }
