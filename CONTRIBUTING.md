@@ -3,7 +3,7 @@
 ## Prerequisites
 
 - Rust (latest stable, 2024 edition)
-- jq ([jqlang.org/download](https://jqlang.org/download/))
+- jq v1.8.1+ ([jqlang.org/download](https://jqlang.org/download/)) - required for snapshot tests
 - cargo-insta (`cargo install cargo-insta`)
 
 ## Architecture

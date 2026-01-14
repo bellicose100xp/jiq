@@ -12,6 +12,7 @@ pub enum TextObjectTarget {
     Parentheses,
     Brackets,
     Braces,
+    Pipe,
 }
 
 impl TextObjectTarget {
@@ -25,6 +26,7 @@ impl TextObjectTarget {
             '(' | ')' | 'b' => Some(TextObjectTarget::Parentheses),
             '[' | ']' => Some(TextObjectTarget::Brackets),
             '{' | '}' | 'B' => Some(TextObjectTarget::Braces),
+            '|' => Some(TextObjectTarget::Pipe),
             _ => None,
         }
     }
@@ -38,7 +40,7 @@ impl TextObjectTarget {
             TextObjectTarget::Parentheses => Some(('(', ')')),
             TextObjectTarget::Brackets => Some(('[', ']')),
             TextObjectTarget::Braces => Some(('{', '}')),
-            TextObjectTarget::Word => None,
+            TextObjectTarget::Word | TextObjectTarget::Pipe => None,
         }
     }
 }
@@ -216,6 +218,86 @@ pub fn find_bracket_bounds(
     }
 }
 
+/// Find pipe-separated segment bounds.
+/// Pipes act as simple separators (no nesting).
+pub fn find_pipe_bounds(
+    text: &str,
+    cursor_col: usize,
+    scope: TextObjectScope,
+) -> Option<(usize, usize)> {
+    let chars: Vec<char> = text.chars().collect();
+
+    if chars.is_empty() {
+        return None;
+    }
+
+    let cursor_col = cursor_col.min(chars.len().saturating_sub(1));
+
+    // Find left boundary: nearest pipe to the left, or start of string
+    let left_pipe = (0..cursor_col).rev().find(|&i| chars[i] == '|');
+
+    // Find right boundary: nearest pipe to the right, or end of string
+    let right_pipe = ((cursor_col + 1)..chars.len()).find(|&i| chars[i] == '|');
+
+    // If cursor is on a pipe, treat it as part of the right segment
+    let (start, end) = if chars[cursor_col] == '|' {
+        let start = left_pipe.map(|p| p + 1).unwrap_or(0);
+        (start, cursor_col)
+    } else {
+        let start = left_pipe.map(|p| p + 1).unwrap_or(0);
+        let end = right_pipe.unwrap_or(chars.len());
+        (start, end)
+    };
+
+    // Trim whitespace for inner scope
+    match scope {
+        TextObjectScope::Inner => {
+            let trimmed_start = (start..end)
+                .find(|&i| !chars[i].is_whitespace())
+                .unwrap_or(end);
+            let trimmed_end = (start..end)
+                .rev()
+                .find(|&i| !chars[i].is_whitespace())
+                .map(|i| i + 1)
+                .unwrap_or(start);
+            if trimmed_start >= trimmed_end {
+                None
+            } else {
+                Some((trimmed_start, trimmed_end))
+            }
+        }
+        TextObjectScope::Around => {
+            // First find trimmed content bounds
+            let trimmed_start = (start..end)
+                .find(|&i| !chars[i].is_whitespace())
+                .unwrap_or(end);
+            let trimmed_end = (start..end)
+                .rev()
+                .find(|&i| !chars[i].is_whitespace())
+                .map(|i| i + 1)
+                .unwrap_or(start);
+
+            if trimmed_start >= trimmed_end {
+                return None;
+            }
+
+            // Include trailing pipe if present, otherwise leading pipe
+            // Also consume whitespace after the pipe for cleaner deletion
+            match (right_pipe, left_pipe) {
+                (Some(rp), _) if chars[cursor_col] != '|' => {
+                    // Find first non-whitespace after pipe, or end of string
+                    let after_pipe = ((rp + 1)..chars.len())
+                        .find(|&i| !chars[i].is_whitespace())
+                        .unwrap_or(chars.len());
+                    Some((trimmed_start, after_pipe))
+                }
+                (_, Some(lp)) => Some((lp, trimmed_end)),
+                _ => Some((trimmed_start, trimmed_end)),
+            }
+        }
+    }
+}
+
 /// Find text object boundaries based on target type.
 pub fn find_text_object_bounds(
     text: &str,
@@ -228,6 +310,7 @@ pub fn find_text_object_bounds(
         TextObjectTarget::DoubleQuote => find_quote_bounds(text, cursor_col, '"', scope),
         TextObjectTarget::SingleQuote => find_quote_bounds(text, cursor_col, '\'', scope),
         TextObjectTarget::Backtick => find_quote_bounds(text, cursor_col, '`', scope),
+        TextObjectTarget::Pipe => find_pipe_bounds(text, cursor_col, scope),
         TextObjectTarget::Parentheses | TextObjectTarget::Brackets | TextObjectTarget::Braces => {
             let (open, close) = target.delimiters()?;
             find_bracket_bounds(text, cursor_col, open, close, scope)

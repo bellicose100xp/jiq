@@ -1,5 +1,10 @@
 # JIQ Project Instructions
 
+## Prerequisites
+- **jq v1.8.1+** is required for running tests. Snapshot tests depend on specific jq error message formats.
+  - Install: `curl -Lo /tmp/jq https://github.com/jqlang/jq/releases/download/jq-1.8.1/jq-linux-amd64 && chmod +x /tmp/jq && sudo mv /tmp/jq /usr/local/bin/jq`
+  - Verify: `jq --version` should show `jq-1.8.1` or higher
+
 ## Testing
 Run tests in background mode - execution may be lengthy.
 

@@ -72,6 +72,14 @@ mod text_object_target_tests {
     }
 
     #[test]
+    fn from_char_pipe() {
+        assert_eq!(
+            TextObjectTarget::from_char('|'),
+            Some(TextObjectTarget::Pipe)
+        );
+    }
+
+    #[test]
     fn from_char_invalid() {
         assert_eq!(TextObjectTarget::from_char('x'), None);
         assert_eq!(TextObjectTarget::from_char('z'), None);
@@ -489,6 +497,131 @@ mod bracket_bounds_tests {
     }
 }
 
+mod pipe_bounds_tests {
+    use super::*;
+
+    #[test]
+    fn inner_single_segment() {
+        let text = ".foo";
+        assert_eq!(
+            find_pipe_bounds(text, 1, TextObjectScope::Inner),
+            Some((0, 4))
+        );
+    }
+
+    #[test]
+    fn inner_middle_segment() {
+        let text = ".foo | bar | .baz";
+        // Cursor on 'b' of bar at position 7
+        assert_eq!(
+            find_pipe_bounds(text, 7, TextObjectScope::Inner),
+            Some((7, 10))
+        );
+    }
+
+    #[test]
+    fn inner_first_segment() {
+        let text = ".foo | bar | .baz";
+        // Cursor on 'f' of foo at position 1
+        assert_eq!(
+            find_pipe_bounds(text, 1, TextObjectScope::Inner),
+            Some((0, 4))
+        );
+    }
+
+    #[test]
+    fn inner_last_segment() {
+        let text = ".foo | bar | .baz";
+        // Cursor on 'b' of baz at position 14
+        assert_eq!(
+            find_pipe_bounds(text, 14, TextObjectScope::Inner),
+            Some((13, 17))
+        );
+    }
+
+    #[test]
+    fn around_middle_segment() {
+        let text = ".foo | bar | .baz";
+        // Cursor on 'b' of bar - should include trailing pipe and whitespace after it
+        assert_eq!(
+            find_pipe_bounds(text, 7, TextObjectScope::Around),
+            Some((7, 13))
+        );
+    }
+
+    #[test]
+    fn around_first_segment() {
+        let text = ".foo | bar";
+        // Cursor on 'f' - should include trailing pipe and whitespace after it
+        assert_eq!(
+            find_pipe_bounds(text, 1, TextObjectScope::Around),
+            Some((0, 7))
+        );
+    }
+
+    #[test]
+    fn around_last_segment() {
+        let text = ".foo | bar";
+        // Cursor on 'b' of bar - should include leading pipe
+        assert_eq!(
+            find_pipe_bounds(text, 7, TextObjectScope::Around),
+            Some((5, 10))
+        );
+    }
+
+    #[test]
+    fn cursor_on_pipe() {
+        let text = ".foo | bar";
+        // Cursor on the pipe character
+        assert_eq!(
+            find_pipe_bounds(text, 5, TextObjectScope::Inner),
+            Some((0, 4))
+        );
+    }
+
+    #[test]
+    fn jq_select_filter() {
+        let text = ".items | map(select(.x > 0)) | .[0]";
+        // Cursor inside the map expression
+        assert_eq!(
+            find_pipe_bounds(text, 15, TextObjectScope::Inner),
+            Some((9, 28))
+        );
+    }
+
+    #[test]
+    fn empty_segment_returns_none() {
+        let text = ".foo || bar";
+        // Cursor between the pipes
+        assert_eq!(find_pipe_bounds(text, 6, TextObjectScope::Inner), None);
+    }
+
+    #[test]
+    fn whitespace_only_segment_returns_none() {
+        let text = ".foo |   | bar";
+        // Cursor in whitespace-only segment
+        assert_eq!(find_pipe_bounds(text, 7, TextObjectScope::Inner), None);
+    }
+
+    #[test]
+    fn inner_trims_whitespace() {
+        let text = ".foo |  bar  | .baz";
+        // Cursor on 'b' of bar - inner should trim whitespace
+        assert_eq!(
+            find_pipe_bounds(text, 8, TextObjectScope::Inner),
+            Some((8, 11))
+        );
+    }
+
+    #[test]
+    fn around_includes_pipe_and_space() {
+        let text = ".foo | bar | .baz";
+        // Cursor on 'b' of bar - around includes up to whitespace after next pipe
+        let result = find_pipe_bounds(text, 7, TextObjectScope::Around);
+        assert_eq!(result, Some((7, 13)));
+    }
+}
+
 mod find_text_object_bounds_tests {
     use super::*;
 
@@ -708,5 +841,82 @@ mod execute_text_object_tests {
 
         assert!(result);
         assert_eq!(content(&ta), r#"select(.name == "")"#);
+    }
+
+    #[test]
+    fn delete_inner_pipe_middle_segment() {
+        let mut ta = textarea_with(".foo | bar | .baz");
+        move_to(&mut ta, 7); // On 'b' of bar
+
+        let result = execute_text_object(&mut ta, TextObjectTarget::Pipe, TextObjectScope::Inner);
+
+        assert!(result);
+        assert_eq!(content(&ta), ".foo |  | .baz");
+    }
+
+    #[test]
+    fn delete_inner_pipe_first_segment() {
+        let mut ta = textarea_with(".foo | bar");
+        move_to(&mut ta, 1); // On 'f' of foo
+
+        let result = execute_text_object(&mut ta, TextObjectTarget::Pipe, TextObjectScope::Inner);
+
+        assert!(result);
+        assert_eq!(content(&ta), " | bar");
+    }
+
+    #[test]
+    fn delete_inner_pipe_last_segment() {
+        let mut ta = textarea_with(".foo | bar");
+        move_to(&mut ta, 7); // On 'b' of bar
+
+        let result = execute_text_object(&mut ta, TextObjectTarget::Pipe, TextObjectScope::Inner);
+
+        assert!(result);
+        assert_eq!(content(&ta), ".foo | ");
+    }
+
+    #[test]
+    fn delete_around_pipe_middle_segment() {
+        let mut ta = textarea_with(".foo | bar | .baz");
+        move_to(&mut ta, 7); // On 'b' of bar
+
+        let result = execute_text_object(&mut ta, TextObjectTarget::Pipe, TextObjectScope::Around);
+
+        assert!(result);
+        assert_eq!(content(&ta), ".foo | .baz");
+    }
+
+    #[test]
+    fn delete_around_pipe_first_segment() {
+        let mut ta = textarea_with(".foo | bar");
+        move_to(&mut ta, 1); // On 'f' of foo
+
+        let result = execute_text_object(&mut ta, TextObjectTarget::Pipe, TextObjectScope::Around);
+
+        assert!(result);
+        assert_eq!(content(&ta), "bar");
+    }
+
+    #[test]
+    fn delete_around_pipe_last_segment() {
+        let mut ta = textarea_with(".foo | bar");
+        move_to(&mut ta, 7); // On 'b' of bar
+
+        let result = execute_text_object(&mut ta, TextObjectTarget::Pipe, TextObjectScope::Around);
+
+        assert!(result);
+        assert_eq!(content(&ta), ".foo ");
+    }
+
+    #[test]
+    fn jq_query_change_pipe_segment() {
+        let mut ta = textarea_with(".items | map(.name) | sort | unique");
+        move_to(&mut ta, 9); // On 'm' of map
+
+        let result = execute_text_object(&mut ta, TextObjectTarget::Pipe, TextObjectScope::Inner);
+
+        assert!(result);
+        assert_eq!(content(&ta), ".items |  | sort | unique");
     }
 }
