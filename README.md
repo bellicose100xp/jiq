@@ -146,6 +146,16 @@ curl https://api.example.com/data | jiq
 | `x` | Delete char at cursor |
 | `X` | Delete char before cursor |
 
+**Character Search**
+| Key | Action |
+|-----|--------|
+| `f{char}` | Find forward to character |
+| `F{char}` | Find backward to character |
+| `t{char}` | Till forward (stop before character) |
+| `T{char}` | Till backward (stop after character) |
+| `;` | Repeat last search in same direction |
+| `,` | Repeat last search in opposite direction |
+
 **Operators** (delete/change + motion)
 | Key | Action |
 |-----|--------|
@@ -156,6 +166,17 @@ curl https://api.example.com/data | jiq
 | `cw` / `cb` / `ce` | Change word forward/back/end |
 | `c$` / `c0` / `c^` / `cc` | Change to end/start/entire line |
 | `C` | Change to end of line (same as `c$`) |
+
+**Text Objects** (delete/change with scope)
+| Key | Action |
+|-----|--------|
+| `ciw` / `diw` | Change/delete inner word |
+| `ci"` / `di"` / `ci'` / `di'` / `ci`` ` `` / `di`` ` `` | Change/delete inside quotes |
+| `ci(` / `di(` / `ci[` / `di[` / `ci{` / `di{` | Change/delete inside brackets |
+| `ci\|` / `di\|` | Change/delete inside pipe segment |
+| `ca"` / `da"` / `ca'` / `da'` / `ca`` ` `` / `da`` ` `` | Change/delete around quotes (including quotes) |
+| `ca(` / `da(` / `ca[` / `da[` / `ca{` / `da{` | Change/delete around brackets (including brackets) |
+| `ca\|` / `da\|` | Change/delete around pipe segment (including one pipe) |
 
 **Undo/Redo**
 | Key | Action |

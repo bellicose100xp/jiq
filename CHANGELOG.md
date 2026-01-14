@@ -7,6 +7,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.11.0] - 2026-01-14
+
+### Added
+- **Vim-style text object operators** - Advanced vim text manipulation with ci/di/ca/da operators
+  - `ci`/`di` for change/delete inner (content only)
+  - `ca`/`da` for change/delete around (including delimiters)
+  - Supported targets:
+    - `w` - word (alphanumeric + underscore)
+    - `"`, `'`, `` ` `` - quote pairs
+    - `(`, `)`, `[`, `]`, `{`, `}` - bracket pairs with nesting support
+    - `|` - pipe segments in jq queries
+  - Example usage:
+    - `ciw` - change inner word
+    - `di"` - delete inside quotes
+    - `ca(` - change around parentheses (including the parens)
+    - `ci|` - change inside pipe segment
+  - Inner scope operates on content only, around scope includes delimiters
+  - Pipe text objects handle jq query segments intelligently
+
+- **Vim character search navigation** - Fast character-based cursor movement
+  - `f{char}` - find forward to character
+  - `F{char}` - find backward to character
+  - `t{char}` - till forward (stop before character)
+  - `T{char}` - till backward (stop after character)
+  - `;` - repeat last search in same direction
+  - `,` - repeat last search in opposite direction
+  - Enables quick navigation within queries without using word motions
+  - Integrates with operators (e.g., `df"` to delete from cursor to next quote)
+
 ## [3.10.7] - 2026-01-13
 
 ### Fixed
