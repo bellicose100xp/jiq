@@ -1,5 +1,14 @@
 use crate::editor::char_search::{SearchDirection, SearchType};
 
+/// Scope for text object operations (inner vs around)
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum TextObjectScope {
+    /// Inner - select content inside delimiters (ci", di(, etc.)
+    Inner,
+    /// Around - select content including delimiters (ca", da(, etc.)
+    Around,
+}
+
 /// VIM editing modes for the input field
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum EditorMode {
@@ -12,6 +21,8 @@ pub enum EditorMode {
     Operator(char),
     /// CharSearch mode - waiting for target character after f/F/t/T
     CharSearch(SearchDirection, SearchType),
+    /// TextObject mode - waiting for text object target after operator + i/a
+    TextObject(char, TextObjectScope),
 }
 
 impl EditorMode {
@@ -33,6 +44,13 @@ impl EditorMode {
                     },
                 };
                 format!("CHAR({})", dir_char)
+            }
+            EditorMode::TextObject(op, scope) => {
+                let scope_char = match scope {
+                    TextObjectScope::Inner => 'i',
+                    TextObjectScope::Around => 'a',
+                };
+                format!("{}{}…", op, scope_char)
             }
         }
     }

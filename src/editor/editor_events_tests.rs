@@ -843,3 +843,171 @@ fn test_escape_cancels_char_search_mode() {
 
     assert_eq!(app.input.editor_mode, EditorMode::Normal);
 }
+
+#[test]
+fn test_diw_deletes_inner_word() {
+    let mut app = app_with_query(".name.first");
+    move_cursor_to_position(&mut app, 2);
+    app.input.editor_mode = EditorMode::Normal;
+
+    app.handle_key_event(key(KeyCode::Char('d')));
+    app.handle_key_event(key(KeyCode::Char('i')));
+    app.handle_key_event(key(KeyCode::Char('w')));
+
+    assert_eq!(app.query(), "..first");
+    assert_eq!(app.input.editor_mode, EditorMode::Normal);
+}
+
+#[test]
+fn test_daw_deletes_around_word() {
+    let mut app = app_with_query("foo bar");
+    move_cursor_to_position(&mut app, 1);
+    app.input.editor_mode = EditorMode::Normal;
+
+    app.handle_key_event(key(KeyCode::Char('d')));
+    app.handle_key_event(key(KeyCode::Char('a')));
+    app.handle_key_event(key(KeyCode::Char('w')));
+
+    assert_eq!(app.query(), "bar");
+    assert_eq!(app.input.editor_mode, EditorMode::Normal);
+}
+
+#[test]
+fn test_ciw_changes_inner_word() {
+    let mut app = app_with_query(".name.first");
+    move_cursor_to_position(&mut app, 7);
+    app.input.editor_mode = EditorMode::Normal;
+
+    app.handle_key_event(key(KeyCode::Char('c')));
+    app.handle_key_event(key(KeyCode::Char('i')));
+    app.handle_key_event(key(KeyCode::Char('w')));
+
+    assert_eq!(app.query(), ".name.");
+    assert_eq!(app.input.editor_mode, EditorMode::Insert);
+}
+
+#[test]
+fn test_di_quote_deletes_inner_quotes() {
+    let mut app = app_with_query(r#"select(.name == "foo")"#);
+    move_cursor_to_position(&mut app, 18);
+    app.input.editor_mode = EditorMode::Normal;
+
+    app.handle_key_event(key(KeyCode::Char('d')));
+    app.handle_key_event(key(KeyCode::Char('i')));
+    app.handle_key_event(key(KeyCode::Char('"')));
+
+    assert_eq!(app.query(), r#"select(.name == "")"#);
+    assert_eq!(app.input.editor_mode, EditorMode::Normal);
+}
+
+#[test]
+fn test_da_quote_deletes_around_quotes() {
+    let mut app = app_with_query(r#"select(.name == "foo")"#);
+    move_cursor_to_position(&mut app, 18);
+    app.input.editor_mode = EditorMode::Normal;
+
+    app.handle_key_event(key(KeyCode::Char('d')));
+    app.handle_key_event(key(KeyCode::Char('a')));
+    app.handle_key_event(key(KeyCode::Char('"')));
+
+    assert_eq!(app.query(), r#"select(.name == )"#);
+    assert_eq!(app.input.editor_mode, EditorMode::Normal);
+}
+
+#[test]
+fn test_ci_paren_changes_inner_parentheses() {
+    // Cursor at position 11 is on `.` inside inner parens (.x)
+    let mut app = app_with_query("map(select(.x))");
+    move_cursor_to_position(&mut app, 11);
+    app.input.editor_mode = EditorMode::Normal;
+
+    app.handle_key_event(key(KeyCode::Char('c')));
+    app.handle_key_event(key(KeyCode::Char('i')));
+    app.handle_key_event(key(KeyCode::Char('(')));
+
+    assert_eq!(app.query(), "map(select())");
+    assert_eq!(app.input.editor_mode, EditorMode::Insert);
+}
+
+#[test]
+fn test_di_bracket_deletes_inner_brackets() {
+    let mut app = app_with_query(".items[0]");
+    move_cursor_to_position(&mut app, 7);
+    app.input.editor_mode = EditorMode::Normal;
+
+    app.handle_key_event(key(KeyCode::Char('d')));
+    app.handle_key_event(key(KeyCode::Char('i')));
+    app.handle_key_event(key(KeyCode::Char('[')));
+
+    assert_eq!(app.query(), ".items[]");
+    assert_eq!(app.input.editor_mode, EditorMode::Normal);
+}
+
+#[test]
+fn test_di_brace_deletes_inner_braces() {
+    let mut app = app_with_query("{foo: bar}");
+    move_cursor_to_position(&mut app, 5);
+    app.input.editor_mode = EditorMode::Normal;
+
+    app.handle_key_event(key(KeyCode::Char('d')));
+    app.handle_key_event(key(KeyCode::Char('i')));
+    app.handle_key_event(key(KeyCode::Char('{')));
+
+    assert_eq!(app.query(), "{}");
+    assert_eq!(app.input.editor_mode, EditorMode::Normal);
+}
+
+#[test]
+fn test_text_object_invalid_target_cancels() {
+    let mut app = app_with_query(".name");
+    app.input.editor_mode = EditorMode::Normal;
+    let original_query = app.query().to_string();
+
+    app.handle_key_event(key(KeyCode::Char('d')));
+    app.handle_key_event(key(KeyCode::Char('i')));
+    app.handle_key_event(key(KeyCode::Char('z')));
+
+    assert_eq!(app.input.editor_mode, EditorMode::Normal);
+    assert_eq!(app.query(), original_query);
+}
+
+#[test]
+fn test_text_object_no_match_cancels() {
+    let mut app = app_with_query(".name");
+    move_cursor_to_position(&mut app, 0);
+    app.input.editor_mode = EditorMode::Normal;
+    let original_query = app.query().to_string();
+
+    app.handle_key_event(key(KeyCode::Char('d')));
+    app.handle_key_event(key(KeyCode::Char('i')));
+    app.handle_key_event(key(KeyCode::Char('w')));
+
+    assert_eq!(app.input.editor_mode, EditorMode::Normal);
+    assert_eq!(app.query(), original_query);
+}
+
+#[test]
+fn test_text_object_mode_display() {
+    let mut app = app_with_query(".name");
+    app.input.editor_mode = EditorMode::Normal;
+
+    app.handle_key_event(key(KeyCode::Char('d')));
+    app.handle_key_event(key(KeyCode::Char('i')));
+
+    assert!(matches!(
+        app.input.editor_mode,
+        EditorMode::TextObject('d', _)
+    ));
+}
+
+#[test]
+fn test_escape_cancels_text_object_mode() {
+    let mut app = app_with_query(".name");
+    app.input.editor_mode = EditorMode::Normal;
+
+    app.handle_key_event(key(KeyCode::Char('d')));
+    app.handle_key_event(key(KeyCode::Char('i')));
+    app.handle_key_event(key(KeyCode::Esc));
+
+    assert_eq!(app.input.editor_mode, EditorMode::Normal);
+}

@@ -1,5 +1,6 @@
 ---
 source: src/app/app_render_tests/basic_ui_tests.rs
+assertion_line: 113
 expression: output
 ---
 "┌ ⚠ Syntax Error | Object | Showing last successful result ────────────────────┐"
@@ -15,10 +16,10 @@ expression: output
 "│                                                                              │"
 "│                                                                              │"
 "│                                                                              │"
+"│                                                                              │"
 "│ ┌ Syntax Error (Ctrl+E to close) ──────────────────────────────────────────┐ │"
-"│ │jq: error: syntax error, unexpected end of file at <top-level>, line 1, co│ │"
-"│ │    .invalid[                                                             │ │"
-"│ │            ^                                                             │ │"
+"│ │jq: error: syntax error, unexpected end of file (Unix shell quoting issues│ │"
+"│ │.invalid[                                                                 │ │"
 "│ │jq: 1 compile error                                                       │ │"
 "│ └──────────────────────────────────────────────────────────────────────────┘ │"
 "└──────────────────────────────────────────────────────────────────────────────┘"

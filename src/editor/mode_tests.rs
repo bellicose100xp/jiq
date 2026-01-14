@@ -34,3 +34,23 @@ fn test_char_search_mode_display() {
         "CHAR(T)"
     );
 }
+
+#[test]
+fn test_text_object_mode_display() {
+    assert_eq!(
+        EditorMode::TextObject('d', TextObjectScope::Inner).display(),
+        "di…"
+    );
+    assert_eq!(
+        EditorMode::TextObject('d', TextObjectScope::Around).display(),
+        "da…"
+    );
+    assert_eq!(
+        EditorMode::TextObject('c', TextObjectScope::Inner).display(),
+        "ci…"
+    );
+    assert_eq!(
+        EditorMode::TextObject('c', TextObjectScope::Around).display(),
+        "ca…"
+    );
+}

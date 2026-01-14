@@ -7,6 +7,8 @@ use crate::editor::EditorMode;
 use crate::editor::char_search::{
     CharSearchState, SearchDirection, SearchType, execute_char_search,
 };
+use crate::editor::mode::TextObjectScope;
+use crate::editor::text_objects::{TextObjectTarget, execute_text_object};
 
 pub fn handle_insert_mode_key(app: &mut App, key: KeyEvent) {
     let content_changed = app.input.textarea.input(key);
@@ -204,6 +206,19 @@ pub fn handle_operator_mode_key(app: &mut App, key: KeyEvent) {
             true
         }
 
+        KeyCode::Char('i') => {
+            app.input.textarea.cancel_selection();
+            app.input.editor_mode = EditorMode::TextObject(operator, TextObjectScope::Inner);
+            app.update_tooltip();
+            return;
+        }
+        KeyCode::Char('a') => {
+            app.input.textarea.cancel_selection();
+            app.input.editor_mode = EditorMode::TextObject(operator, TextObjectScope::Around);
+            app.update_tooltip();
+            return;
+        }
+
         _ => false,
     };
 
@@ -250,6 +265,36 @@ pub fn handle_char_search_mode_key(app: &mut App, key: KeyEvent) {
     }
 
     app.input.editor_mode = EditorMode::Normal;
+    app.update_tooltip();
+}
+
+pub fn handle_text_object_mode_key(app: &mut App, key: KeyEvent) {
+    let (operator, scope) = match app.input.editor_mode {
+        EditorMode::TextObject(op, sc) => (op, sc),
+        _ => return,
+    };
+
+    if let KeyCode::Char(target_char) = key.code {
+        if let Some(target) = TextObjectTarget::from_char(target_char) {
+            let success = execute_text_object(&mut app.input.textarea, target, scope);
+
+            if success {
+                app.input.editor_mode = if operator == 'c' {
+                    EditorMode::Insert
+                } else {
+                    EditorMode::Normal
+                };
+                execute_query(app);
+            } else {
+                app.input.editor_mode = EditorMode::Normal;
+            }
+        } else {
+            app.input.editor_mode = EditorMode::Normal;
+        }
+    } else {
+        app.input.editor_mode = EditorMode::Normal;
+    }
+
     app.update_tooltip();
 }
 

@@ -164,6 +164,9 @@ impl App {
             EditorMode::CharSearch(_, _) => {
                 editor::editor_events::handle_char_search_mode_key(self, key)
             }
+            EditorMode::TextObject(_, _) => {
+                editor::editor_events::handle_text_object_mode_key(self, key)
+            }
         }
     }
 
