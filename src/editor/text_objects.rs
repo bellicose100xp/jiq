@@ -281,18 +281,30 @@ pub fn find_pipe_bounds(
                 return None;
             }
 
-            // Include trailing pipe if present, otherwise leading pipe
-            // Also consume whitespace after the pipe for cleaner deletion
-            match (right_pipe, left_pipe) {
-                (Some(rp), _) if chars[cursor_col] != '|' => {
-                    // Find first non-whitespace after pipe, or end of string
+            // Behavior depends on position:
+            // - Middle segment (both pipes): keep both pipes, just delete content (same as inner)
+            // - First segment (only trailing pipe): delete content + trailing pipe + whitespace
+            // - Last segment (only leading pipe): delete leading pipe + content
+            match (left_pipe, right_pipe) {
+                (Some(_), Some(_)) if chars[cursor_col] != '|' => {
+                    // Middle segment: keep both pipes, delete content only
+                    Some((trimmed_start, trimmed_end))
+                }
+                (None, Some(rp)) => {
+                    // First segment: delete content + trailing pipe + whitespace after
                     let after_pipe = ((rp + 1)..chars.len())
                         .find(|&i| !chars[i].is_whitespace())
                         .unwrap_or(chars.len());
                     Some((trimmed_start, after_pipe))
                 }
-                (_, Some(lp)) => Some((lp, trimmed_end)),
-                _ => Some((trimmed_start, trimmed_end)),
+                (Some(lp), None) => {
+                    // Last segment: delete leading pipe + content
+                    Some((lp, trimmed_end))
+                }
+                _ => {
+                    // Single segment with no pipes: same as inner
+                    Some((trimmed_start, trimmed_end))
+                }
             }
         }
     }
