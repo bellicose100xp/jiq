@@ -19,6 +19,7 @@ pub fn render_field(app: &mut App, frame: &mut Frame, area: Rect) {
         EditorMode::Insert => Color::Cyan,
         EditorMode::Normal => Color::Yellow,
         EditorMode::Operator(_) => Color::Green,
+        EditorMode::CharSearch(_, _) => Color::Magenta,
     };
 
     let border_color = if app.focus == Focus::InputField {

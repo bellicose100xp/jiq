@@ -4,6 +4,9 @@ use tui_textarea::CursorMove;
 use crate::app::App;
 use crate::clipboard;
 use crate::editor::EditorMode;
+use crate::editor::char_search::{
+    CharSearchState, SearchDirection, SearchType, execute_char_search,
+};
 
 pub fn handle_insert_mode_key(app: &mut App, key: KeyEvent) {
     let content_changed = app.input.textarea.input(key);
@@ -98,6 +101,30 @@ pub fn handle_normal_mode_key(app: &mut App, key: KeyEvent) {
         }
         KeyCode::Char('y') => {
             app.input.editor_mode = EditorMode::Operator('y');
+        }
+
+        KeyCode::Char('f') => {
+            app.input.editor_mode =
+                EditorMode::CharSearch(SearchDirection::Forward, SearchType::Find);
+        }
+        KeyCode::Char('F') => {
+            app.input.editor_mode =
+                EditorMode::CharSearch(SearchDirection::Backward, SearchType::Find);
+        }
+        KeyCode::Char('t') => {
+            app.input.editor_mode =
+                EditorMode::CharSearch(SearchDirection::Forward, SearchType::Till);
+        }
+        KeyCode::Char('T') => {
+            app.input.editor_mode =
+                EditorMode::CharSearch(SearchDirection::Backward, SearchType::Till);
+        }
+
+        KeyCode::Char(';') => {
+            repeat_last_char_search(app, false);
+        }
+        KeyCode::Char(',') => {
+            repeat_last_char_search(app, true);
         }
 
         KeyCode::Char('u') => {
@@ -202,6 +229,45 @@ pub fn handle_operator_mode_key(app: &mut App, key: KeyEvent) {
     }
 
     app.update_tooltip();
+}
+
+pub fn handle_char_search_mode_key(app: &mut App, key: KeyEvent) {
+    let (direction, search_type) = match app.input.editor_mode {
+        EditorMode::CharSearch(dir, st) => (dir, st),
+        _ => return,
+    };
+
+    if let KeyCode::Char(target) = key.code {
+        let found = execute_char_search(&mut app.input.textarea, target, direction, search_type);
+
+        if found {
+            app.input.last_char_search = Some(CharSearchState {
+                character: target,
+                direction,
+                search_type,
+            });
+        }
+    }
+
+    app.input.editor_mode = EditorMode::Normal;
+    app.update_tooltip();
+}
+
+fn repeat_last_char_search(app: &mut App, reverse: bool) {
+    if let Some(search) = app.input.last_char_search {
+        let direction = if reverse {
+            search.direction.opposite()
+        } else {
+            search.direction
+        };
+
+        execute_char_search(
+            &mut app.input.textarea,
+            search.character,
+            direction,
+            search.search_type,
+        );
+    }
 }
 
 pub fn execute_query(app: &mut App) {

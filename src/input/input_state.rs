@@ -5,13 +5,14 @@ use ratatui::{
 use tui_textarea::TextArea;
 
 use crate::autocomplete::BraceTracker;
-use crate::editor::EditorMode;
+use crate::editor::{CharSearchState, EditorMode};
 
 pub struct InputState {
     pub textarea: TextArea<'static>,
     pub editor_mode: EditorMode,
     pub scroll_offset: usize,
     pub brace_tracker: BraceTracker,
+    pub last_char_search: Option<CharSearchState>,
 }
 
 impl InputState {
@@ -32,6 +33,7 @@ impl InputState {
             editor_mode: EditorMode::default(),
             scroll_offset: 0,
             brace_tracker: BraceTracker::new(),
+            last_char_search: None,
         }
     }
 

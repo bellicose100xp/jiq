@@ -1,3 +1,5 @@
+use crate::editor::char_search::{SearchDirection, SearchType};
+
 /// VIM editing modes for the input field
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum EditorMode {
@@ -8,6 +10,8 @@ pub enum EditorMode {
     Normal,
     /// Operator mode - waiting for motion after operator (d or c)
     Operator(char),
+    /// CharSearch mode - waiting for target character after f/F/t/T
+    CharSearch(SearchDirection, SearchType),
 }
 
 impl EditorMode {
@@ -17,6 +21,19 @@ impl EditorMode {
             EditorMode::Insert => "INSERT".to_string(),
             EditorMode::Normal => "NORMAL".to_string(),
             EditorMode::Operator(op) => format!("OPERATOR({})", op),
+            EditorMode::CharSearch(dir, st) => {
+                let dir_char = match dir {
+                    SearchDirection::Forward => match st {
+                        SearchType::Find => 'f',
+                        SearchType::Till => 't',
+                    },
+                    SearchDirection::Backward => match st {
+                        SearchType::Find => 'F',
+                        SearchType::Till => 'T',
+                    },
+                };
+                format!("CHAR({})", dir_char)
+            }
         }
     }
 }
