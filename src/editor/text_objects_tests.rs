@@ -542,10 +542,11 @@ mod pipe_bounds_tests {
     #[test]
     fn around_middle_segment() {
         let text = ".foo | bar | .baz";
-        // Cursor on 'b' of bar - middle segment keeps both pipes, deletes content only
+        // Cursor on 'b' of bar - deletes content + trailing pipe + whitespace
+        // Result after deletion: ".foo | .baz"
         assert_eq!(
             find_pipe_bounds(text, 7, TextObjectScope::Around),
-            Some((7, 10))
+            Some((7, 13))
         );
     }
 
@@ -614,11 +615,12 @@ mod pipe_bounds_tests {
     }
 
     #[test]
-    fn around_middle_keeps_both_pipes() {
+    fn around_deletes_one_pipe() {
         let text = ".foo | bar | .baz";
-        // Cursor on 'b' of bar - middle segment keeps both pipes for user to type new content
+        // Cursor on 'b' of bar - around deletes content + trailing pipe
+        // Result: ".foo | .baz"
         let result = find_pipe_bounds(text, 7, TextObjectScope::Around);
-        assert_eq!(result, Some((7, 10)));
+        assert_eq!(result, Some((7, 13)));
     }
 }
 
@@ -884,8 +886,8 @@ mod execute_text_object_tests {
         let result = execute_text_object(&mut ta, TextObjectTarget::Pipe, TextObjectScope::Around);
 
         assert!(result);
-        // Middle segment: keeps both pipes so user can type new content
-        assert_eq!(content(&ta), ".foo |  | .baz");
+        // Middle segment: deletes content + trailing pipe
+        assert_eq!(content(&ta), ".foo | .baz");
     }
 
     #[test]
