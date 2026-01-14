@@ -161,6 +161,9 @@ impl App {
             EditorMode::Insert => editor::editor_events::handle_insert_mode_key(self, key),
             EditorMode::Normal => editor::editor_events::handle_normal_mode_key(self, key),
             EditorMode::Operator(_) => editor::editor_events::handle_operator_mode_key(self, key),
+            EditorMode::CharSearch(_, _) => {
+                editor::editor_events::handle_char_search_mode_key(self, key)
+            }
         }
     }
 

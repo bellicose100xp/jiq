@@ -633,3 +633,213 @@ fn test_execute_query_with_auto_show_when_query_none() {
 
     assert!(app.query.is_none());
 }
+
+#[test]
+fn test_f_enters_char_search_mode() {
+    use crate::editor::char_search::{SearchDirection, SearchType};
+
+    let mut app = app_with_query(".name.first");
+    app.input.editor_mode = EditorMode::Normal;
+
+    app.handle_key_event(key(KeyCode::Char('f')));
+
+    assert!(matches!(
+        app.input.editor_mode,
+        EditorMode::CharSearch(SearchDirection::Forward, SearchType::Find)
+    ));
+}
+
+#[test]
+fn test_f_find_forward_moves_to_char() {
+    let mut app = app_with_query(".name.first");
+    app.input.textarea.move_cursor(CursorMove::Head);
+    app.input.editor_mode = EditorMode::Normal;
+
+    app.handle_key_event(key(KeyCode::Char('f')));
+    app.handle_key_event(key(KeyCode::Char('.')));
+
+    assert_eq!(app.input.textarea.cursor().1, 5);
+    assert_eq!(app.input.editor_mode, EditorMode::Normal);
+}
+
+#[test]
+fn test_capital_f_enters_char_search_mode_backward() {
+    use crate::editor::char_search::{SearchDirection, SearchType};
+
+    let mut app = app_with_query(".name.first");
+    app.input.editor_mode = EditorMode::Normal;
+
+    app.handle_key_event(key(KeyCode::Char('F')));
+
+    assert!(matches!(
+        app.input.editor_mode,
+        EditorMode::CharSearch(SearchDirection::Backward, SearchType::Find)
+    ));
+}
+
+#[test]
+fn test_capital_f_find_backward_moves_to_char() {
+    let mut app = app_with_query(".name.first");
+    move_cursor_to_position(&mut app, 10);
+    app.input.editor_mode = EditorMode::Normal;
+
+    app.handle_key_event(key(KeyCode::Char('F')));
+    app.handle_key_event(key(KeyCode::Char('.')));
+
+    assert_eq!(app.input.textarea.cursor().1, 5);
+    assert_eq!(app.input.editor_mode, EditorMode::Normal);
+}
+
+#[test]
+fn test_t_enters_char_search_mode_till() {
+    use crate::editor::char_search::{SearchDirection, SearchType};
+
+    let mut app = app_with_query(".name.first");
+    app.input.editor_mode = EditorMode::Normal;
+
+    app.handle_key_event(key(KeyCode::Char('t')));
+
+    assert!(matches!(
+        app.input.editor_mode,
+        EditorMode::CharSearch(SearchDirection::Forward, SearchType::Till)
+    ));
+}
+
+#[test]
+fn test_t_till_forward_moves_before_char() {
+    let mut app = app_with_query(".name.first");
+    app.input.textarea.move_cursor(CursorMove::Head);
+    app.input.editor_mode = EditorMode::Normal;
+
+    app.handle_key_event(key(KeyCode::Char('t')));
+    app.handle_key_event(key(KeyCode::Char('.')));
+
+    assert_eq!(app.input.textarea.cursor().1, 4);
+    assert_eq!(app.input.editor_mode, EditorMode::Normal);
+}
+
+#[test]
+fn test_capital_t_enters_char_search_mode_till_backward() {
+    use crate::editor::char_search::{SearchDirection, SearchType};
+
+    let mut app = app_with_query(".name.first");
+    app.input.editor_mode = EditorMode::Normal;
+
+    app.handle_key_event(key(KeyCode::Char('T')));
+
+    assert!(matches!(
+        app.input.editor_mode,
+        EditorMode::CharSearch(SearchDirection::Backward, SearchType::Till)
+    ));
+}
+
+#[test]
+fn test_capital_t_till_backward_moves_after_char() {
+    let mut app = app_with_query(".name.first");
+    move_cursor_to_position(&mut app, 10);
+    app.input.editor_mode = EditorMode::Normal;
+
+    app.handle_key_event(key(KeyCode::Char('T')));
+    app.handle_key_event(key(KeyCode::Char('.')));
+
+    assert_eq!(app.input.textarea.cursor().1, 6);
+    assert_eq!(app.input.editor_mode, EditorMode::Normal);
+}
+
+#[test]
+fn test_semicolon_repeats_last_char_search() {
+    let mut app = app_with_query("a.b.c.d");
+    app.input.textarea.move_cursor(CursorMove::Head);
+    app.input.editor_mode = EditorMode::Normal;
+
+    app.handle_key_event(key(KeyCode::Char('f')));
+    app.handle_key_event(key(KeyCode::Char('.')));
+    assert_eq!(app.input.textarea.cursor().1, 1);
+
+    app.handle_key_event(key(KeyCode::Char(';')));
+    assert_eq!(app.input.textarea.cursor().1, 3);
+
+    app.handle_key_event(key(KeyCode::Char(';')));
+    assert_eq!(app.input.textarea.cursor().1, 5);
+}
+
+#[test]
+fn test_comma_repeats_last_char_search_reversed() {
+    let mut app = app_with_query("a.b.c.d");
+    move_cursor_to_position(&mut app, 3);
+    app.input.editor_mode = EditorMode::Normal;
+
+    app.handle_key_event(key(KeyCode::Char('f')));
+    app.handle_key_event(key(KeyCode::Char('.')));
+    assert_eq!(app.input.textarea.cursor().1, 5);
+
+    app.handle_key_event(key(KeyCode::Char(',')));
+    assert_eq!(app.input.textarea.cursor().1, 3);
+
+    app.handle_key_event(key(KeyCode::Char(',')));
+    assert_eq!(app.input.textarea.cursor().1, 1);
+}
+
+#[test]
+fn test_semicolon_without_previous_search_does_nothing() {
+    let mut app = app_with_query(".name.first");
+    app.input.textarea.move_cursor(CursorMove::Head);
+    app.input.editor_mode = EditorMode::Normal;
+
+    app.handle_key_event(key(KeyCode::Char(';')));
+
+    assert_eq!(app.input.textarea.cursor().1, 0);
+}
+
+#[test]
+fn test_comma_without_previous_search_does_nothing() {
+    let mut app = app_with_query(".name.first");
+    app.input.textarea.move_cursor(CursorMove::Head);
+    app.input.editor_mode = EditorMode::Normal;
+
+    app.handle_key_event(key(KeyCode::Char(',')));
+
+    assert_eq!(app.input.textarea.cursor().1, 0);
+}
+
+#[test]
+fn test_char_search_not_found_stays_in_place() {
+    let mut app = app_with_query(".name.first");
+    app.input.textarea.move_cursor(CursorMove::Head);
+    app.input.editor_mode = EditorMode::Normal;
+
+    app.handle_key_event(key(KeyCode::Char('f')));
+    app.handle_key_event(key(KeyCode::Char('z')));
+
+    assert_eq!(app.input.textarea.cursor().1, 0);
+    assert_eq!(app.input.editor_mode, EditorMode::Normal);
+}
+
+#[test]
+fn test_char_search_stores_last_search_only_on_success() {
+    let mut app = app_with_query(".name.first");
+    app.input.textarea.move_cursor(CursorMove::Head);
+    app.input.editor_mode = EditorMode::Normal;
+
+    app.handle_key_event(key(KeyCode::Char('f')));
+    app.handle_key_event(key(KeyCode::Char('.')));
+    assert!(app.input.last_char_search.is_some());
+
+    let old_search = app.input.last_char_search;
+
+    app.handle_key_event(key(KeyCode::Char('f')));
+    app.handle_key_event(key(KeyCode::Char('z')));
+
+    assert_eq!(app.input.last_char_search, old_search);
+}
+
+#[test]
+fn test_escape_cancels_char_search_mode() {
+    let mut app = app_with_query(".name.first");
+    app.input.editor_mode = EditorMode::Normal;
+
+    app.handle_key_event(key(KeyCode::Char('f')));
+    app.handle_key_event(key(KeyCode::Esc));
+
+    assert_eq!(app.input.editor_mode, EditorMode::Normal);
+}
