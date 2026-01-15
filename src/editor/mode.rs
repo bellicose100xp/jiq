@@ -21,11 +21,26 @@ pub enum EditorMode {
     Operator(char),
     /// CharSearch mode - waiting for target character after f/F/t/T
     CharSearch(SearchDirection, SearchType),
+    /// OperatorCharSearch mode - waiting for target character after d/c + f/F/t/T
+    OperatorCharSearch(char, usize, SearchDirection, SearchType),
     /// TextObject mode - waiting for text object target after operator + i/a
     TextObject(char, TextObjectScope),
 }
 
 impl EditorMode {
+    fn char_search_display(dir: SearchDirection, st: SearchType) -> char {
+        match dir {
+            SearchDirection::Forward => match st {
+                SearchType::Find => 'f',
+                SearchType::Till => 't',
+            },
+            SearchDirection::Backward => match st {
+                SearchType::Find => 'F',
+                SearchType::Till => 'T',
+            },
+        }
+    }
+
     /// Get the display string for the mode indicator
     pub fn display(&self) -> String {
         match self {
@@ -33,17 +48,10 @@ impl EditorMode {
             EditorMode::Normal => "NORMAL".to_string(),
             EditorMode::Operator(op) => format!("OPERATOR({})", op),
             EditorMode::CharSearch(dir, st) => {
-                let dir_char = match dir {
-                    SearchDirection::Forward => match st {
-                        SearchType::Find => 'f',
-                        SearchType::Till => 't',
-                    },
-                    SearchDirection::Backward => match st {
-                        SearchType::Find => 'F',
-                        SearchType::Till => 'T',
-                    },
-                };
-                format!("CHAR({})", dir_char)
+                format!("CHAR({})", Self::char_search_display(*dir, *st))
+            }
+            EditorMode::OperatorCharSearch(op, _, dir, st) => {
+                format!("{}{}…", op, Self::char_search_display(*dir, *st))
             }
             EditorMode::TextObject(op, scope) => {
                 let scope_char = match scope {

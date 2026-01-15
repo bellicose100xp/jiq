@@ -3,6 +3,7 @@
 use super::*;
 use crate::app::Focus;
 use crate::autocomplete::{Suggestion, SuggestionType};
+use crate::editor::char_search::{CharSearchState, SearchDirection, SearchType};
 use crate::test_utils::test_helpers::{app_with_query, key, key_with_mods};
 use tui_textarea::CursorMove;
 
@@ -11,6 +12,12 @@ fn move_cursor_to_position(app: &mut App, target_pos: usize) {
     for _ in 0..target_pos {
         app.input.textarea.move_cursor(CursorMove::Forward);
     }
+}
+
+fn run_operator_char_search(app: &mut App, op: char, motion: char, target: char) {
+    app.handle_key_event(key(KeyCode::Char(op)));
+    app.handle_key_event(key(KeyCode::Char(motion)));
+    app.handle_key_event(key(KeyCode::Char(target)));
 }
 
 #[test]
@@ -831,6 +838,218 @@ fn test_char_search_stores_last_search_only_on_success() {
     app.handle_key_event(key(KeyCode::Char('z')));
 
     assert_eq!(app.input.last_char_search, old_search);
+}
+
+#[test]
+fn test_df_deletes_through_char_forward() {
+    let mut app = app_with_query("a.b.c");
+    move_cursor_to_position(&mut app, 0);
+    app.input.editor_mode = EditorMode::Normal;
+
+    run_operator_char_search(&mut app, 'd', 'f', '.');
+
+    assert_eq!(app.query(), "b.c");
+    assert_eq!(app.input.editor_mode, EditorMode::Normal);
+}
+
+#[test]
+fn test_dt_deletes_until_char_forward() {
+    let mut app = app_with_query("a.b.c");
+    move_cursor_to_position(&mut app, 0);
+    app.input.editor_mode = EditorMode::Normal;
+
+    run_operator_char_search(&mut app, 'd', 't', '.');
+
+    assert_eq!(app.query(), ".b.c");
+    assert_eq!(app.input.editor_mode, EditorMode::Normal);
+}
+
+#[test]
+fn test_df_deletes_through_char_backward() {
+    let mut app = app_with_query("a.b.c");
+    move_cursor_to_position(&mut app, 4);
+    app.input.editor_mode = EditorMode::Normal;
+
+    run_operator_char_search(&mut app, 'd', 'F', '.');
+
+    assert_eq!(app.query(), "a.b");
+    assert_eq!(app.input.editor_mode, EditorMode::Normal);
+}
+
+#[test]
+fn test_dt_deletes_until_char_backward() {
+    let mut app = app_with_query("a.b.c");
+    move_cursor_to_position(&mut app, 4);
+    app.input.editor_mode = EditorMode::Normal;
+
+    run_operator_char_search(&mut app, 'd', 'T', '.');
+
+    assert_eq!(app.query(), "a.b.");
+    assert_eq!(app.input.editor_mode, EditorMode::Normal);
+}
+
+#[test]
+fn test_cf_changes_through_char_forward() {
+    let mut app = app_with_query("a.b.c");
+    move_cursor_to_position(&mut app, 0);
+    app.input.editor_mode = EditorMode::Normal;
+
+    run_operator_char_search(&mut app, 'c', 'f', '.');
+
+    assert_eq!(app.query(), "b.c");
+    assert_eq!(app.input.editor_mode, EditorMode::Insert);
+}
+
+#[test]
+fn test_ct_changes_until_char_forward() {
+    let mut app = app_with_query("a.b.c");
+    move_cursor_to_position(&mut app, 0);
+    app.input.editor_mode = EditorMode::Normal;
+
+    run_operator_char_search(&mut app, 'c', 't', '.');
+
+    assert_eq!(app.query(), ".b.c");
+    assert_eq!(app.input.editor_mode, EditorMode::Insert);
+}
+
+#[test]
+fn test_cf_changes_through_char_backward() {
+    let mut app = app_with_query("a.b.c");
+    move_cursor_to_position(&mut app, 4);
+    app.input.editor_mode = EditorMode::Normal;
+
+    run_operator_char_search(&mut app, 'c', 'F', '.');
+
+    assert_eq!(app.query(), "a.b");
+    assert_eq!(app.input.editor_mode, EditorMode::Insert);
+}
+
+#[test]
+fn test_ct_changes_until_char_backward() {
+    let mut app = app_with_query("a.b.c");
+    move_cursor_to_position(&mut app, 4);
+    app.input.editor_mode = EditorMode::Normal;
+
+    run_operator_char_search(&mut app, 'c', 'T', '.');
+
+    assert_eq!(app.query(), "a.b.");
+    assert_eq!(app.input.editor_mode, EditorMode::Insert);
+}
+
+#[test]
+fn test_operator_char_search_not_found_cancels() {
+    let mut app = app_with_query("abc");
+    move_cursor_to_position(&mut app, 0);
+    app.input.editor_mode = EditorMode::Normal;
+    let original_query = app.query().to_string();
+
+    run_operator_char_search(&mut app, 'd', 'f', 'z');
+
+    assert_eq!(app.query(), original_query);
+    assert_eq!(app.input.editor_mode, EditorMode::Normal);
+}
+
+#[test]
+fn test_operator_char_search_does_not_update_last_search() {
+    let mut app = app_with_query("a.b.c");
+    move_cursor_to_position(&mut app, 0);
+    app.input.editor_mode = EditorMode::Normal;
+    app.input.last_char_search = Some(CharSearchState {
+        character: 'x',
+        direction: SearchDirection::Forward,
+        search_type: SearchType::Find,
+    });
+
+    run_operator_char_search(&mut app, 'd', 'f', '.');
+
+    assert_eq!(app.query(), "b.c");
+    assert_eq!(
+        app.input.last_char_search,
+        Some(CharSearchState {
+            character: 'x',
+            direction: SearchDirection::Forward,
+            search_type: SearchType::Find,
+        })
+    );
+}
+
+#[test]
+fn test_operator_char_search_escape_cancels() {
+    let mut app = app_with_query("a.b");
+    move_cursor_to_position(&mut app, 0);
+    app.input.editor_mode = EditorMode::Normal;
+    let original_query = app.query().to_string();
+
+    app.handle_key_event(key(KeyCode::Char('d')));
+    app.handle_key_event(key(KeyCode::Char('f')));
+    app.handle_key_event(key(KeyCode::Esc));
+
+    assert_eq!(app.query(), original_query);
+    assert_eq!(app.input.editor_mode, EditorMode::Normal);
+}
+
+#[test]
+fn test_operator_char_search_non_char_key_cancels() {
+    let mut app = app_with_query("a.b");
+    move_cursor_to_position(&mut app, 0);
+    app.input.editor_mode = EditorMode::Normal;
+    let original_query = app.query().to_string();
+
+    app.handle_key_event(key(KeyCode::Char('d')));
+    app.handle_key_event(key(KeyCode::Char('f')));
+    app.handle_key_event(key(KeyCode::Left));
+
+    assert_eq!(app.query(), original_query);
+    assert_eq!(app.input.editor_mode, EditorMode::Normal);
+}
+
+#[test]
+fn test_df_forward_at_end_cancels() {
+    let mut app = app_with_query("a.b");
+    move_cursor_to_position(&mut app, 3);
+    app.input.editor_mode = EditorMode::Normal;
+    let original_query = app.query().to_string();
+
+    run_operator_char_search(&mut app, 'd', 'f', '.');
+
+    assert_eq!(app.query(), original_query);
+    assert_eq!(app.input.editor_mode, EditorMode::Normal);
+}
+
+#[test]
+fn test_d_f_backward_at_start_cancels() {
+    let mut app = app_with_query("a.b");
+    move_cursor_to_position(&mut app, 0);
+    app.input.editor_mode = EditorMode::Normal;
+    let original_query = app.query().to_string();
+
+    run_operator_char_search(&mut app, 'd', 'F', '.');
+
+    assert_eq!(app.query(), original_query);
+    assert_eq!(app.input.editor_mode, EditorMode::Normal);
+}
+
+#[test]
+fn test_operator_char_search_empty_text_cancels() {
+    let mut app = app_with_query("");
+    app.input.editor_mode = EditorMode::Normal;
+
+    run_operator_char_search(&mut app, 'd', 'f', '.');
+
+    assert_eq!(app.query(), "");
+    assert_eq!(app.input.editor_mode, EditorMode::Normal);
+}
+
+#[test]
+fn test_df_deletes_to_end_of_line() {
+    let mut app = app_with_query("a.b");
+    move_cursor_to_position(&mut app, 0);
+    app.input.editor_mode = EditorMode::Normal;
+
+    run_operator_char_search(&mut app, 'd', 'f', 'b');
+
+    assert_eq!(app.query(), "");
+    assert_eq!(app.input.editor_mode, EditorMode::Normal);
 }
 
 #[test]

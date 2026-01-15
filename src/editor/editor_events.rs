@@ -173,6 +173,17 @@ pub fn handle_operator_mode_key(app: &mut App, key: KeyEvent) {
         return;
     }
 
+    if matches!(operator, 'd' | 'c')
+        && let Some((direction, search_type)) = operator_char_search_from_key(key.code)
+    {
+        let start_col = app.input.textarea.cursor().1;
+        app.input.textarea.cancel_selection();
+        app.input.editor_mode =
+            EditorMode::OperatorCharSearch(operator, start_col, direction, search_type);
+        app.update_tooltip();
+        return;
+    }
+
     let motion_applied = match key.code {
         KeyCode::Char('w') => {
             app.input.textarea.move_cursor(CursorMove::WordForward);
@@ -268,6 +279,53 @@ pub fn handle_char_search_mode_key(app: &mut App, key: KeyEvent) {
     app.update_tooltip();
 }
 
+pub fn handle_operator_char_search_mode_key(app: &mut App, key: KeyEvent) {
+    let (operator, start_col, direction, search_type) = match app.input.editor_mode {
+        EditorMode::OperatorCharSearch(op, start, dir, st) => (op, start, dir, st),
+        _ => return,
+    };
+
+    if key.code == KeyCode::Esc {
+        app.input.textarea.cancel_selection();
+        app.input.editor_mode = EditorMode::Normal;
+        app.update_tooltip();
+        return;
+    }
+
+    let target = match key.code {
+        KeyCode::Char(ch) => ch,
+        _ => {
+            app.input.textarea.cancel_selection();
+            app.input.editor_mode = EditorMode::Normal;
+            app.update_tooltip();
+            return;
+        }
+    };
+
+    let text = app
+        .input
+        .textarea
+        .lines()
+        .first()
+        .map(|s| s.as_str())
+        .unwrap_or("");
+    let range = find_operator_char_range(text, start_col, target, direction, search_type);
+
+    if let Some((start, end)) = range {
+        cut_range(&mut app.input.textarea, start, end);
+        app.input.editor_mode = if operator == 'c' {
+            EditorMode::Insert
+        } else {
+            EditorMode::Normal
+        };
+        execute_query(app);
+    } else {
+        app.input.editor_mode = EditorMode::Normal;
+    }
+
+    app.update_tooltip();
+}
+
 pub fn handle_text_object_mode_key(app: &mut App, key: KeyEvent) {
     let (operator, scope) = match app.input.editor_mode {
         EditorMode::TextObject(op, sc) => (op, sc),
@@ -335,6 +393,87 @@ pub fn execute_query_with_auto_show(app: &mut App) {
     app.error_overlay_visible = false;
 
     // AI update happens in poll_query_response() when result arrives
+}
+
+fn operator_char_search_from_key(key: KeyCode) -> Option<(SearchDirection, SearchType)> {
+    match key {
+        KeyCode::Char('f') => Some((SearchDirection::Forward, SearchType::Find)),
+        KeyCode::Char('F') => Some((SearchDirection::Backward, SearchType::Find)),
+        KeyCode::Char('t') => Some((SearchDirection::Forward, SearchType::Till)),
+        KeyCode::Char('T') => Some((SearchDirection::Backward, SearchType::Till)),
+        _ => None,
+    }
+}
+
+fn find_operator_char_range(
+    text: &str,
+    cursor_col: usize,
+    target: char,
+    direction: SearchDirection,
+    search_type: SearchType,
+) -> Option<(usize, usize)> {
+    let chars: Vec<char> = text.chars().collect();
+    if chars.is_empty() || cursor_col >= chars.len() {
+        return None;
+    }
+
+    let match_index = find_char_match_index(&chars, cursor_col, target, direction)?;
+    let (start, end) = match direction {
+        SearchDirection::Forward => {
+            let start = cursor_col;
+            let end = match search_type {
+                SearchType::Find => match_index + 1,
+                SearchType::Till => match_index,
+            };
+            (start, end)
+        }
+        SearchDirection::Backward => {
+            let start = match search_type {
+                SearchType::Find => match_index,
+                SearchType::Till => match_index + 1,
+            };
+            let end = cursor_col + 1;
+            (start, end)
+        }
+    };
+
+    (start < end).then_some((start, end))
+}
+
+fn find_char_match_index(
+    chars: &[char],
+    cursor_col: usize,
+    target: char,
+    direction: SearchDirection,
+) -> Option<usize> {
+    match direction {
+        SearchDirection::Forward => {
+            let search_start = cursor_col + 1;
+            if search_start >= chars.len() {
+                return None;
+            }
+            (search_start..chars.len()).find(|&i| chars[i] == target)
+        }
+        SearchDirection::Backward => {
+            if cursor_col == 0 {
+                return None;
+            }
+            (0..cursor_col).rev().find(|&i| chars[i] == target)
+        }
+    }
+}
+
+fn cut_range(textarea: &mut tui_textarea::TextArea, start: usize, end: usize) {
+    textarea.cancel_selection();
+    textarea.move_cursor(CursorMove::Head);
+    for _ in 0..start {
+        textarea.move_cursor(CursorMove::Forward);
+    }
+    textarea.start_selection();
+    for _ in start..end {
+        textarea.move_cursor(CursorMove::Forward);
+    }
+    textarea.cut();
 }
 
 #[cfg(test)]
