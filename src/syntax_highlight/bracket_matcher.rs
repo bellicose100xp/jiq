@@ -22,6 +22,8 @@ use crate::editor::text_objects::find_bracket_bounds;
 ///
 /// # Examples
 /// ```
+/// use jiq::syntax_highlight::bracket_matcher::find_matching_bracket;
+///
 /// let query = "map(.)";
 /// let result = find_matching_bracket(query, 3); // cursor on '('
 /// assert_eq!(result, Some((3, 5))); // positions of '(' and ')'
