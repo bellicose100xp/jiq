@@ -142,6 +142,8 @@ pub fn render_pane(app: &mut App, frame: &mut Frame, area: Rect) {
         unfocused_border_color
     };
 
+    let is_stale = query_state.result.is_err() || query_state.is_empty_result;
+
     // Always render from cached pre-rendered text
     if let Some(rendered) = &query_state.last_successful_result_rendered {
         let viewport_height = results_area.height.saturating_sub(2);
@@ -174,6 +176,13 @@ pub fn render_pane(app: &mut App, frame: &mut Frame, area: Rect) {
         // Clone only visible lines (50 lines instead of 100K+ for large files!)
         let viewport_text = Text::from(visible_lines.to_vec());
 
+        // Apply DIM effect for stale results
+        let viewport_text = if is_stale {
+            apply_dim_to_text(viewport_text)
+        } else {
+            viewport_text
+        };
+
         // Apply search highlights only to visible viewport
         let final_text = if app.search.is_visible() && !app.search.matches().is_empty() {
             apply_search_highlights(
@@ -190,6 +199,7 @@ pub fn render_pane(app: &mut App, frame: &mut Frame, area: Rect) {
         let content = Paragraph::new(final_text)
             .block(block)
             .scroll((0, app.results_scroll.h_offset));
+
         frame.render_widget(content, results_area);
     } else {
         // No successful result yet - show empty
@@ -285,6 +295,27 @@ pub fn render_error_overlay(app: &App, frame: &mut Frame, results_area: Rect) {
         frame.render_widget(error_widget, overlay_area);
     }
 }
+fn apply_dim_to_text(text: Text<'_>) -> Text<'static> {
+    Text::from(
+        text.lines
+            .into_iter()
+            .map(|line| {
+                Line::from(
+                    line.spans
+                        .into_iter()
+                        .map(|span| {
+                            Span::styled(
+                                span.content.to_string(),
+                                span.style.add_modifier(Modifier::DIM),
+                            )
+                        })
+                        .collect::<Vec<_>>(),
+                )
+            })
+            .collect::<Vec<_>>(),
+    )
+}
+
 fn apply_search_highlights(
     text: Text<'_>,
     search_state: &crate::search::SearchState,
