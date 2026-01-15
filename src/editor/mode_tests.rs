@@ -36,6 +36,20 @@ fn test_char_search_mode_display() {
 }
 
 #[test]
+fn test_operator_char_search_mode_display() {
+    assert_eq!(
+        EditorMode::OperatorCharSearch('d', 0, SearchDirection::Forward, SearchType::Find)
+            .display(),
+        "df…"
+    );
+    assert_eq!(
+        EditorMode::OperatorCharSearch('c', 5, SearchDirection::Backward, SearchType::Till)
+            .display(),
+        "cT…"
+    );
+}
+
+#[test]
 fn test_text_object_mode_display() {
     assert_eq!(
         EditorMode::TextObject('d', TextObjectScope::Inner).display(),
