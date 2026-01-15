@@ -9,7 +9,10 @@ use ratatui::{
 use crate::app::{App, Focus};
 use crate::editor::EditorMode;
 use crate::syntax_highlight::JqHighlighter;
-use crate::syntax_highlight::overlay::{extract_visible_spans, insert_cursor_into_spans};
+use crate::syntax_highlight::bracket_matcher::find_matching_bracket;
+use crate::syntax_highlight::overlay::{
+    extract_visible_spans, highlight_bracket_pairs, insert_cursor_into_spans,
+};
 
 pub fn render_field(app: &mut App, frame: &mut Frame, area: Rect) {
     let viewport_width = area.width.saturating_sub(2) as usize;
@@ -98,8 +101,16 @@ pub fn render_field(app: &mut App, frame: &mut Frame, area: Rect) {
         frame.render_widget(paragraph, area);
     } else {
         let highlighted_spans = JqHighlighter::highlight(query);
+
+        let spans_with_brackets =
+            if let Some(bracket_positions) = find_matching_bracket(query, cursor_col) {
+                highlight_bracket_pairs(highlighted_spans, bracket_positions)
+            } else {
+                highlighted_spans
+            };
+
         let visible_spans =
-            extract_visible_spans(&highlighted_spans, scroll_offset, viewport_width);
+            extract_visible_spans(&spans_with_brackets, scroll_offset, viewport_width);
         let cursor_in_viewport = cursor_col.saturating_sub(scroll_offset);
         let spans_with_cursor = insert_cursor_into_spans(visible_spans, cursor_in_viewport);
 

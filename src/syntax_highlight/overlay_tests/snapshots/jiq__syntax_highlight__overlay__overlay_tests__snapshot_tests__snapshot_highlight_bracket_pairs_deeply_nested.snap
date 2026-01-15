@@ -1,0 +1,42 @@
+---
+source: src/syntax_highlight/overlay_tests/snapshot_tests.rs
+expression: serialize_spans(&result)
+---
+- content: map
+  fg: blue
+- content: (
+  fg: magenta
+  modifiers:
+    - underlined
+- content: select
+  fg: blue
+- content: (
+  fg: magenta
+- content: has
+  fg: blue
+- content: (
+  fg: magenta
+- content: "{"
+  fg: magenta
+- content: a
+  fg: cyan
+- content: ": "
+- content: "{"
+  fg: magenta
+- content: b
+  fg: cyan
+- content: ": "
+- content: ".x"
+  fg: cyan
+- content: "}"
+  fg: magenta
+- content: "}"
+  fg: magenta
+- content: )
+  fg: magenta
+- content: )
+  fg: magenta
+- content: )
+  fg: magenta
+  modifiers:
+    - underlined

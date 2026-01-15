@@ -1,0 +1,22 @@
+---
+source: src/syntax_highlight/overlay_tests/snapshot_tests.rs
+expression: serialize_spans(&result)
+---
+- content: map
+  fg: blue
+  modifiers:
+    - bold
+- content: (
+  fg: blue
+  modifiers:
+    - bold
+    - underlined
+- content: "."
+  fg: blue
+  modifiers:
+    - bold
+- content: )
+  fg: blue
+  modifiers:
+    - bold
+    - underlined

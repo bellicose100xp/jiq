@@ -1,0 +1,36 @@
+---
+source: src/syntax_highlight/overlay_tests/snapshot_tests.rs
+expression: serialize_spans(&result)
+---
+- content: ".items"
+  fg: cyan
+- content: "["
+  fg: magenta
+  modifiers:
+    - underlined
+- content: "]"
+  fg: magenta
+  modifiers:
+    - underlined
+- content: " | "
+- content: select
+  fg: blue
+- content: (
+  fg: magenta
+- content: ".price"
+  fg: cyan
+- content: " > "
+- content: "100"
+  fg: cyan
+- content: )
+  fg: magenta
+- content: " | "
+- content: "{"
+  fg: magenta
+- content: name
+  fg: cyan
+- content: ", "
+- content: price
+  fg: cyan
+- content: "}"
+  fg: magenta

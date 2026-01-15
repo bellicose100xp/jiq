@@ -10,6 +10,7 @@
 //! - Strings → Green
 //! - Operators (|, ==, +, etc.) → Magenta
 
+pub mod bracket_matcher;
 pub mod overlay;
 
 use ratatui::style::{Color, Style};

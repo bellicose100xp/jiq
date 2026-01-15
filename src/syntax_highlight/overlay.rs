@@ -3,7 +3,9 @@
 //! This module provides functions for:
 //! - Extracting the visible portion of styled spans when horizontally scrolled
 //! - Inserting a cursor indicator into styled spans
+//! - Highlighting matching bracket pairs with underline
 
+use ratatui::style::Modifier;
 use ratatui::text::Span;
 
 /// Extracts the visible portion of spans for a scrolled viewport.
@@ -123,6 +125,102 @@ pub fn insert_cursor_into_spans(
             " ",
             Style::default().add_modifier(Modifier::REVERSED),
         ));
+    }
+
+    result
+}
+
+/// Highlights matching bracket pairs by adding underline to both brackets.
+///
+/// Takes a vector of spans and positions of matching bracket pairs,
+/// and applies the UNDERLINED modifier to the characters at those positions.
+///
+/// # Parameters
+/// - `spans`: Styled text spans to process
+/// - `bracket_positions`: Tuple of (opening_bracket_pos, closing_bracket_pos)
+///
+/// # Returns
+/// Vector of spans with underline applied to bracket characters.
+///
+/// # Example
+/// For query "map(.)" with bracket_positions (3, 5), the '(' at position 3
+/// and ')' at position 5 will have UNDERLINED modifier applied.
+pub fn highlight_bracket_pairs(
+    spans: Vec<Span<'static>>,
+    bracket_positions: (usize, usize),
+) -> Vec<Span<'static>> {
+    let (open_pos, close_pos) = bracket_positions;
+    apply_modifier_at_positions(spans, &[open_pos, close_pos], Modifier::UNDERLINED)
+}
+
+/// Applies a style modifier to characters at specific positions within spans.
+///
+/// This is a helper function that splits spans as needed and applies the modifier
+/// to characters at the specified positions.
+///
+/// # Parameters
+/// - `spans`: Styled text spans to process
+/// - `positions`: Character positions where modifier should be applied
+/// - `modifier`: The style modifier to apply (e.g., UNDERLINED, BOLD)
+///
+/// # Returns
+/// Vector of spans with modifier applied to characters at specified positions.
+fn apply_modifier_at_positions(
+    spans: Vec<Span<'static>>,
+    positions: &[usize],
+    modifier: Modifier,
+) -> Vec<Span<'static>> {
+    if positions.is_empty() {
+        return spans;
+    }
+
+    let mut result = Vec::new();
+    let mut current_pos = 0;
+
+    for span in spans {
+        let span_chars: Vec<char> = span.content.chars().collect();
+        let span_len = span_chars.len();
+        let span_end = current_pos + span_len;
+
+        let mut positions_in_span: Vec<usize> = positions
+            .iter()
+            .filter_map(|&pos| {
+                if pos >= current_pos && pos < span_end {
+                    Some(pos - current_pos)
+                } else {
+                    None
+                }
+            })
+            .collect();
+
+        if positions_in_span.is_empty() {
+            result.push(span);
+            current_pos = span_end;
+            continue;
+        }
+
+        positions_in_span.sort_unstable();
+
+        let mut last_end = 0;
+
+        for &pos_in_span in &positions_in_span {
+            if pos_in_span > last_end {
+                let before: String = span_chars[last_end..pos_in_span].iter().collect();
+                result.push(Span::styled(before, span.style));
+            }
+
+            let char_at_pos = span_chars[pos_in_span].to_string();
+            result.push(Span::styled(char_at_pos, span.style.add_modifier(modifier)));
+
+            last_end = pos_in_span + 1;
+        }
+
+        if last_end < span_len {
+            let after: String = span_chars[last_end..].iter().collect();
+            result.push(Span::styled(after, span.style));
+        }
+
+        current_pos = span_end;
     }
 
     result
