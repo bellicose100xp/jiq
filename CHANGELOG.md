@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.11.1] - 2026-01-14
+
+### Added
+- **Visual dimming for stale results** - Last non-empty/last successful results are dimmed to make stale output more obvious
+
+### Tests
+- Updated help popup snapshots for v3.11.0 features
+
 ## [3.11.0] - 2026-01-14
 
 ### Added
