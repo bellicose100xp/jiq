@@ -779,9 +779,474 @@ fn test_map_element_context_unchanged() {
 
 ---
 
+## Implementation Gaps & Resolutions
+
+This section documents gaps identified during code review and their resolutions.
+
+### Gap 1: Missing BraceTracker Methods
+
+**Problem**: The plan references methods that don't exist in `brace_tracker.rs`:
+
+| Plan References | Current Status |
+|-----------------|----------------|
+| `is_in_non_executing_context()` | Does not exist |
+| `innermost_context()` | Does not exist |
+| `is_in_element_iterating_context()` | Exists as `is_in_element_context()` |
+
+**Resolution**: Add the following methods to `BraceTracker`:
+
+```rust
+impl BraceTracker {
+    /// Check if cursor is in a non-executing context where cache doesn't reflect
+    /// the expression being typed. This includes:
+    /// - Inside element-iterating functions (map, select, etc.)
+    /// - Inside array builders [expr, expr]
+    /// - Inside object builder values {key: expr}
+    pub fn is_in_non_executing_context(&self, pos: usize) -> bool {
+        // Element-iterating functions (existing check)
+        if self.is_in_element_context(pos) {
+            return true;
+        }
+
+        // Check innermost brace context
+        for info in self.open_braces.iter().rev() {
+            if info.pos >= pos {
+                continue;
+            }
+
+            match info.brace_type {
+                // Array builder: always non-executing
+                BraceType::Square => {
+                    // Distinguish array builder [expr] from array iteration .[]
+                    // Array iteration has nothing or . before [
+                    // Array builder has expression content
+                    if self.is_array_builder(info.pos) {
+                        return true;
+                    }
+                }
+                // Object builder value position: non-executing
+                BraceType::Curly => {
+                    if self.is_after_colon_in_object(pos) {
+                        return true;
+                    }
+                }
+                // Parentheses: only non-executing if it's an element-context function
+                // (already handled above by is_in_element_context)
+                BraceType::Paren => {}
+            }
+        }
+
+        false
+    }
+
+    /// Get the innermost open brace info at a position
+    pub fn innermost_brace_info(&self, pos: usize) -> Option<&BraceInfo> {
+        self.open_braces.iter().rev().find(|info| info.pos < pos)
+    }
+
+    /// Check if the square bracket at `bracket_pos` is an array builder vs iteration
+    /// Array iteration: `.[]`, `.[0]`, `.foo[]`
+    /// Array builder: `[.a, .b]`, `[1, 2, 3]`
+    fn is_array_builder(&self, bracket_pos: usize) -> bool {
+        if bracket_pos == 0 {
+            return true; // `[...]` at start is always builder
+        }
+
+        let before = &self.query_snapshot[..bracket_pos];
+        let trimmed = before.trim_end();
+
+        if trimmed.is_empty() {
+            return true;
+        }
+
+        let last_char = trimmed.chars().last().unwrap();
+
+        // Array iteration follows: `.`, `]`, `?`, identifier chars
+        // Array builder follows: `|`, `;`, `(`, `[`, `{`, `,`, `:`
+        matches!(last_char, '|' | ';' | '(' | '[' | '{' | ',' | ':')
+    }
+
+    /// Check if position is after a colon in an object (value position)
+    fn is_after_colon_in_object(&self, pos: usize) -> bool {
+        // Find the innermost curly brace
+        let curly_pos = self.open_braces.iter().rev()
+            .find(|info| info.pos < pos && info.brace_type == BraceType::Curly)
+            .map(|info| info.pos);
+
+        if let Some(curly_pos) = curly_pos {
+            let inside = &self.query_snapshot[curly_pos + 1..pos];
+            // Check if we're after a colon (value position) vs before (key position)
+            // Simple heuristic: find last colon or comma
+            if let Some(last_colon) = inside.rfind(':') {
+                if let Some(last_comma) = inside.rfind(',') {
+                    return last_colon > last_comma;
+                }
+                return true;
+            }
+        }
+        false
+    }
+}
+```
+
+---
+
+### Gap 2: Array Builder vs Array Iteration Detection
+
+**Problem**: The plan assumes we can distinguish:
+- `.users[]` - Array iteration (executing)
+- `[.name, .age]` - Array builder (non-executing)
+
+But current BraceTracker tracks all `[` as `BraceType::Square` without distinction.
+
+**Resolution**: The `is_array_builder()` method above handles this by examining the character before `[`:
+
+| Character Before `[` | Interpretation |
+|---------------------|----------------|
+| `.` | Array iteration: `.[]`, `.users[]` |
+| `]` | Chained iteration: `.[0][]` |
+| `?` | Optional iteration: `.[]?` |
+| Identifier char | Field iteration: `users[]` |
+| `\|`, `;`, `(`, `[`, `{`, `,`, `:` | Array builder |
+| Start of query | Array builder |
+
+**Examples**:
+```
+.users[]           → iteration (. before [)
+[.name, .age]      → builder (start of query)
+.data | [.x, .y]   → builder (| before [)
+{arr: [.a]}        → builder (: before [)
+```
+
+---
+
+### Gap 3: Pipe Handling in Nested Contexts
+
+**Problem**: For query `map(.a | .b.)`:
+- Is the expression boundary at `|` or at `(`?
+- Plan says `|` is boundary for "top-level" but doesn't address nested pipes.
+
+**Resolution**: Pipes inside non-executing contexts **do** act as expression boundaries.
+
+```rust
+fn find_expression_boundary(before_cursor: &str, brace_tracker: &BraceTracker) -> usize {
+    let innermost = brace_tracker.innermost_brace_info(before_cursor.len());
+
+    match innermost {
+        Some(info) => {
+            let after_brace = &before_cursor[info.pos + 1..];
+
+            // Within the brace context, find the last boundary character
+            // Boundaries: |, ;, , (for arrays), : (for object values)
+            let boundary_chars = match info.brace_type {
+                BraceType::Paren => &['|', ';'][..],
+                BraceType::Square => &['|', ';', ','][..],
+                BraceType::Curly => &['|', ';', ',', ':'][..],
+            };
+
+            // Find last boundary within this context
+            let last_boundary = after_brace.rfind(|c| boundary_chars.contains(&c));
+
+            match last_boundary {
+                Some(offset) => info.pos + 1 + offset + 1, // +1 to skip the boundary char
+                None => info.pos + 1, // Start after the opening brace
+            }
+        }
+        None => {
+            // Top-level: boundary at |, ;, or start
+            before_cursor.rfind(|c| c == '|' || c == ';')
+                .map(|pos| pos + 1)
+                .unwrap_or(0)
+        }
+    }
+}
+```
+
+**Examples**:
+| Query | Innermost Context | Last Boundary | Extracted Path |
+|-------|-------------------|---------------|----------------|
+| `map(.a \| .b.)` | `(` at pos 3 | `\|` at pos 7 | `.b.` |
+| `map(.a.b.)` | `(` at pos 3 | None | `.a.b.` |
+| `[.x, .y.]` | `[` at pos 0 | `,` at pos 3 | `.y.` |
+| `{k: .a \| .b.}` | `{` at pos 0 | `\|` at pos 7 | `.b.` |
+
+---
+
+### Gap 4: `get_all_available_suggestions()` Definition
+
+**Problem**: The plan references this function for non-deterministic fallback but never defines it.
+
+**Resolution**: Define the function and its behavior:
+
+```rust
+/// Get all available suggestions when navigation fails (non-deterministic).
+/// Suggestions are scoped by the syntax context at cursor.
+///
+/// # Arguments
+/// - `original_json`: The original input JSON (never changes)
+/// - `before_cursor`: Query text before cursor (for syntax context detection)
+/// - `partial`: The incomplete token being typed (for filtering)
+fn get_all_available_suggestions(
+    original_json: &Value,
+    before_cursor: &str,
+    partial: &str,
+) -> Vec<Suggestion> {
+    let syntax_context = detect_syntax_context(before_cursor);
+
+    let suggestions = match syntax_context {
+        SyntaxContext::AfterDot => {
+            // After `.` → show all fields from original JSON
+            extract_all_fields_recursive(original_json, /* needs_dot */ false)
+        }
+        SyntaxContext::AfterPipe => {
+            // After `|` (no dot) → show functions and operators
+            get_function_suggestions()
+        }
+        SyntaxContext::AfterDollar => {
+            // After `$` → handled by VariableContext, shouldn't reach here
+            Vec::new()
+        }
+        SyntaxContext::InArrayBuilder => {
+            // Inside `[` → fields + functions
+            let mut suggestions = extract_all_fields_recursive(original_json, true);
+            suggestions.extend(get_common_functions());
+            suggestions
+        }
+        SyntaxContext::InObjectValue => {
+            // After `{key:` → fields + expressions
+            let mut suggestions = extract_all_fields_recursive(original_json, true);
+            suggestions.extend(get_common_functions());
+            suggestions
+        }
+    };
+
+    filter_suggestions_by_partial(suggestions, partial)
+}
+
+/// Extract all unique field names from JSON, recursively traversing nested structures
+fn extract_all_fields_recursive(value: &Value, needs_dot: bool) -> Vec<Suggestion> {
+    let mut fields = HashSet::new();
+    collect_fields_recursive(value, &mut fields);
+
+    let prefix = if needs_dot { "." } else { "" };
+    fields.into_iter()
+        .map(|name| Suggestion::new_with_type(
+            format!("{}{}", prefix, name),
+            SuggestionType::Field,
+            None, // Type unknown in non-deterministic context
+        ))
+        .collect()
+}
+
+fn collect_fields_recursive(value: &Value, fields: &mut HashSet<String>) {
+    match value {
+        Value::Object(map) => {
+            for (key, val) in map {
+                fields.insert(key.clone());
+                collect_fields_recursive(val, fields);
+            }
+        }
+        Value::Array(arr) => {
+            if let Some(first) = arr.first() {
+                collect_fields_recursive(first, fields);
+            }
+        }
+        _ => {}
+    }
+}
+```
+
+**Syntax Context Detection**:
+```rust
+enum SyntaxContext {
+    AfterDot,       // `.` or `.field.`
+    AfterPipe,      // `| ` (pipe with space, no dot yet)
+    AfterDollar,    // `$`
+    InArrayBuilder, // `[` or `[expr,`
+    InObjectValue,  // `{key:` or `{k1: v1, k2:`
+}
+
+fn detect_syntax_context(before_cursor: &str) -> SyntaxContext {
+    let trimmed = before_cursor.trim_end();
+
+    if trimmed.ends_with('.') {
+        return SyntaxContext::AfterDot;
+    }
+
+    // Check last non-whitespace character
+    if let Some(last_char) = trimmed.chars().last() {
+        match last_char {
+            '$' => return SyntaxContext::AfterDollar,
+            '|' => return SyntaxContext::AfterPipe,
+            '[' | ',' if is_in_array_builder(before_cursor) => {
+                return SyntaxContext::InArrayBuilder;
+            }
+            ':' if is_in_object_builder(before_cursor) => {
+                return SyntaxContext::InObjectValue;
+            }
+            _ => {}
+        }
+    }
+
+    // Default to function context
+    SyntaxContext::AfterPipe
+}
+```
+
+---
+
+### Gap 5: Original JSON Access Path
+
+**Problem**: `update_suggestions_from_app` needs access to original JSON, but the access path isn't clear.
+
+**Resolution**: The access path is:
+
+```rust
+// In autocomplete_state.rs
+pub fn update_suggestions_from_app(app: &mut App) {
+    let query_state = match &app.query {
+        Some(q) => q,
+        None => { app.autocomplete.hide(); return; }
+    };
+
+    // Access original JSON through executor
+    // NOTE: json_input_parsed() must be added to JqExecutor
+    let original_json = query_state.executor.json_input_parsed();
+
+    // ... rest of function
+    update_suggestions(
+        &mut app.autocomplete,
+        &query,
+        cursor_pos,
+        result_parsed,
+        result_type,
+        original_json,  // NEW parameter
+        &app.input.brace_tracker,
+    );
+}
+```
+
+**JqExecutor Addition** (already in Phase 0, but clarifying the full implementation):
+
+```rust
+// In query/executor.rs
+pub struct JqExecutor {
+    json_input: Arc<String>,
+    json_input_parsed: OnceCell<Option<Arc<Value>>>,  // Lazy-parsed cache
+}
+
+impl JqExecutor {
+    pub fn new(json_input: String) -> Self {
+        Self {
+            json_input: Arc::new(json_input),
+            json_input_parsed: OnceCell::new(),
+        }
+    }
+
+    /// Get parsed JSON input, lazily parsing on first access
+    pub fn json_input_parsed(&self) -> Option<Arc<Value>> {
+        self.json_input_parsed.get_or_init(|| {
+            serde_json::from_str(&self.json_input)
+                .ok()
+                .map(Arc::new)
+        }).clone()
+    }
+}
+```
+
+---
+
+### Gap 6: Middle-of-Query Detection Refinement
+
+**Problem**: `cursor_pos == query.len()` is too simple:
+- `.user. ` (trailing space) - cursor not at len but logically "at end"
+- `.user.na|me` - cursor in middle of token
+
+**Resolution**: Refine the detection:
+
+```rust
+/// Determine if cursor is at the "logical end" of the query
+/// (at end, or only whitespace after cursor)
+fn is_cursor_at_logical_end(query: &str, cursor_pos: usize) -> bool {
+    if cursor_pos >= query.len() {
+        return true;
+    }
+
+    // Check if everything after cursor is whitespace
+    query[cursor_pos..].chars().all(|c| c.is_whitespace())
+}
+
+/// Determine if cursor is in the middle of an identifier/token
+fn is_cursor_mid_token(query: &str, cursor_pos: usize) -> bool {
+    if cursor_pos >= query.len() {
+        return false;
+    }
+
+    let after = query[cursor_pos..].chars().next();
+    matches!(after, Some(c) if c.is_alphanumeric() || c == '_')
+}
+```
+
+**Updated Integration Logic**:
+```rust
+SuggestionContext::FieldContext => {
+    let is_at_end = is_cursor_at_logical_end(query, cursor_pos);
+    let is_mid_token = is_cursor_mid_token(query, cursor_pos);
+    let is_executing = !brace_tracker.is_in_non_executing_context(cursor_pos);
+
+    if is_executing && is_at_end {
+        // EXECUTING + END: Cache is current
+        get_field_suggestions(last_successful_result, ...)
+    } else if is_at_end {
+        // NON-EXECUTING + END: Extract path, navigate from cache
+        // ...
+    } else if is_mid_token {
+        // MID-TOKEN: Don't show suggestions (user is editing existing token)
+        Vec::new()
+    } else {
+        // MIDDLE OF QUERY: Navigate from original_json
+        // ...
+    }
+}
+```
+
+---
+
+### Gap 7: Function Signature Updates
+
+**Problem**: Several functions need signature changes not fully documented.
+
+**Resolution**: Document all signature changes:
+
+```rust
+// context.rs - get_suggestions() signature change
+pub fn get_suggestions(
+    query: &str,
+    cursor_pos: usize,
+    result_parsed: Option<Arc<Value>>,
+    result_type: Option<ResultType>,
+    original_json: Option<Arc<Value>>,  // NEW
+    brace_tracker: &BraceTracker,
+) -> Vec<Suggestion>
+
+// autocomplete.rs - update_suggestions() signature change
+pub fn update_suggestions(
+    autocomplete: &mut AutocompleteState,
+    query: &str,
+    cursor_pos: usize,
+    result_parsed: Option<Arc<Value>>,
+    result_type: Option<ResultType>,
+    original_json: Option<Arc<Value>>,  // NEW
+    brace_tracker: &BraceTracker,
+)
+```
+
+---
+
 ## Open Questions
 
-1. **Pipe behavior**: Should we try to evaluate partial queries to get intermediate results? Or accept that pipes reset context to "last successful result"?
+1. **Pipe behavior**: ~~Should we try to evaluate partial queries to get intermediate results? Or accept that pipes reset context to "last successful result"?~~
+   **RESOLVED**: Pipes act as expression boundaries within non-executing contexts. See Gap 3.
 
 2. **Error tolerance**: If path parsing fails partway, should we:
    - Show all available suggestions? (Current recommendation: Yes)
