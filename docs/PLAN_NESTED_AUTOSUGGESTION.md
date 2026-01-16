@@ -298,6 +298,78 @@ if brace_tracker.is_in_element_context(cursor_pos) {
 
 ---
 
+## Suggestion Certainty: Deterministic vs Non-Deterministic
+
+Not all contexts allow accurate path navigation. We classify contexts by whether we can **deterministically** know the data type:
+
+### Deterministic Contexts
+
+We can navigate the path and provide **targeted suggestions**:
+
+| Context | Example | Why Deterministic |
+|---------|---------|-------------------|
+| Simple field path | `.user.profile.` | Direct navigation through known structure |
+| Array iteration | `.items[].name.` | First element provides field schema |
+| Element-context functions | `map(.profile.)` | Input is array, navigate first element |
+| Nested in builders | `{x: .config.db.}` | Path from root is known |
+
+**Behavior**: Navigate path → suggest fields of target object.
+
+### Non-Deterministic Contexts
+
+We **cannot** know the result type. Fall back to **all available suggestions**:
+
+| Context | Example | Why Non-Deterministic |
+|---------|---------|----------------------|
+| After transforming functions | `keys \| .` | `keys` returns `[string]`, unknown field names |
+| After `to_entries` | `to_entries \| .[].` | Structure is `{key, value}` not original |
+| After `group_by` | `group_by(.x) \| .[].` | Nested arrays, unknown structure |
+| After pipe with complex expr | `.a + .b \| .` | Result type depends on runtime values |
+| Path navigation fails | `.nonexistent.` | Target doesn't exist in JSON |
+| After conditionals | `if .x then .a else .b end \| .` | Branch depends on runtime |
+
+**Behavior**: Fall back to root-level field suggestions (graceful degradation).
+
+### Detection Logic
+
+```rust
+enum SuggestionCertainty {
+    Deterministic,      // Navigate and suggest target fields
+    NonDeterministic,   // Fall back to root fields
+}
+
+fn determine_certainty(
+    path_context: &str,
+    brace_tracker: &BraceTracker,
+    navigation_result: Option<&Value>,
+) -> SuggestionCertainty {
+    // Non-deterministic if navigation failed
+    if navigation_result.is_none() {
+        return SuggestionCertainty::NonDeterministic;
+    }
+
+    // Non-deterministic if preceded by transforming function
+    let transforming_functions = ["keys", "keys_unsorted", "to_entries",
+                                   "from_entries", "group_by", "unique_by",
+                                   "flatten", "transpose", "combinations"];
+
+    if preceded_by_any(path_context, &transforming_functions) {
+        return SuggestionCertainty::NonDeterministic;
+    }
+
+    SuggestionCertainty::Deterministic
+}
+```
+
+### Summary Table
+
+| Certainty | Navigation | Suggestions |
+|-----------|------------|-------------|
+| Deterministic | Path exists in JSON | Target object's fields |
+| Non-Deterministic | Path fails OR transforming function | Root-level fields (fallback) |
+
+---
+
 ## Edge Cases
 
 | Case | Handling |
