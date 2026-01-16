@@ -29,3 +29,6 @@ mod variable_context_tests;
 
 #[path = "context_tests/nested_navigation_tests.rs"]
 mod nested_navigation_tests;
+
+#[path = "context_tests/edge_case_tests.rs"]
+mod edge_case_tests;
