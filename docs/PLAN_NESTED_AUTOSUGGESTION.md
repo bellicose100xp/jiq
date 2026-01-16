@@ -33,11 +33,9 @@ Quick reference for all tracked states that affect suggestion behavior:
 - *Object*: Inside `{...}` → boundary at `:` or `,`
 - *None*: Top-level → boundary at `|`, `;`, or start
 
-**Cursor Position**
-- *End*: `query▎` → extract full path before cursor
-- *Middle*: `que▎ry` → extract path up to cursor, ignore text after
-
-Middle-of-query editing is **not** inherently non-deterministic. We extract the path up to cursor position, then apply normal determinism rules.
+**Cursor Position** (affects data source selection)
+- *End*: `query▎` → cache is current, try `last_successful_result_parsed` first
+- *Middle*: `que▎ry` → cache is "ahead" of cursor, use `original_json_parsed` only
 
 ---
 
@@ -140,13 +138,20 @@ Modified `get_suggestions()` flow:
 SuggestionContext::FieldContext => {
     let path_context = extract_path_context(before_cursor, brace_tracker);
     let parsed_path = parse_path(&path_context);
+    let is_cursor_at_end = cursor_pos == query.len();
 
-    // 1. Try to navigate from last_successful_result_parsed
-    if let Some(nested) = navigate(last_successful_result, &parsed_path.segments) {
-        // 2a. Success → Deterministic: suggest navigated target's fields
+    // Choose data source based on cursor position
+    let navigation_source = if is_cursor_at_end {
+        last_successful_result  // Cache is current
+    } else {
+        original_json  // Cache is "ahead" of cursor
+    };
+
+    if let Some(nested) = navigate(navigation_source, &parsed_path.segments) {
+        // Deterministic: suggest navigated target's fields
         get_field_suggestions(nested, detect_value_type(nested), ...)
     } else {
-        // 2b. Fail → Non-Deterministic: fall back to original_json_parsed
+        // Non-Deterministic: fall back to original_json_parsed
         get_all_available_suggestions(original_json, partial_filter)
     }
 }
@@ -213,13 +218,20 @@ if brace_tracker.is_in_element_context(cursor_pos) {
 ## Suggestion Certainty: Deterministic vs Non-Deterministic
 
 **Core Logic**:
-1. Always try to navigate from `last_successful_result_parsed`
-2. If navigation succeeds → **Deterministic** (show navigated fields)
-3. If navigation fails → **Non-Deterministic** (fall back to `original_json_parsed`)
+
+**If cursor at END of query:**
+1. Try to navigate from `last_successful_result_parsed`
+2. If succeeds → **Deterministic** (show navigated fields)
+3. If fails → **Non-Deterministic** (fall back to `original_json_parsed`)
+
+**If cursor in MIDDLE of query:**
+1. Navigate from `original_json_parsed` only (cache is "ahead" of cursor)
+2. If succeeds → **Deterministic** (show navigated fields)
+3. If fails → **Non-Deterministic** (show all available from `original_json_parsed`)
 
 ### Deterministic (Navigation Succeeds)
 
-Path exists in `last_successful_result_parsed`. Show **targeted suggestions**:
+Path exists in the navigation source. Show **targeted suggestions**:
 
 | Context | Example | Why Deterministic |
 |---------|---------|-------------------|
@@ -232,7 +244,7 @@ Path exists in `last_successful_result_parsed`. Show **targeted suggestions**:
 
 ### Non-Deterministic (Navigation Fails)
 
-Path doesn't exist in `last_successful_result_parsed`. Fall back to **all available suggestions**:
+Path doesn't exist in the navigation source. Fall back to **all available suggestions** from `original_json_parsed`:
 
 | Context | Example | Why Non-Deterministic |
 |---------|---------|----------------------|
@@ -286,11 +298,10 @@ fn determine_certainty(
 
 ### Summary Table
 
-| Step | Action | Result |
-|------|--------|--------|
-| 1 | Try navigate from `last_successful_result_parsed` | Success or Fail |
-| 2a | **Success** → Deterministic | Suggest navigated target's fields |
-| 2b | **Fail** → Non-Deterministic | Fall back to `original_json_parsed`, show all for syntax context |
+| Cursor Position | Navigation Source | On Success | On Failure |
+|-----------------|-------------------|------------|------------|
+| **End** | `last_successful_result_parsed` | Suggest target's fields | Fall back to `original_json_parsed` |
+| **Middle** | `original_json_parsed` | Suggest target's fields | Show all available from `original_json_parsed` |
 
 ---
 
