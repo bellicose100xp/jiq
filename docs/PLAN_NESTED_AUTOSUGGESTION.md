@@ -1,6 +1,105 @@
 # Multi-Level Nested Autosuggestion Planning Document
 
-> **Document Version**: 1.1 (Updated with critical corrections from deep review)
+> **Document Version**: 1.2 (Added industry research and best practices)
+
+---
+
+## Industry Research and Prior Art
+
+Research into existing jq and JSON autocomplete implementations reveals common patterns and challenges:
+
+### Existing jq Autocomplete Implementations
+
+#### 1. jq-lsp (Language Server)
+**Source**: [github.com/wader/jq-lsp](https://github.com/wader/jq-lsp)
+
+- Uses modified **gojq parser** for AST analysis
+- Provides function and binding completion
+- **Known limitation**: "Better at handling broken syntax while typing" (listed as TODO)
+- **Unsolved problem**: "Input completion. How to indicate input and to do safe eval?"
+
+**Insight**: Even the official jq LSP struggles with input-aware completion and partial syntax.
+
+#### 2. vscode-jq-playground
+**Source**: [github.com/davidnussio/vscode-jq-playground](https://github.com/davidnussio/vscode-jq-playground)
+
+- Provides "autocomplete with inline documentation and examples"
+- Uses pre-built function metadata for completion
+
+#### 3. jqp (TUI Playground)
+**Source**: [github.com/noahgorstein/jqp](https://github.com/noahgorstein/jqp)
+
+- Built on **gojq** library
+- Offers query history and auto-completion
+- Interactive JSON exploration
+
+### JSON Path Autocomplete Patterns
+
+#### Monaco Editor Approach (Most Detailed)
+**Source**: [GitHub Gist - Monaco Autocompletion](https://gist.github.com/mwrouse/05d8c11cd3872c19c684bd1904a2202e)
+
+The implementation uses:
+
+1. **Parent chain parsing**: Split by periods to extract property path
+   ```javascript
+   // e.g., "Person.address.street" → ["Person", "address", "street"]
+   ```
+
+2. **Sequential validation**: Iterate through each parent level, confirming property exists
+   ```javascript
+   for (var i = 0; i < parents.length; i++) {
+       if (currentToken.hasOwnProperty(parents[i])) {
+           currentToken = currentToken[parents[i]];
+       }
+   }
+   ```
+
+3. **Array handling**: Detect bracket notation, access first array element
+   ```javascript
+   // If ends with "[]", strip brackets and access [0]
+   ```
+
+4. **Performance note**: "Traverses entire object structure on each keystroke" - flagged as potential issue for large objects
+
+**Our approach is similar but optimized**: We use `&Value` references (zero-copy) instead of cloning.
+
+#### Known Bug in vscode-yaml
+**Source**: [GitHub Issue #621](https://github.com/redhat-developer/vscode-yaml/issues/621)
+
+"Autocomplete for nested objects inside arrays would return suggestions for the root object instead of the nested properties."
+
+**Insight**: This exact bug is what we're solving. It confirms nested autocomplete is a common failure mode.
+
+### JSON Schema Traverse
+**Source**: [npm json-schema-traverse](https://www.npmjs.com/package/json-schema-traverse)
+
+- Pre-order traversal with callbacks for each schema node
+- Uses JSON Pointer notation (`/properties/street_address`) for path navigation
+- Passes parent context to callbacks
+
+### gojq Parser Capabilities
+**Source**: [pkg.go.dev/github.com/itchyny/gojq](https://pkg.go.dev/github.com/itchyny/gojq)
+
+- `Parse()` returns AST as `Query` struct
+- `ParseError` contains **byte offset** and **invalid token**
+- Could be used for error recovery and completion point detection
+
+### Key Industry Insights
+
+| Challenge | How Others Handle It | Our Approach |
+|-----------|---------------------|--------------|
+| Broken/partial syntax | jq-lsp: "TODO: better handling" | Graceful fallback to last valid path |
+| Wrong nesting level | vscode-yaml: Known bug | Explicit path navigation from root |
+| Large JSON performance | Monaco: Full traversal each keystroke | Zero-copy `&Value` references |
+| Array element fields | Monaco: Access `[0]` | Same - use first element |
+| Pipe context reset | Not addressed in research | Hybrid: root for no-pipe, cache for pipe |
+
+### Recommendations from Research
+
+1. **Don't try to parse incomplete jq syntax** - Navigate JSON directly based on typed path
+2. **Always use first array element** - Industry standard for array field suggestions
+3. **Test nested-in-array specifically** - Common failure mode (vscode-yaml bug)
+4. **Provide graceful degradation** - Show top-level if path navigation fails
 
 ---
 
