@@ -1,5 +1,134 @@
 # Multi-Level Nested Autosuggestion Planning Document
 
+> **Document Version**: 1.1 (Updated with critical corrections from deep review)
+
+---
+
+## Critical Design Corrections (Post-Review)
+
+After deep analysis of the codebase, several critical issues were identified that must be addressed:
+
+### Issue 1: Cache Contains Query Result, NOT Root JSON
+
+**Problem**: The plan originally assumed we could navigate from `last_successful_result_parsed`. However, this cache is updated with EVERY successful query result:
+
+```rust
+// query_state.rs:220-221
+self.last_successful_result_parsed = Self::parse_first_value(&unformatted).map(Arc::new);
+```
+
+If user's last successful query was `.users`, then `last_successful_result_parsed` contains the users array, NOT the root object. Navigating `.config.database.` from a users array would fail.
+
+**Solution**: Add a new field to `QueryState`:
+
+```rust
+pub struct QueryState {
+    // ... existing fields ...
+
+    /// Original root JSON, parsed once at initialization.
+    /// Used for path navigation in autocomplete - NEVER overwritten.
+    pub original_json_parsed: Option<Arc<Value>>,
+}
+```
+
+Initialize in `QueryState::new()`:
+```rust
+// Parse the initial "." query result as the original root
+let original_json_parsed = last_successful_result_parsed.clone();
+```
+
+### Issue 2: ResultAnalyzer API Takes Arc, Requires Clone
+
+**Problem**: `ResultAnalyzer::analyze_parsed_result()` takes `&Arc<Value>`:
+
+```rust
+// result_analyzer.rs:38-43
+pub fn analyze_parsed_result(
+    value: &Arc<Value>,  // ← Takes Arc reference
+    result_type: ResultType,
+    // ...
+) -> Vec<Suggestion>
+```
+
+To pass a navigated `&Value`, we'd need to clone and wrap in Arc, which is expensive for large nested structures.
+
+**Solution**: Modify the API to accept `&Value` directly:
+
+```rust
+pub fn analyze_parsed_result(
+    value: &Value,  // ← Changed to plain reference
+    result_type: ResultType,
+    // ...
+) -> Vec<Suggestion>
+```
+
+This is safe because the internal `extract_suggestions_for_type()` already takes `&Value`. The change is API-only, no logic changes needed.
+
+### Issue 3: Element Context Needs Implicit Array Navigation
+
+**Problem**: Inside `map(.field.)`, the BraceTracker correctly detects element context, but the path `.field.` doesn't include the implicit array iteration.
+
+**Example**:
+```
+Input JSON: {"items": [{"name": {"first": "John"}}]}
+Query: .items | map(.name.)
+```
+
+- BraceTracker detects: inside `map()` (element context)
+- User typed path: `.name.`
+- What we need to navigate: The `name` field of array ELEMENTS
+
+**Solution**: When in element context AND navigating from root, prepend implicit `ArrayIterator`:
+
+```rust
+fn get_navigation_path(
+    parsed_path: &ParsedPath,
+    brace_tracker: &BraceTracker,
+    cursor_pos: usize,
+) -> Vec<PathSegment> {
+    let mut segments = parsed_path.segments.clone();
+
+    // If in element context (map, select, etc.), the input is implicitly
+    // iterating an array. Prepend ArrayIterator for correct navigation.
+    if brace_tracker.is_in_element_context(cursor_pos) {
+        segments.insert(0, PathSegment::ArrayIterator);
+    }
+
+    segments
+}
+```
+
+### Issue 4: Pipe Handling Strategy Clarification
+
+**Problem**: Pipes reset the evaluation context. After `.users | .profile.`, the `.profile.` operates on the result of `.users`, not the root.
+
+**MVP Strategy (Hybrid Approach)**:
+
+| Scenario | Navigation Source | Rationale |
+|----------|-------------------|-----------|
+| No pipe in query | `original_json_parsed` | Direct path navigation from root |
+| Pipe present | `last_successful_result_parsed` | Cache likely has pipe's input result |
+
+```rust
+fn get_navigation_source(
+    query: &str,
+    original_json: &Arc<Value>,
+    cached_result: &Option<Arc<Value>>,
+) -> &Value {
+    if query.contains('|') {
+        // Pipe present - use cached result (from last successful query)
+        cached_result.as_deref().unwrap_or(original_json)
+    } else {
+        // No pipe - navigate from original root
+        original_json
+    }
+}
+```
+
+**Future Enhancement**: Track intermediate results at pipe boundaries for more accurate suggestions.
+
+---
+
 ## Problem Statement
 
 Currently, JIQ's autosuggestion system only provides top-level field suggestions. When a user types:
@@ -564,6 +693,44 @@ Path parser must handle bracket string notation.
 
 ## Implementation Phases
 
+### Phase 0: Infrastructure Prerequisites (Critical)
+
+**Must be completed first** - these changes enable the core feature.
+
+**Deliverables**:
+
+1. **Add `original_json_parsed` to QueryState** (`query/query_state.rs`):
+   ```rust
+   pub struct QueryState {
+       // ... existing fields ...
+       pub original_json_parsed: Option<Arc<Value>>,
+   }
+   ```
+
+2. **Initialize in `QueryState::new()`**:
+   ```rust
+   let original_json_parsed = last_successful_result_parsed.clone();
+   ```
+
+3. **Modify ResultAnalyzer API** (`autocomplete/result_analyzer.rs`):
+   - Change `analyze_parsed_result(&Arc<Value>, ...)` to `analyze_parsed_result(&Value, ...)`
+   - Update all call sites (minimal changes - just remove Arc dereferencing)
+
+4. **Pass `original_json_parsed` to autocomplete** (`autocomplete_state.rs`):
+   ```rust
+   pub fn update_suggestions_from_app(app: &mut App) {
+       // ...
+       let original_json = query_state.original_json_parsed.clone();
+       // Pass to update_suggestions
+   }
+   ```
+
+**Test Cases**:
+```rust
+#[test] fn test_original_json_preserved_after_queries() { ... }
+#[test] fn test_result_analyzer_accepts_value_reference() { ... }
+```
+
 ### Phase 1: Path Parser (Foundation)
 
 **Deliverables**:
@@ -729,6 +896,81 @@ Before release, manually verify:
 - [ ] After pipe: `.data | .` behaves correctly
 - [ ] In map(): `map(.field.)` suggests field's nested fields
 - [ ] Large JSON file: Performance is acceptable
+
+### Regression Tests (Critical)
+
+Ensure existing functionality remains unchanged:
+
+```rust
+// autocomplete/regression_tests.rs
+
+#[test]
+fn test_top_level_suggestions_unchanged() {
+    // Verify that "." still suggests top-level fields correctly
+    let json = r#"{"name": "test", "value": 42}"#;
+    let app = app_with_json(json);
+    simulate_typing(&mut app, ".");
+
+    let suggestions = app.autocomplete.suggestions();
+    assert!(suggestions.iter().any(|s| s.text == "name" || s.text == ".name"));
+    assert!(suggestions.iter().any(|s| s.text == "value" || s.text == ".value"));
+}
+
+#[test]
+fn test_function_suggestions_unchanged() {
+    // Verify that function context still works
+    let app = app_with_json("{}");
+    simulate_typing(&mut app, "sel");
+
+    let suggestions = app.autocomplete.suggestions();
+    assert!(suggestions.iter().any(|s| s.text == "select"));
+}
+
+#[test]
+fn test_variable_suggestions_unchanged() {
+    // Verify that variable suggestions still work
+    let app = app_with_json("{}");
+    simulate_typing(&mut app, ". as $x | $");
+
+    let suggestions = app.autocomplete.suggestions();
+    assert!(suggestions.iter().any(|s| s.text == "$x"));
+}
+
+#[test]
+fn test_array_of_objects_iteration_unchanged() {
+    // Verify .[].field suggestions for arrays of objects
+    let json = r#"[{"id": 1}, {"id": 2}]"#;
+    let app = app_with_json(json);
+    simulate_typing(&mut app, ".");
+
+    let suggestions = app.autocomplete.suggestions();
+    assert!(suggestions.iter().any(|s| s.text.contains("[]")));
+    assert!(suggestions.iter().any(|s| s.text.contains("id")));
+}
+
+#[test]
+fn test_with_entries_context_unchanged() {
+    // Verify .key/.value suggestions in with_entries
+    let app = app_with_json(r#"{"a": 1}"#);
+    simulate_typing(&mut app, "with_entries(.");
+
+    let suggestions = app.autocomplete.suggestions();
+    assert!(suggestions.iter().any(|s| s.text.contains("key")));
+    assert!(suggestions.iter().any(|s| s.text.contains("value")));
+}
+
+#[test]
+fn test_map_element_context_unchanged() {
+    // Verify suggestions inside map() use element context
+    let json = r#"[{"name": "test"}]"#;
+    let app = app_with_json(json);
+    simulate_typing(&mut app, "map(.");
+
+    let suggestions = app.autocomplete.suggestions();
+    // Should suggest .name (element field), not .[].name
+    assert!(suggestions.iter().any(|s| s.text == "name" || s.text == ".name"));
+}
+```
 
 ---
 
