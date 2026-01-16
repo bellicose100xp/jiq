@@ -21,7 +21,7 @@ Quick reference for all tracked states that affect suggestion behavior:
 - *Non-Executing*: Inside `map()`, `select()`, builders - cache doesn't update
 
 **Certainty** (determined by navigation result)
-- *Deterministic*: Navigation succeeds in `last_successful_result_parsed` → suggest target's fields
+- *Deterministic*: Navigation succeeds → suggest target's fields
 - *Non-Deterministic*: Navigation fails → fall back to `original_json_parsed`, show all available suggestions for syntax context
 
 **Element Context**
