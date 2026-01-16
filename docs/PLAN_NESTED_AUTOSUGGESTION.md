@@ -10,7 +10,7 @@ Quick reference for all tracked states that affect suggestion behavior:
 |-------|--------|------------|
 | **Execution Context** | Executing / Non-Executing | Whether cache updates automatically |
 | **Certainty** | Deterministic / Non-Deterministic | Whether we can navigate path accurately |
-| **Element Context** | Inside / Outside | Whether to prepend implicit `ArrayIterator` |
+| **Element Context** | Iterator-Scoped / Value-Scoped | Whether to prepend implicit `ArrayIterator` |
 | **Builder Context** | Array `[...]` / Object `{...}` / None | Expression boundary detection |
 | **Cursor Position** | End / Middle | Path extraction scope |
 
@@ -25,8 +25,8 @@ Quick reference for all tracked states that affect suggestion behavior:
 - *Non-Deterministic*: Navigation fails → fall back to `original_json_parsed`, show all available suggestions for syntax context
 
 **Element Context**
-- *Element-Iterating*: Within `map()`, `select()`, `sort_by()`, etc. — input is array element → prepend `ArrayIterator`
-- *Whole-Value*: Standard context — input is full value → use path as-is
+- *Iterator-Scoped*: Within `map()`, `select()`, `sort_by()`, etc. — input is array element → prepend `ArrayIterator`
+- *Value-Scoped*: Standard context — input is full value → use path as-is
 
 **Builder Context**
 - *Array*: Inside `[...]` → boundary at `[` or `,`
