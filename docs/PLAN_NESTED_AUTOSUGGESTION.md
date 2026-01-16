@@ -232,6 +232,8 @@ We can navigate the path and provide **targeted suggestions**:
 
 **Behavior**: Navigate path → suggest fields of target object.
 
+**Data Source**: Navigate from `last_successful_result_parsed` (reflects current query context).
+
 ### Non-Deterministic Contexts
 
 We **cannot** know the result type. Show **all available suggestions for the syntax context**:
@@ -245,15 +247,17 @@ We **cannot** know the result type. Show **all available suggestions for the syn
 | Path navigation fails | `.nonexistent.` | Target doesn't exist in JSON |
 | After conditionals | `if .x then .a else .b end \| .` | Branch depends on runtime |
 
-**Behavior**: Show all available suggestions, scoped by syntax context:
+**Behavior**: Show all available suggestions, scoped by syntax context.
 
-| Syntax | Suggestions |
-|--------|-------------|
-| After `.` | All fields from root JSON |
-| After `\|` (no dot) | Functions and operators |
-| After `$` | All defined variables |
-| After `[` | Fields, functions (array builder) |
-| After `{` key `:` | Fields, expressions (object value) |
+**Data Source**: Always `original_json_parsed` (input JSON), NOT `last_successful_result_parsed`.
+
+| Syntax | Suggestions | Source |
+|--------|-------------|--------|
+| After `.` | All fields | `original_json_parsed` |
+| After `\|` (no dot) | Functions and operators | Static list |
+| After `$` | All defined variables | Query parser |
+| After `[` | Fields, functions | `original_json_parsed` + static |
+| After `{` key `:` | Fields, expressions | `original_json_parsed` + static |
 
 ### Detection Logic
 
@@ -288,10 +292,10 @@ fn determine_certainty(
 
 ### Summary Table
 
-| Certainty | Navigation | Suggestions |
-|-----------|------------|-------------|
-| Deterministic | Path exists in JSON | Target object's fields |
-| Non-Deterministic | Path fails OR transforming function | All available for syntax context (see table above) |
+| Certainty | Navigation | Suggestions | Data Source |
+|-----------|------------|-------------|-------------|
+| Deterministic | Path exists | Target object's fields | `last_successful_result_parsed` |
+| Non-Deterministic | Path fails OR transforming function | All available for syntax context | `original_json_parsed` |
 
 ---
 
