@@ -294,6 +294,73 @@ fn determine_certainty(
 
 ---
 
+## Comprehensive Examples
+
+### Test JSON
+
+```json
+{
+  "user": {
+    "profile": {"name": "John", "age": 30},
+    "settings": {"theme": "dark", "lang": "en"}
+  },
+  "orders": [
+    {"id": 1, "items": [{"sku": "A1", "qty": 2}], "status": "shipped"},
+    {"id": 2, "items": [{"sku": "B2", "qty": 1}], "status": "pending"}
+  ],
+  "meta": {"version": "1.0"}
+}
+```
+
+**Root fields**: `user`, `orders`, `meta`
+
+### Scenario Table
+
+| # | Query (▎=cursor) | Cursor | Nav Source | Nav Path | Nav Result | Certainty | Suggestions |
+|---|------------------|--------|------------|----------|------------|-----------|-------------|
+| **Executing Context (cursor at end)** |
+| 1 | `.user.▎` | End | `last_successful` | `.user` | ✓ `{profile,settings}` | Det | `profile`, `settings` |
+| 2 | `.user.profile.▎` | End | `last_successful` | `.user.profile` | ✓ `{name,age}` | Det | `name`, `age` |
+| 3 | `.orders[].▎` | End | `last_successful` | `.orders[]` → `[0]` | ✓ `{id,items,status}` | Det | `id`, `items`, `status` |
+| 4 | `.orders[].items[].▎` | End | `last_successful` | `orders[0].items[0]` | ✓ `{sku,qty}` | Det | `sku`, `qty` |
+| 5 | `.fake.▎` | End | `last_successful` | `.fake` | ✗ | Non-Det | `user`, `orders`, `meta` (all root) |
+| **Non-Executing Context (map/select)** |
+| 6 | `.orders \| map(.▎)` | End | `last_successful` | `.` (elem ctx→`[0]`) | ✓ `{id,items,status}` | Det | `id`, `items`, `status` |
+| 7 | `.orders \| map(.items[].▎)` | End | `last_successful` | `.items[]`→`[0][0]` | ✓ `{sku,qty}` | Det | `sku`, `qty` |
+| 8 | `.orders \| map(.fake.▎)` | End | `last_successful` | `.fake` | ✗ | Non-Det | `user`, `orders`, `meta` |
+| 9 | `.orders \| select(.status == "shipped").▎` | End | `last_successful` | `.` (elem ctx) | ✓ `{id,items,status}` | Det | `id`, `items`, `status` |
+| **Non-Executing Context (builders)** |
+| 10 | `[.user.profile.▎]` | End | `last_successful` | `.user.profile` | ✓ `{name,age}` | Det | `name`, `age` |
+| 11 | `{x: .user.settings.▎}` | End | `last_successful` | `.user.settings` | ✓ `{theme,lang}` | Det | `theme`, `lang` |
+| 12 | `[.orders[].items[].▎]` | End | `last_successful` | `orders[0].items[0]` | ✓ `{sku,qty}` | Det | `sku`, `qty` |
+| 13 | `{a: .user.▎, b: .meta}` | End | `last_successful` | `.user` | ✓ | Det | `profile`, `settings` |
+| **Middle-of-query editing** |
+| 14 | `.user.▎profile.name` | Mid | `original_json` | `.user` | ✓ `{profile,settings}` | Det | `profile`, `settings` |
+| 15 | `.orders[].▎items[].sku` | Mid | `original_json` | `.orders[]`→`[0]` | ✓ `{id,items,status}` | Det | `id`, `items`, `status` |
+| 16 | `.fake.▎something` | Mid | `original_json` | `.fake` | ✗ | Non-Det | `user`, `orders`, `meta` |
+| 17 | `map(.▎id)` | Mid | `original_json` | `.` (elem ctx) | ✓ if array | Det | element fields |
+| **Transforming functions (always non-det)** |
+| 18 | `keys \| .▎` | End | `last_successful` | `.` | ✗ (string array) | Non-Det | `user`, `orders`, `meta` |
+| 19 | `.user \| to_entries \| .[].▎` | End | `last_successful` | `.[]` | ✗ (different shape) | Non-Det | `user`, `orders`, `meta` |
+| 20 | `.orders \| group_by(.status) \| .[].▎` | End | `last_successful` | N/A | ✗ | Non-Det | `user`, `orders`, `meta` |
+| **Edge cases** |
+| 21 | `.user?.profile?.▎` | End | `last_successful` | `.user.profile` (ignore `?`) | ✓ | Det | `name`, `age` |
+| 22 | `.["user"].profile.▎` | End | `last_successful` | `.user.profile` | ✓ | Det | `name`, `age` |
+| 23 | `.orders[0].items[0].▎` | End | `last_successful` | `orders[0].items[0]` | ✓ | Det | `sku`, `qty` |
+| 24 | `. \| .user.▎` | End | `last_successful` | `.user` | ✓ | Det | `profile`, `settings` |
+| 25 | `.a + .b \| .▎` | End | `last_successful` | `.` | ✗ (runtime) | Non-Det | `user`, `orders`, `meta` |
+
+### Key Observations
+
+1. **Cursor position determines nav source**: End→`last_successful`, Middle→`original_json`
+2. **Element context prepends ArrayIterator**: `map(.x.)` navigates as `[0].x`
+3. **Navigation success = Deterministic**: Show target's fields
+4. **Navigation failure = Non-Deterministic**: Show all fields from `original_json`
+5. **Transforming functions always non-det**: `keys`, `to_entries`, `group_by` change structure
+6. **Syntax ignored for navigation**: `?`, bracket notation parsed as equivalent paths
+
+---
+
 ## Edge Cases
 
 | Case | Handling |
