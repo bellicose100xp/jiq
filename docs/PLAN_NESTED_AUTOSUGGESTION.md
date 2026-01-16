@@ -129,6 +129,50 @@ fn get_navigation_source(
 
 ---
 
+## State Summary
+
+Quick reference for all tracked states that affect suggestion behavior:
+
+| State | Values | Determines |
+|-------|--------|------------|
+| **Execution Context** | Executing / Non-Executing | Whether cache updates automatically |
+| **Certainty** | Deterministic / Non-Deterministic | Whether we can navigate path accurately |
+| **Element Context** | Inside / Outside | Whether to prepend implicit `ArrayIterator` |
+| **Builder Context** | Array `[...]` / Object `{...}` / None | Expression boundary detection |
+| **Pipe Context** | Has Pipe / No Pipe | Navigation source (cache vs root) |
+| **Cursor Position** | End / Middle | Path extraction scope |
+
+### State Definitions
+
+**Execution Context**
+- *Executing*: Query runs on each keystroke, cache updates (standard `.field.` access)
+- *Non-Executing*: Inside `map()`, `select()`, builders - cache doesn't update
+
+**Certainty**
+- *Deterministic*: Path exists in JSON → suggest target's fields
+- *Non-Deterministic*: Path fails OR after transforming function → suggest root fields
+
+**Element Context**
+- *Inside*: Within `map()`, `select()`, `sort_by()`, etc. → prepend `ArrayIterator`
+- *Outside*: Normal context → use path as-is
+
+**Builder Context**
+- *Array*: Inside `[...]` → boundary at `[` or `,`
+- *Object*: Inside `{...}` → boundary at `:` or `,`
+- *None*: Top-level → boundary at `|`, `;`, or start
+
+**Pipe Context**
+- *Has Pipe*: Use `last_successful_result_parsed` (cache has transformed data)
+- *No Pipe*: Use `original_json_parsed` (navigate from root)
+
+**Cursor Position**
+- *End*: `query▎` → extract full path before cursor
+- *Middle*: `que▎ry` → extract path up to cursor, ignore text after
+
+Middle-of-query editing is **not** inherently non-deterministic. We extract the path up to cursor position, then apply normal determinism rules.
+
+---
+
 ## Problem Statement
 
 In standard field access (`.user.profile.`), suggestions work correctly because each intermediate query executes and updates the cache. However, suggestions fail in **non-executing contexts**:
