@@ -12,7 +12,6 @@ Quick reference for all tracked states that affect suggestion behavior:
 | **Certainty** | Deterministic / Non-Deterministic | Whether we can navigate path accurately |
 | **Element Context** | Inside / Outside | Whether to prepend implicit `ArrayIterator` |
 | **Builder Context** | Array `[...]` / Object `{...}` / None | Expression boundary detection |
-| **Pipe Context** | Has Pipe / No Pipe | Navigation source (cache vs root) |
 | **Cursor Position** | End / Middle | Path extraction scope |
 
 ### State Definitions
@@ -33,10 +32,6 @@ Quick reference for all tracked states that affect suggestion behavior:
 - *Array*: Inside `[...]` → boundary at `[` or `,`
 - *Object*: Inside `{...}` → boundary at `:` or `,`
 - *None*: Top-level → boundary at `|`, `;`, or start
-
-**Pipe Context**
-- *Has Pipe*: Use `last_successful_result_parsed` (cache has transformed data)
-- *No Pipe*: Use `original_json_parsed` (navigate from root)
 
 **Cursor Position**
 - *End*: `query▎` → extract full path before cursor
