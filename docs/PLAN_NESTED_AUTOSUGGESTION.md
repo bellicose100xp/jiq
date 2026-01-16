@@ -185,27 +185,16 @@ fn find_expression_start(before_cursor: &str, brace_tracker: &BraceTracker) -> u
 
 ## Context Types
 
-### Executing Context (Standard)
+### Executing vs Non-Executing
 
-Query executes, cache updates automatically. Nested suggestions work via cache.
+| Context | Example | Cache Behavior |
+|---------|---------|----------------|
+| **Executing** | `.user.profile.` | Cache updates with each keystroke |
+| **Non-Executing** | `map(.)`, `[.]`, `{x: .}` | Cache doesn't update (query not run) |
 
-```
-.user.profile.    ← Each intermediate query executes
-```
+### Element Context
 
-### Non-Executing Context (Requires Navigation)
-
-Query doesn't execute independently. Must navigate from `original_json_parsed`.
-
-| Context | Detection | Navigation Source |
-|---------|-----------|-------------------|
-| `map()`, `select()` | `is_in_element_context()` | `original_json[0]` (array element) |
-| Array builder `[...]` | `is_in_array_builder()` | `original_json` |
-| Object builder `{...}` | `is_in_object()` + after `:` | `original_json` |
-
-### Element Context (Special Case)
-
-Inside `map()`, `select()`, etc., prepend implicit `ArrayIterator`:
+Inside `map()`, `select()`, etc., prepend implicit `ArrayIterator` to path:
 
 ```rust
 if brace_tracker.is_in_element_context(cursor_pos) {
