@@ -1,6 +1,8 @@
 use super::autocomplete_state::{JsonFieldType, Suggestion, SuggestionType};
-use super::brace_tracker::BraceTracker;
+use super::brace_tracker::{BraceTracker, BraceType};
 use super::jq_functions::filter_builtins;
+use super::json_navigator::navigate;
+use super::path_parser::{PathSegment, parse_path};
 use super::result_analyzer::ResultAnalyzer;
 use super::variable_extractor::extract_variables;
 use crate::query::ResultType;
@@ -368,6 +370,7 @@ pub fn get_suggestions(
     cursor_pos: usize,
     result_parsed: Option<Arc<Value>>,
     result_type: Option<ResultType>,
+    original_json: Option<Arc<Value>>,
     brace_tracker: &BraceTracker,
 ) -> Vec<Suggestion> {
     let before_cursor = &query[..cursor_pos.min(query.len())];
@@ -381,12 +384,91 @@ pub fn get_suggestions(
     match context {
         SuggestionContext::FieldContext => {
             let needs_dot = needs_leading_dot(before_cursor, &partial);
-            let mut suggestions = get_field_suggestions(
-                result_parsed,
-                result_type,
-                needs_dot,
-                suppress_array_brackets,
-            );
+            let is_at_end = is_cursor_at_logical_end(query, cursor_pos);
+            let is_non_executing = brace_tracker.is_in_non_executing_context(cursor_pos);
+
+            // Phase 3: Path-aware suggestion logic
+            let mut suggestions = if is_non_executing && is_at_end {
+                // NON-EXECUTING CONTEXT + CURSOR AT END:
+                // Cache is stale, extract path and navigate from cache or original
+                let path_context = extract_path_context(before_cursor, brace_tracker);
+
+                // Try navigating from last_successful_result first
+                if let Some(ref result) = result_parsed {
+                    if let Some(nested_suggestions) = get_nested_field_suggestions(
+                        result,
+                        &path_context,
+                        needs_dot,
+                        suppress_array_brackets,
+                        suppress_array_brackets, // is_in_element_context == suppress_array_brackets
+                    ) {
+                        nested_suggestions
+                    } else if let Some(ref orig) = original_json {
+                        // Navigation failed, fall back to original_json
+                        get_nested_field_suggestions(
+                            orig,
+                            &path_context,
+                            needs_dot,
+                            suppress_array_brackets,
+                            suppress_array_brackets,
+                        )
+                        .unwrap_or_else(|| {
+                            get_field_suggestions(
+                                result_parsed.clone(),
+                                result_type.clone(),
+                                needs_dot,
+                                suppress_array_brackets,
+                            )
+                        })
+                    } else {
+                        get_field_suggestions(
+                            result_parsed.clone(),
+                            result_type.clone(),
+                            needs_dot,
+                            suppress_array_brackets,
+                        )
+                    }
+                } else {
+                    Vec::new()
+                }
+            } else if !is_at_end {
+                // MIDDLE OF QUERY: Cache is "ahead" of cursor, navigate from original_json
+                let path_context = extract_path_context(before_cursor, brace_tracker);
+
+                if let Some(ref orig) = original_json {
+                    get_nested_field_suggestions(
+                        orig,
+                        &path_context,
+                        needs_dot,
+                        suppress_array_brackets,
+                        suppress_array_brackets,
+                    )
+                    .unwrap_or_else(|| {
+                        get_field_suggestions(
+                            result_parsed.clone(),
+                            result_type.clone(),
+                            needs_dot,
+                            suppress_array_brackets,
+                        )
+                    })
+                } else {
+                    get_field_suggestions(
+                        result_parsed.clone(),
+                        result_type.clone(),
+                        needs_dot,
+                        suppress_array_brackets,
+                    )
+                }
+            } else {
+                // EXECUTING CONTEXT + CURSOR AT END:
+                // Cache is current, suggest its fields directly (original behavior)
+                get_field_suggestions(
+                    result_parsed.clone(),
+                    result_type.clone(),
+                    needs_dot,
+                    suppress_array_brackets,
+                )
+            };
 
             if in_with_entries {
                 inject_with_entries_suggestions(&mut suggestions, needs_dot);
@@ -503,6 +585,83 @@ fn is_delimiter(ch: char) -> bool {
         ch,
         '|' | ';' | '(' | ')' | '[' | ']' | '{' | '}' | ',' | ' ' | '\t' | '\n' | '\r'
     )
+}
+
+/// Determine if cursor is at the "logical end" of the query
+/// (at end, or only whitespace after cursor).
+fn is_cursor_at_logical_end(query: &str, cursor_pos: usize) -> bool {
+    if cursor_pos >= query.len() {
+        return true;
+    }
+    query[cursor_pos..].chars().all(|c| c.is_whitespace())
+}
+
+/// Find where the current expression starts for path extraction.
+/// Used in non-executing contexts to extract the path being typed.
+fn find_expression_boundary(before_cursor: &str, brace_tracker: &BraceTracker) -> usize {
+    let innermost = brace_tracker.innermost_brace_info(before_cursor.len());
+
+    match innermost {
+        Some(info) => {
+            let after_brace = &before_cursor[info.pos + 1..];
+
+            // Within the brace context, find the last boundary character
+            let boundary_chars: &[char] = match info.brace_type {
+                BraceType::Paren => &['|', ';'],
+                BraceType::Square => &['|', ';', ','],
+                BraceType::Curly => &['|', ';', ',', ':'],
+            };
+
+            // Find last boundary within this context
+            let last_boundary = after_brace.rfind(|c| boundary_chars.contains(&c));
+
+            match last_boundary {
+                Some(offset) => info.pos + 1 + offset + 1, // +1 to skip the boundary char
+                None => info.pos + 1,                      // Start after the opening brace
+            }
+        }
+        None => {
+            // Top-level: boundary at |, ;, or start
+            before_cursor
+                .rfind(['|', ';'])
+                .map(|pos| pos + 1)
+                .unwrap_or(0)
+        }
+    }
+}
+
+/// Extract path context from the expression boundary.
+/// Returns the path string that should be parsed for navigation.
+fn extract_path_context(before_cursor: &str, brace_tracker: &BraceTracker) -> String {
+    let boundary = find_expression_boundary(before_cursor, brace_tracker);
+    before_cursor[boundary..].trim_start().to_string()
+}
+
+/// Get nested field suggestions by navigating the JSON tree.
+/// This is the core Phase 3 integration point.
+fn get_nested_field_suggestions(
+    json: &Value,
+    path_context: &str,
+    needs_leading_dot: bool,
+    suppress_array_brackets: bool,
+    is_in_element_context: bool,
+) -> Option<Vec<Suggestion>> {
+    let mut parsed_path = parse_path(path_context);
+
+    // In element context (map, select), prepend ArrayIterator
+    // because the function already iterates over array elements
+    if is_in_element_context {
+        parsed_path.segments.insert(0, PathSegment::ArrayIterator);
+    }
+
+    // Navigate to the target value
+    let navigated = navigate(json, &parsed_path.segments)?;
+
+    // Get suggestions from the navigated value
+    let suggestions =
+        ResultAnalyzer::analyze_value(navigated, needs_leading_dot, suppress_array_brackets);
+
+    Some(suggestions)
 }
 
 #[cfg(test)]

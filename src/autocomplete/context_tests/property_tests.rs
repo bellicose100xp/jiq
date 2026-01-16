@@ -26,6 +26,7 @@ proptest! {
             query.len(),
             parsed,
             Some(ResultType::Object),
+            None,
             &tracker,
         );
 
@@ -60,6 +61,7 @@ proptest! {
             query.len(),
             parsed,
             Some(ResultType::Object),
+            None,
             &tracker,
         );
 
@@ -263,6 +265,7 @@ proptest! {
             query.len(),
             parsed,
             Some(ResultType::ArrayOfObjects),
+            None,
             &tracker,
         );
 
@@ -296,6 +299,7 @@ proptest! {
             query.len(),
             parsed,
             Some(ResultType::ArrayOfObjects),
+            None,
             &tracker,
         );
 

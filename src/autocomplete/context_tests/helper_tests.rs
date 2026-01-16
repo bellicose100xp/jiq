@@ -9,7 +9,7 @@ fn test_get_suggestions_with_no_result() {
     let query = ".";
     let tracker = tracker_for(query);
 
-    let suggestions = get_suggestions(query, query.len(), None, None, &tracker);
+    let suggestions = get_suggestions(query, query.len(), None, None, None, &tracker);
 
     assert_eq!(
         suggestions.len(),
@@ -25,7 +25,7 @@ fn test_get_suggestions_with_result_none_type_none() {
     let query = ".";
     let tracker = tracker_for(query);
 
-    let suggestions = get_suggestions(query, query.len(), Some(parsed), None, &tracker);
+    let suggestions = get_suggestions(query, query.len(), Some(parsed), None, None, &tracker);
 
     assert_eq!(
         suggestions.len(),
@@ -39,7 +39,14 @@ fn test_get_suggestions_with_result_type_none_result() {
     let query = ".";
     let tracker = tracker_for(query);
 
-    let suggestions = get_suggestions(query, query.len(), None, Some(ResultType::Object), &tracker);
+    let suggestions = get_suggestions(
+        query,
+        query.len(),
+        None,
+        Some(ResultType::Object),
+        None,
+        &tracker,
+    );
 
     assert_eq!(
         suggestions.len(),

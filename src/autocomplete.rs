@@ -43,6 +43,7 @@ pub fn update_suggestions(
     cursor_pos: usize,
     result_parsed: Option<Arc<Value>>,
     result_type: Option<ResultType>,
+    original_json: Option<Arc<Value>>,
     brace_tracker: &BraceTracker,
 ) {
     if query.trim().len() < MIN_CHARS_FOR_AUTOCOMPLETE {
@@ -50,6 +51,13 @@ pub fn update_suggestions(
         return;
     }
 
-    let suggestions = get_suggestions(query, cursor_pos, result_parsed, result_type, brace_tracker);
+    let suggestions = get_suggestions(
+        query,
+        cursor_pos,
+        result_parsed,
+        result_type,
+        original_json,
+        brace_tracker,
+    );
     autocomplete.update_suggestions(suggestions);
 }

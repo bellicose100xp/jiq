@@ -26,3 +26,6 @@ mod helper_tests;
 
 #[path = "context_tests/variable_context_tests.rs"]
 mod variable_context_tests;
+
+#[path = "context_tests/nested_navigation_tests.rs"]
+mod nested_navigation_tests;

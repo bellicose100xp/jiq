@@ -5,7 +5,7 @@ use crate::autocomplete::get_suggestions;
 
 fn get_var_suggestions(query: &str, cursor_pos: usize) -> Vec<String> {
     let tracker = tracker_for(query);
-    get_suggestions(query, cursor_pos, None, None, &tracker)
+    get_suggestions(query, cursor_pos, None, None, None, &tracker)
         .into_iter()
         .map(|s| s.text)
         .collect()

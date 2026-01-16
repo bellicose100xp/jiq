@@ -15,6 +15,7 @@ fn test_suggestions_inside_map_returns_element_fields() {
         query.len(),
         Some(parsed),
         Some(result_type),
+        None,
         &tracker,
     );
 
@@ -50,6 +51,7 @@ fn test_suggestions_inside_select_returns_element_fields() {
         query.len(),
         Some(parsed),
         Some(result_type),
+        None,
         &tracker,
     );
 
@@ -80,6 +82,7 @@ fn test_suggestions_outside_function_returns_array_fields() {
         query.len(),
         Some(parsed),
         Some(result_type),
+        None,
         &tracker,
     );
 
@@ -110,6 +113,7 @@ fn test_suggestions_inside_nested_element_functions() {
         query.len(),
         Some(parsed),
         Some(result_type),
+        None,
         &tracker,
     );
 
@@ -135,6 +139,7 @@ fn test_suggestions_inside_map_with_object_construction() {
         query.len(),
         Some(parsed),
         Some(result_type),
+        None,
         &tracker,
     );
 
@@ -160,6 +165,7 @@ fn test_suggestions_partial_field_filtering_in_element_context() {
         query.len(),
         Some(parsed),
         Some(result_type),
+        None,
         &tracker,
     );
 
@@ -185,6 +191,7 @@ fn test_suggestions_after_pipe_in_element_context() {
         query.len(),
         Some(parsed),
         Some(result_type),
+        None,
         &tracker,
     );
 
@@ -223,6 +230,7 @@ fn test_suggestions_all_element_functions() {
             query.len(),
             Some(parsed.clone()),
             Some(result_type.clone()),
+            None,
             &tracker,
         );
 
@@ -253,6 +261,7 @@ fn test_suggestions_non_element_functions_have_brackets() {
             query.len(),
             Some(parsed.clone()),
             Some(result_type.clone()),
+            None,
             &tracker,
         );
 
@@ -281,6 +290,7 @@ fn test_regression_existing_field_suggestions_unchanged() {
         query.len(),
         Some(parsed),
         Some(ResultType::Object),
+        None,
         &tracker,
     );
 
@@ -306,6 +316,7 @@ fn test_regression_object_key_context_unchanged() {
         query.len(),
         Some(parsed),
         Some(ResultType::Object),
+        None,
         &tracker,
     );
 
@@ -330,6 +341,7 @@ fn test_regression_function_context_unchanged() {
         query.len(),
         Some(parsed),
         Some(ResultType::Object),
+        None,
         &tracker,
     );
 
@@ -351,6 +363,7 @@ fn test_object_key_context_does_not_suggest_iterator() {
         query.len(),
         Some(parsed),
         Some(ResultType::ArrayOfObjects),
+        None,
         &tracker,
     );
 
@@ -374,6 +387,7 @@ fn test_field_context_inside_object_suggests_array_fields() {
         query.len(),
         Some(parsed),
         Some(ResultType::ArrayOfObjects),
+        None,
         &tracker,
     );
 

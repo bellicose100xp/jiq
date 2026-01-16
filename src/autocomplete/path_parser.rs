@@ -1,7 +1,7 @@
-/// Path parser for jq field access expressions.
-///
-/// Parses paths like `.user.profile.name` into segments for JSON navigation.
-/// Used by the autocomplete system to navigate nested structures.
+//! Path parser for jq field access expressions.
+//!
+//! Parses paths like `.user.profile.name` into segments for JSON navigation.
+//! Used by the autocomplete system to navigate nested structures.
 
 /// A segment in a jq path expression.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -41,7 +41,7 @@ impl ParsedPath {
 /// Parse a jq path expression into segments.
 ///
 /// # Examples
-/// ```
+/// ```text
 /// parse_path(".user.profile.") → segments: [Field("user"), Field("profile")], partial: ""
 /// parse_path(".user.prof") → segments: [Field("user")], partial: "prof"
 /// parse_path(".[].name") → segments: [ArrayIterator, Field("name")], partial: ""
