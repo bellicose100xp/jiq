@@ -230,664 +230,179 @@ fn get_navigation_source(
 
 ## Problem Statement
 
-Currently, JIQ's autosuggestion system only provides top-level field suggestions. When a user types:
+In standard field access (`.user.profile.`), suggestions work correctly because each intermediate query executes and updates the cache. However, suggestions fail in **non-executing contexts**:
 
-```
-.field1.
-```
-
-The system suggests top-level fields from the JSON result (e.g., `field1`, `field2`, `field3`) instead of the nested fields **inside** `field1`.
-
-### Expected Behavior
+### Failing Contexts
 
 Given this JSON:
 ```json
 {
-  "user": {
-    "profile": {
-      "name": "John",
-      "email": "john@example.com"
-    },
-    "settings": {
-      "theme": "dark"
-    }
-  },
-  "items": [
-    {"id": 1, "name": "Item 1"},
-    {"id": 2, "name": "Item 2"}
-  ]
+  "users": [{"profile": {"name": "John", "age": 30}}],
+  "config": {"db": {"host": "localhost"}}
 }
 ```
 
-| Query Being Typed | Current Suggestions | Expected Suggestions |
-|-------------------|--------------------|--------------------|
-| `.` | `user`, `items` | `user`, `items` ✓ |
-| `.user.` | `user`, `items` ❌ | `profile`, `settings` |
-| `.user.profile.` | `user`, `items` ❌ | `name`, `email` |
-| `.items[].` | `user`, `items` ❌ | `id`, `name` |
-| `.items[0].` | `user`, `items` ❌ | `id`, `name` |
+| Context | Query | Current | Expected |
+|---------|-------|---------|----------|
+| `map()` | `map(.profile.)` | top-level fields | `name`, `age` |
+| `select()` | `select(.profile.)` | top-level fields | `name`, `age` |
+| Array builder | `[.config.db.]` | top-level fields | `host` |
+| Object builder | `{x: .config.db.}` | top-level fields | `host` |
+
+### Root Cause
+
+In these contexts, the intermediate path (`.config.db`) never executes as a standalone query, so `last_successful_result_parsed` still contains the previous result (often root JSON). The system has no mechanism to navigate into nested structures based on the typed path.
 
 ---
 
-## Current Architecture Analysis
-
-### Data Flow for Suggestions
+## Current Architecture
 
 ```
-┌──────────────────────────────────────────────────────────────────────┐
-│ User types in query input                                            │
-└────────────────────────────┬─────────────────────────────────────────┘
-                             │
-┌────────────────────────────▼─────────────────────────────────────────┐
-│ editor_events.rs:26 → app_state.rs:202                               │
-│ update_autocomplete() called after each keystroke                    │
-└────────────────────────────┬─────────────────────────────────────────┘
-                             │
-┌────────────────────────────▼─────────────────────────────────────────┐
-│ autocomplete_state.rs:6-29                                           │
-│ update_suggestions_from_app() extracts:                              │
-│   - query text & cursor position                                     │
-│   - last_successful_result_parsed (Arc<Value>)  ◀── THE JSON DATA   │
-│   - result_type (Object, Array, ArrayOfObjects, etc.)                │
-└────────────────────────────┬─────────────────────────────────────────┘
-                             │
-┌────────────────────────────▼─────────────────────────────────────────┐
-│ context.rs:366-421 get_suggestions()                                 │
-│   1. analyze_context() → determines FieldContext                     │
-│   2. get_field_suggestions() → calls ResultAnalyzer                  │
-│      ├─ ResultAnalyzer.analyze_parsed_result(&root_value, ...)       │
-│      │     └─ ❌ PROBLEM: Always analyzes ROOT, not nested path      │
-│      └─ Returns suggestions for TOP-LEVEL fields only                │
-└──────────────────────────────────────────────────────────────────────┘
+editor_events.rs:26 → update_autocomplete()
+    ↓
+autocomplete_state.rs:6-29 → extracts last_successful_result_parsed
+    ↓
+context.rs:366-421 → get_suggestions()
+    ↓
+result_analyzer.rs:38-123 → analyzes cached value (NOT navigated path)
 ```
 
-### Key Files and Their Roles
-
-| File | Role | Lines of Interest |
-|------|------|-------------------|
-| `autocomplete/context.rs` | Context analysis, main `get_suggestions()` | 366-421 |
-| `autocomplete/result_analyzer.rs` | Extracts fields from JSON value | 38-123 |
-| `autocomplete/brace_tracker.rs` | Tracks nesting context (parens, braces, brackets) | 29-195 |
-| `query/query_state.rs` | Caches `last_successful_result_parsed` | 46-48, 109-112 |
-
-### Current Limitations
-
-1. **No Path Awareness**: `ResultAnalyzer::analyze_parsed_result()` receives the root JSON value and doesn't know what path the user has already typed.
-
-2. **No JSON Navigation**: There's no mechanism to traverse into nested JSON structure based on the typed path.
-
-3. **Context Loss After Dot**: When user types `.field1.`, the system detects `FieldContext` with empty partial (`""`), but doesn't extract `field1` as the path prefix.
+**Key files**:
+- `context.rs` - Context detection, suggestion generation
+- `result_analyzer.rs` - Field extraction from JSON value
+- `brace_tracker.rs` - Tracks `()`, `[]`, `{}` nesting and function context
+- `query_state.rs` - Caches `last_successful_result_parsed`
 
 ---
 
-## Proposed Solution Architecture
+## Solution
 
-### High-Level Overview
+### New Components
 
-```
-┌─────────────────────────────────────────────────────────────────────┐
-│                    NEW: Path-Aware Suggestion Flow                   │
-└─────────────────────────────────────────────────────────────────────┘
-
-User types: ".user.profile."
-                     │
-                     ▼
-┌─────────────────────────────────────────────────────────────────────┐
-│ 1. PATH PARSER (NEW)                                                │
-│    Input: ".user.profile."                                          │
-│    Output: PathSegments = [Field("user"), Field("profile")]         │
-│                                                                     │
-│    Handles:                                                         │
-│    - .field → Field("field")                                        │
-│    - [] → ArrayIterator                                             │
-│    - [0] → ArrayIndex(0)                                            │
-│    - .field? → OptionalField("field")                               │
-└────────────────────────────┬────────────────────────────────────────┘
-                             │
-                             ▼
-┌─────────────────────────────────────────────────────────────────────┐
-│ 2. JSON NAVIGATOR (NEW)                                             │
-│    Input: root_json, PathSegments                                   │
-│    Output: Option<&Value> (the nested value at path)                │
-│                                                                     │
-│    Navigation rules:                                                │
-│    - Field("x") on Object → object["x"]                             │
-│    - ArrayIterator on Array → array[0] (use first element)          │
-│    - ArrayIndex(n) on Array → array[n]                              │
-│    - Any segment on wrong type → None (path doesn't exist)          │
-└────────────────────────────┬────────────────────────────────────────┘
-                             │
-                             ▼
-┌─────────────────────────────────────────────────────────────────────┐
-│ 3. RESULT ANALYZER (MODIFIED)                                       │
-│    Input: nested_value (not root!), result_type                     │
-│    Output: Vec<Suggestion> for fields in nested_value               │
-│                                                                     │
-│    Same logic as before, but operating on navigated value           │
-└─────────────────────────────────────────────────────────────────────┘
-```
-
----
-
-## Detailed Component Design
-
-### Component 1: Path Parser
-
-**Purpose**: Parse the jq path expression before the cursor into structured segments.
-
-**Location**: New file `autocomplete/path_parser.rs`
-
-#### Data Structures
+**1. Path Parser** (`autocomplete/path_parser.rs`)
 
 ```rust
-/// A single segment in a jq path
-#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum PathSegment {
-    /// Field access: .name, .["complex-key"]
-    Field(String),
-
-    /// Optional field access: .name?
-    OptionalField(String),
-
-    /// Array iteration: .[]
-    ArrayIterator,
-
-    /// Array index access: .[0], .[-1]
-    ArrayIndex(i64),
-
-    /// Object iteration: .{}  (rare but valid)
-    ObjectIterator,
+    Field(String),          // .name
+    OptionalField(String),  // .name?
+    ArrayIterator,          // .[]
+    ArrayIndex(i64),        // .[0]
 }
 
-/// Result of parsing a path expression
-#[derive(Debug, Clone)]
 pub struct ParsedPath {
-    /// The path segments extracted
     pub segments: Vec<PathSegment>,
-
-    /// Whether the path ends with a dot (expecting more input)
-    pub ends_with_dot: bool,
-
-    /// The partial field name being typed (if any)
-    /// e.g., ".user.na" → partial = "na"
-    pub partial: String,
+    pub partial: String,  // incomplete field being typed
 }
+
+/// Parse ".user.profile." → [Field("user"), Field("profile")], partial=""
+/// Parse ".user.prof" → [Field("user")], partial="prof"
+pub fn parse_path(input: &str) -> ParsedPath
 ```
 
-#### Parsing Logic
+**2. JSON Navigator** (`autocomplete/json_navigator.rs`)
 
 ```rust
-/// Parse a jq path expression into segments
-///
-/// Examples:
-/// - ".user" → [Field("user")], ends_with_dot=false, partial=""
-/// - ".user." → [Field("user")], ends_with_dot=true, partial=""
-/// - ".user.na" → [Field("user")], ends_with_dot=false, partial="na"
-/// - ".items[]." → [Field("items"), ArrayIterator], ends_with_dot=true
-/// - ".data[0].name" → [Field("data"), ArrayIndex(0), Field("name")]
-pub fn parse_path(input: &str) -> ParsedPath {
-    // Implementation details below
-}
-```
-
-#### Parsing State Machine
-
-```
-States:
-- Start: expecting '.' or end
-- AfterDot: expecting field name, '[', or end (trailing dot)
-- InField: consuming field name characters
-- InBracket: inside [...], expecting index, ']', or ':'
-- AfterOptional: after '?', expecting '.' or end
-
-Transitions:
-- Start + '.' → AfterDot
-- AfterDot + identifier_char → InField (start accumulating)
-- AfterDot + '[' → InBracket
-- AfterDot + end → ParsedPath with ends_with_dot=true
-- InField + '.' → emit Field segment, → AfterDot
-- InField + '?' → emit OptionalField, → AfterOptional
-- InField + '[' → emit Field segment, → InBracket
-- InField + end → partial = accumulated chars
-- InBracket + ']' → emit ArrayIterator or ArrayIndex, → Start
-```
-
-#### Edge Cases to Handle
-
-| Input | Expected Output |
-|-------|-----------------|
-| `.` | segments=[], ends_with_dot=true, partial="" |
-| `.user` | segments=[], partial="user" |
-| `.user.` | segments=[Field("user")], ends_with_dot=true |
-| `.user.profile.na` | segments=[Field("user"), Field("profile")], partial="na" |
-| `.items[].` | segments=[Field("items"), ArrayIterator], ends_with_dot=true |
-| `.items[0].` | segments=[Field("items"), ArrayIndex(0)], ends_with_dot=true |
-| `.["weird-key"].` | segments=[Field("weird-key")], ends_with_dot=true |
-| `.user?.profile.` | segments=[OptionalField("user"), Field("profile")], ends_with_dot=true |
-| `.[].name.` | segments=[ArrayIterator, Field("name")], ends_with_dot=true |
-
-#### Complex Cases
-
-1. **Bracket notation for field names**: `.["field-with-dashes"]`
-   - Parse string inside brackets as field name
-
-2. **Nested arrays**: `.data[][].name`
-   - Multiple ArrayIterator segments in sequence
-
-3. **Mixed access**: `.users[0].posts[].title`
-   - Interleaved Field, ArrayIndex, ArrayIterator
-
-4. **Pipe boundaries**: `.user | .profile.`
-   - Path resets after pipe! Only parse from last `|`
-   - This is CRITICAL - the path context changes after pipes
-
-5. **Function context**: `map(.user.)`
-   - Path should start from `.user.` not include `map(`
-   - Already handled by `extract_partial_token()` in current system
-
----
-
-### Component 2: JSON Navigator
-
-**Purpose**: Traverse a JSON value following path segments.
-
-**Location**: New file `autocomplete/json_navigator.rs`
-
-#### Core Function
-
-```rust
-/// Navigate into a JSON value following the given path segments
-///
-/// Returns the value at the path, or None if navigation fails.
-/// For arrays, uses first element (index 0) when encountering ArrayIterator.
-///
-/// # Arguments
-/// * `root` - The root JSON value to navigate from
-/// * `segments` - Path segments to follow
-///
-/// # Returns
-/// * `Some(&Value)` - The value at the end of the path
-/// * `None` - If path doesn't exist or type mismatch
+/// Navigate JSON tree following path segments.
+/// ArrayIterator uses first element (industry standard).
+/// Returns None if path doesn't exist.
 pub fn navigate<'a>(root: &'a Value, segments: &[PathSegment]) -> Option<&'a Value> {
     let mut current = root;
-
     for segment in segments {
         current = match (segment, current) {
-            // Field access on object
-            (PathSegment::Field(name), Value::Object(map)) => {
-                map.get(name)?
-            }
-            (PathSegment::OptionalField(name), Value::Object(map)) => {
-                map.get(name)?
-            }
-
-            // Array iteration - use first element for suggestions
-            (PathSegment::ArrayIterator, Value::Array(arr)) => {
-                arr.first()?
-            }
-
-            // Array index access
-            (PathSegment::ArrayIndex(idx), Value::Array(arr)) => {
-                let index = if *idx < 0 {
-                    // Negative index: count from end
-                    let len = arr.len() as i64;
-                    (len + idx) as usize
-                } else {
-                    *idx as usize
-                };
-                arr.get(index)?
-            }
-
-            // Object iteration - get first value
-            (PathSegment::ObjectIterator, Value::Object(map)) => {
-                map.values().next()?
-            }
-
-            // Type mismatch - path doesn't exist
+            (PathSegment::Field(name), Value::Object(map)) => map.get(name)?,
+            (PathSegment::ArrayIterator, Value::Array(arr)) => arr.first()?,
+            (PathSegment::ArrayIndex(i), Value::Array(arr)) => arr.get(*i as usize)?,
             _ => return None,
         };
     }
-
     Some(current)
 }
 ```
 
-#### Result Type Detection for Navigated Value
+### Integration (`context.rs`)
 
-After navigation, we need to detect the result type of the nested value:
+Modified `get_suggestions()` flow:
 
 ```rust
-/// Determine the ResultType for a given JSON value
-pub fn detect_value_type(value: &Value) -> ResultType {
-    match value {
-        Value::Object(_) => ResultType::Object,
-        Value::Array(arr) => {
-            if arr.is_empty() {
-                ResultType::Array
-            } else if matches!(arr[0], Value::Object(_)) {
-                ResultType::ArrayOfObjects
-            } else {
-                ResultType::Array
-            }
-        }
-        Value::String(_) => ResultType::String,
-        Value::Number(_) => ResultType::Number,
-        Value::Bool(_) => ResultType::Boolean,
-        Value::Null => ResultType::Null,
+SuggestionContext::FieldContext => {
+    let path_context = extract_path_context(before_cursor, brace_tracker);
+    let parsed_path = parse_path(&path_context);
+
+    if let Some(nested) = navigate(original_json, &parsed_path.segments) {
+        get_field_suggestions(nested, detect_value_type(nested), ...)
+    } else {
+        Vec::new()  // Path doesn't exist
     }
+}
+```
+
+### Expression Boundaries
+
+Path context resets at expression boundaries. Use `find_expression_start()`:
+
+```rust
+/// Find where current expression starts (for path extraction)
+fn find_expression_start(before_cursor: &str, brace_tracker: &BraceTracker) -> usize {
+    // Check innermost context from BraceTracker
+    match brace_tracker.innermost_context() {
+        Some(BraceType::Paren) => // Inside function: start after '('
+        Some(BraceType::Square) => // Array builder: start after '[' or last ','
+        Some(BraceType::Curly) => // Object builder: start after ':' or last ','
+        None => // Top-level: start after '|' or ';' or beginning
+    }
+}
+```
+
+| Context | Boundary | Example |
+|---------|----------|---------|
+| Top-level | `\|`, `;`, start | `.a \| .b.c.` → `.b.c.` |
+| Function | `(` | `map(.user.)` → `.user.` |
+| Array builder | `[`, `,` | `[.a, .b.c.]` → `.b.c.` |
+| Object builder | `:`, `,` | `{x: .a.b.}` → `.a.b.` |
+
+---
+
+## Context Types
+
+### Executing Context (Standard)
+
+Query executes, cache updates automatically. Nested suggestions work via cache.
+
+```
+.user.profile.    ← Each intermediate query executes
+```
+
+### Non-Executing Context (Requires Navigation)
+
+Query doesn't execute independently. Must navigate from `original_json_parsed`.
+
+| Context | Detection | Navigation Source |
+|---------|-----------|-------------------|
+| `map()`, `select()` | `is_in_element_context()` | `original_json[0]` (array element) |
+| Array builder `[...]` | `is_in_array_builder()` | `original_json` |
+| Object builder `{...}` | `is_in_object()` + after `:` | `original_json` |
+
+### Element Context (Special Case)
+
+Inside `map()`, `select()`, etc., prepend implicit `ArrayIterator`:
+
+```rust
+if brace_tracker.is_in_element_context(cursor_pos) {
+    segments.insert(0, PathSegment::ArrayIterator);
 }
 ```
 
 ---
 
-### Component 3: Integration with Existing System
-
-**Location**: Modifications to `autocomplete/context.rs`
-
-#### Modified `get_suggestions()` Flow
-
-```rust
-pub fn get_suggestions(
-    query: &str,
-    cursor_pos: usize,
-    result_parsed: Option<Arc<Value>>,
-    result_type: Option<ResultType>,
-    brace_tracker: &BraceTracker,
-) -> Vec<Suggestion> {
-    let before_cursor = &query[..cursor_pos.min(query.len())];
-    let (context, partial) = analyze_context(before_cursor, brace_tracker);
-
-    let suppress_array_brackets = brace_tracker.is_in_element_context(cursor_pos);
-    let in_with_entries = brace_tracker.is_in_with_entries_context(cursor_pos);
-
-    match context {
-        SuggestionContext::FieldContext => {
-            // ═══════════════════════════════════════════════════════════
-            // NEW: Parse path and navigate to nested value
-            // ═══════════════════════════════════════════════════════════
-
-            let path_context = extract_path_context(before_cursor, brace_tracker);
-            let parsed_path = parse_path(&path_context);
-
-            // Navigate to nested value
-            let (target_value, target_type) = if let Some(root) = result_parsed.as_ref() {
-                if let Some(nested) = navigate(root, &parsed_path.segments) {
-                    let nested_type = detect_value_type(nested);
-                    // Clone into Arc for ResultAnalyzer (it expects Arc<Value>)
-                    (Some(Arc::new(nested.clone())), Some(nested_type))
-                } else {
-                    // Path doesn't exist in JSON - no suggestions
-                    (None, None)
-                }
-            } else {
-                (result_parsed.clone(), result_type)
-            };
-
-            // ═══════════════════════════════════════════════════════════
-
-            let needs_dot = needs_leading_dot(before_cursor, &partial);
-            let mut suggestions = get_field_suggestions(
-                target_value,      // ← NOW: nested value instead of root
-                target_type,       // ← NOW: type of nested value
-                needs_dot,
-                suppress_array_brackets,
-            );
-
-            if in_with_entries {
-                inject_with_entries_suggestions(&mut suggestions, needs_dot);
-            }
-
-            filter_suggestions_by_partial_if_nonempty(suggestions, &partial)
-        }
-        // ... other contexts unchanged ...
-    }
-}
-```
-
-#### New Function: `extract_path_context()`
-
-This function extracts the relevant path portion from the query, handling pipes and function boundaries:
-
-```rust
-/// Extract the path context for suggestion generation
-///
-/// The path context is the portion of the query that represents
-/// the current "navigation path" into the JSON structure.
-///
-/// Boundaries that reset the path context:
-/// - Pipe operator `|` - after pipe, context comes from pipe input
-/// - Semicolon `;` - jq expression separator
-/// - Opening paren `(` - function argument start
-///
-/// # Examples
-/// - ".user.profile." → ".user.profile."
-/// - ".data | .user." → ".user."
-/// - "map(.items.)" → ".items."
-/// - ".users | map(.profile.)" → ".profile."
-fn extract_path_context(before_cursor: &str, brace_tracker: &BraceTracker) -> String {
-    // Find the last context boundary
-    let boundary_chars = ['|', ';'];
-
-    let last_boundary = before_cursor
-        .char_indices()
-        .rev()
-        .find(|(_, ch)| boundary_chars.contains(ch))
-        .map(|(pos, _)| pos + 1)
-        .unwrap_or(0);
-
-    // Also consider function context from brace_tracker
-    // If inside map(), select(), etc., the path starts from inside the function
-
-    let path_start = last_boundary;
-    before_cursor[path_start..].trim_start().to_string()
-}
-```
-
----
-
-## Special Cases and Edge Cases
-
-### Case 1: Pipe Operator Resets Context
-
-```
-Query: .users | map(.profile.)
-JSON: {"users": [{"profile": {"name": "John"}}]}
-
-Path context for suggestions: ".profile."
-Navigate from: The RESULT of ".users | map(...)"
-
-PROBLEM: We don't have the result of the pipe - we have root JSON!
-```
-
-**Solution Options**:
-
-**Option A: Hybrid Approach (Recommended)**
-- For simple paths (no pipes), navigate directly in cached root JSON
-- For paths after pipe, fall back to current behavior (top-level of last successful result)
-- The `last_successful_result_parsed` already contains the result of the last successful query
-
-**Option B: Re-execute Partial Query**
-- Execute the query up to the last pipe to get intermediate result
-- Use that result for navigation
-- EXPENSIVE - adds jq execution on every keystroke
-
-**Option C: Maintain Execution Context Stack**
-- Track intermediate results as user builds query
-- Complex state management
-
-**Recommendation**: Start with Option A. It handles the majority of cases (direct nested access) without complexity. Pipe scenarios already work "okay" with current system.
-
-### Case 2: Element Context Functions
-
-Inside `map()`, `select()`, etc., the context already represents array elements:
-
-```
-Query: .items | map(.name.)
-JSON: {"items": [{"name": {"first": "John", "last": "Doe"}}]}
-
-Without element context: Would try to find .name in root
-With element context: Correctly knows we're iterating .items elements
-```
-
-**Integration**: The `BraceTracker` already detects element context. We need to:
-1. When in element context AND the path starts with `.`, navigate from array's first element
-2. Combine with path parser for nested access within element context
-
-### Case 3: Array Index vs Iterator
-
-```
-Query: .items[0].
-Query: .items[].
-
-Both should suggest fields of items' objects, but:
-- [0] navigates to specific index
-- [] navigates to first element (for suggestions)
-```
-
-Both cases produce same suggestions - this is correct behavior.
-
-### Case 4: Mixed Array Depths
-
-```
-Query: .data[][].name.
-JSON: {"data": [[{"name": {"first": "A"}}]]}
-
-Path: [Field("data"), ArrayIterator, ArrayIterator, Field("name")]
-Navigation: data → data[0] → data[0][0] → data[0][0].name
-```
-
-Each `ArrayIterator` dives into first element of current array.
-
-### Case 5: Non-Existent Path
-
-```
-Query: .nonexistent.field.
-JSON: {"user": {"name": "John"}}
-
-Navigation returns None → No suggestions (field doesn't exist)
-```
-
-This is correct - don't suggest anything for paths that don't exist.
-
-### Case 6: Optional Access Chain
-
-```
-Query: .user?.profile?.
-JSON: {"user": {"profile": {"name": "John"}}}
-
-Optional marker `?` doesn't change navigation for suggestions.
-We navigate as if the field exists (for suggestion purposes).
-```
-
-### Case 7: Bracket Notation for Field Names
-
-```
-Query: .["user-data"].profile.
-JSON: {"user-data": {"profile": {"name": "John"}}}
-
-Path parser must handle bracket string notation.
-```
-
-### Case 8: Array Builder Context
-
-```
-Query: [.users[].name, .users[].profile.]
-JSON: {"users": [{"name": "John", "profile": {"age": 30}}]}
-                                          ^ cursor here
-
-Path context: ".users[].profile." (starts after last comma at same nesting level)
-Navigate: [Field("users"), ArrayIterator, Field("profile")]
-Suggestions: age
-```
-
-**Key insight**: Inside array builders `[...]`, each comma-separated element is a distinct expression. The path context resets at each `,`.
-
-**Implementation**: When extracting path context:
-1. Check if inside `[...]` via BraceTracker
-2. Find the last `,` at the current nesting level
-3. Path context starts after that comma (or after `[` if no comma)
-
-```rust
-fn find_expression_start_in_array(before_cursor: &str, bracket_pos: usize) -> usize {
-    // Scan from bracket_pos forward, tracking nesting
-    // Return position after last ',' at nesting level 0
-    let mut nesting = 0;
-    let mut last_comma = bracket_pos;
-
-    for (i, ch) in before_cursor[bracket_pos..].char_indices() {
-        match ch {
-            '[' | '{' | '(' => nesting += 1,
-            ']' | '}' | ')' => nesting = nesting.saturating_sub(1),
-            ',' if nesting == 1 => last_comma = bracket_pos + i + 1,
-            _ => {}
-        }
-    }
-    last_comma
-}
-```
-
-### Case 9: Object Builder Context
-
-```
-Query: {name: .user.name, addr: .user.address.}
-JSON: {"user": {"name": "John", "address": {"city": "NYC", "zip": "10001"}}}
-                                           ^ cursor here
-
-Path context: ".user.address." (starts after colon of current key-value pair)
-Navigate: [Field("user"), Field("address")]
-Suggestions: city, zip
-```
-
-**Key insight**: Inside object builders `{key: value, ...}`, the value expression starts after `:`. Path context resets at each `,` AND starts fresh after each `:`.
-
-**Implementation**: When extracting path context inside object:
-1. Check if inside `{...}` via BraceTracker (`is_in_object()` already exists)
-2. Find the last `:` or `,` at the current nesting level
-3. If `:`, path context starts after it (we're in a value position)
-4. If `,`, we might be in key position (no suggestions) or value position
-
-```rust
-fn find_expression_start_in_object(before_cursor: &str, brace_pos: usize) -> Option<usize> {
-    // Scan from brace_pos forward, tracking nesting
-    // Return position after last ':' at nesting level 0 (if in value position)
-    let mut nesting = 0;
-    let mut last_colon = None;
-    let mut last_separator = brace_pos; // ',' or '{'
-
-    for (i, ch) in before_cursor[brace_pos..].char_indices() {
-        let pos = brace_pos + i;
-        match ch {
-            '[' | '{' | '(' => nesting += 1,
-            ']' | '}' | ')' => nesting = nesting.saturating_sub(1),
-            ':' if nesting == 1 => last_colon = Some(pos + 1),
-            ',' if nesting == 1 => {
-                last_separator = pos + 1;
-                last_colon = None; // Reset - might be in key position now
-            }
-            _ => {}
-        }
-    }
-
-    // If we found a colon after the last separator, we're in value position
-    last_colon
-}
-```
-
-### Case 10: Nested Builders
-
-```
-Query: {users: [.data[].user.]}
-JSON: {"data": [{"user": {"id": 1, "name": "John"}}]}
-                         ^ cursor here (inside [ inside {)
-
-BraceTracker stack: [{...}, [...]]
-Innermost context: Array builder
-Path context: ".data[].user." (from after '[' in the array)
-Navigate: [Field("data"), ArrayIterator, Field("user")]
-Suggestions: id, name
-```
-
-For nested builders, always use the **innermost** context to determine expression boundaries.
+## Edge Cases
+
+| Case | Handling |
+|------|----------|
+| `.items[0].` vs `.items[].` | Both → first element (same suggestions) |
+| `.data[][].name.` | Chain ArrayIterators: `data[0][0].name` |
+| `.nonexistent.` | `navigate()` returns None → no suggestions |
+| `.user?.profile?.` | Ignore `?` for navigation |
+| `.["field-name"].` | Parse bracket notation as field |
 
 ---
 
@@ -1052,49 +567,6 @@ fn bench_path_parsing() {
 - Handle pipe operator edge cases
 - Optimize for large JSON files (avoid cloning when possible)
 - Performance testing and optimization
-
----
-
-## Performance Considerations
-
-> **See also**: [Performance Guarantees](#performance-guarantees) section above for detailed complexity analysis.
-
-### Design Principles
-
-1. **Zero Query Execution**: Never run jq to get suggestions - only navigate cached JSON
-2. **Zero Cloning**: Use `&Value` references throughout - no large allocations
-3. **Same Complexity**: New code is O(query_length + num_fields), same as current
-
-### Current Performance Profile
-
-The autocomplete system is called on **every keystroke**. Current optimizations:
-- `Arc<Value>` for parsed JSON (no re-parsing)
-- Pre-rendered results cached
-- Minimal allocations in hot path
-
-### New Operations (All Lightweight)
-
-| New Operation | Implementation | Cost |
-|---------------|----------------|------|
-| Path parsing | Single-pass string scan | O(n) |
-| JSON navigation | Pointer following | O(depth) |
-| Expression boundary detection | Scan from last bracket/brace | O(n) |
-
-**No new heavy operations**: No jq execution, no JSON re-parsing, no cloning.
-
-### API Change Enables Zero-Copy
-
-Phase 0 changes `ResultAnalyzer` to take `&Value`:
-
-```rust
-// Before: Required Arc wrapper (forces clone for navigation results)
-fn analyze_parsed_result(value: &Arc<Value>, ...) -> Vec<Suggestion>
-
-// After: Takes plain reference (zero-copy navigation)
-fn analyze_parsed_result(value: &Value, ...) -> Vec<Suggestion>
-```
-
-This single API change eliminates all cloning concerns.
 
 ---
 
@@ -1274,13 +746,13 @@ fn test_map_element_context_unchanged() {
 
 The feature is complete when:
 
-1. ✅ Typing `.field.` suggests fields inside `field`, not top-level fields
-2. ✅ Array access (`.items[].` and `.items[0].`) suggests element fields
-3. ✅ Deep nesting (`.a.b.c.d.`) works correctly
-4. ✅ Existing functionality (top-level suggestions, function suggestions, variable suggestions) unchanged
-5. ✅ Performance is acceptable (no perceptible lag on keystroke)
-6. ✅ All existing tests pass
-7. ✅ New tests cover nested suggestion scenarios
+1. ✅ `map(.field.)` suggests nested fields inside `field`
+2. ✅ Array builder `[.a.b.]` suggests fields inside `b`
+3. ✅ Object builder `{x: .a.b.}` suggests fields inside `b`
+4. ✅ Deep nesting in non-executing contexts works correctly
+5. ✅ Existing suggestions unchanged (top-level, functions, variables)
+6. ✅ No perceptible latency on keystroke
+7. ✅ All existing tests pass
 
 ---
 
