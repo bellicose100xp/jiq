@@ -460,28 +460,37 @@ fn bench_path_parsing() {
 
 **Deliverables**:
 
-1. **Add `original_json_parsed` to QueryState** (`query/query_state.rs`):
+1. **Source `original_json_parsed` from `JqExecutor::json_input`**:
+
+   The original input JSON is stored in `JqExecutor::json_input` and accessed via `json_input()`.
+   This is the true original file input that never changes during the session.
+
+   **Important**: Do NOT use `last_successful_result_parsed` - it represents query results,
+   not original input, and changes on every successful query execution.
+
    ```rust
-   pub struct QueryState {
-       // ... existing fields ...
-       pub original_json_parsed: Option<Arc<Value>>,
+   // In autocomplete context, obtain original JSON from executor:
+   let original_json_parsed: Option<Arc<Value>> = jq_executor.json_input_parsed();
+   ```
+
+   If `json_input_parsed()` doesn't exist, add a method to parse and cache the original input:
+   ```rust
+   impl JqExecutor {
+       pub fn json_input_parsed(&self) -> Option<Arc<Value>> {
+           // Parse json_input once and cache, or return cached value
+       }
    }
    ```
 
-2. **Initialize in `QueryState::new()`**:
-   ```rust
-   let original_json_parsed = last_successful_result_parsed.clone();
-   ```
-
-3. **Modify ResultAnalyzer API** (`autocomplete/result_analyzer.rs`):
+2. **Modify ResultAnalyzer API** (`autocomplete/result_analyzer.rs`):
    - Change `analyze_parsed_result(&Arc<Value>, ...)` to `analyze_parsed_result(&Value, ...)`
    - Update all call sites (minimal changes - just remove Arc dereferencing)
 
-4. **Pass `original_json_parsed` to autocomplete** (`autocomplete_state.rs`):
+3. **Pass `original_json_parsed` to autocomplete** (`autocomplete_state.rs`):
    ```rust
    pub fn update_suggestions_from_app(app: &mut App) {
        // ...
-       let original_json = query_state.original_json_parsed.clone();
+       let original_json = app.jq_executor.json_input_parsed();
        // Pass to update_suggestions
    }
    ```
