@@ -689,6 +689,168 @@ JSON: {"user-data": {"profile": {"name": "John"}}}
 Path parser must handle bracket string notation.
 ```
 
+### Case 8: Array Builder Context
+
+```
+Query: [.users[].name, .users[].profile.]
+JSON: {"users": [{"name": "John", "profile": {"age": 30}}]}
+                                          ^ cursor here
+
+Path context: ".users[].profile." (starts after last comma at same nesting level)
+Navigate: [Field("users"), ArrayIterator, Field("profile")]
+Suggestions: age
+```
+
+**Key insight**: Inside array builders `[...]`, each comma-separated element is a distinct expression. The path context resets at each `,`.
+
+**Implementation**: When extracting path context:
+1. Check if inside `[...]` via BraceTracker
+2. Find the last `,` at the current nesting level
+3. Path context starts after that comma (or after `[` if no comma)
+
+```rust
+fn find_expression_start_in_array(before_cursor: &str, bracket_pos: usize) -> usize {
+    // Scan from bracket_pos forward, tracking nesting
+    // Return position after last ',' at nesting level 0
+    let mut nesting = 0;
+    let mut last_comma = bracket_pos;
+
+    for (i, ch) in before_cursor[bracket_pos..].char_indices() {
+        match ch {
+            '[' | '{' | '(' => nesting += 1,
+            ']' | '}' | ')' => nesting = nesting.saturating_sub(1),
+            ',' if nesting == 1 => last_comma = bracket_pos + i + 1,
+            _ => {}
+        }
+    }
+    last_comma
+}
+```
+
+### Case 9: Object Builder Context
+
+```
+Query: {name: .user.name, addr: .user.address.}
+JSON: {"user": {"name": "John", "address": {"city": "NYC", "zip": "10001"}}}
+                                           ^ cursor here
+
+Path context: ".user.address." (starts after colon of current key-value pair)
+Navigate: [Field("user"), Field("address")]
+Suggestions: city, zip
+```
+
+**Key insight**: Inside object builders `{key: value, ...}`, the value expression starts after `:`. Path context resets at each `,` AND starts fresh after each `:`.
+
+**Implementation**: When extracting path context inside object:
+1. Check if inside `{...}` via BraceTracker (`is_in_object()` already exists)
+2. Find the last `:` or `,` at the current nesting level
+3. If `:`, path context starts after it (we're in a value position)
+4. If `,`, we might be in key position (no suggestions) or value position
+
+```rust
+fn find_expression_start_in_object(before_cursor: &str, brace_pos: usize) -> Option<usize> {
+    // Scan from brace_pos forward, tracking nesting
+    // Return position after last ':' at nesting level 0 (if in value position)
+    let mut nesting = 0;
+    let mut last_colon = None;
+    let mut last_separator = brace_pos; // ',' or '{'
+
+    for (i, ch) in before_cursor[brace_pos..].char_indices() {
+        let pos = brace_pos + i;
+        match ch {
+            '[' | '{' | '(' => nesting += 1,
+            ']' | '}' | ')' => nesting = nesting.saturating_sub(1),
+            ':' if nesting == 1 => last_colon = Some(pos + 1),
+            ',' if nesting == 1 => {
+                last_separator = pos + 1;
+                last_colon = None; // Reset - might be in key position now
+            }
+            _ => {}
+        }
+    }
+
+    // If we found a colon after the last separator, we're in value position
+    last_colon
+}
+```
+
+### Case 10: Nested Builders
+
+```
+Query: {users: [.data[].user.]}
+JSON: {"data": [{"user": {"id": 1, "name": "John"}}]}
+                         ^ cursor here (inside [ inside {)
+
+BraceTracker stack: [{...}, [...]]
+Innermost context: Array builder
+Path context: ".data[].user." (from after '[' in the array)
+Navigate: [Field("data"), ArrayIterator, Field("user")]
+Suggestions: id, name
+```
+
+For nested builders, always use the **innermost** context to determine expression boundaries.
+
+---
+
+## Performance Guarantees
+
+### Zero Query Execution
+
+**Critical constraint**: This feature must NEVER execute jq queries for suggestions.
+
+All operations work on **pre-parsed, cached JSON** (`original_json_parsed: Arc<Value>`):
+
+| Operation | What it does | Complexity |
+|-----------|--------------|------------|
+| Path parsing | String scan for `.`, `[]`, field names | O(query_length) |
+| JSON navigation | Follow pointers in parsed tree | O(path_depth) ≈ O(5) |
+| Type detection | Check `Value` variant, peek first array element | O(1) |
+| Field extraction | Iterate object keys | O(num_fields) |
+| Suggestion filtering | String prefix match | O(suggestions × partial_length) |
+
+**Total per-keystroke cost**: O(query_length + num_fields)
+
+This is **identical** to current behavior - we just navigate to a different starting point in the same JSON tree.
+
+### Memory: No Cloning
+
+With the API change (`&Value` instead of `Arc<Value>`), we pass **references** throughout:
+
+```rust
+// Navigation returns borrowed reference - no allocation
+fn navigate<'a>(root: &'a Value, segments: &[PathSegment]) -> Option<&'a Value>
+
+// Analyzer takes borrowed reference - no clone needed
+fn analyze_parsed_result(value: &Value, ...) -> Vec<Suggestion>
+```
+
+The only allocations are:
+1. `Vec<PathSegment>` - typically 1-5 elements
+2. `Vec<Suggestion>` - same as current behavior
+
+### Benchmarking Targets
+
+Before merging, verify:
+
+| Metric | Target | How to measure |
+|--------|--------|----------------|
+| Keystroke latency | < 5ms p99 | Profile `update_suggestions()` |
+| Memory per keystroke | < 1KB additional | Heap profiling |
+| Large file (10MB JSON) | No regression | Compare before/after |
+| Deep nesting (10 levels) | < 10ms | Synthetic benchmark |
+
+```rust
+#[bench]
+fn bench_nested_path_navigation() {
+    // Navigate 10 levels deep, measure time
+}
+
+#[bench]
+fn bench_path_parsing() {
+    // Parse ".a.b.c.d.e.f.g.h.i.j.", measure time
+}
+```
+
 ---
 
 ## Implementation Phases
@@ -796,6 +958,14 @@ Path parser must handle bracket string notation.
 
 ## Performance Considerations
 
+> **See also**: [Performance Guarantees](#performance-guarantees) section above for detailed complexity analysis.
+
+### Design Principles
+
+1. **Zero Query Execution**: Never run jq to get suggestions - only navigate cached JSON
+2. **Zero Cloning**: Use `&Value` references throughout - no large allocations
+3. **Same Complexity**: New code is O(query_length + num_fields), same as current
+
 ### Current Performance Profile
 
 The autocomplete system is called on **every keystroke**. Current optimizations:
@@ -803,31 +973,29 @@ The autocomplete system is called on **every keystroke**. Current optimizations:
 - Pre-rendered results cached
 - Minimal allocations in hot path
 
-### New Performance Concerns
+### New Operations (All Lightweight)
 
-1. **Path Parsing**: Must be fast - called every keystroke
-   - Use zero-allocation parsing where possible
-   - Return string slices instead of owned strings when feasible
+| New Operation | Implementation | Cost |
+|---------------|----------------|------|
+| Path parsing | Single-pass string scan | O(n) |
+| JSON navigation | Pointer following | O(depth) |
+| Expression boundary detection | Scan from last bracket/brace | O(n) |
 
-2. **JSON Navigation**: Must not clone the entire nested subtree
-   - Return `&Value` reference, not owned `Value`
-   - Only clone when passing to `ResultAnalyzer` (unavoidable with current API)
+**No new heavy operations**: No jq execution, no JSON re-parsing, no cloning.
 
-3. **Memory**: Large nested objects could be cloned repeatedly
-   - Consider modifying `ResultAnalyzer` to take `&Value` instead of `Arc<Value>`
-   - Or cache navigated results (but cache invalidation is complex)
+### API Change Enables Zero-Copy
 
-### Optimization Strategy
+Phase 0 changes `ResultAnalyzer` to take `&Value`:
 
-**Immediate (Phase 1-3)**:
-- Keep it simple, profile first
-- Use `&Value` references throughout navigation
-- Accept one clone when passing to `ResultAnalyzer`
+```rust
+// Before: Required Arc wrapper (forces clone for navigation results)
+fn analyze_parsed_result(value: &Arc<Value>, ...) -> Vec<Suggestion>
 
-**Future (if needed)**:
-- Modify `ResultAnalyzer` API to accept `&Value`
-- Cache navigation results keyed by path string
-- Lazy evaluation of suggestions
+// After: Takes plain reference (zero-copy navigation)
+fn analyze_parsed_result(value: &Value, ...) -> Vec<Suggestion>
+```
+
+This single API change eliminates all cloning concerns.
 
 ---
 
