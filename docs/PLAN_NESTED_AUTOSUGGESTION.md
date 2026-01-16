@@ -136,50 +136,61 @@ Modified `get_suggestions()` flow:
 
 ```rust
 SuggestionContext::FieldContext => {
-    let path_context = extract_path_context(before_cursor, brace_tracker);
-    let parsed_path = parse_path(&path_context);
     let is_cursor_at_end = cursor_pos == query.len();
+    let is_executing_context = !brace_tracker.is_in_non_executing_context();
 
-    // Choose data source based on cursor position
-    let navigation_source = if is_cursor_at_end {
-        last_successful_result  // Cache is current
-    } else {
-        original_json  // Cache is "ahead" of cursor
-    };
+    if is_executing_context && is_cursor_at_end {
+        // EXECUTING CONTEXT: Cache is current, suggest its fields directly
+        get_field_suggestions(last_successful_result, ...)
+    } else if is_cursor_at_end {
+        // NON-EXECUTING CONTEXT: Cache is stale, extract path and navigate
+        let path_context = extract_path_context(before_cursor, brace_tracker);
+        let parsed_path = parse_path(&path_context);
 
-    if let Some(nested) = navigate(navigation_source, &parsed_path.segments) {
-        // Deterministic: suggest navigated target's fields
-        get_field_suggestions(nested, detect_value_type(nested), ...)
+        if let Some(nested) = navigate(last_successful_result, &parsed_path.segments) {
+            get_field_suggestions(nested, ...)
+        } else {
+            // Navigation failed: fall back to original_json
+            get_all_available_suggestions(original_json, partial_filter)
+        }
     } else {
-        // Non-Deterministic: fall back to original_json_parsed
-        get_all_available_suggestions(original_json, partial_filter)
+        // MIDDLE OF QUERY: Cache is "ahead", navigate from original_json
+        let path_context = extract_path_context(before_cursor, brace_tracker);
+        let parsed_path = parse_path(&path_context);
+
+        if let Some(nested) = navigate(original_json, &parsed_path.segments) {
+            get_field_suggestions(nested, ...)
+        } else {
+            get_all_available_suggestions(original_json, partial_filter)
+        }
     }
 }
 ```
 
-### Expression Boundaries
+### Expression Boundaries (Non-Executing Contexts Only)
 
-Path context resets at expression boundaries. Use `find_expression_start()`:
+In **non-executing contexts** (map, select, builders), the cache is stale. We extract path from expression boundary and navigate.
 
 ```rust
 /// Find where current expression starts (for path extraction)
+/// ONLY used in non-executing contexts
 fn find_expression_start(before_cursor: &str, brace_tracker: &BraceTracker) -> usize {
-    // Check innermost context from BraceTracker
     match brace_tracker.innermost_context() {
         Some(BraceType::Paren) => // Inside function: start after '('
         Some(BraceType::Square) => // Array builder: start after '[' or last ','
         Some(BraceType::Curly) => // Object builder: start after ':' or last ','
-        None => // Top-level: start after '|' or ';' or beginning
+        None => // Should not reach here in non-executing context
     }
 }
 ```
 
-| Context | Boundary | Example |
-|---------|----------|---------|
-| Top-level | `\|`, `;`, start | `.a \| .b.c.` → `.b.c.` |
-| Function | `(` | `map(.user.)` → `.user.` |
-| Array builder | `[`, `,` | `[.a, .b.c.]` → `.b.c.` |
-| Object builder | `:`, `,` | `{x: .a.b.}` → `.a.b.` |
+| Context | Boundary | Example | Extracted Path |
+|---------|----------|---------|----------------|
+| Function | `(` | `map(.user.profile.)` | `.user.profile.` |
+| Array builder | `[`, `,` | `[.a, .b.c.]` | `.b.c.` |
+| Object builder | `:`, `,` | `{x: .a.b.}` | `.a.b.` |
+
+**Note**: In **executing context**, cache is already current—just suggest cache's fields directly, no path extraction needed.
 
 ---
 
@@ -187,10 +198,10 @@ fn find_expression_start(before_cursor: &str, brace_tracker: &BraceTracker) -> u
 
 ### Executing vs Non-Executing
 
-| Context | Example | Cache Behavior |
-|---------|---------|----------------|
-| **Executing** | `.user.profile.` | Cache updates with each keystroke |
-| **Non-Executing** | `map(.)`, `[.]`, `{x: .}` | Cache doesn't update (query not run) |
+| Context | Example | Cache Behavior | Suggestion Strategy |
+|---------|---------|----------------|---------------------|
+| **Executing** | `.user.profile.` | Cache = result of query | Suggest cache's fields directly |
+| **Non-Executing** | `map(.)`, `[.]`, `{x: .}` | Cache is stale | Extract path, navigate from cache |
 
 ### Element Context
 
@@ -208,15 +219,21 @@ if brace_tracker.is_in_element_context(cursor_pos) {
 
 **Core Logic**:
 
-**If cursor at END of query:**
-1. Try to navigate from `last_successful_result_parsed`
-2. If succeeds → **Deterministic** (show navigated fields)
-3. If fails → **Non-Deterministic** (fall back to `original_json_parsed`)
+**Executing Context + Cursor at END:**
+- Cache is current (reflects query result)
+- **Deterministic**: Suggest cache's fields directly (no navigation)
 
-**If cursor in MIDDLE of query:**
-1. Navigate from `original_json_parsed` only (cache is "ahead" of cursor)
-2. If succeeds → **Deterministic** (show navigated fields)
-3. If fails → **Non-Deterministic** (show all available from `original_json_parsed`)
+**Non-Executing Context + Cursor at END:**
+1. Extract path from expression boundary
+2. Navigate from `last_successful_result_parsed`
+3. If succeeds → **Deterministic** (show navigated fields)
+4. If fails → **Non-Deterministic** (fall back to `original_json_parsed`)
+
+**Cursor in MIDDLE of query (any context):**
+1. Extract path up to cursor
+2. Navigate from `original_json_parsed` (cache is "ahead")
+3. If succeeds → **Deterministic** (show navigated fields)
+4. If fails → **Non-Deterministic** (fall back to `original_json_parsed`)
 
 ### Deterministic (Navigation Succeeds)
 
@@ -287,10 +304,11 @@ fn determine_certainty(
 
 ### Summary Table
 
-| Cursor Position | Navigation Source | On Success | On Failure |
-|-----------------|-------------------|------------|------------|
-| **End** | `last_successful_result_parsed` | Suggest target's fields | Fall back to `original_json_parsed` |
-| **Middle** | `original_json_parsed` | Suggest target's fields | Show all available from `original_json_parsed` |
+| Context | Cursor | Strategy | On Failure |
+|---------|--------|----------|------------|
+| **Executing** | End | Suggest cache's fields directly | N/A (cache is valid) |
+| **Non-Executing** | End | Extract path, navigate from cache | Fall back to `original_json` |
+| **Any** | Middle | Extract path, navigate from `original_json` | Fall back to `original_json` |
 
 ---
 
@@ -316,48 +334,48 @@ fn determine_certainty(
 
 ### Scenario Table
 
-| # | Query (▎=cursor) | Cursor | Nav Source | Nav Path | Nav Result | Certainty | Suggestions |
-|---|------------------|--------|------------|----------|------------|-----------|-------------|
-| **Executing Context (cursor at end)** |
-| 1 | `.user.▎` | End | `last_successful` | `.user` | ✓ `{profile,settings}` | Det | `profile`, `settings` |
-| 2 | `.user.profile.▎` | End | `last_successful` | `.user.profile` | ✓ `{name,age}` | Det | `name`, `age` |
-| 3 | `.orders[].▎` | End | `last_successful` | `.orders[]` → `[0]` | ✓ `{id,items,status}` | Det | `id`, `items`, `status` |
-| 4 | `.orders[].items[].▎` | End | `last_successful` | `orders[0].items[0]` | ✓ `{sku,qty}` | Det | `sku`, `qty` |
-| 5 | `.fake.▎` | End | `last_successful` | `.fake` | ✗ | Non-Det | `user`, `orders`, `meta` (all root) |
-| **Non-Executing Context (map/select)** |
-| 6 | `.orders \| map(.▎)` | End | `last_successful` | `.` (elem ctx→`[0]`) | ✓ `{id,items,status}` | Det | `id`, `items`, `status` |
-| 7 | `.orders \| map(.items[].▎)` | End | `last_successful` | `.items[]`→`[0][0]` | ✓ `{sku,qty}` | Det | `sku`, `qty` |
-| 8 | `.orders \| map(.fake.▎)` | End | `last_successful` | `.fake` | ✗ | Non-Det | `user`, `orders`, `meta` |
-| 9 | `.orders \| select(.status == "shipped").▎` | End | `last_successful` | `.` (elem ctx) | ✓ `{id,items,status}` | Det | `id`, `items`, `status` |
-| **Non-Executing Context (builders)** |
-| 10 | `[.user.profile.▎]` | End | `last_successful` | `.user.profile` | ✓ `{name,age}` | Det | `name`, `age` |
-| 11 | `{x: .user.settings.▎}` | End | `last_successful` | `.user.settings` | ✓ `{theme,lang}` | Det | `theme`, `lang` |
-| 12 | `[.orders[].items[].▎]` | End | `last_successful` | `orders[0].items[0]` | ✓ `{sku,qty}` | Det | `sku`, `qty` |
-| 13 | `{a: .user.▎, b: .meta}` | End | `last_successful` | `.user` | ✓ | Det | `profile`, `settings` |
-| **Middle-of-query editing** |
-| 14 | `.user.▎profile.name` | Mid | `original_json` | `.user` | ✓ `{profile,settings}` | Det | `profile`, `settings` |
-| 15 | `.orders[].▎items[].sku` | Mid | `original_json` | `.orders[]`→`[0]` | ✓ `{id,items,status}` | Det | `id`, `items`, `status` |
-| 16 | `.fake.▎something` | Mid | `original_json` | `.fake` | ✗ | Non-Det | `user`, `orders`, `meta` |
-| 17 | `map(.▎id)` | Mid | `original_json` | `.` (elem ctx) | ✓ if array | Det | element fields |
-| **Transforming functions (always non-det)** |
-| 18 | `keys \| .▎` | End | `last_successful` | `.` | ✗ (string array) | Non-Det | `user`, `orders`, `meta` |
-| 19 | `.user \| to_entries \| .[].▎` | End | `last_successful` | `.[]` | ✗ (different shape) | Non-Det | `user`, `orders`, `meta` |
-| 20 | `.orders \| group_by(.status) \| .[].▎` | End | `last_successful` | N/A | ✗ | Non-Det | `user`, `orders`, `meta` |
+| # | Query (▎=cursor) | Context | Strategy | Cache/Nav | Certainty | Suggestions |
+|---|------------------|---------|----------|-----------|-----------|-------------|
+| **Executing Context (cursor at end) — use cache directly** |
+| 1 | `.user.▎` | Exec | Cache direct | Cache = `.user` result | Det | `profile`, `settings` |
+| 2 | `.user.profile.▎` | Exec | Cache direct | Cache = `.user.profile` result | Det | `name`, `age` |
+| 3 | `.orders[].▎` | Exec | Cache direct | Cache = `.orders[]` result | Det | `id`, `items`, `status` |
+| 4 | `.orders[].items[].▎` | Exec | Cache direct | Cache = `.orders[].items[]` result | Det | `sku`, `qty` |
+| 5 | `.fake.▎` | Exec | Cache direct | Cache = error/empty | Non-Det | `user`, `orders`, `meta` |
+| **Non-Executing Context (map/select) — extract path, navigate** |
+| 6 | `.orders \| map(.▎)` | Non-Exec | Nav from cache | Path: `.` + elem ctx | Det | `id`, `items`, `status` |
+| 7 | `.orders \| map(.items[].▎)` | Non-Exec | Nav from cache | Path: `.items[]` | Det | `sku`, `qty` |
+| 8 | `.orders \| map(.fake.▎)` | Non-Exec | Nav from cache | Path: `.fake` ✗ | Non-Det | `user`, `orders`, `meta` |
+| 9 | `.orders \| select(.status == "shipped").▎` | Non-Exec | Nav from cache | Path: `.` + elem ctx | Det | `id`, `items`, `status` |
+| **Non-Executing Context (builders) — extract path, navigate** |
+| 10 | `[.user.profile.▎]` | Non-Exec | Nav from cache | Path: `.user.profile` | Det | `name`, `age` |
+| 11 | `{x: .user.settings.▎}` | Non-Exec | Nav from cache | Path: `.user.settings` | Det | `theme`, `lang` |
+| 12 | `[.orders[].items[].▎]` | Non-Exec | Nav from cache | Path: `.orders[].items[]` | Det | `sku`, `qty` |
+| 13 | `{a: .user.▎, b: .meta}` | Non-Exec | Nav from cache | Path: `.user` | Det | `profile`, `settings` |
+| **Middle-of-query editing — navigate from original_json** |
+| 14 | `.user.▎profile.name` | Mid | Nav from original | Path: `.user` | Det | `profile`, `settings` |
+| 15 | `.orders[].▎items[].sku` | Mid | Nav from original | Path: `.orders[]` | Det | `id`, `items`, `status` |
+| 16 | `.fake.▎something` | Mid | Nav from original | Path: `.fake` ✗ | Non-Det | `user`, `orders`, `meta` |
+| 17 | `map(.▎id)` | Mid | Nav from original | Path: `.` + elem ctx | Det | element fields |
+| **Transforming functions — cache structure unknown** |
+| 18 | `keys \| .▎` | Exec | Cache direct | Cache = `["meta","orders","user"]` | Non-Det | `user`, `orders`, `meta` |
+| 19 | `.user \| to_entries \| .[].▎` | Exec | Cache direct | Cache = different shape | Non-Det | `user`, `orders`, `meta` |
+| 20 | `.orders \| group_by(.status) \| .[].▎` | Exec | Cache direct | Cache = grouped arrays | Non-Det | `user`, `orders`, `meta` |
 | **Edge cases** |
-| 21 | `.user?.profile?.▎` | End | `last_successful` | `.user.profile` (ignore `?`) | ✓ | Det | `name`, `age` |
-| 22 | `.["user"].profile.▎` | End | `last_successful` | `.user.profile` | ✓ | Det | `name`, `age` |
-| 23 | `.orders[0].items[0].▎` | End | `last_successful` | `orders[0].items[0]` | ✓ | Det | `sku`, `qty` |
-| 24 | `. \| .user.▎` | End | `last_successful` | `.user` | ✓ | Det | `profile`, `settings` |
-| 25 | `.a + .b \| .▎` | End | `last_successful` | `.` | ✗ (runtime) | Non-Det | `user`, `orders`, `meta` |
+| 21 | `.user?.profile?.▎` | Exec | Cache direct | Cache = `.user.profile` | Det | `name`, `age` |
+| 22 | `.["user"].profile.▎` | Exec | Cache direct | Cache = `.user.profile` | Det | `name`, `age` |
+| 23 | `.orders[0].items[0].▎` | Exec | Cache direct | Cache = specific element | Det | `sku`, `qty` |
+| 24 | `. \| .user.▎` | Exec | Cache direct | Cache = `.user` | Det | `profile`, `settings` |
+| 25 | `.a + .b \| .▎` | Exec | Cache direct | Cache = runtime result | Non-Det | `user`, `orders`, `meta` |
 
 ### Key Observations
 
-1. **Cursor position determines nav source**: End→`last_successful`, Middle→`original_json`
-2. **Element context prepends ArrayIterator**: `map(.x.)` navigates as `[0].x`
-3. **Navigation success = Deterministic**: Show target's fields
-4. **Navigation failure = Non-Deterministic**: Show all fields from `original_json`
-5. **Transforming functions always non-det**: `keys`, `to_entries`, `group_by` change structure
-6. **Syntax ignored for navigation**: `?`, bracket notation parsed as equivalent paths
+1. **Executing context uses cache directly**: No path extraction or navigation needed
+2. **Non-executing context extracts path**: From boundary, then navigates from cache
+3. **Middle-of-query navigates from original**: Cache is "ahead" of cursor
+4. **Element context prepends ArrayIterator**: `map(.x.)` navigates as `[0].x`
+5. **Transforming functions = non-det**: `keys`, `to_entries`, `group_by` produce unknown structure
+6. **Syntax variations are equivalent**: `?`, bracket notation treated same for cache lookup
 
 ---
 
