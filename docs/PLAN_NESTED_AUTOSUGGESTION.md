@@ -25,8 +25,8 @@ Quick reference for all tracked states that affect suggestion behavior:
 - *Non-Deterministic*: Navigation fails → fall back to `original_json_parsed`, show all available suggestions for syntax context
 
 **Element Context**
-- *Inside*: Within `map()`, `select()`, `sort_by()`, etc. → prepend `ArrayIterator`
-- *Outside*: Normal context → use path as-is
+- *Element-Iterating*: Within `map()`, `select()`, `sort_by()`, etc. — input is array element → prepend `ArrayIterator`
+- *Whole-Value*: Standard context — input is full value → use path as-is
 
 **Builder Context**
 - *Array*: Inside `[...]` → boundary at `[` or `,`
@@ -203,12 +203,12 @@ fn find_expression_start(before_cursor: &str, brace_tracker: &BraceTracker) -> u
 | **Executing** | `.user.profile.` | Cache = result of query | Suggest cache's fields directly |
 | **Non-Executing** | `map(.)`, `[.]`, `{x: .}` | Cache is stale | Extract path, navigate from cache |
 
-### Element Context
+### Element Context (Element-Iterating Functions)
 
-Inside `map()`, `select()`, etc., prepend implicit `ArrayIterator` to path:
+In element-iterating functions (`map()`, `select()`, `sort_by()`, etc.), the input is implicitly an array element. Prepend `ArrayIterator` to navigate correctly:
 
 ```rust
-if brace_tracker.is_in_element_context(cursor_pos) {
+if brace_tracker.is_in_element_iterating_context(cursor_pos) {
     segments.insert(0, PathSegment::ArrayIterator);
 }
 ```
