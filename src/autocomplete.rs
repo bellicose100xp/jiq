@@ -4,6 +4,8 @@ mod brace_tracker;
 mod context;
 pub mod insertion;
 pub mod jq_functions;
+pub mod json_navigator;
+pub mod path_parser;
 mod result_analyzer;
 mod scan_state;
 mod variable_extractor;
@@ -11,6 +13,14 @@ mod variable_extractor;
 #[cfg(test)]
 #[path = "autocomplete/insertion_tests.rs"]
 mod insertion_tests;
+
+#[cfg(test)]
+#[path = "autocomplete/path_parser_tests.rs"]
+mod path_parser_tests;
+
+#[cfg(test)]
+#[path = "autocomplete/json_navigator_tests.rs"]
+mod json_navigator_tests;
 
 pub use brace_tracker::BraceTracker;
 

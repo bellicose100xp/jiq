@@ -1,8 +1,9 @@
 use std::process::{Command, Stdio};
-use std::sync::Arc;
+use std::sync::{Arc, OnceLock};
 use std::thread::sleep;
 use std::time::Duration;
 
+use serde_json::Value;
 use tokio_util::sync::CancellationToken;
 
 use crate::query::worker::types::QueryError;
@@ -15,6 +16,9 @@ use crate::query::worker::types::QueryError;
 /// count increment (O(1)).
 pub struct JqExecutor {
     json_input: Arc<String>,
+    /// Lazily parsed JSON input, cached for autocomplete navigation.
+    /// Uses OnceLock for thread-safe one-time initialization.
+    json_input_parsed: OnceLock<Option<Arc<Value>>>,
 }
 
 impl JqExecutor {
@@ -22,12 +26,26 @@ impl JqExecutor {
     pub fn new(json_input: String) -> Self {
         Self {
             json_input: Arc::new(json_input),
+            json_input_parsed: OnceLock::new(),
         }
     }
 
     /// Get a reference to the JSON input
     pub fn json_input(&self) -> &str {
         &self.json_input
+    }
+
+    /// Get the parsed JSON input, lazily parsing on first access.
+    ///
+    /// Returns the original input JSON as a parsed Value, cached for repeated access.
+    /// This is the true original file input that never changes during the session.
+    /// Used by autocomplete to navigate nested structures.
+    ///
+    /// Returns `None` if the JSON input is invalid.
+    pub fn json_input_parsed(&self) -> Option<Arc<Value>> {
+        self.json_input_parsed
+            .get_or_init(|| serde_json::from_str(&self.json_input).ok().map(Arc::new))
+            .clone()
     }
 
     /// Execute a jq query with cancellation support

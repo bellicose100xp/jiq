@@ -2,6 +2,20 @@
 
 ---
 
+## Implementation Status
+
+| Phase | Description | Status | Notes |
+|-------|-------------|--------|-------|
+| **Phase 0** | Infrastructure Prerequisites | ✅ Complete | `json_input_parsed()` + `analyze_value()` with 14 tests |
+| **Phase 1** | Path Parser | ✅ Complete | `path_parser.rs` with 45 test cases |
+| **Phase 2** | JSON Navigator | ✅ Complete | `json_navigator.rs` with 40 test cases |
+| **Phase 3** | Integration | ⏳ Pending | Depends on Phases 0, 1, 2 |
+| **Phase 4** | Edge Cases & Polish | ⏳ Pending | |
+
+**Note**: Each phase should be committed separately to maintain clean git history.
+
+---
+
 ## State Summary
 
 Quick reference for all tracked states that affect suggestion behavior:
@@ -142,7 +156,6 @@ The existing `analyze_context(before_cursor, brace_tracker)` function remains th
 | `FunctionContext` | Suggests jq functions | Unchanged |
 | `VariableContext` | Suggests defined variables | Unchanged |
 | `ObjectKeyContext` | Suggests object keys | Unchanged |
-| `IndexContext` | Suggests array operations | Unchanged |
 
 **Key point**: `extract_path_context()` is called **only within FieldContext**, after `analyze_context()` has already determined we're in field context. Other contexts bypass path extraction entirely and use existing behavior.
 
@@ -154,8 +167,7 @@ analyze_context()              ← Entry point (unchanged)
     │
     ├─► FunctionContext        ← Existing behavior (unchanged)
     ├─► VariableContext        ← Existing behavior (unchanged)
-    ├─► ObjectKeyContext       ← Existing behavior (unchanged)
-    └─► IndexContext           ← Existing behavior (unchanged)
+    └─► ObjectKeyContext       ← Existing behavior (unchanged)
 ```
 
 Modified `get_suggestions()` flow:
@@ -234,7 +246,7 @@ fn find_expression_start(before_cursor: &str, brace_tracker: &BraceTracker) -> u
 In element-iterating functions (`map()`, `select()`, `sort_by()`, etc.), the input is implicitly an array element. Prepend `ArrayIterator` to navigate correctly:
 
 ```rust
-if brace_tracker.is_in_element_iterating_context(cursor_pos) {
+if brace_tracker.is_in_element_context(cursor_pos) {
     segments.insert(0, PathSegment::ArrayIterator);
 }
 ```

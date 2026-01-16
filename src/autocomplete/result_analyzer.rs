@@ -26,6 +26,66 @@ impl ResultAnalyzer {
         }
     }
 
+    /// Analyze a JSON value for field suggestions, inferring type from the value itself.
+    ///
+    /// Unlike `analyze_parsed_result`, this method does not require an external `ResultType`.
+    /// It infers the appropriate suggestion strategy directly from the JSON structure.
+    /// This is essential for nested navigation where the original `ResultType` doesn't
+    /// apply to navigated sub-values.
+    ///
+    /// # Parameters
+    /// - `value`: The JSON value to analyze (can be a navigated nested value)
+    /// - `needs_leading_dot`: Whether suggestions should include leading dot
+    /// - `suppress_array_brackets`: Whether to suppress .[] suggestions
+    pub fn analyze_value(
+        value: &Value,
+        needs_leading_dot: bool,
+        suppress_array_brackets: bool,
+    ) -> Vec<Suggestion> {
+        let prefix = dot_prefix(needs_leading_dot);
+
+        match value {
+            Value::Object(map) => {
+                let mut suggestions = Vec::new();
+                Self::extract_object_fields(map, prefix, &mut suggestions);
+                suggestions
+            }
+            Value::Array(arr) => {
+                let mut suggestions = Vec::new();
+
+                // Only suggest .[] when not suppressing array brackets
+                if !suppress_array_brackets {
+                    suggestions.push(Suggestion::new_with_type(
+                        format!("{}[]", prefix),
+                        SuggestionType::Pattern,
+                        None,
+                    ));
+                }
+
+                // If array contains objects, suggest their fields
+                if let Some(Value::Object(map)) = arr.first() {
+                    for (key, val) in map {
+                        let field_type = Self::detect_json_type(val);
+                        let field_text = if suppress_array_brackets {
+                            format!("{}{}", prefix, key)
+                        } else {
+                            format!("{}[].{}", prefix, key)
+                        };
+                        suggestions.push(Suggestion::new_with_type(
+                            field_text,
+                            SuggestionType::Field,
+                            Some(field_type),
+                        ));
+                    }
+                }
+
+                suggestions
+            }
+            // Scalars (null, bool, number, string) have no field suggestions
+            _ => Vec::new(),
+        }
+    }
+
     /// Analyze pre-parsed JSON value for field suggestions
     ///
     /// Optimized path that avoids re-parsing on every keystroke.
