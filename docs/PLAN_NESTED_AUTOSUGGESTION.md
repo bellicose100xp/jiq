@@ -20,9 +20,9 @@ Quick reference for all tracked states that affect suggestion behavior:
 - *Executing*: Query runs on each keystroke, cache updates (standard `.field.` access)
 - *Non-Executing*: Inside `map()`, `select()`, builders - cache doesn't update
 
-**Certainty**
-- *Deterministic*: Path exists in JSON → suggest target's fields
-- *Non-Deterministic*: Path fails OR after transforming function → show all available suggestions for current syntax context
+**Certainty** (determined by navigation result)
+- *Deterministic*: Navigation succeeds in `last_successful_result_parsed` → suggest target's fields
+- *Non-Deterministic*: Navigation fails → fall back to `original_json_parsed`, show all available suggestions for syntax context
 
 **Element Context**
 - *Inside*: Within `map()`, `select()`, `sort_by()`, etc. → prepend `ArrayIterator`
@@ -141,14 +141,14 @@ SuggestionContext::FieldContext => {
     let path_context = extract_path_context(before_cursor, brace_tracker);
     let parsed_path = parse_path(&path_context);
 
-    let (target, target_type) = if let Some(nested) = navigate(original_json, &parsed_path.segments) {
-        (nested, detect_value_type(nested))
+    // 1. Try to navigate from last_successful_result_parsed
+    if let Some(nested) = navigate(last_successful_result, &parsed_path.segments) {
+        // 2a. Success → Deterministic: suggest navigated target's fields
+        get_field_suggestions(nested, detect_value_type(nested), ...)
     } else {
-        // Fallback: show all available suggestions if path doesn't exist
-        return get_all_available_suggestions(original_json, partial_filter);
-    };
-
-    get_field_suggestions(target, target_type, ...)
+        // 2b. Fail → Non-Deterministic: fall back to original_json_parsed
+        get_all_available_suggestions(original_json, partial_filter)
+    }
 }
 ```
 
@@ -212,11 +212,14 @@ if brace_tracker.is_in_element_context(cursor_pos) {
 
 ## Suggestion Certainty: Deterministic vs Non-Deterministic
 
-Not all contexts allow accurate path navigation. We classify contexts by whether we can **deterministically** know the data type:
+**Core Logic**:
+1. Always try to navigate from `last_successful_result_parsed`
+2. If navigation succeeds → **Deterministic** (show navigated fields)
+3. If navigation fails → **Non-Deterministic** (fall back to `original_json_parsed`)
 
-### Deterministic Contexts
+### Deterministic (Navigation Succeeds)
 
-We can navigate the path and provide **targeted suggestions**:
+Path exists in `last_successful_result_parsed`. Show **targeted suggestions**:
 
 | Context | Example | Why Deterministic |
 |---------|---------|-------------------|
@@ -225,13 +228,11 @@ We can navigate the path and provide **targeted suggestions**:
 | Element-context functions | `map(.profile.)` | Input is array, navigate first element |
 | Nested in builders | `{x: .config.db.}` | Path from root is known |
 
-**Behavior**: Navigate path → suggest fields of target object.
+**Behavior**: Suggest fields of the navigated target object.
 
-**Data Source**: Navigate from `last_successful_result_parsed` (reflects current query context).
+### Non-Deterministic (Navigation Fails)
 
-### Non-Deterministic Contexts
-
-We **cannot** know the result type. Show **all available suggestions for the syntax context**:
+Path doesn't exist in `last_successful_result_parsed`. Fall back to **all available suggestions**:
 
 | Context | Example | Why Non-Deterministic |
 |---------|---------|----------------------|
@@ -242,9 +243,7 @@ We **cannot** know the result type. Show **all available suggestions for the syn
 | Path navigation fails | `.nonexistent.` | Target doesn't exist in JSON |
 | After conditionals | `if .x then .a else .b end \| .` | Branch depends on runtime |
 
-**Behavior**: Show all available suggestions, scoped by syntax context.
-
-**Data Source**: Always `original_json_parsed` (input JSON), NOT `last_successful_result_parsed`.
+**Behavior**: Show all available suggestions from `original_json_parsed`, scoped by syntax context:
 
 | Syntax | Suggestions | Source |
 |--------|-------------|--------|
@@ -287,10 +286,11 @@ fn determine_certainty(
 
 ### Summary Table
 
-| Certainty | Navigation | Suggestions | Data Source |
-|-----------|------------|-------------|-------------|
-| Deterministic | Path exists | Target object's fields | `last_successful_result_parsed` |
-| Non-Deterministic | Path fails OR transforming function | All available for syntax context | `original_json_parsed` |
+| Step | Action | Result |
+|------|--------|--------|
+| 1 | Try navigate from `last_successful_result_parsed` | Success or Fail |
+| 2a | **Success** → Deterministic | Suggest navigated target's fields |
+| 2b | **Fail** → Non-Deterministic | Fall back to `original_json_parsed`, show all for syntax context |
 
 ---
 
