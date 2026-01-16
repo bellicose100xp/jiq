@@ -23,7 +23,7 @@ Quick reference for all tracked states that affect suggestion behavior:
 
 **Certainty**
 - *Deterministic*: Path exists in JSON → suggest target's fields
-- *Non-Deterministic*: Path fails OR after transforming function → show all available suggestions
+- *Non-Deterministic*: Path fails OR after transforming function → show all available suggestions for current syntax context
 
 **Element Context**
 - *Inside*: Within `map()`, `select()`, `sort_by()`, etc. → prepend `ArrayIterator`
@@ -234,7 +234,7 @@ We can navigate the path and provide **targeted suggestions**:
 
 ### Non-Deterministic Contexts
 
-We **cannot** know the result type. Fall back to **all available suggestions**:
+We **cannot** know the result type. Show **all available suggestions for the syntax context**:
 
 | Context | Example | Why Non-Deterministic |
 |---------|---------|----------------------|
@@ -245,7 +245,15 @@ We **cannot** know the result type. Fall back to **all available suggestions**:
 | Path navigation fails | `.nonexistent.` | Target doesn't exist in JSON |
 | After conditionals | `if .x then .a else .b end \| .` | Branch depends on runtime |
 
-**Behavior**: Show all available suggestions - fields, functions, operators (graceful degradation).
+**Behavior**: Show all available suggestions, scoped by syntax context:
+
+| Syntax | Suggestions |
+|--------|-------------|
+| After `.` | All fields from root JSON |
+| After `\|` (no dot) | Functions and operators |
+| After `$` | All defined variables |
+| After `[` | Fields, functions (array builder) |
+| After `{` key `:` | Fields, expressions (object value) |
 
 ### Detection Logic
 
@@ -283,7 +291,7 @@ fn determine_certainty(
 | Certainty | Navigation | Suggestions |
 |-----------|------------|-------------|
 | Deterministic | Path exists in JSON | Target object's fields |
-| Non-Deterministic | Path fails OR transforming function | All available (fields, functions, operators) |
+| Non-Deterministic | Path fails OR transforming function | All available for syntax context (see table above) |
 
 ---
 
