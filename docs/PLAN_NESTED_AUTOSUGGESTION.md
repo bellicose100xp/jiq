@@ -486,6 +486,40 @@ fn bench_path_parsing() {
    - Change `analyze_parsed_result(&Arc<Value>, ...)` to `analyze_parsed_result(&Value, ...)`
    - Update all call sites (minimal changes - just remove Arc dereferencing)
 
+   **Critical**: Current `analyze_parsed_result` takes both `Value` and `ResultType`, but `ResultType`
+   is derived from the full query output (`QueryState::base_type_for_suggestions`), not from the
+   navigated nested value. When we navigate to `.user.profile`, the `ResultType` still describes
+   the root structure, causing incorrect suggestions.
+
+   **Solution**: Modify `ResultAnalyzer` to infer type directly from the `Value` itself:
+   ```rust
+   // Before: requires external ResultType (wrong for nested navigation)
+   fn analyze_parsed_result(value: &Value, result_type: &ResultType, ...) -> Vec<Suggestion>
+
+   // After: infers type from Value (works for any navigated value)
+   fn analyze_parsed_result(value: &Value, ...) -> Vec<Suggestion> {
+       let inferred_type = infer_type_from_value(value);
+       // ... use inferred_type for suggestions
+   }
+
+   fn infer_type_from_value(value: &Value) -> InferredType {
+       match value {
+           Value::Object(map) => InferredType::Object(map.keys().cloned().collect()),
+           Value::Array(arr) => {
+               // Peek first element to determine element type
+               match arr.first() {
+                   Some(Value::Object(obj)) => InferredType::ArrayOfObjects(obj.keys().cloned().collect()),
+                   Some(Value::Array(_)) => InferredType::ArrayOfArrays,
+                   _ => InferredType::ArrayOfScalars,
+               }
+           }
+           _ => InferredType::Scalar,
+       }
+   }
+   ```
+
+   This ensures navigated values get correct type inference regardless of original query structure.
+
 3. **Pass `original_json_parsed` to autocomplete** (`autocomplete_state.rs`):
    ```rust
    pub fn update_suggestions_from_app(app: &mut App) {
