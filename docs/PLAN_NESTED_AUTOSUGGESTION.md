@@ -23,7 +23,7 @@ Quick reference for all tracked states that affect suggestion behavior:
 
 **Certainty**
 - *Deterministic*: Path exists in JSON → suggest target's fields
-- *Non-Deterministic*: Path fails OR after transforming function → suggest root fields
+- *Non-Deterministic*: Path fails OR after transforming function → show all available suggestions
 
 **Element Context**
 - *Inside*: Within `map()`, `select()`, `sort_by()`, etc. → prepend `ArrayIterator`
@@ -149,8 +149,8 @@ SuggestionContext::FieldContext => {
     let (target, target_type) = if let Some(nested) = navigate(original_json, &parsed_path.segments) {
         (nested, detect_value_type(nested))
     } else {
-        // Fallback: show root fields if path doesn't exist
-        (original_json, detect_value_type(original_json))
+        // Fallback: show all available suggestions if path doesn't exist
+        return get_all_available_suggestions(original_json, partial_filter);
     };
 
     get_field_suggestions(target, target_type, ...)
@@ -245,14 +245,14 @@ We **cannot** know the result type. Fall back to **all available suggestions**:
 | Path navigation fails | `.nonexistent.` | Target doesn't exist in JSON |
 | After conditionals | `if .x then .a else .b end \| .` | Branch depends on runtime |
 
-**Behavior**: Fall back to root-level field suggestions (graceful degradation).
+**Behavior**: Show all available suggestions - fields, functions, operators (graceful degradation).
 
 ### Detection Logic
 
 ```rust
 enum SuggestionCertainty {
     Deterministic,      // Navigate and suggest target fields
-    NonDeterministic,   // Fall back to root fields
+    NonDeterministic,   // Show all available suggestions
 }
 
 fn determine_certainty(
@@ -283,7 +283,7 @@ fn determine_certainty(
 | Certainty | Navigation | Suggestions |
 |-----------|------------|-------------|
 | Deterministic | Path exists in JSON | Target object's fields |
-| Non-Deterministic | Path fails OR transforming function | Root-level fields (fallback) |
+| Non-Deterministic | Path fails OR transforming function | All available (fields, functions, operators) |
 
 ---
 
@@ -293,7 +293,7 @@ fn determine_certainty(
 |------|----------|
 | `.items[0].` vs `.items[].` | Both → first element (same suggestions) |
 | `.data[][].name.` | Chain ArrayIterators: `data[0][0].name` |
-| `.nonexistent.` | Fallback to root fields (graceful degradation) |
+| `.nonexistent.` | Show all available suggestions (graceful degradation) |
 | `.user?.profile?.` | Ignore `?` for navigation |
 | `.["field-name"].` | Parse bracket notation as field |
 
@@ -524,7 +524,7 @@ Before release, manually verify:
 - [ ] Array iteration: `.items[].` suggests item fields
 - [ ] Array index: `.items[0].` suggests item fields
 - [ ] Mixed: `.data[].user.profile.` suggests profile fields
-- [ ] Non-existent path: `.fake.` shows no suggestions
+- [ ] Non-existent path: `.fake.` shows all available suggestions
 - [ ] After pipe: `.data | .` behaves correctly
 - [ ] In map(): `map(.field.)` suggests field's nested fields
 - [ ] Large JSON file: Performance is acceptable
@@ -623,8 +623,7 @@ fn test_map_element_context_unchanged() {
 1. **Pipe behavior**: Should we try to evaluate partial queries to get intermediate results? Or accept that pipes reset context to "last successful result"?
 
 2. **Error tolerance**: If path parsing fails partway, should we:
-   - Return no suggestions?
-   - Fall back to top-level suggestions?
+   - Show all available suggestions? (Current recommendation: Yes)
    - Suggest from last valid path segment?
 
 3. **Optional access (`?`)**: Should we suggest fields even when the path might be null at runtime? (Current recommendation: Yes, for better UX)
@@ -688,5 +687,5 @@ Brief survey of existing jq/JSON autocomplete implementations:
 **Key takeaways applied to our design**:
 - Navigate JSON directly (don't parse incomplete jq syntax)
 - Use first array element for field suggestions (industry standard)
-- Fall back to root fields on navigation failure (graceful degradation)
+- Show all available suggestions on navigation failure (graceful degradation)
 - Use zero-copy references to avoid Monaco's performance concerns
