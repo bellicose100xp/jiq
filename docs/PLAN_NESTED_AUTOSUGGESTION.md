@@ -99,7 +99,7 @@ The implementation uses:
 1. **Don't try to parse incomplete jq syntax** - Navigate JSON directly based on typed path
 2. **Always use first array element** - Industry standard for array field suggestions
 3. **Test nested-in-array specifically** - Common failure mode (vscode-yaml bug)
-4. **Provide graceful degradation** - Show top-level if path navigation fails
+4. **Graceful degradation** - Show root-level fields if path navigation fails (better than nothing)
 
 ---
 
@@ -328,11 +328,14 @@ SuggestionContext::FieldContext => {
     let path_context = extract_path_context(before_cursor, brace_tracker);
     let parsed_path = parse_path(&path_context);
 
-    if let Some(nested) = navigate(original_json, &parsed_path.segments) {
-        get_field_suggestions(nested, detect_value_type(nested), ...)
+    let (target, target_type) = if let Some(nested) = navigate(original_json, &parsed_path.segments) {
+        (nested, detect_value_type(nested))
     } else {
-        Vec::new()  // Path doesn't exist
-    }
+        // Fallback: show root fields if path doesn't exist
+        (original_json, detect_value_type(original_json))
+    };
+
+    get_field_suggestions(target, target_type, ...)
 }
 ```
 
@@ -400,7 +403,7 @@ if brace_tracker.is_in_element_context(cursor_pos) {
 |------|----------|
 | `.items[0].` vs `.items[].` | Both → first element (same suggestions) |
 | `.data[][].name.` | Chain ArrayIterators: `data[0][0].name` |
-| `.nonexistent.` | `navigate()` returns None → no suggestions |
+| `.nonexistent.` | Fallback to root fields (graceful degradation) |
 | `.user?.profile?.` | Ignore `?` for navigation |
 | `.["field-name"].` | Parse bracket notation as field |
 
