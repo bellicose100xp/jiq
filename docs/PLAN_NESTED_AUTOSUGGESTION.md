@@ -132,6 +132,32 @@ pub fn navigate<'a>(root: &'a Value, segments: &[PathSegment]) -> Option<&'a Val
 
 ### Integration (`context.rs`)
 
+**Relationship with existing `analyze_context()`**:
+
+The existing `analyze_context(before_cursor, brace_tracker)` function remains the **entry point** for all context detection. It determines the `SuggestionContext` type:
+
+| Context Type | Current Behavior | Change |
+|--------------|------------------|--------|
+| `FieldContext` | Suggests fields from cache | **Enhanced**: Uses path extraction + navigation |
+| `FunctionContext` | Suggests jq functions | Unchanged |
+| `VariableContext` | Suggests defined variables | Unchanged |
+| `ObjectKeyContext` | Suggests object keys | Unchanged |
+| `IndexContext` | Suggests array operations | Unchanged |
+
+**Key point**: `extract_path_context()` is called **only within FieldContext**, after `analyze_context()` has already determined we're in field context. Other contexts bypass path extraction entirely and use existing behavior.
+
+```
+analyze_context()              ← Entry point (unchanged)
+    │
+    ├─► FieldContext           ← Path extraction applies here
+    │       └─► extract_path_context() → parse_path() → navigate()
+    │
+    ├─► FunctionContext        ← Existing behavior (unchanged)
+    ├─► VariableContext        ← Existing behavior (unchanged)
+    ├─► ObjectKeyContext       ← Existing behavior (unchanged)
+    └─► IndexContext           ← Existing behavior (unchanged)
+```
+
 Modified `get_suggestions()` flow:
 
 ```rust
