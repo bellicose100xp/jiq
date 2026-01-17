@@ -11,7 +11,7 @@
 | **Phase 2** | JSON Navigator | ✅ Complete | `json_navigator.rs` with 40 test cases |
 | **Phase 3** | Integration | ✅ Complete | Path-aware suggestion flow + 13 integration tests |
 | **Phase 4** | Edge Cases & Polish | ✅ Complete | 19 tests (removed transforming function detection - see notes) |
-| **Phase 5** | Manual TUI Validation | 🔄 In Progress | Using `~/temp/ecs.json` test file |
+| **Phase 5** | Manual TUI Validation | ✅ Complete | All 10 sections validated (see Phase 5 Notes) |
 
 **Note**: Each phase should be committed separately to maintain clean git history.
 
@@ -19,6 +19,21 @@
 Originally included transforming function detection (`keys`, `to_entries`, etc.) to fall back to `original_json`.
 This was **removed** because in executing context with cursor at end, the cache IS the actual query result
 and should be used directly. The cache correctly reflects transformed data (e.g., `keys` returns `["services"]`).
+
+### Phase 5 Notes
+During validation, two issues were discovered and fixed:
+
+1. **Non-deterministic fallback showing only root fields**: When navigation failed in non-executing contexts,
+   the fallback was using `get_field_suggestions(result_parsed)` which only showed root-level fields.
+   **Fix**: Added `all_field_names` cache in `JqExecutor` that recursively collects all field names from
+   the original JSON. The fallback now uses `get_all_field_suggestions(&all_field_names)` to show all
+   available fields when navigation fails.
+
+2. **Empty path after pipe returning root fields**: When typing `[... | .`, the path after the pipe is
+   just `.` which navigated to the JSON root, showing only root fields instead of all fields.
+   **Fix**: Added `is_after_pipe` tracking to `find_expression_boundary()`. When the path has no segments
+   AND we're after a pipe, return `None` to trigger the all-fields fallback. At the start of an expression
+   (not after pipe), `.` correctly shows root-level fields.
 
 ---
 
@@ -65,31 +80,34 @@ and should be used directly. The cache correctly reflects transformed data (e.g.
 |-------|---------------------|
 | `[.services[].deployments[].networkConfiguration.awsvpcConfiguration.` | `subnets`, `securityGroups`, `assignPublicIp` |
 
-#### Section 6: Transforming Functions (Cache-Based) ⏳ PENDING
+#### Section 6: Transforming Functions (Cache-Based) ✅ VALIDATED
 | Query | Expected Suggestions |
 |-------|---------------------|
 | `keys \| .` | `.[]` (array iteration, since `keys` returns array of strings) |
 | `.services \| to_entries \| .[].` | `key`, `value` (to_entries structure) |
 | `.services[] \| keys \| .` | `.[]` (array of field names) |
 
-#### Section 7: Middle-of-Query Editing ⏳ PENDING
+#### Section 7: Middle-of-Query Editing ✅ VALIDATED
 | Test | Steps |
 |------|-------|
 | Navigate to middle | Type `.services[].deploymentConfiguration.maximumPercent`, move cursor to after `.services[].`, trigger autocomplete |
 | Expected | Should suggest service fields (`serviceName`, `status`, etc.), NOT `maximumPercent` fields |
 
-#### Section 8: Pipe Boundary ⏳ PENDING
+#### Section 8: Pipe Boundary ✅ VALIDATED
 | Query | Expected Suggestions |
 |-------|---------------------|
 | `.services[0] \| .deployments[].` | deployment fields (`id`, `status`, etc.) |
-| `[.services[0].events \| .[0].` | After pipe, path resets - should suggest event fields |
+| `[.services[0].events \| .[0].` | After pipe in non-executing context, falls back to all fields |
 
-#### Section 9: Optional Fields ⏳ PENDING
+**Note**: Section 8.2 (`[.services[0].events \| .[0].`) initially showed only root fields. Fixed by adding
+`is_after_pipe` tracking - after a pipe in non-executing context with empty path, shows all fields.
+
+#### Section 9: Optional Fields ✅ VALIDATED
 | Query | Expected Suggestions |
 |-------|---------------------|
 | `[.services[]?.deployments[]?.networkConfiguration?.` | `awsvpcConfiguration` |
 
-#### Section 10: Negative Array Index ⏳ PENDING
+#### Section 10: Negative Array Index ✅ VALIDATED
 | Query | Expected Suggestions |
 |-------|---------------------|
 | `{last: .services[-1].events[-1].` | `id`, `createdAt`, `message` |

@@ -2,7 +2,9 @@
 ///
 /// These tests verify that autocomplete correctly suggests nested fields
 /// in non-executing contexts (map, select, array builders, object builders).
-use super::common::{create_array_of_objects_json, tracker_for};
+use super::common::{
+    create_array_of_objects_json, empty_field_names, field_names_from, tracker_for,
+};
 use crate::autocomplete::*;
 use crate::query::ResultType;
 use serde_json::Value;
@@ -68,6 +70,7 @@ mod nested_field_suggestions {
             Some(parsed.clone()),
             Some(result_type),
             Some(parsed),
+            empty_field_names(),
             &tracker,
         );
 
@@ -95,6 +98,7 @@ mod nested_field_suggestions {
             Some(parsed.clone()),
             Some(result_type),
             Some(parsed),
+            empty_field_names(),
             &tracker,
         );
 
@@ -121,6 +125,7 @@ mod nested_field_suggestions {
             Some(parsed.clone()),
             Some(result_type),
             Some(parsed),
+            empty_field_names(),
             &tracker,
         );
 
@@ -152,6 +157,7 @@ mod array_navigation {
             Some(parsed.clone()),
             Some(result_type),
             Some(parsed),
+            empty_field_names(),
             &tracker,
         );
 
@@ -179,6 +185,7 @@ mod array_navigation {
             Some(parsed.clone()),
             Some(result_type),
             Some(parsed),
+            empty_field_names(),
             &tracker,
         );
 
@@ -209,6 +216,7 @@ mod element_context_with_nested_path {
             Some(parsed.clone()),
             Some(result_type),
             Some(parsed),
+            empty_field_names(),
             &tracker,
         );
 
@@ -240,6 +248,7 @@ mod element_context_with_nested_path {
             Some(parsed.clone()),
             Some(result_type),
             Some(parsed),
+            empty_field_names(),
             &tracker,
         );
 
@@ -273,7 +282,8 @@ mod pipe_boundary {
             query.len(),
             Some(parsed.clone()),
             Some(result_type),
-            Some(parsed),
+            Some(parsed.clone()),
+            field_names_from(&parsed),
             &tracker,
         );
 
@@ -301,6 +311,7 @@ mod fallback_behavior {
             Some(parsed.clone()),
             Some(result_type),
             Some(parsed),
+            empty_field_names(),
             &tracker,
         );
 
@@ -323,6 +334,7 @@ mod fallback_behavior {
             Some(parsed),
             Some(result_type),
             None, // No original_json
+            empty_field_names(),
             &tracker,
         );
 
@@ -347,6 +359,7 @@ mod regression_tests {
             Some(parsed.clone()),
             Some(result_type),
             Some(parsed),
+            empty_field_names(),
             &tracker,
         );
 
@@ -377,6 +390,7 @@ mod regression_tests {
             Some(parsed.clone()),
             Some(result_type),
             Some(parsed),
+            empty_field_names(),
             &tracker,
         );
 
@@ -391,7 +405,15 @@ mod regression_tests {
         let query = ". as $x | $";
         let tracker = tracker_for(query);
 
-        let suggestions = get_suggestions(query, query.len(), None, None, None, &tracker);
+        let suggestions = get_suggestions(
+            query,
+            query.len(),
+            None,
+            None,
+            None,
+            empty_field_names(),
+            &tracker,
+        );
 
         assert!(
             suggestions.iter().any(|s| s.text == "$x"),

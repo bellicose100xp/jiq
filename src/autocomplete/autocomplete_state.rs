@@ -18,6 +18,7 @@ pub fn update_suggestions_from_app(app: &mut App) {
     let result_parsed = query_state.last_successful_result_parsed.clone();
     let result_type = query_state.base_type_for_suggestions.clone();
     let original_json = query_state.executor.json_input_parsed();
+    let all_field_names = query_state.executor.all_field_names();
 
     update_suggestions(
         &mut app.autocomplete,
@@ -26,6 +27,7 @@ pub fn update_suggestions_from_app(app: &mut App) {
         result_parsed,
         result_type,
         original_json,
+        all_field_names,
         &app.input.brace_tracker,
     );
 }

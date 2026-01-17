@@ -1,4 +1,4 @@
-use super::common::{create_array_of_objects_json, tracker_for};
+use super::common::{create_array_of_objects_json, empty_field_names, tracker_for};
 use crate::autocomplete::*;
 use crate::query::ResultType;
 use serde_json::Value;
@@ -22,6 +22,7 @@ fn test_with_entries_suggests_key_and_value() {
         Some(parsed),
         Some(result_type),
         None,
+        empty_field_names(),
         &tracker,
     );
 
@@ -47,6 +48,7 @@ fn test_with_entries_key_value_appear_first() {
         Some(parsed),
         Some(result_type),
         None,
+        empty_field_names(),
         &tracker,
     );
 
@@ -73,6 +75,7 @@ fn test_with_entries_partial_filtering_key() {
         Some(parsed),
         Some(result_type),
         None,
+        empty_field_names(),
         &tracker,
     );
 
@@ -98,6 +101,7 @@ fn test_with_entries_partial_filtering_value() {
         Some(parsed),
         Some(result_type),
         None,
+        empty_field_names(),
         &tracker,
     );
 
@@ -123,6 +127,7 @@ fn test_with_entries_with_nested_select() {
         Some(parsed),
         Some(result_type),
         None,
+        empty_field_names(),
         &tracker,
     );
 
@@ -148,6 +153,7 @@ fn test_with_entries_after_pipe() {
         Some(parsed),
         Some(result_type),
         None,
+        empty_field_names(),
         &tracker,
     );
 
@@ -173,6 +179,7 @@ fn test_with_entries_closed_context() {
         Some(parsed),
         Some(result_type),
         None,
+        empty_field_names(),
         &tracker,
     );
 
@@ -200,6 +207,7 @@ fn test_with_entries_data_suggestions_included() {
         Some(parsed),
         Some(result_type),
         None,
+        empty_field_names(),
         &tracker,
     );
 
@@ -225,6 +233,7 @@ fn test_with_entries_with_object_construction() {
         Some(parsed),
         Some(result_type),
         None,
+        empty_field_names(),
         &tracker,
     );
 
@@ -250,6 +259,7 @@ fn test_with_entries_key_has_description() {
         Some(parsed),
         Some(result_type),
         None,
+        empty_field_names(),
         &tracker,
     );
 
@@ -278,6 +288,7 @@ fn test_with_entries_value_has_description() {
         Some(parsed),
         Some(result_type),
         None,
+        empty_field_names(),
         &tracker,
     );
 
@@ -306,6 +317,7 @@ fn test_with_entries_array_input() {
         Some(parsed),
         Some(result_type),
         None,
+        empty_field_names(),
         &tracker,
     );
 
@@ -331,6 +343,7 @@ fn test_with_entries_no_leading_dot_after_pipe() {
         Some(parsed),
         Some(result_type),
         None,
+        empty_field_names(),
         &tracker,
     );
 
@@ -351,6 +364,7 @@ fn test_outside_with_entries_no_key_value() {
         Some(parsed),
         Some(result_type),
         None,
+        empty_field_names(),
         &tracker,
     );
 

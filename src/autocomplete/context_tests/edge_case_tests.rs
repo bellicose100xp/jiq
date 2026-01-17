@@ -2,7 +2,7 @@
 ///
 /// Tests for transforming functions, complex expressions,
 /// and other edge cases that require special handling.
-use super::common::tracker_for;
+use super::common::{empty_field_names, field_names_from, tracker_for};
 use crate::autocomplete::*;
 use crate::query::ResultType;
 use serde_json::Value;
@@ -46,6 +46,7 @@ mod optional_field_access {
             Some(parsed.clone()),
             Some(result_type),
             Some(parsed),
+            empty_field_names(),
             &tracker,
         );
 
@@ -78,6 +79,7 @@ mod bracket_notation {
             Some(parsed.clone()),
             Some(result_type),
             Some(parsed),
+            empty_field_names(),
             &tracker,
         );
 
@@ -106,6 +108,7 @@ mod array_index_access {
             Some(parsed.clone()),
             Some(result_type),
             Some(parsed),
+            empty_field_names(),
             &tracker,
         );
 
@@ -134,6 +137,7 @@ mod array_index_access {
             Some(parsed.clone()),
             Some(result_type),
             Some(parsed),
+            empty_field_names(),
             &tracker,
         );
 
@@ -162,6 +166,7 @@ mod pipe_chaining {
             Some(parsed.clone()),
             Some(result_type),
             Some(parsed),
+            empty_field_names(),
             &tracker,
         );
 
@@ -186,6 +191,7 @@ mod pipe_chaining {
             Some(parsed.clone()),
             Some(result_type),
             Some(parsed),
+            empty_field_names(),
             &tracker,
         );
 
@@ -222,6 +228,7 @@ mod mixed_contexts {
             Some(parsed.clone()),
             Some(result_type),
             Some(parsed),
+            empty_field_names(),
             &tracker,
         );
 
@@ -245,6 +252,7 @@ mod mixed_contexts {
             Some(parsed.clone()),
             Some(result_type),
             Some(parsed),
+            empty_field_names(),
             &tracker,
         );
 
@@ -290,6 +298,7 @@ mod deep_nesting {
             Some(parsed.clone()),
             Some(result_type),
             Some(parsed),
+            empty_field_names(),
             &tracker,
         );
 
@@ -319,6 +328,7 @@ mod middle_of_query_tests {
             Some(parsed.clone()),
             Some(result_type),
             Some(parsed),
+            empty_field_names(),
             &tracker,
         );
 
@@ -349,6 +359,7 @@ mod middle_of_query_tests {
             Some(parsed.clone()),
             Some(result_type),
             Some(parsed),
+            empty_field_names(),
             &tracker,
         );
 
@@ -378,6 +389,7 @@ mod middle_of_query_tests {
             Some(parsed.clone()),
             Some(result_type),
             Some(parsed),
+            empty_field_names(),
             &tracker,
         );
 
@@ -402,11 +414,12 @@ mod middle_of_query_tests {
             cursor_pos,
             Some(parsed.clone()),
             Some(result_type),
-            Some(parsed),
+            Some(parsed.clone()),
+            field_names_from(&parsed),
             &tracker,
         );
 
-        // Navigation fails, should fall back to original_json suggestions
+        // Navigation fails, should fall back to all field names from original_json
         assert!(
             !suggestions.is_empty(),
             "Should have fallback suggestions for nonexistent path"
@@ -426,12 +439,13 @@ mod middle_of_query_tests {
             cursor_pos,
             Some(parsed.clone()),
             Some(result_type),
-            Some(parsed),
+            Some(parsed.clone()),
+            field_names_from(&parsed),
             &tracker,
         );
 
         // Inside map(), middle of query, should navigate from original
-        // map expects array input, but original is object, so falls back
+        // map expects array input, but original is object, so falls back to all fields
         assert!(
             !suggestions.is_empty(),
             "Should have suggestions inside map with cursor in middle"
@@ -452,6 +466,7 @@ mod middle_of_query_tests {
             Some(parsed.clone()),
             Some(result_type),
             Some(parsed),
+            empty_field_names(),
             &tracker,
         );
 
@@ -476,6 +491,7 @@ mod middle_of_query_tests {
             Some(parsed.clone()),
             Some(result_type.clone()),
             Some(parsed.clone()),
+            empty_field_names(),
             &tracker,
         );
 
@@ -486,6 +502,7 @@ mod middle_of_query_tests {
             Some(parsed.clone()),
             Some(result_type),
             Some(parsed),
+            empty_field_names(),
             &tracker,
         );
 
@@ -543,6 +560,7 @@ mod performance_tests {
             Some(parsed.clone()),
             Some(result_type),
             Some(parsed),
+            empty_field_names(),
             &tracker,
         );
         let elapsed = start.elapsed();
@@ -568,6 +586,7 @@ mod performance_tests {
             Some(parsed.clone()),
             Some(result_type),
             Some(parsed),
+            empty_field_names(),
             &tracker,
         );
         let elapsed = start.elapsed();
@@ -599,6 +618,7 @@ mod performance_tests {
                 Some(parsed.clone()),
                 Some(result_type.clone()),
                 Some(parsed.clone()),
+                empty_field_names(),
                 &tracker,
             );
         }
