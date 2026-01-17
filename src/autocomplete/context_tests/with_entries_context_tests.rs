@@ -1,4 +1,4 @@
-use super::common::{create_array_of_objects_json, tracker_for};
+use super::common::{create_array_of_objects_json, empty_field_names, tracker_for};
 use crate::autocomplete::*;
 use crate::query::ResultType;
 use serde_json::Value;
@@ -21,6 +21,8 @@ fn test_with_entries_suggests_key_and_value() {
         query.len(),
         Some(parsed),
         Some(result_type),
+        None,
+        empty_field_names(),
         &tracker,
     );
 
@@ -45,6 +47,8 @@ fn test_with_entries_key_value_appear_first() {
         query.len(),
         Some(parsed),
         Some(result_type),
+        None,
+        empty_field_names(),
         &tracker,
     );
 
@@ -70,6 +74,8 @@ fn test_with_entries_partial_filtering_key() {
         query.len(),
         Some(parsed),
         Some(result_type),
+        None,
+        empty_field_names(),
         &tracker,
     );
 
@@ -94,6 +100,8 @@ fn test_with_entries_partial_filtering_value() {
         query.len(),
         Some(parsed),
         Some(result_type),
+        None,
+        empty_field_names(),
         &tracker,
     );
 
@@ -118,6 +126,8 @@ fn test_with_entries_with_nested_select() {
         query.len(),
         Some(parsed),
         Some(result_type),
+        None,
+        empty_field_names(),
         &tracker,
     );
 
@@ -142,6 +152,8 @@ fn test_with_entries_after_pipe() {
         query.len(),
         Some(parsed),
         Some(result_type),
+        None,
+        empty_field_names(),
         &tracker,
     );
 
@@ -166,6 +178,8 @@ fn test_with_entries_closed_context() {
         query.len(),
         Some(parsed),
         Some(result_type),
+        None,
+        empty_field_names(),
         &tracker,
     );
 
@@ -192,6 +206,8 @@ fn test_with_entries_data_suggestions_included() {
         query.len(),
         Some(parsed),
         Some(result_type),
+        None,
+        empty_field_names(),
         &tracker,
     );
 
@@ -216,6 +232,8 @@ fn test_with_entries_with_object_construction() {
         query.len(),
         Some(parsed),
         Some(result_type),
+        None,
+        empty_field_names(),
         &tracker,
     );
 
@@ -240,6 +258,8 @@ fn test_with_entries_key_has_description() {
         query.len(),
         Some(parsed),
         Some(result_type),
+        None,
+        empty_field_names(),
         &tracker,
     );
 
@@ -267,6 +287,8 @@ fn test_with_entries_value_has_description() {
         query.len(),
         Some(parsed),
         Some(result_type),
+        None,
+        empty_field_names(),
         &tracker,
     );
 
@@ -294,6 +316,8 @@ fn test_with_entries_array_input() {
         query.len(),
         Some(parsed),
         Some(result_type),
+        None,
+        empty_field_names(),
         &tracker,
     );
 
@@ -318,6 +342,8 @@ fn test_with_entries_no_leading_dot_after_pipe() {
         query.len(),
         Some(parsed),
         Some(result_type),
+        None,
+        empty_field_names(),
         &tracker,
     );
 
@@ -337,6 +363,8 @@ fn test_outside_with_entries_no_key_value() {
         query.len(),
         Some(parsed),
         Some(result_type),
+        None,
+        empty_field_names(),
         &tracker,
     );
 

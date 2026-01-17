@@ -1,8 +1,10 @@
+use std::collections::HashSet;
 use std::process::{Command, Stdio};
-use std::sync::Arc;
+use std::sync::{Arc, OnceLock};
 use std::thread::sleep;
 use std::time::Duration;
 
+use serde_json::Value;
 use tokio_util::sync::CancellationToken;
 
 use crate::query::worker::types::QueryError;
@@ -15,6 +17,12 @@ use crate::query::worker::types::QueryError;
 /// count increment (O(1)).
 pub struct JqExecutor {
     json_input: Arc<String>,
+    /// Lazily parsed JSON input, cached for autocomplete navigation.
+    /// Uses OnceLock for thread-safe one-time initialization.
+    json_input_parsed: OnceLock<Option<Arc<Value>>>,
+    /// All unique field names from the JSON, collected recursively.
+    /// Cached for non-deterministic autocomplete fallback.
+    all_field_names: OnceLock<Arc<HashSet<String>>>,
 }
 
 impl JqExecutor {
@@ -22,12 +30,60 @@ impl JqExecutor {
     pub fn new(json_input: String) -> Self {
         Self {
             json_input: Arc::new(json_input),
+            json_input_parsed: OnceLock::new(),
+            all_field_names: OnceLock::new(),
         }
     }
 
     /// Get a reference to the JSON input
     pub fn json_input(&self) -> &str {
         &self.json_input
+    }
+
+    /// Get the parsed JSON input, lazily parsing on first access.
+    ///
+    /// Returns the original input JSON as a parsed Value, cached for repeated access.
+    /// This is the true original file input that never changes during the session.
+    /// Used by autocomplete to navigate nested structures.
+    ///
+    /// Returns `None` if the JSON input is invalid.
+    pub fn json_input_parsed(&self) -> Option<Arc<Value>> {
+        self.json_input_parsed
+            .get_or_init(|| serde_json::from_str(&self.json_input).ok().map(Arc::new))
+            .clone()
+    }
+
+    /// Get all unique field names from the JSON, collected recursively.
+    ///
+    /// Returns a cached set of all field names found anywhere in the JSON tree.
+    /// Used for non-deterministic autocomplete fallback when path navigation fails.
+    pub fn all_field_names(&self) -> Arc<HashSet<String>> {
+        self.all_field_names
+            .get_or_init(|| {
+                let mut fields = HashSet::new();
+                if let Some(parsed) = self.json_input_parsed() {
+                    Self::collect_fields_recursive(&parsed, &mut fields);
+                }
+                Arc::new(fields)
+            })
+            .clone()
+    }
+
+    fn collect_fields_recursive(value: &Value, fields: &mut HashSet<String>) {
+        match value {
+            Value::Object(map) => {
+                for (key, val) in map {
+                    fields.insert(key.clone());
+                    Self::collect_fields_recursive(val, fields);
+                }
+            }
+            Value::Array(arr) => {
+                if let Some(first) = arr.first() {
+                    Self::collect_fields_recursive(first, fields);
+                }
+            }
+            _ => {}
+        }
     }
 
     /// Execute a jq query with cancellation support

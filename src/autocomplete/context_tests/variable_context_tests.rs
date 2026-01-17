@@ -1,14 +1,22 @@
-use super::common::tracker_for;
+use super::common::{empty_field_names, tracker_for};
 use crate::autocomplete::BraceTracker;
 use crate::autocomplete::context::{SuggestionContext, analyze_context};
 use crate::autocomplete::get_suggestions;
 
 fn get_var_suggestions(query: &str, cursor_pos: usize) -> Vec<String> {
     let tracker = tracker_for(query);
-    get_suggestions(query, cursor_pos, None, None, &tracker)
-        .into_iter()
-        .map(|s| s.text)
-        .collect()
+    get_suggestions(
+        query,
+        cursor_pos,
+        None,
+        None,
+        None,
+        empty_field_names(),
+        &tracker,
+    )
+    .into_iter()
+    .map(|s| s.text)
+    .collect()
 }
 
 fn assert_context_is_variable(before_cursor: &str) {

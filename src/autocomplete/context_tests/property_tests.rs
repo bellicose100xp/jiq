@@ -1,4 +1,4 @@
-use super::common::tracker_for;
+use super::common::{empty_field_names, tracker_for};
 use crate::autocomplete::*;
 use crate::query::ResultType;
 use proptest::prelude::*;
@@ -26,6 +26,8 @@ proptest! {
             query.len(),
             parsed,
             Some(ResultType::Object),
+            None,
+            empty_field_names(),
             &tracker,
         );
 
@@ -60,6 +62,8 @@ proptest! {
             query.len(),
             parsed,
             Some(ResultType::Object),
+            None,
+            empty_field_names(),
             &tracker,
         );
 
@@ -263,6 +267,8 @@ proptest! {
             query.len(),
             parsed,
             Some(ResultType::ArrayOfObjects),
+            None,
+            empty_field_names(),
             &tracker,
         );
 
@@ -296,6 +302,8 @@ proptest! {
             query.len(),
             parsed,
             Some(ResultType::ArrayOfObjects),
+            None,
+            empty_field_names(),
             &tracker,
         );
 

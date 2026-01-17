@@ -714,3 +714,111 @@ fn test_element_context_empty_array() {
     assert_eq!(suggestions.len(), 1);
     assert_eq!(suggestions[0].text, ".[]");
 }
+
+// ============================================================================
+// Tests for analyze_value() - type inference from Value
+// ============================================================================
+
+mod analyze_value_tests {
+    use super::*;
+
+    #[test]
+    fn test_analyze_value_object() {
+        let json: Value = serde_json::from_str(r#"{"name": "test", "age": 30}"#).unwrap();
+        let suggestions = ResultAnalyzer::analyze_value(&json, true, false);
+
+        assert_eq!(suggestions.len(), 2);
+        assert!(suggestions.iter().any(|s| s.text == ".name"));
+        assert!(suggestions.iter().any(|s| s.text == ".age"));
+    }
+
+    #[test]
+    fn test_analyze_value_array_of_objects() {
+        let json: Value =
+            serde_json::from_str(r#"[{"id": 1, "name": "Alice"}, {"id": 2, "name": "Bob"}]"#)
+                .unwrap();
+        let suggestions = ResultAnalyzer::analyze_value(&json, true, false);
+
+        // Should have .[] and .[].id, .[].name
+        assert!(suggestions.iter().any(|s| s.text == ".[]"));
+        assert!(suggestions.iter().any(|s| s.text == ".[].id"));
+        assert!(suggestions.iter().any(|s| s.text == ".[].name"));
+    }
+
+    #[test]
+    fn test_analyze_value_array_of_objects_suppressed() {
+        let json: Value = serde_json::from_str(r#"[{"id": 1}, {"id": 2}]"#).unwrap();
+        let suggestions = ResultAnalyzer::analyze_value(&json, true, true);
+
+        // When suppressed, should have .id instead of .[].id, no .[]
+        assert!(suggestions.iter().any(|s| s.text == ".id"));
+        assert!(!suggestions.iter().any(|s| s.text == ".[]"));
+        assert!(!suggestions.iter().any(|s| s.text == ".[].id"));
+    }
+
+    #[test]
+    fn test_analyze_value_empty_array() {
+        let json: Value = serde_json::from_str("[]").unwrap();
+        let suggestions = ResultAnalyzer::analyze_value(&json, true, false);
+
+        // Only .[] for empty array
+        assert_eq!(suggestions.len(), 1);
+        assert_eq!(suggestions[0].text, ".[]");
+    }
+
+    #[test]
+    fn test_analyze_value_scalar_returns_empty() {
+        let number: Value = serde_json::from_str("42").unwrap();
+        let string: Value = serde_json::from_str(r#""hello""#).unwrap();
+        let boolean: Value = serde_json::from_str("true").unwrap();
+        let null: Value = serde_json::from_str("null").unwrap();
+
+        assert!(ResultAnalyzer::analyze_value(&number, true, false).is_empty());
+        assert!(ResultAnalyzer::analyze_value(&string, true, false).is_empty());
+        assert!(ResultAnalyzer::analyze_value(&boolean, true, false).is_empty());
+        assert!(ResultAnalyzer::analyze_value(&null, true, false).is_empty());
+    }
+
+    #[test]
+    fn test_analyze_value_nested_object() {
+        let json: Value = serde_json::from_str(
+            r#"{"user": {"profile": {"name": "Alice"}}, "settings": {"theme": "dark"}}"#,
+        )
+        .unwrap();
+        let suggestions = ResultAnalyzer::analyze_value(&json, true, false);
+
+        // Should suggest top-level fields only
+        assert_eq!(suggestions.len(), 2);
+        assert!(suggestions.iter().any(|s| s.text == ".user"));
+        assert!(suggestions.iter().any(|s| s.text == ".settings"));
+    }
+
+    #[test]
+    fn test_analyze_value_without_leading_dot() {
+        let json: Value = serde_json::from_str(r#"{"name": "test"}"#).unwrap();
+        let suggestions = ResultAnalyzer::analyze_value(&json, false, false);
+
+        assert_eq!(suggestions.len(), 1);
+        assert_eq!(suggestions[0].text, "name");
+    }
+
+    #[test]
+    fn test_analyze_value_array_of_primitives() {
+        let json: Value = serde_json::from_str("[1, 2, 3]").unwrap();
+        let suggestions = ResultAnalyzer::analyze_value(&json, true, false);
+
+        // Only .[] for array of primitives
+        assert_eq!(suggestions.len(), 1);
+        assert_eq!(suggestions[0].text, ".[]");
+    }
+
+    #[test]
+    fn test_analyze_value_accepts_reference() {
+        // This test verifies the API accepts &Value (not Arc<Value>)
+        let json: Value = serde_json::from_str(r#"{"field": "value"}"#).unwrap();
+        let suggestions = ResultAnalyzer::analyze_value(&json, true, false);
+
+        assert_eq!(suggestions.len(), 1);
+        assert_eq!(suggestions[0].text, ".field");
+    }
+}

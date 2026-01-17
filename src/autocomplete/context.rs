@@ -1,10 +1,13 @@
 use super::autocomplete_state::{JsonFieldType, Suggestion, SuggestionType};
-use super::brace_tracker::BraceTracker;
+use super::brace_tracker::{BraceTracker, BraceType};
 use super::jq_functions::filter_builtins;
+use super::json_navigator::navigate;
+use super::path_parser::{PathSegment, parse_path};
 use super::result_analyzer::ResultAnalyzer;
 use super::variable_extractor::extract_variables;
 use crate::query::ResultType;
 use serde_json::Value;
+use std::collections::HashSet;
 use std::sync::Arc;
 
 /// Filters suggestions by matching the incomplete text the user is typing (case-insensitive).
@@ -215,6 +218,20 @@ fn get_field_suggestions(
     }
 }
 
+/// Converts all cached field names to suggestions for non-deterministic fallback.
+fn get_all_field_suggestions(
+    all_field_names: &HashSet<String>,
+    needs_leading_dot: bool,
+) -> Vec<Suggestion> {
+    let prefix = if needs_leading_dot { "." } else { "" };
+    all_field_names
+        .iter()
+        .map(|name| {
+            Suggestion::new_with_type(format!("{}{}", prefix, name), SuggestionType::Field, None)
+        })
+        .collect()
+}
+
 /// Injects .key and .value suggestions for with_entries() context.
 ///
 /// # Parameters
@@ -368,6 +385,8 @@ pub fn get_suggestions(
     cursor_pos: usize,
     result_parsed: Option<Arc<Value>>,
     result_type: Option<ResultType>,
+    original_json: Option<Arc<Value>>,
+    all_field_names: Arc<HashSet<String>>,
     brace_tracker: &BraceTracker,
 ) -> Vec<Suggestion> {
     let before_cursor = &query[..cursor_pos.min(query.len())];
@@ -381,12 +400,83 @@ pub fn get_suggestions(
     match context {
         SuggestionContext::FieldContext => {
             let needs_dot = needs_leading_dot(before_cursor, &partial);
-            let mut suggestions = get_field_suggestions(
-                result_parsed,
-                result_type,
-                needs_dot,
-                suppress_array_brackets,
-            );
+            let is_at_end = is_cursor_at_logical_end(query, cursor_pos);
+            let is_non_executing = brace_tracker.is_in_non_executing_context(cursor_pos);
+
+            // Phase 3: Path-aware suggestion logic
+            let mut suggestions = if is_non_executing && is_at_end {
+                // NON-EXECUTING CONTEXT + CURSOR AT END:
+                // Cache is stale, extract path and navigate from cache or original
+                let (path_context, is_after_pipe) =
+                    extract_path_context_with_pipe_info(before_cursor, brace_tracker);
+
+                // Try navigating from last_successful_result first
+                if let Some(ref result) = result_parsed {
+                    if let Some(nested_suggestions) = get_nested_field_suggestions(
+                        result,
+                        &path_context,
+                        needs_dot,
+                        suppress_array_brackets,
+                        suppress_array_brackets, // is_in_element_context == suppress_array_brackets
+                        is_after_pipe,
+                        result_type.as_ref(),
+                    ) {
+                        nested_suggestions
+                    } else if let Some(ref orig) = original_json {
+                        // Navigation failed, fall back to original_json
+                        get_nested_field_suggestions(
+                            orig,
+                            &path_context,
+                            needs_dot,
+                            suppress_array_brackets,
+                            suppress_array_brackets,
+                            is_after_pipe,
+                            result_type.as_ref(),
+                        )
+                        .unwrap_or_else(|| {
+                            // Non-deterministic: show all fields from original JSON
+                            get_all_field_suggestions(&all_field_names, needs_dot)
+                        })
+                    } else {
+                        // Non-deterministic: show all fields from original JSON
+                        get_all_field_suggestions(&all_field_names, needs_dot)
+                    }
+                } else {
+                    Vec::new()
+                }
+            } else if !is_at_end {
+                // MIDDLE OF QUERY: Cache is "ahead" of cursor, navigate from original_json
+                let (path_context, is_after_pipe) =
+                    extract_path_context_with_pipe_info(before_cursor, brace_tracker);
+
+                if let Some(ref orig) = original_json {
+                    get_nested_field_suggestions(
+                        orig,
+                        &path_context,
+                        needs_dot,
+                        suppress_array_brackets,
+                        suppress_array_brackets,
+                        is_after_pipe,
+                        result_type.as_ref(),
+                    )
+                    .unwrap_or_else(|| {
+                        // Non-deterministic: show all fields from original JSON
+                        get_all_field_suggestions(&all_field_names, needs_dot)
+                    })
+                } else {
+                    // Non-deterministic: show all fields from original JSON
+                    get_all_field_suggestions(&all_field_names, needs_dot)
+                }
+            } else {
+                // EXECUTING CONTEXT + CURSOR AT END:
+                // Cache is current, suggest its fields directly
+                get_field_suggestions(
+                    result_parsed.clone(),
+                    result_type.clone(),
+                    needs_dot,
+                    suppress_array_brackets,
+                )
+            };
 
             if in_with_entries {
                 inject_with_entries_suggestions(&mut suggestions, needs_dot);
@@ -503,6 +593,131 @@ fn is_delimiter(ch: char) -> bool {
         ch,
         '|' | ';' | '(' | ')' | '[' | ']' | '{' | '}' | ',' | ' ' | '\t' | '\n' | '\r'
     )
+}
+
+/// Determine if cursor is at the "logical end" of the query
+/// (at end, or only whitespace after cursor).
+fn is_cursor_at_logical_end(query: &str, cursor_pos: usize) -> bool {
+    if cursor_pos >= query.len() {
+        return true;
+    }
+    query[cursor_pos..].chars().all(|c| c.is_whitespace())
+}
+
+/// Find where the current expression starts for path extraction.
+/// Result of finding an expression boundary.
+struct ExpressionBoundary {
+    /// Position where the expression starts
+    position: usize,
+    /// Whether the boundary was a pipe (|) character
+    is_after_pipe: bool,
+}
+
+/// Used in non-executing contexts to extract the path being typed.
+fn find_expression_boundary(
+    before_cursor: &str,
+    brace_tracker: &BraceTracker,
+) -> ExpressionBoundary {
+    let innermost = brace_tracker.innermost_brace_info(before_cursor.len());
+
+    match innermost {
+        Some(info) => {
+            let after_brace = &before_cursor[info.pos + 1..];
+
+            // Within the brace context, find the last boundary character
+            let boundary_chars: &[char] = match info.brace_type {
+                BraceType::Paren => &['|', ';'],
+                BraceType::Square => &['|', ';', ','],
+                BraceType::Curly => &['|', ';', ',', ':'],
+            };
+
+            // Find last boundary within this context
+            let last_boundary = after_brace.rfind(|c| boundary_chars.contains(&c));
+
+            match last_boundary {
+                Some(offset) => {
+                    let boundary_char = after_brace.chars().nth(offset).unwrap_or(' ');
+                    ExpressionBoundary {
+                        position: info.pos + 1 + offset + 1, // +1 to skip the boundary char
+                        is_after_pipe: boundary_char == '|',
+                    }
+                }
+                None => ExpressionBoundary {
+                    position: info.pos + 1, // Start after the opening brace
+                    is_after_pipe: false,
+                },
+            }
+        }
+        None => {
+            // Top-level: boundary at |, ;, or start
+            let boundary_pos = before_cursor.rfind(['|', ';']);
+            match boundary_pos {
+                Some(pos) => {
+                    let boundary_char = before_cursor.chars().nth(pos).unwrap_or(' ');
+                    ExpressionBoundary {
+                        position: pos + 1,
+                        is_after_pipe: boundary_char == '|',
+                    }
+                }
+                None => ExpressionBoundary {
+                    position: 0,
+                    is_after_pipe: false,
+                },
+            }
+        }
+    }
+}
+
+/// Extract path context from the expression boundary.
+/// Returns the path string and whether we're after a pipe.
+fn extract_path_context_with_pipe_info(
+    before_cursor: &str,
+    brace_tracker: &BraceTracker,
+) -> (String, bool) {
+    let boundary = find_expression_boundary(before_cursor, brace_tracker);
+    let path = before_cursor[boundary.position..].trim_start().to_string();
+    (path, boundary.is_after_pipe)
+}
+
+/// Get nested field suggestions by navigating the JSON tree.
+/// This is the core Phase 3 integration point.
+fn get_nested_field_suggestions(
+    json: &Value,
+    path_context: &str,
+    needs_leading_dot: bool,
+    suppress_array_brackets: bool,
+    is_in_element_context: bool,
+    is_after_pipe: bool,
+    result_type: Option<&ResultType>,
+) -> Option<Vec<Suggestion>> {
+    let mut parsed_path = parse_path(path_context);
+
+    // Phase 7: Check if result is already from streaming (DestructuredObjects)
+    // When the query has .services[] before select(), the cached result is already
+    // an individual element, not an array. Don't prepend ArrayIterator in this case.
+    let is_streaming = matches!(result_type, Some(ResultType::DestructuredObjects));
+
+    // In element context (map, select), prepend ArrayIterator ONLY if the result
+    // is not already from a streaming operation
+    if is_in_element_context && !is_streaming {
+        parsed_path.segments.insert(0, PathSegment::ArrayIterator);
+    }
+
+    // If path has no segments (just ".") AND we're after a pipe, return None.
+    // After a pipe, "." refers to the pipe's input which we can't know without execution.
+    // But at the start of an expression (not after pipe), "." means the root JSON.
+    if parsed_path.segments.is_empty() && is_after_pipe {
+        return None;
+    }
+
+    // Navigate to the target value
+    let navigated = navigate(json, &parsed_path.segments)?;
+
+    // Get suggestions from the navigated value
+    let suggestions =
+        ResultAnalyzer::analyze_value(navigated, needs_leading_dot, suppress_array_brackets);
+
+    Some(suggestions)
 }
 
 #[cfg(test)]

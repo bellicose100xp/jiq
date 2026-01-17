@@ -161,3 +161,79 @@ fn test_json_input_accessor() {
 
     assert_eq!(executor.json_input(), json);
 }
+
+#[test]
+fn test_json_input_parsed_returns_parsed_value() {
+    let json = r#"{"name": "Alice", "age": 30}"#;
+    let executor = JqExecutor::new(json.to_string());
+
+    let parsed = executor.json_input_parsed();
+    assert!(parsed.is_some());
+
+    let value = parsed.unwrap();
+    assert!(value.is_object());
+    assert_eq!(value.get("name").and_then(|v| v.as_str()), Some("Alice"));
+    assert_eq!(value.get("age").and_then(|v| v.as_i64()), Some(30));
+}
+
+#[test]
+fn test_json_input_parsed_caches_result() {
+    let json = r#"{"key": "value"}"#;
+    let executor = JqExecutor::new(json.to_string());
+
+    let first = executor.json_input_parsed();
+    let second = executor.json_input_parsed();
+
+    // Both should return the same Arc (same pointer)
+    assert!(std::sync::Arc::ptr_eq(
+        first.as_ref().unwrap(),
+        second.as_ref().unwrap()
+    ));
+}
+
+#[test]
+fn test_json_input_parsed_returns_none_for_invalid_json() {
+    let invalid_json = "not valid json {{{";
+    let executor = JqExecutor::new(invalid_json.to_string());
+
+    let parsed = executor.json_input_parsed();
+    assert!(parsed.is_none());
+}
+
+#[test]
+fn test_json_input_parsed_handles_arrays() {
+    let json = r#"[{"id": 1}, {"id": 2}]"#;
+    let executor = JqExecutor::new(json.to_string());
+
+    let parsed = executor.json_input_parsed();
+    assert!(parsed.is_some());
+
+    let value = parsed.unwrap();
+    assert!(value.is_array());
+    assert_eq!(value.as_array().map(|a| a.len()), Some(2));
+}
+
+#[test]
+fn test_json_input_parsed_preserves_original_after_queries() {
+    let json = r#"{"users": [{"name": "Alice"}, {"name": "Bob"}]}"#;
+    let executor = JqExecutor::new(json.to_string());
+    let cancel_token = CancellationToken::new();
+
+    // Execute some queries that transform the data
+    let _ = executor.execute_with_cancel(".users[0]", &cancel_token);
+    let _ = executor.execute_with_cancel(".users | length", &cancel_token);
+
+    // Original JSON should still be fully accessible
+    let parsed = executor.json_input_parsed();
+    assert!(parsed.is_some());
+
+    let value = parsed.unwrap();
+    assert!(value.get("users").is_some());
+    assert_eq!(
+        value
+            .get("users")
+            .and_then(|u| u.as_array())
+            .map(|a| a.len()),
+        Some(2)
+    );
+}
