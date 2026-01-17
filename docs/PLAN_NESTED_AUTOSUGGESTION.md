@@ -10,9 +10,96 @@
 | **Phase 1** | Path Parser | ✅ Complete | `path_parser.rs` with 45 test cases |
 | **Phase 2** | JSON Navigator | ✅ Complete | `json_navigator.rs` with 40 test cases |
 | **Phase 3** | Integration | ✅ Complete | Path-aware suggestion flow + 13 integration tests |
-| **Phase 4** | Edge Cases & Polish | ✅ Complete | Transforming function detection + 29 tests |
+| **Phase 4** | Edge Cases & Polish | ✅ Complete | 19 tests (removed transforming function detection - see notes) |
+| **Phase 5** | Manual TUI Validation | 🔄 In Progress | Using `~/temp/ecs.json` test file |
 
 **Note**: Each phase should be committed separately to maintain clean git history.
+
+### Phase 4 Notes
+Originally included transforming function detection (`keys`, `to_entries`, etc.) to fall back to `original_json`.
+This was **removed** because in executing context with cursor at end, the cache IS the actual query result
+and should be used directly. The cache correctly reflects transformed data (e.g., `keys` returns `["services"]`).
+
+---
+
+## Phase 5: Manual TUI Validation
+
+### Test File
+```
+~/temp/ecs.json
+```
+
+### Test Sections
+
+#### Section 1: Basic Nested Field Navigation (Executing Context) ✅ VALIDATED
+| Query | Expected Suggestions |
+|-------|---------------------|
+| `.services[].` | `serviceName`, `serviceArn`, `status`, `deployments`, `events`, `deploymentConfiguration`, etc. |
+| `.services[].deploymentConfiguration.` | `deploymentCircuitBreaker`, `maximumPercent`, `minimumHealthyPercent`, `alarms`, `strategy`, `bakeTimeInMinutes` |
+| `.services[].deployments[].networkConfiguration.` | `awsvpcConfiguration` |
+| `.services[].deployments[].networkConfiguration.awsvpcConfiguration.` | `subnets`, `securityGroups`, `assignPublicIp` |
+
+#### Section 2: Non-Executing Context - Array Builder ✅ VALIDATED
+| Query | Expected Suggestions |
+|-------|---------------------|
+| `[.services[].deployments[].` | `id`, `status`, `taskDefinition`, `desiredCount`, `pendingCount`, `runningCount`, `failedTasks`, `createdAt`, `networkConfiguration`, etc. |
+| `[.services[0].events[0].` | `id`, `createdAt`, `message` |
+
+#### Section 3: Non-Executing Context - Object Builder ✅ VALIDATED
+| Query | Expected Suggestions |
+|-------|---------------------|
+| `{name: .services[0].` | `serviceName`, `serviceArn`, `status`, `deployments`, `events`, `deploymentConfiguration`, etc. |
+| `{cfg: .services[].deploymentConfiguration.alarms.` | `alarmNames`, `rollback`, `enable` |
+
+#### Section 4: Non-Executing Context - map/select ✅ VALIDATED
+| Query | Expected Suggestions |
+|-------|---------------------|
+| `.services \| map(.deployments[].` | `id`, `status`, `taskDefinition`, `desiredCount`, `runningCount`, `networkConfiguration`, etc. |
+| `.services \| map(.events[].` | `id`, `createdAt`, `message` |
+| `.services[] \| select(.status == "ACTIVE").deploymentConfiguration.` | `deploymentCircuitBreaker`, `maximumPercent`, `minimumHealthyPercent`, `alarms`, `strategy` |
+
+**Note**: `select()` requires `.services[]` (with iteration) not `.services` (the array itself).
+
+#### Section 5: Deep Nesting (5 levels) ✅ VALIDATED
+| Query | Expected Suggestions |
+|-------|---------------------|
+| `[.services[].deployments[].networkConfiguration.awsvpcConfiguration.` | `subnets`, `securityGroups`, `assignPublicIp` |
+
+#### Section 6: Transforming Functions (Cache-Based) ⏳ PENDING
+| Query | Expected Suggestions |
+|-------|---------------------|
+| `keys \| .` | `.[]` (array iteration, since `keys` returns array of strings) |
+| `.services \| to_entries \| .[].` | `key`, `value` (to_entries structure) |
+| `.services[] \| keys \| .` | `.[]` (array of field names) |
+
+#### Section 7: Middle-of-Query Editing ⏳ PENDING
+| Test | Steps |
+|------|-------|
+| Navigate to middle | Type `.services[].deploymentConfiguration.maximumPercent`, move cursor to after `.services[].`, trigger autocomplete |
+| Expected | Should suggest service fields (`serviceName`, `status`, etc.), NOT `maximumPercent` fields |
+
+#### Section 8: Pipe Boundary ⏳ PENDING
+| Query | Expected Suggestions |
+|-------|---------------------|
+| `.services[0] \| .deployments[].` | deployment fields (`id`, `status`, etc.) |
+| `[.services[0].events \| .[0].` | After pipe, path resets - should suggest event fields |
+
+#### Section 9: Optional Fields ⏳ PENDING
+| Query | Expected Suggestions |
+|-------|---------------------|
+| `[.services[]?.deployments[]?.networkConfiguration?.` | `awsvpcConfiguration` |
+
+#### Section 10: Negative Array Index ⏳ PENDING
+| Query | Expected Suggestions |
+|-------|---------------------|
+| `{last: .services[-1].events[-1].` | `id`, `createdAt`, `message` |
+
+### Quick Smoke Test (for new sessions)
+Run `jiq ~/temp/ecs.json` and verify:
+1. `.` → `services` appears
+2. `.services[].` → service fields appear
+3. `[.services[].deployments[].` → deployment fields in non-executing context
+4. `keys | .` → `.[]` suggested (array iteration)
 
 ---
 

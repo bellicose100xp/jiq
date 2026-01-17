@@ -217,26 +217,6 @@ fn get_field_suggestions(
     }
 }
 
-/// Gets all available field suggestions from original JSON (non-deterministic fallback).
-/// Used when after transforming functions or complex expressions where
-/// the cache structure doesn't match the original.
-fn get_all_available_field_suggestions(
-    original_json: Option<&Value>,
-    result_parsed: Option<&Value>,
-    needs_leading_dot: bool,
-    suppress_array_brackets: bool,
-) -> Vec<Suggestion> {
-    // Prefer original_json for fallback suggestions
-    let source = original_json.or(result_parsed);
-
-    match source {
-        Some(value) => {
-            ResultAnalyzer::analyze_value(value, needs_leading_dot, suppress_array_brackets)
-        }
-        None => Vec::new(),
-    }
-}
-
 /// Injects .key and .value suggestions for with_entries() context.
 ///
 /// # Parameters
@@ -481,28 +461,13 @@ pub fn get_suggestions(
                 }
             } else {
                 // EXECUTING CONTEXT + CURSOR AT END:
-                // Cache is current, but check for transforming functions or complex expressions
-                let is_non_deterministic = is_after_transforming_function(before_cursor)
-                    || is_after_complex_expression(before_cursor);
-
-                if is_non_deterministic {
-                    // After transforming functions or complex expressions,
-                    // fall back to all fields from original_json
-                    get_all_available_field_suggestions(
-                        original_json.as_deref(),
-                        result_parsed.as_deref(),
-                        needs_dot,
-                        suppress_array_brackets,
-                    )
-                } else {
-                    // Standard executing context: suggest cache's fields directly
-                    get_field_suggestions(
-                        result_parsed.clone(),
-                        result_type.clone(),
-                        needs_dot,
-                        suppress_array_brackets,
-                    )
-                }
+                // Cache is current, suggest its fields directly
+                get_field_suggestions(
+                    result_parsed.clone(),
+                    result_type.clone(),
+                    needs_dot,
+                    suppress_array_brackets,
+                )
             };
 
             if in_with_entries {
@@ -629,160 +594,6 @@ fn is_cursor_at_logical_end(query: &str, cursor_pos: usize) -> bool {
         return true;
     }
     query[cursor_pos..].chars().all(|c| c.is_whitespace())
-}
-
-/// Transforming functions that change the structure unpredictably.
-/// After these functions, navigation from original_json would be incorrect.
-const TRANSFORMING_FUNCTIONS: &[&str] = &[
-    "keys",
-    "keys_unsorted",
-    "to_entries",
-    "from_entries",
-    "with_entries",
-    "group_by",
-    "unique_by",
-    "max_by",
-    "min_by",
-    "sort_by",
-    "flatten",
-    "transpose",
-    "combinations",
-    "splits",
-    "split",
-    "scan",
-    "test",
-    "match",
-    "capture",
-    "getpath",
-    "setpath",
-    "delpaths",
-    "leaf_paths",
-    "path",
-    "paths",
-    "env",
-    "now",
-    "debug",
-    "input",
-    "inputs",
-    "range",
-    "indices",
-    "inside",
-    "contains",
-    "add",
-    "any",
-    "all",
-    "ascii_downcase",
-    "ascii_upcase",
-    "reverse",
-    "tostring",
-    "tonumber",
-    "type",
-    "length",
-    "utf8bytelength",
-    "empty",
-    "error",
-    "format",
-    "walk",
-    "recurse",
-    "recurse_down",
-    "isvalid",
-    "getpath",
-    "modulemeta",
-];
-
-/// Arithmetic and comparison operators that produce unpredictable types.
-const COMPLEX_OPERATORS: &[char] = &['+', '-', '*', '/', '%', '<', '>', '='];
-
-/// Check if the query text ends with a transforming function before the last pipe.
-/// This indicates the cache contains transformed data that doesn't match original_json structure.
-fn is_after_transforming_function(before_cursor: &str) -> bool {
-    // Find the expression start (after last pipe at top level)
-    let pipe_pos = before_cursor.rfind('|');
-
-    let text_before = match pipe_pos {
-        Some(pos) => before_cursor[..pos].trim_end(),
-        None => return false, // No pipe means we're at root, not after transformation
-    };
-
-    if text_before.is_empty() {
-        return false;
-    }
-
-    // Check if text_before ends with a transforming function
-    for func in TRANSFORMING_FUNCTIONS {
-        if text_before.ends_with(func) {
-            let check_pos = text_before.len() - func.len();
-            if check_pos == 0 {
-                return true;
-            }
-            // Verify it's a word boundary (not part of a larger identifier)
-            if let Some(c) = text_before.chars().nth(check_pos - 1)
-                && !c.is_alphanumeric()
-                && c != '_'
-            {
-                return true;
-            }
-        }
-
-        // Also check for function call syntax: func(...)
-        let func_paren = format!("{}(", func);
-        if let Some(pos) = text_before.rfind(&func_paren) {
-            // Verify it's at a word boundary
-            if pos == 0 {
-                return true;
-            }
-            if let Some(c) = text_before.chars().nth(pos - 1)
-                && !c.is_alphanumeric()
-                && c != '_'
-            {
-                return true;
-            }
-        }
-    }
-
-    false
-}
-
-/// Check if the expression before cursor contains complex operators.
-/// Expressions like `.a + .b` produce runtime-dependent types.
-fn is_after_complex_expression(before_cursor: &str) -> bool {
-    // Find the current expression (after last pipe)
-    let pipe_pos = before_cursor.rfind('|');
-    let expression = match pipe_pos {
-        Some(pos) => before_cursor[pos + 1..].trim(),
-        None => return false,
-    };
-
-    // Check for arithmetic/comparison operators outside of strings and brackets
-    let mut in_string = false;
-    let mut bracket_depth: i32 = 0;
-    let mut paren_depth: i32 = 0;
-
-    for c in expression.chars() {
-        match c {
-            '"' => in_string = !in_string,
-            '[' if !in_string => bracket_depth += 1,
-            ']' if !in_string => bracket_depth = bracket_depth.saturating_sub(1),
-            '(' if !in_string => paren_depth += 1,
-            ')' if !in_string => paren_depth = paren_depth.saturating_sub(1),
-            _ if !in_string && bracket_depth == 0 && paren_depth == 0 => {
-                if COMPLEX_OPERATORS.contains(&c) {
-                    return true;
-                }
-            }
-            _ => {}
-        }
-    }
-
-    // Check for conditional keywords
-    let keywords = ["if ", "then ", "else ", "elif ", "end"];
-    for keyword in keywords {
-        if expression.contains(keyword) {
-            return true;
-        }
-    }
-
-    false
 }
 
 /// Find where the current expression starts for path extraction.
