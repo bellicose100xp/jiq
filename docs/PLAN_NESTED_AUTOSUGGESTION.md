@@ -7,11 +7,12 @@
 | Phase | Description | Status | Notes |
 |-------|-------------|--------|-------|
 | **Phase 0** | Infrastructure Prerequisites | ✅ Complete | `json_input_parsed()` + `analyze_value()` with 14 tests |
-| **Phase 1** | Path Parser | ✅ Complete | `path_parser.rs` with 45 test cases |
+| **Phase 1** | Path Parser | ✅ Complete | `path_parser.rs` with 55 test cases |
 | **Phase 2** | JSON Navigator | ✅ Complete | `json_navigator.rs` with 40 test cases |
 | **Phase 3** | Integration | ✅ Complete | Path-aware suggestion flow + 13 integration tests |
 | **Phase 4** | Edge Cases & Polish | ✅ Complete | 19 tests (removed transforming function detection - see notes) |
 | **Phase 5** | Manual TUI Validation | ✅ Complete | All 10 sections validated (see Phase 5 Notes) |
+| **Phase 6** | Function Call Skipping | ✅ Complete | Path parser skips `select()`, `map()`, etc. - 10 new tests |
 
 **Note**: Each phase should be committed separately to maintain clean git history.
 
@@ -34,6 +35,31 @@ During validation, two issues were discovered and fixed:
    **Fix**: Added `is_after_pipe` tracking to `find_expression_boundary()`. When the path has no segments
    AND we're after a pipe, return `None` to trigger the all-fields fallback. At the start of an expression
    (not after pipe), `.` correctly shows root-level fields.
+
+### Phase 6 Notes
+Path parser enhancement to skip function calls, enabling proper path navigation through expressions like
+`select(.status=="ACTIVE")[].deployments[].networkConfiguration.a`.
+
+**Problem**: When the expression boundary was found at a pipe before a function call (e.g., `| select(...)`),
+the path parser would stop at the opening `(` of the function, resulting in empty path segments. This caused
+navigation to go to root instead of following the actual path after the function call.
+
+**Solution**: Added function call skipping to the path parser (`path_parser.rs`):
+
+1. **New handler in `parse_path`**: When encountering `(`, skip the entire function call and continue parsing
+2. **`skip_function_call()`**: Skips from `(` to matching `)`, handles nested parentheses
+3. **`skip_string_in_function()`**: Properly handles string literals inside function calls (respects escapes)
+4. **Optional marker handling**: Skips `?` after function calls (e.g., `select(...)?`)
+
+**Examples of paths now correctly parsed**:
+| Input | Parsed Segments | Partial |
+|-------|-----------------|---------|
+| `select(.status=="ACTIVE")[].name` | `[ArrayIterator]` | `name` |
+| `sort_by(.age \| tonumber)[].name.` | `[ArrayIterator, Field("name")]` | `` |
+| `select(.name == "foo(bar)")[].field` | `[ArrayIterator]` | `field` |
+| `group_by(.category)[].items[].` | `[ArrayIterator, Field("items"), ArrayIterator]` | `` |
+
+**Test coverage**: 10 new tests in `path_parser_tests::function_call_skipping_tests`
 
 ---
 

@@ -97,6 +97,12 @@ pub fn parse_path(input: &str) -> ParsedPath {
                     partial.clear();
                 }
             }
+            '(' => {
+                // Function call: identifier followed by parens (e.g., select(...), map(...))
+                // Skip the entire function call and continue parsing
+                partial.clear();
+                skip_function_call(&mut chars);
+            }
             c if is_field_char(c) => {
                 partial.push(c);
             }
@@ -207,5 +213,49 @@ fn skip_closing_bracket(chars: &mut std::iter::Peekable<std::str::Chars>) {
 fn skip_optional_marker(chars: &mut std::iter::Peekable<std::str::Chars>) {
     if chars.peek() == Some(&'?') {
         chars.next();
+    }
+}
+
+/// Skip a function call from opening `(` to matching `)`.
+///
+/// Handles nested parentheses and string literals within the function call.
+/// After skipping, also consumes any trailing `?` (optional operator).
+///
+/// # Examples
+/// - `(...)` → skipped
+/// - `(.x == "y")` → skipped (handles strings)
+/// - `(foo(bar))` → skipped (handles nesting)
+/// - `(...)?` → skipped including the `?`
+fn skip_function_call(chars: &mut std::iter::Peekable<std::str::Chars>) {
+    let mut depth = 1;
+
+    while depth > 0 {
+        match chars.next() {
+            Some('(') => depth += 1,
+            Some(')') => depth -= 1,
+            Some('"') => skip_string_in_function(chars),
+            Some(_) => {} // Skip any other character
+            None => break,
+        }
+    }
+
+    skip_optional_marker(chars);
+}
+
+/// Skip a string literal inside a function call.
+///
+/// Called after consuming the opening `"`. Consumes characters
+/// until the closing `"`, respecting escape sequences.
+fn skip_string_in_function(chars: &mut std::iter::Peekable<std::str::Chars>) {
+    let mut escaped = false;
+
+    for c in chars.by_ref() {
+        if escaped {
+            escaped = false;
+        } else if c == '\\' {
+            escaped = true;
+        } else if c == '"' {
+            break;
+        }
     }
 }

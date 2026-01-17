@@ -414,6 +414,122 @@ mod edge_case_tests {
     }
 }
 
+mod function_call_skipping_tests {
+    use super::*;
+
+    #[test]
+    fn test_simple_function_call() {
+        // select(...) should be skipped, then continue parsing [].name
+        let result = parse_path(r#"select(.status=="ACTIVE")[].name"#);
+        assert_eq!(result.segments, vec![PathSegment::ArrayIterator]);
+        assert_eq!(result.partial, "name");
+    }
+
+    #[test]
+    fn test_function_call_then_field_trailing_dot() {
+        let result = parse_path(r#"select(.x)[].config."#);
+        assert_eq!(
+            result.segments,
+            vec![
+                PathSegment::ArrayIterator,
+                PathSegment::Field("config".into())
+            ]
+        );
+        assert_eq!(result.partial, "");
+    }
+
+    #[test]
+    fn test_nested_function_calls() {
+        // Nested parens: sort_by(.age | abs) has nested structure
+        let result = parse_path(r#"sort_by(.age | tonumber)[].name."#);
+        assert_eq!(
+            result.segments,
+            vec![
+                PathSegment::ArrayIterator,
+                PathSegment::Field("name".into())
+            ]
+        );
+        assert_eq!(result.partial, "");
+    }
+
+    #[test]
+    fn test_function_with_string_containing_parens() {
+        // String inside function contains parens - should not confuse parser
+        let result = parse_path(r#"select(.name == "foo(bar)")[].field"#);
+        assert_eq!(result.segments, vec![PathSegment::ArrayIterator]);
+        assert_eq!(result.partial, "field");
+    }
+
+    #[test]
+    fn test_optional_function_call() {
+        // Function call with ? after it
+        let result = parse_path(r#"select(.x)?[].name"#);
+        assert_eq!(result.segments, vec![PathSegment::ArrayIterator]);
+        assert_eq!(result.partial, "name");
+    }
+
+    #[test]
+    fn test_function_call_in_middle_of_path() {
+        // Path with function in middle: .items | select(.active)[].config.
+        let result = parse_path(r#"select(.active)[].config.setting."#);
+        assert_eq!(
+            result.segments,
+            vec![
+                PathSegment::ArrayIterator,
+                PathSegment::Field("config".into()),
+                PathSegment::Field("setting".into())
+            ]
+        );
+        assert_eq!(result.partial, "");
+    }
+
+    #[test]
+    fn test_map_function() {
+        let result = parse_path(r#"map(.x + 1)[].value"#);
+        assert_eq!(result.segments, vec![PathSegment::ArrayIterator]);
+        assert_eq!(result.partial, "value");
+    }
+
+    #[test]
+    fn test_multiple_function_calls_chained() {
+        // Multiple functions: select(...) | sort_by(...)[].field
+        // After first (, we skip to ), then continue. Pipe stops us, so we get remaining
+        let result = parse_path(r#"select(.a) | sort_by(.b)[].name"#);
+        // Parser stops at space after select(.a)
+        assert_eq!(result.segments, vec![]);
+        assert_eq!(result.partial, "");
+    }
+
+    #[test]
+    fn test_function_at_start_then_deep_path() {
+        let result = parse_path(r#"first(.items)[].nested.deep.field."#);
+        assert_eq!(
+            result.segments,
+            vec![
+                PathSegment::ArrayIterator,
+                PathSegment::Field("nested".into()),
+                PathSegment::Field("deep".into()),
+                PathSegment::Field("field".into())
+            ]
+        );
+        assert_eq!(result.partial, "");
+    }
+
+    #[test]
+    fn test_group_by_function() {
+        let result = parse_path(r#"group_by(.category)[].items[]."#);
+        assert_eq!(
+            result.segments,
+            vec![
+                PathSegment::ArrayIterator,
+                PathSegment::Field("items".into()),
+                PathSegment::ArrayIterator
+            ]
+        );
+        assert_eq!(result.partial, "");
+    }
+}
+
 mod complex_path_tests {
     use super::*;
 
