@@ -13,6 +13,7 @@
 | **Phase 4** | Edge Cases & Polish | ✅ Complete | 19 tests (removed transforming function detection - see notes) |
 | **Phase 5** | Manual TUI Validation | ✅ Complete | All 10 sections validated (see Phase 5 Notes) |
 | **Phase 6** | Function Call Skipping | ✅ Complete | Path parser skips `select()`, `map()`, etc. - 10 new tests |
+| **Phase 7** | Streaming Result Context Fix | ✅ Complete | Use `ResultType` to avoid incorrect `ArrayIterator` prepending - 5 tests |
 
 **Note**: Each phase should be committed separately to maintain clean git history.
 
@@ -60,6 +61,57 @@ navigation to go to root instead of following the actual path after the function
 | `group_by(.category)[].items[].` | `[ArrayIterator, Field("items"), ArrayIterator]` | `` |
 
 **Test coverage**: 10 new tests in `path_parser_tests::function_call_skipping_tests`
+
+### Phase 7 Notes
+Fix for incorrect `ArrayIterator` prepending when the cached result is already from a streaming operation.
+
+**Problem**: When typing inside an element-context function (like `select`) after a streaming operation
+(like `.services[]`), the autocomplete incorrectly prepends `ArrayIterator` to the navigation path.
+
+**Example Bug Case**:
+```
+Query: "ROLLING" as $st | .services[] | select(.stra
+                                               ^cursor
+```
+
+- `.services[]` produces **streaming/destructured output** (individual service objects)
+- `last_successful_result_parsed` contains one service object (from `parse_first_value`)
+- Inside `select(`, `is_in_element_context` is `true`
+- Current code unconditionally prepends `ArrayIterator`
+- Navigation tries: `navigate(service_object, [ArrayIterator])` → **fails** (Object, not Array)
+- Falls back to showing all fields instead of service object fields
+
+**Root Cause**: The `ArrayIterator` prepending logic assumes the cached result is an array that needs
+iteration. But when the query already has `.services[]` (streaming), the cached result is already an
+individual element, not an array.
+
+**Solution**: Use the existing `ResultType` (displayed in result window border) to detect streaming:
+
+```rust
+// In get_nested_field_suggestions():
+let is_streaming = matches!(result_type, Some(ResultType::DestructuredObjects));
+
+// Only prepend ArrayIterator if:
+// 1. In element context (map, select, etc.)
+// 2. Result is NOT from streaming (DestructuredObjects means already iterating)
+if is_in_element_context && !is_streaming {
+    parsed_path.segments.insert(0, PathSegment::ArrayIterator);
+}
+```
+
+**Why this works**:
+| Query Pattern | `result_type` | Prepend ArrayIterator? |
+|---------------|---------------|------------------------|
+| `.services \| map(.na` | `ArrayOfObjects` | YES - result is array |
+| `.services[] \| select(.na` | `DestructuredObjects` | NO - result is already element |
+| `.services[].deps \| map(.st` | `DestructuredObjects` | NO - result is already element |
+
+**Changes Required**:
+1. Add `result_type: Option<&ResultType>` parameter to `get_nested_field_suggestions()`
+2. Update ArrayIterator prepending logic to check for `DestructuredObjects`
+3. Update all call sites to pass `result_type`
+
+**Test coverage**: Add test case for `.services[] | select(.stra` scenario
 
 ---
 
@@ -138,6 +190,22 @@ navigation to go to root instead of following the actual path after the function
 |-------|---------------------|
 | `{last: .services[-1].events[-1].` | `id`, `createdAt`, `message` |
 
+#### Section 11: Streaming Result Context (Phase 7) ⏳ PENDING
+Tests for element-context functions after streaming operations.
+
+| Query | Expected Suggestions | Notes |
+|-------|---------------------|-------|
+| `.services[] \| select(.` | `serviceName`, `serviceArn`, `status`, `deploymentConfiguration`, etc. | Streaming + select: should show service fields |
+| `.services[] \| select(.stra` | `strategy` (filtered) | Partial field in select after streaming |
+| `"ROLLING" as $st \| .services[] \| select(.` | Service object fields | Variable binding + streaming + select |
+| `"ROLLING" as $st \| .services[] \| select(.deploymentConfiguration.` | `deploymentCircuitBreaker`, `maximumPercent`, `minimumHealthyPercent`, `alarms`, `strategy` | Nested path inside select after streaming |
+| `.services[] \| map(.deployments[].` | `id`, `status`, `taskDefinition`, `networkConfiguration`, etc. | Streaming + map with nested path |
+
+**Validation Steps**:
+1. Run `jiq tests/fixtures/ecs.json`
+2. Type each query and verify suggestions match expected
+3. Confirm the Result window shows "Objects" (indicating `DestructuredObjects` type) for streaming queries
+
 ### Quick Smoke Test (for new sessions)
 Run `jiq ~/temp/ecs.json` and verify:
 1. `.` → `services` appears
@@ -156,6 +224,7 @@ Quick reference for all tracked states that affect suggestion behavior:
 | **Execution Context** | Executing / Non-Executing | Whether cache updates automatically |
 | **Certainty** | Deterministic / Non-Deterministic | Whether we can navigate path accurately |
 | **Element Context** | Iterator-Scoped / Value-Scoped | Whether to prepend implicit `ArrayIterator` |
+| **Result Type** | `ArrayOfObjects` / `DestructuredObjects` / etc. | Whether cache is array or streamed element (Phase 7) |
 | **Builder Context** | Array `[...]` / Object `{...}` / None | Expression boundary detection |
 | **Cursor Position** | End / Middle | Path extraction scope |
 
@@ -172,6 +241,11 @@ Quick reference for all tracked states that affect suggestion behavior:
 **Element Context**
 - *Iterator-Scoped*: Within `map()`, `select()`, `sort_by()`, etc. — input is array element → prepend `ArrayIterator`
 - *Value-Scoped*: Standard context — input is full value → use path as-is
+
+**Result Type** (Phase 7 - affects ArrayIterator prepending in element context)
+- *ArrayOfObjects*: Cache is an array → prepend `ArrayIterator` when in element context
+- *DestructuredObjects*: Cache is already a streamed element (from `.[]`) → do NOT prepend `ArrayIterator`
+- *Other types*: Follow standard element context logic
 
 **Builder Context**
 - *Array*: Inside `[...]` → boundary at `[` or `,`
@@ -377,10 +451,17 @@ fn find_expression_start(before_cursor: &str, brace_tracker: &BraceTracker) -> u
 In element-iterating functions (`map()`, `select()`, `sort_by()`, etc.), the input is implicitly an array element. Prepend `ArrayIterator` to navigate correctly:
 
 ```rust
-if brace_tracker.is_in_element_context(cursor_pos) {
+// Phase 7: Check if result is already from streaming before prepending
+let is_streaming = matches!(result_type, Some(ResultType::DestructuredObjects));
+
+if brace_tracker.is_in_element_context(cursor_pos) && !is_streaming {
     segments.insert(0, PathSegment::ArrayIterator);
 }
 ```
+
+**Phase 7 Note**: When the query already has a streaming operation (`.services[]`) before the element-context
+function, the cached result is already an individual element. In this case, `ResultType::DestructuredObjects`
+indicates we should NOT prepend `ArrayIterator`.
 
 ---
 

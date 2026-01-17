@@ -421,3 +421,209 @@ mod regression_tests {
         );
     }
 }
+
+/// Phase 7: Streaming result context tests
+/// Tests for element-context functions after streaming operations (.services[] | select(.))
+mod streaming_result_context {
+    use super::*;
+
+    fn create_services_json() -> (Arc<Value>, Arc<Value>) {
+        let json = r#"{
+            "services": [
+                {
+                    "serviceName": "inventory-manager",
+                    "serviceArn": "arn:aws:ecs:us-east-1:111:service/svc1",
+                    "status": "ACTIVE",
+                    "strategy": "ROLLING",
+                    "deploymentConfiguration": {
+                        "maximumPercent": 200,
+                        "minimumHealthyPercent": 100,
+                        "strategy": "ROLLING"
+                    }
+                },
+                {
+                    "serviceName": "order-processor",
+                    "serviceArn": "arn:aws:ecs:us-east-1:111:service/svc2",
+                    "status": "ACTIVE",
+                    "strategy": "BLUE_GREEN",
+                    "deploymentConfiguration": {
+                        "maximumPercent": 200,
+                        "minimumHealthyPercent": 50,
+                        "strategy": "BLUE_GREEN"
+                    }
+                }
+            ]
+        }"#;
+        let original = Arc::new(serde_json::from_str::<Value>(json).unwrap());
+
+        // Simulate the result of .services[] - a single service object (DestructuredObjects)
+        let service_element = r#"{
+            "serviceName": "inventory-manager",
+            "serviceArn": "arn:aws:ecs:us-east-1:111:service/svc1",
+            "status": "ACTIVE",
+            "strategy": "ROLLING",
+            "deploymentConfiguration": {
+                "maximumPercent": 200,
+                "minimumHealthyPercent": 100,
+                "strategy": "ROLLING"
+            }
+        }"#;
+        let result = Arc::new(serde_json::from_str::<Value>(service_element).unwrap());
+
+        (original, result)
+    }
+
+    #[test]
+    fn test_streaming_then_select_suggests_element_fields() {
+        // Bug case: .services[] | select(.
+        // result_type is DestructuredObjects (streaming), so we should NOT prepend ArrayIterator
+        let (original, result) = create_services_json();
+        let query = ".services[] | select(.";
+        let tracker = tracker_for(query);
+
+        let suggestions = get_suggestions(
+            query,
+            query.len(),
+            Some(result),
+            Some(ResultType::DestructuredObjects), // Key: streaming result
+            Some(original),
+            empty_field_names(),
+            &tracker,
+        );
+
+        // Should suggest service element fields
+        assert!(
+            suggestions.iter().any(|s| s.text.contains("serviceName")),
+            "Should suggest 'serviceName' from service element. Got: {:?}",
+            suggestions.iter().map(|s| &s.text).collect::<Vec<_>>()
+        );
+        assert!(
+            suggestions.iter().any(|s| s.text.contains("status")),
+            "Should suggest 'status' from service element"
+        );
+        assert!(
+            suggestions.iter().any(|s| s.text.contains("strategy")),
+            "Should suggest 'strategy' from service element"
+        );
+    }
+
+    #[test]
+    fn test_streaming_then_select_with_partial_filters_correctly() {
+        // Bug case: .services[] | select(.stra
+        let (original, result) = create_services_json();
+        let query = ".services[] | select(.stra";
+        let tracker = tracker_for(query);
+
+        let suggestions = get_suggestions(
+            query,
+            query.len(),
+            Some(result),
+            Some(ResultType::DestructuredObjects),
+            Some(original),
+            empty_field_names(),
+            &tracker,
+        );
+
+        // Should filter to only 'strategy' field
+        assert!(
+            suggestions.iter().any(|s| s.text.contains("strategy")),
+            "Should suggest 'strategy' matching partial '.stra'. Got: {:?}",
+            suggestions.iter().map(|s| &s.text).collect::<Vec<_>>()
+        );
+        // Should NOT suggest non-matching fields
+        assert!(
+            !suggestions.iter().any(|s| s.text.contains("serviceName")),
+            "Should NOT suggest 'serviceName' (doesn't match 'stra')"
+        );
+    }
+
+    #[test]
+    fn test_streaming_then_select_nested_path() {
+        // .services[] | select(.deploymentConfiguration.
+        let (original, result) = create_services_json();
+        let query = ".services[] | select(.deploymentConfiguration.";
+        let tracker = tracker_for(query);
+
+        let suggestions = get_suggestions(
+            query,
+            query.len(),
+            Some(result),
+            Some(ResultType::DestructuredObjects),
+            Some(original),
+            empty_field_names(),
+            &tracker,
+        );
+
+        // Should suggest fields from deploymentConfiguration
+        assert!(
+            suggestions
+                .iter()
+                .any(|s| s.text.contains("maximumPercent")),
+            "Should suggest 'maximumPercent' from nested path. Got: {:?}",
+            suggestions.iter().map(|s| &s.text).collect::<Vec<_>>()
+        );
+        assert!(
+            suggestions
+                .iter()
+                .any(|s| s.text.contains("minimumHealthyPercent")),
+            "Should suggest 'minimumHealthyPercent' from nested path"
+        );
+    }
+
+    #[test]
+    fn test_non_streaming_select_still_prepends_array_iterator() {
+        // .services | select(. - without streaming, result is ArrayOfObjects
+        // Should still prepend ArrayIterator
+        let (original, _result) = create_services_json();
+        let services_array = original.get("services").unwrap().clone();
+        let result = Arc::new(services_array);
+        let query = "select(.";
+        let tracker = tracker_for(query);
+
+        let suggestions = get_suggestions(
+            query,
+            query.len(),
+            Some(result),
+            Some(ResultType::ArrayOfObjects), // Non-streaming: array
+            Some(original),
+            empty_field_names(),
+            &tracker,
+        );
+
+        // Should suggest element fields (prepended ArrayIterator works)
+        assert!(
+            suggestions.iter().any(|s| s.text.contains("serviceName")),
+            "Non-streaming select should still show element fields. Got: {:?}",
+            suggestions.iter().map(|s| &s.text).collect::<Vec<_>>()
+        );
+    }
+
+    #[test]
+    fn test_variable_binding_with_streaming_select() {
+        // "ROLLING" as $st | .services[] | select(.
+        let (original, result) = create_services_json();
+        let query = r#""ROLLING" as $st | .services[] | select(."#;
+        let tracker = tracker_for(query);
+
+        let suggestions = get_suggestions(
+            query,
+            query.len(),
+            Some(result),
+            Some(ResultType::DestructuredObjects),
+            Some(original),
+            empty_field_names(),
+            &tracker,
+        );
+
+        // Should suggest service element fields
+        assert!(
+            suggestions.iter().any(|s| s.text.contains("serviceName")),
+            "Variable binding + streaming + select should show element fields. Got: {:?}",
+            suggestions.iter().map(|s| &s.text).collect::<Vec<_>>()
+        );
+        assert!(
+            suggestions.iter().any(|s| s.text.contains("strategy")),
+            "Should suggest 'strategy' field"
+        );
+    }
+}

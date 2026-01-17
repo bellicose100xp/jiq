@@ -419,6 +419,7 @@ pub fn get_suggestions(
                         suppress_array_brackets,
                         suppress_array_brackets, // is_in_element_context == suppress_array_brackets
                         is_after_pipe,
+                        result_type.as_ref(),
                     ) {
                         nested_suggestions
                     } else if let Some(ref orig) = original_json {
@@ -430,6 +431,7 @@ pub fn get_suggestions(
                             suppress_array_brackets,
                             suppress_array_brackets,
                             is_after_pipe,
+                            result_type.as_ref(),
                         )
                         .unwrap_or_else(|| {
                             // Non-deterministic: show all fields from original JSON
@@ -455,6 +457,7 @@ pub fn get_suggestions(
                         suppress_array_brackets,
                         suppress_array_brackets,
                         is_after_pipe,
+                        result_type.as_ref(),
                     )
                     .unwrap_or_else(|| {
                         // Non-deterministic: show all fields from original JSON
@@ -685,12 +688,18 @@ fn get_nested_field_suggestions(
     suppress_array_brackets: bool,
     is_in_element_context: bool,
     is_after_pipe: bool,
+    result_type: Option<&ResultType>,
 ) -> Option<Vec<Suggestion>> {
     let mut parsed_path = parse_path(path_context);
 
-    // In element context (map, select), prepend ArrayIterator
-    // because the function already iterates over array elements
-    if is_in_element_context {
+    // Phase 7: Check if result is already from streaming (DestructuredObjects)
+    // When the query has .services[] before select(), the cached result is already
+    // an individual element, not an array. Don't prepend ArrayIterator in this case.
+    let is_streaming = matches!(result_type, Some(ResultType::DestructuredObjects));
+
+    // In element context (map, select), prepend ArrayIterator ONLY if the result
+    // is not already from a streaming operation
+    if is_in_element_context && !is_streaming {
         parsed_path.segments.insert(0, PathSegment::ArrayIterator);
     }
 
