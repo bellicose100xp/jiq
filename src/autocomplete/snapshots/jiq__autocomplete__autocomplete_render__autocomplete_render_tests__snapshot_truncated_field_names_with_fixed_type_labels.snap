@@ -1,0 +1,24 @@
+---
+source: src/autocomplete/autocomplete_render_tests.rs
+expression: terminal.backend().to_string()
+---
+"                                                                                "
+"                                                                                "
+"                                                                                "
+"                                                                                "
+"                                                                                "
+"                                                                                "
+"                                                                                "
+"  ┌ Suggestions ─────────────────────────────────────────────────┐              "
+"  │► thisIsAnExtremelyLongFieldNameTh... [field: String]         │              "
+"  │  anotherVeryVeryVeryLongFieldName... [field: Array[Object]]  │              "
+"  │  short                               [field: Number]         │              "
+"  └──────────────────────────────────────────────────────────────┘              "
+"                                                                                "
+"                                                                                "
+"                                                                                "
+"                                                                                "
+"                                                                                "
+"                                                                                "
+"                                                                                "
+"                                                                                "

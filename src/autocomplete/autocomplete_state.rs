@@ -3,6 +3,8 @@ use std::fmt;
 use crate::app::App;
 use crate::autocomplete::update_suggestions;
 
+pub const MAX_VISIBLE_SUGGESTIONS: usize = 10;
+
 pub fn update_suggestions_from_app(app: &mut App) {
     // Only update if query state is available
     let query_state = match &app.query {
@@ -135,6 +137,7 @@ impl Suggestion {
 pub struct AutocompleteState {
     suggestions: Vec<Suggestion>,
     selected_index: usize,
+    scroll_offset: usize,
     is_visible: bool,
 }
 
@@ -149,6 +152,7 @@ impl AutocompleteState {
         Self {
             suggestions: Vec::new(),
             selected_index: 0,
+            scroll_offset: 0,
             is_visible: false,
         }
     }
@@ -156,6 +160,7 @@ impl AutocompleteState {
     pub fn update_suggestions(&mut self, suggestions: Vec<Suggestion>) {
         self.suggestions = suggestions;
         self.selected_index = 0;
+        self.scroll_offset = 0;
         self.is_visible = !self.suggestions.is_empty();
     }
 
@@ -163,21 +168,28 @@ impl AutocompleteState {
         self.is_visible = false;
         self.suggestions.clear();
         self.selected_index = 0;
+        self.scroll_offset = 0;
     }
 
     pub fn select_next(&mut self) {
-        if !self.suggestions.is_empty() {
-            self.selected_index = (self.selected_index + 1) % self.suggestions.len();
+        if !self.suggestions.is_empty() && self.selected_index < self.suggestions.len() - 1 {
+            self.selected_index += 1;
+            self.adjust_scroll_to_selection();
         }
     }
 
     pub fn select_previous(&mut self) {
-        if !self.suggestions.is_empty() {
-            if self.selected_index == 0 {
-                self.selected_index = self.suggestions.len() - 1;
-            } else {
-                self.selected_index -= 1;
-            }
+        if self.selected_index > 0 {
+            self.selected_index -= 1;
+            self.adjust_scroll_to_selection();
+        }
+    }
+
+    fn adjust_scroll_to_selection(&mut self) {
+        if self.selected_index >= self.scroll_offset + MAX_VISIBLE_SUGGESTIONS {
+            self.scroll_offset = self.selected_index - MAX_VISIBLE_SUGGESTIONS + 1;
+        } else if self.selected_index < self.scroll_offset {
+            self.scroll_offset = self.selected_index;
         }
     }
 
@@ -199,6 +211,19 @@ impl AutocompleteState {
 
     pub fn selected_index(&self) -> usize {
         self.selected_index
+    }
+
+    #[allow(dead_code)]
+    pub fn scroll_offset(&self) -> usize {
+        self.scroll_offset
+    }
+
+    pub fn visible_suggestions(&self) -> impl Iterator<Item = (usize, &Suggestion)> {
+        self.suggestions
+            .iter()
+            .enumerate()
+            .skip(self.scroll_offset)
+            .take(MAX_VISIBLE_SUGGESTIONS)
     }
 }
 

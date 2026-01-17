@@ -1,0 +1,24 @@
+---
+source: src/autocomplete/autocomplete_render_tests.rs
+expression: terminal.backend().to_string()
+---
+"                                                                                "
+"                                                                                "
+"                                                                                "
+"                                                                                "
+"                                                                                "
+"  ┌ Suggestions ──────────────────────────────────────────────┐                 "
+"  │► a                                      [field: String]   │                 "
+"  │  mediumFieldName                        [field: Number]   │                 "
+"  │  veryLongFieldNameThatShouldBeTruncated [field: Boolean]  │                 "
+"  │  anotherVeryLongFieldNameHere           [field: Array]    │                 "
+"  │  short                                  [field: Object]   │                 "
+"  └───────────────────────────────────────────────────────────┘                 "
+"                                                                                "
+"                                                                                "
+"                                                                                "
+"                                                                                "
+"                                                                                "
+"                                                                                "
+"                                                                                "
+"                                                                                "

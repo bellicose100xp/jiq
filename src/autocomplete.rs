@@ -26,7 +26,8 @@ pub use brace_tracker::BraceTracker;
 
 #[allow(unused_imports)]
 pub use autocomplete_state::{
-    AutocompleteState, JsonFieldType, Suggestion, SuggestionType, update_suggestions_from_app,
+    AutocompleteState, JsonFieldType, MAX_VISIBLE_SUGGESTIONS, Suggestion, SuggestionType,
+    update_suggestions_from_app,
 };
 pub use context::{SuggestionContext, analyze_context, get_suggestions};
 pub use insertion::insert_suggestion_from_app;

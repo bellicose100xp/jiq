@@ -46,10 +46,11 @@ fn test_autocomplete_state_default() {
     assert!(!state.is_visible());
     assert_eq!(state.suggestions().len(), 0);
     assert_eq!(state.selected_index(), 0);
+    assert_eq!(state.scroll_offset(), 0);
 }
 
 #[test]
-fn test_select_previous_wraps_to_end() {
+fn test_select_previous_stops_at_first() {
     let mut state = AutocompleteState::new();
     let suggestions = vec![
         Suggestion::new("first", SuggestionType::Field),
@@ -61,13 +62,20 @@ fn test_select_previous_wraps_to_end() {
 
     state.select_previous();
 
-    assert_eq!(state.selected_index(), 2);
+    assert_eq!(state.selected_index(), 0);
 }
 
 #[test]
 fn test_select_previous_on_empty() {
     let mut state = AutocompleteState::new();
     state.select_previous();
+    assert_eq!(state.selected_index(), 0);
+}
+
+#[test]
+fn test_select_next_on_empty() {
+    let mut state = AutocompleteState::new();
+    state.select_next();
     assert_eq!(state.selected_index(), 0);
 }
 
@@ -90,4 +98,100 @@ fn test_selected_returns_none_when_out_of_bounds() {
     state.selected_index = 100;
 
     assert!(state.selected().is_none());
+}
+
+#[test]
+fn test_scroll_offset_resets_on_update_suggestions() {
+    let mut state = AutocompleteState::new();
+    state.scroll_offset = 5;
+    state.update_suggestions(vec![Suggestion::new("test", SuggestionType::Field)]);
+    assert_eq!(state.scroll_offset(), 0);
+}
+
+#[test]
+fn test_scroll_offset_resets_on_hide() {
+    let mut state = AutocompleteState::new();
+    state.update_suggestions(vec![Suggestion::new("test", SuggestionType::Field)]);
+    state.scroll_offset = 5;
+    state.hide();
+    assert_eq!(state.scroll_offset(), 0);
+}
+
+#[test]
+fn test_select_next_stops_at_last() {
+    let mut state = AutocompleteState::new();
+    let suggestions = vec![
+        Suggestion::new("first", SuggestionType::Field),
+        Suggestion::new("second", SuggestionType::Field),
+    ];
+    state.update_suggestions(suggestions);
+    state.select_next();
+    assert_eq!(state.selected_index(), 1);
+    state.select_next();
+    assert_eq!(state.selected_index(), 1);
+}
+
+#[test]
+fn test_scroll_adjusts_when_selection_moves_below_visible() {
+    let mut state = AutocompleteState::new();
+    let suggestions: Vec<Suggestion> = (0..15)
+        .map(|i| Suggestion::new(format!("item{}", i), SuggestionType::Field))
+        .collect();
+    state.update_suggestions(suggestions);
+
+    for _ in 0..10 {
+        state.select_next();
+    }
+    assert_eq!(state.selected_index(), 10);
+    assert_eq!(state.scroll_offset(), 1);
+}
+
+#[test]
+fn test_scroll_adjusts_when_selection_moves_above_visible() {
+    let mut state = AutocompleteState::new();
+    let suggestions: Vec<Suggestion> = (0..15)
+        .map(|i| Suggestion::new(format!("item{}", i), SuggestionType::Field))
+        .collect();
+    state.update_suggestions(suggestions);
+    state.selected_index = 10;
+    state.scroll_offset = 5;
+
+    state.select_previous();
+    state.select_previous();
+    state.select_previous();
+    state.select_previous();
+    state.select_previous();
+    state.select_previous();
+
+    assert_eq!(state.selected_index(), 4);
+    assert_eq!(state.scroll_offset(), 4);
+}
+
+#[test]
+fn test_visible_suggestions_returns_correct_window() {
+    let mut state = AutocompleteState::new();
+    let suggestions: Vec<Suggestion> = (0..15)
+        .map(|i| Suggestion::new(format!("item{}", i), SuggestionType::Field))
+        .collect();
+    state.update_suggestions(suggestions);
+    state.scroll_offset = 3;
+
+    let visible: Vec<(usize, &Suggestion)> = state.visible_suggestions().collect();
+    assert_eq!(visible.len(), 10);
+    assert_eq!(visible[0].0, 3);
+    assert_eq!(visible[0].1.text, "item3");
+    assert_eq!(visible[9].0, 12);
+    assert_eq!(visible[9].1.text, "item12");
+}
+
+#[test]
+fn test_visible_suggestions_with_fewer_than_max() {
+    let mut state = AutocompleteState::new();
+    let suggestions: Vec<Suggestion> = (0..5)
+        .map(|i| Suggestion::new(format!("item{}", i), SuggestionType::Field))
+        .collect();
+    state.update_suggestions(suggestions);
+
+    let visible: Vec<(usize, &Suggestion)> = state.visible_suggestions().collect();
+    assert_eq!(visible.len(), 5);
 }

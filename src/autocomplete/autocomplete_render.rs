@@ -8,14 +8,35 @@ use ratatui::{
 
 use crate::app::App;
 use crate::autocomplete::SuggestionType;
+use crate::autocomplete::autocomplete_state::MAX_VISIBLE_SUGGESTIONS;
 use crate::widgets::popup;
 
-const MAX_VISIBLE_SUGGESTIONS: usize = 10;
 const MAX_POPUP_WIDTH: usize = 60;
 const POPUP_BORDER_HEIGHT: u16 = 2;
 const POPUP_PADDING: u16 = 4;
 const POPUP_OFFSET_X: u16 = 2;
-const TYPE_LABEL_SPACING: usize = 3;
+const TYPE_LABEL_SPACING: usize = 1;
+const FIELD_PREFIX_LEN: usize = 2;
+
+fn get_type_label(suggestion: &crate::autocomplete::Suggestion) -> String {
+    match &suggestion.suggestion_type {
+        SuggestionType::Field => {
+            if let Some(field_type) = &suggestion.field_type {
+                format!("[field: {}]", field_type)
+            } else {
+                format!("[{}]", suggestion.suggestion_type)
+            }
+        }
+        _ => format!("[{}]", suggestion.suggestion_type),
+    }
+}
+
+fn get_display_text(suggestion: &crate::autocomplete::Suggestion) -> &str {
+    match suggestion.suggestion_type {
+        SuggestionType::Function => suggestion.signature.as_deref().unwrap_or(&suggestion.text),
+        _ => &suggestion.text,
+    }
+}
 
 pub fn render_popup(app: &App, frame: &mut Frame, input_area: Rect) {
     let suggestions = app.autocomplete.suggestions();
@@ -25,56 +46,34 @@ pub fn render_popup(app: &App, frame: &mut Frame, input_area: Rect) {
 
     let visible_count = suggestions.len().min(MAX_VISIBLE_SUGGESTIONS);
     let popup_height = (visible_count as u16) + POPUP_BORDER_HEIGHT;
-    let max_text_width = suggestions
-        .iter()
-        .map(|s| {
-            let display_text_len = match s.suggestion_type {
-                SuggestionType::Function => s
-                    .signature
-                    .as_ref()
-                    .map(|sig| sig.len())
-                    .unwrap_or(s.text.len()),
-                _ => s.text.len(),
-            };
 
-            let type_label_len = match &s.suggestion_type {
-                SuggestionType::Field => {
-                    if let Some(field_type) = &s.field_type {
-                        9 + field_type.to_string().len()
-                    } else {
-                        7
-                    }
-                }
-                _ => s.suggestion_type.to_string().len() + 2,
-            };
-            display_text_len + type_label_len + TYPE_LABEL_SPACING
-        })
-        .max()
-        .unwrap_or(20)
-        .min(MAX_POPUP_WIDTH);
-    let popup_width = (max_text_width as u16) + POPUP_PADDING;
-
-    let popup_area =
-        popup::popup_above_anchor(input_area, popup_width, popup_height, POPUP_OFFSET_X);
-    let max_display_width = suggestions
+    let max_type_label_len = suggestions
         .iter()
-        .take(MAX_VISIBLE_SUGGESTIONS)
-        .map(|s| match s.suggestion_type {
-            SuggestionType::Function => s
-                .signature
-                .as_ref()
-                .map(|sig| sig.len())
-                .unwrap_or(s.text.len()),
-            _ => s.text.len(),
-        })
+        .map(|s| get_type_label(s).len())
         .max()
         .unwrap_or(0);
 
-    let items: Vec<ListItem> = suggestions
+    let max_display_text_len = suggestions
         .iter()
-        .take(MAX_VISIBLE_SUGGESTIONS)
-        .enumerate()
-        .map(|(i, suggestion)| {
+        .map(|s| get_display_text(s).len())
+        .max()
+        .unwrap_or(0);
+
+    let ideal_width =
+        FIELD_PREFIX_LEN + max_display_text_len + TYPE_LABEL_SPACING + max_type_label_len;
+    let content_width = ideal_width.min(MAX_POPUP_WIDTH);
+    let popup_width = (content_width as u16) + POPUP_PADDING;
+
+    let popup_area =
+        popup::popup_above_anchor(input_area, popup_width, popup_height, POPUP_OFFSET_X);
+
+    let available_for_text =
+        content_width.saturating_sub(FIELD_PREFIX_LEN + TYPE_LABEL_SPACING + max_type_label_len);
+
+    let items: Vec<ListItem> = app
+        .autocomplete
+        .visible_suggestions()
+        .map(|(abs_idx, suggestion)| {
             let type_color = match suggestion.suggestion_type {
                 SuggestionType::Function => Color::Yellow,
                 SuggestionType::Field => Color::Cyan,
@@ -83,31 +82,25 @@ pub fn render_popup(app: &App, frame: &mut Frame, input_area: Rect) {
                 SuggestionType::Variable => Color::Red,
             };
 
-            let type_label = match &suggestion.suggestion_type {
-                SuggestionType::Field => {
-                    if let Some(field_type) = &suggestion.field_type {
-                        format!("[field: {}]", field_type)
-                    } else {
-                        format!("[{}]", suggestion.suggestion_type)
-                    }
-                }
-                _ => format!("[{}]", suggestion.suggestion_type),
+            let type_label = get_type_label(suggestion);
+            let display_text = get_display_text(suggestion);
+
+            let truncated_text = if display_text.len() > available_for_text {
+                format!(
+                    "{}...",
+                    &display_text[..available_for_text.saturating_sub(3)]
+                )
+            } else {
+                display_text.to_string()
             };
 
-            let display_text = match suggestion.suggestion_type {
-                SuggestionType::Function => {
-                    suggestion.signature.as_deref().unwrap_or(&suggestion.text)
-                }
-                _ => &suggestion.text,
-            };
-
-            let padding_needed = max_display_width.saturating_sub(display_text.len());
+            let padding_needed = available_for_text.saturating_sub(truncated_text.len());
             let padding = " ".repeat(padding_needed);
 
-            let line = if i == app.autocomplete.selected_index() {
+            let line = if abs_idx == app.autocomplete.selected_index() {
                 Line::from(vec![
                     Span::styled(
-                        format!("► {} {}", display_text, padding),
+                        format!("► {}{}", truncated_text, padding),
                         Style::default()
                             .fg(Color::Black)
                             .bg(Color::Cyan)
@@ -121,7 +114,7 @@ pub fn render_popup(app: &App, frame: &mut Frame, input_area: Rect) {
             } else {
                 Line::from(vec![
                     Span::styled(
-                        format!("  {} {}", display_text, padding),
+                        format!("  {}{}", truncated_text, padding),
                         Style::default().fg(Color::White).bg(Color::Black),
                     ),
                     Span::styled(

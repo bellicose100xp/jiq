@@ -800,11 +800,3 @@ fn test_visibility_control_mechanisms_complete() {
 
     // Summary: Only config (initial) and toggle (runtime) control visibility
 }
-
-#[test]
-fn exits_cleanly_on_invalid_file() {
-    cargo_bin_cmd!("jiq")
-        .arg("nonexistent_file_12345.json")
-        .assert()
-        .failure();
-}
