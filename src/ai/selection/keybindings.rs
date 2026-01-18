@@ -53,8 +53,8 @@ pub fn handle_direct_selection(key: KeyEvent, suggestion_count: usize) -> Option
 
 /// Handle navigation keybindings (Alt+Up/Down and Alt+j/k)
 ///
-/// Parses Alt+Up/Down and Alt+j/k keybindings and updates the selection state
-/// with wrapping behavior at boundaries.
+/// Parses Alt+Up/Down and Alt+j/k keybindings and updates the selection state.
+/// Navigation stops at boundaries (no wrap-around).
 ///
 /// # Arguments
 /// * `key` - The key event to handle
@@ -68,8 +68,6 @@ pub fn handle_direct_selection(key: KeyEvent, suggestion_count: usize) -> Option
 /// # Requirements
 /// - 8.1: Alt+Down/j moves selection to next suggestion
 /// - 8.2: Alt+Up/k moves selection to previous suggestion
-/// - 8.3: Wraps to first suggestion when at the end
-/// - 8.4: Wraps to last suggestion when at the beginning
 pub fn handle_navigation(
     key: KeyEvent,
     selection_state: &mut SelectionState,

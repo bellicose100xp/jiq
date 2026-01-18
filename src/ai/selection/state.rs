@@ -66,7 +66,7 @@ impl SelectionState {
 
     /// Navigate to the next suggestion (Alt+Down or Alt+j)
     ///
-    /// Wraps around to the first suggestion when at the end.
+    /// Stops at the last suggestion (no wrap-around).
     /// Activates navigation mode.
     ///
     /// # Arguments
@@ -74,7 +74,6 @@ impl SelectionState {
     ///
     /// # Requirements
     /// - 8.1: Alt+Down/j moves selection to next suggestion
-    /// - 8.3: Wraps to first suggestion when at the end
     pub fn navigate_next(&mut self, suggestion_count: usize) {
         if suggestion_count == 0 {
             return;
@@ -84,8 +83,10 @@ impl SelectionState {
 
         match self.selected_index {
             Some(current) => {
-                // Wrap around to first suggestion
-                self.selected_index = Some((current + 1) % suggestion_count);
+                // Stop at last suggestion (no wrap-around)
+                if current + 1 < suggestion_count {
+                    self.selected_index = Some(current + 1);
+                }
             }
             None => {
                 // Start at first suggestion
@@ -99,7 +100,7 @@ impl SelectionState {
 
     /// Navigate to the previous suggestion (Alt+Up or Alt+k)
     ///
-    /// Wraps around to the last suggestion when at the beginning.
+    /// Stops at the first suggestion (no wrap-around).
     /// Activates navigation mode.
     ///
     /// # Arguments
@@ -107,7 +108,6 @@ impl SelectionState {
     ///
     /// # Requirements
     /// - 8.2: Alt+Up/k moves selection to previous suggestion
-    /// - 8.4: Wraps to last suggestion when at the beginning
     pub fn navigate_previous(&mut self, suggestion_count: usize) {
         if suggestion_count == 0 {
             return;
@@ -117,10 +117,8 @@ impl SelectionState {
 
         match self.selected_index {
             Some(current) => {
-                if current == 0 {
-                    // Wrap around to last suggestion
-                    self.selected_index = Some(suggestion_count - 1);
-                } else {
+                // Stop at first suggestion (no wrap-around)
+                if current > 0 {
                     self.selected_index = Some(current - 1);
                 }
             }
