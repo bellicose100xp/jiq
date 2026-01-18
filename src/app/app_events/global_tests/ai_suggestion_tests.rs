@@ -265,8 +265,8 @@ fn test_ai_suggestion_invalid_selection_ignored() {
 }
 
 #[test]
-fn test_ai_suggestion_navigation_wrapping() {
-    // Test navigation wrapping behavior
+fn test_ai_suggestion_navigation_stops_at_boundary() {
+    // Test navigation boundary behavior (no wrap-around)
     use crate::ai::suggestion::{Suggestion, SuggestionType};
 
     let mut app = app_with_query(".initial");
@@ -293,17 +293,17 @@ fn test_ai_suggestion_navigation_wrapping() {
         },
     ];
 
-    // Navigate down 4 times (should wrap: 0 -> 1 -> 2 -> 0)
+    // Navigate down 4 times (should stop at last: 0 -> 1 -> 2 -> 2)
     app.handle_key_event(key_with_mods(KeyCode::Down, KeyModifiers::ALT)); // 0
     app.handle_key_event(key_with_mods(KeyCode::Down, KeyModifiers::ALT)); // 1
     app.handle_key_event(key_with_mods(KeyCode::Down, KeyModifiers::ALT)); // 2
-    app.handle_key_event(key_with_mods(KeyCode::Down, KeyModifiers::ALT)); // 0 (wrap)
+    app.handle_key_event(key_with_mods(KeyCode::Down, KeyModifiers::ALT)); // 2 (stays at last)
 
-    assert_eq!(app.ai.selection.get_selected(), Some(0));
+    assert_eq!(app.ai.selection.get_selected(), Some(2));
 
     // Press Enter to apply
     app.handle_key_event(key(KeyCode::Enter));
-    assert_eq!(app.query(), ".first");
+    assert_eq!(app.query(), ".third");
 }
 
 #[test]
