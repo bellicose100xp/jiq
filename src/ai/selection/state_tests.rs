@@ -41,11 +41,11 @@ fn test_navigate_next_from_none() {
 }
 
 #[test]
-fn test_navigate_next_wraps() {
+fn test_navigate_next_stops_at_last() {
     let mut state = SelectionState::new();
     state.selected_index = Some(4);
     state.navigate_next(5);
-    assert_eq!(state.get_selected(), Some(0)); // Wraps to first
+    assert_eq!(state.get_selected(), Some(4)); // Stays at last
     assert!(state.is_navigation_active());
 }
 
@@ -58,11 +58,11 @@ fn test_navigate_previous_from_none() {
 }
 
 #[test]
-fn test_navigate_previous_wraps() {
+fn test_navigate_previous_stops_at_first() {
     let mut state = SelectionState::new();
     state.selected_index = Some(0);
     state.navigate_previous(5);
-    assert_eq!(state.get_selected(), Some(4)); // Wraps to last
+    assert_eq!(state.get_selected(), Some(0)); // Stays at first
     assert!(state.is_navigation_active());
 }
 
@@ -202,35 +202,34 @@ fn test_navigate_previous_scrolls_to_selection() {
 }
 
 #[test]
-fn test_wrap_forward_resets_scroll() {
+fn test_navigate_next_at_last_stays_in_place() {
     let mut state = SelectionState::new();
     state.update_layout(vec![5, 5, 5, 5], 10);
     state.scroll_offset = 10;
     state.selected_index = Some(3);
 
-    // Wrap from last to first
+    // Try to navigate next from last - should stay at last
     state.navigate_next(4);
 
-    assert_eq!(state.selected_index, Some(0));
-    // Should scroll to show first suggestion at Y=0
-    assert_eq!(state.scroll_offset, 0);
+    assert_eq!(state.selected_index, Some(3));
+    // Scroll offset unchanged since we stayed at same position
+    assert_eq!(state.scroll_offset, 10);
 }
 
 #[test]
-fn test_wrap_backward_scrolls_to_last() {
+fn test_navigate_previous_at_first_stays_in_place() {
     let mut state = SelectionState::new();
     // 4 suggestions, Y positions: 0, 5, 10, 15 (heights already include spacing)
     state.update_layout(vec![5, 5, 5, 5], 10);
     state.scroll_offset = 0;
     state.selected_index = Some(0);
 
-    // Wrap from first to last
+    // Try to navigate previous from first - should stay at first
     state.navigate_previous(4);
 
-    assert_eq!(state.selected_index, Some(3));
-    // Last suggestion at Y=15, height=5, ends at Y=20
-    // Viewport height=10, should scroll to 20-10=10
-    assert_eq!(state.scroll_offset, 10);
+    assert_eq!(state.selected_index, Some(0));
+    // Scroll offset unchanged since we stayed at same position
+    assert_eq!(state.scroll_offset, 0);
 }
 
 #[test]
@@ -296,46 +295,44 @@ fn test_last_selection_maintains_correct_spacing() {
 // Property-Based Tests
 // =========================================================================
 
-// **Feature: ai-assistant-phase3, Property 4: Navigation wrapping**
+// **Feature: ai-assistant-phase3, Property 4: Navigation boundary behavior**
 // *For any* AI popup with N suggestions, navigating down from suggestion N-1
-// should wrap to suggestion 0, and navigating up from suggestion 0 should
-// wrap to suggestion N-1.
-// **Validates: Requirements 8.3, 8.4**
+// should stay at N-1 (no wrap), and navigating up from suggestion 0 should
+// stay at 0 (no wrap).
 proptest! {
     #![proptest_config(ProptestConfig::with_cases(100))]
 
     #[test]
-    fn prop_navigation_wrapping(suggestion_count in 1usize..20) {
-        // Test wrapping from last to first (navigate_next)
+    fn prop_navigation_stops_at_boundaries(suggestion_count in 1usize..20) {
+        // Test boundary at last suggestion (navigate_next)
         let mut state = SelectionState::new();
         state.selected_index = Some(suggestion_count - 1);
         state.navigate_next(suggestion_count);
 
         prop_assert_eq!(
             state.get_selected(),
-            Some(0),
-            "Navigating next from last suggestion ({}) should wrap to 0",
+            Some(suggestion_count - 1),
+            "Navigating next from last suggestion ({}) should stay at last",
             suggestion_count - 1
         );
 
-        // Test wrapping from first to last (navigate_previous)
+        // Test boundary at first suggestion (navigate_previous)
         let mut state = SelectionState::new();
         state.selected_index = Some(0);
         state.navigate_previous(suggestion_count);
 
         prop_assert_eq!(
             state.get_selected(),
-            Some(suggestion_count - 1),
-            "Navigating previous from suggestion 0 should wrap to {}",
-            suggestion_count - 1
+            Some(0),
+            "Navigating previous from suggestion 0 should stay at 0"
         );
     }
 }
 
 // **Feature: ai-assistant-phase3, Property 5: Navigation movement**
 // *For any* AI popup with N suggestions and current selection at index I,
-// pressing Alt+Down should move selection to (I+1) mod N, and pressing
-// Alt+Up should move selection to (I-1) mod N.
+// pressing Alt+Down should move selection to min(I+1, N-1), and pressing
+// Alt+Up should move selection to max(I-1, 0).
 // **Validates: Requirements 8.1, 8.2**
 proptest! {
     #![proptest_config(ProptestConfig::with_cases(100))]
@@ -348,12 +345,12 @@ proptest! {
         // Only test valid indices
         prop_assume!(current_index < suggestion_count);
 
-        // Test navigate_next: should move to (current + 1) % count
+        // Test navigate_next: should move to min(current + 1, count - 1)
         let mut state = SelectionState::new();
         state.selected_index = Some(current_index);
         state.navigate_next(suggestion_count);
 
-        let expected_next = (current_index + 1) % suggestion_count;
+        let expected_next = std::cmp::min(current_index + 1, suggestion_count - 1);
         prop_assert_eq!(
             state.get_selected(),
             Some(expected_next),
@@ -365,16 +362,12 @@ proptest! {
             "Navigation should be active after navigate_next"
         );
 
-        // Test navigate_previous: should move to (current - 1) mod count
+        // Test navigate_previous: should move to max(current - 1, 0)
         let mut state = SelectionState::new();
         state.selected_index = Some(current_index);
         state.navigate_previous(suggestion_count);
 
-        let expected_prev = if current_index == 0 {
-            suggestion_count - 1
-        } else {
-            current_index - 1
-        };
+        let expected_prev = current_index.saturating_sub(1);
         prop_assert_eq!(
             state.get_selected(),
             Some(expected_prev),

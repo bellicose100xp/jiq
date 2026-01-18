@@ -255,10 +255,10 @@ fn snapshot_selection_cycling() {
         },
     ];
 
-    // Navigate past the end - should wrap to first
+    // Navigate past the end - should stay at last (no wrap-around)
     state.selection.navigate_next(state.suggestions.len());
     state.selection.navigate_next(state.suggestions.len());
-    state.selection.navigate_next(state.suggestions.len()); // Should wrap to index 0
+    state.selection.navigate_next(state.suggestions.len()); // Should stay at index 1 (last)
 
     let output = render_ai_popup_to_string(&mut state, 100, 30);
     assert_snapshot!(output);

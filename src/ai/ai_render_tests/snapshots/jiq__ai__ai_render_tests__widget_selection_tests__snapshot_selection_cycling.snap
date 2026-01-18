@@ -1,5 +1,6 @@
 ---
 source: src/ai/ai_render_tests/widget_selection_tests.rs
+assertion_line: 264
 expression: output
 ---
 "                                                                                                    "
@@ -19,7 +20,7 @@ expression: output
 "                                                                                                    "
 "                                                                                                    "
 "                                                                                                    "
-"                                                       ┌ Anthropic ────── (1/2) claude-3-5-son... ┐ "
+"                                                       ┌ Anthropic ────── (2/2) claude-3-5-son... ┐ "
 "                                                       │1. [Fix] .first                           │ "
 "                                                       │   First                                  │ "
 "                                                       │                                          │ "
