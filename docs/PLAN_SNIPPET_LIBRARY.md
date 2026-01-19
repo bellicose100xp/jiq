@@ -15,7 +15,7 @@
 - [x] Phase 4: Preview Pane
 - [x] Phase 5: Apply Snippet
 - [x] Phase 6: Fuzzy Search
-- [ ] Phase 7: Create New Snippet (Name Entry)
+- [x] Phase 7: Create New Snippet (Name Entry)
 - [ ] Phase 8: Create with Description
 - [ ] Phase 9: Rename Snippet
 - [ ] Phase 10: Edit Snippet Query
@@ -114,6 +114,15 @@ When user presses Enter to apply a snippet:
 - Event handling tests for all keybindings
 - Storage tests for TOML read/write edge cases
 - Coverage verified via `cargo test` - all new code paths must have corresponding tests
+
+### Validation and Notification Patterns (Established in Phase 7)
+- **Name validation**: Empty check, whitespace trimming, case-insensitive duplicate checking
+- **Query validation**: Empty check, whitespace trimming
+- **Error notifications**: Use `show_warning()` for validation errors (yellow, auto-dismiss after 10 seconds)
+- **Sort order**: New snippets inserted at beginning for newest-first ordering
+- **Validation failures**: Keep user in editing mode with notification, don't lose input
+
+These patterns should be followed in Phase 9 (Rename) and Phase 10 (Edit Query).
 
 ## Module Structure
 
@@ -366,15 +375,26 @@ Each phase delivers the smallest testable feature. Manual TUI testing after each
 ### Phase 7: Create New Snippet (Name Entry)
 **Goal**: Press `n` to enter create mode, type name, press Enter to save.
 
-**Files to modify**:
-- `src/snippets/snippet_state.rs` - add SnippetMode::CreateName, name_textarea, pending_query
-- `src/snippets/snippet_events.rs` - handle `n` key, CreateName mode events
-- `src/snippets/snippet_render.rs` - render create mode UI
-- `src/snippets/snippet_storage.rs` - save_snippets() function
+**Implementation notes**:
+- Added `SnippetMode` enum with `Browse` and `CreateName` variants
+- Name validation: rejects empty names, trims whitespace
+- Query validation: rejects empty queries (not in original plan)
+- Duplicate check: case-insensitive comparison ("Keys" vs "keys" are duplicates)
+- Sort order: new snippets inserted at beginning (newest-first, not in original plan)
+- Error notifications: use `show_warning()` for auto-dismiss after 10 seconds
+- Vertical layout: Name input → Query display → Hints bar
+- Minimal height fallback: Shows only name input when space limited
 
-**Manual test**: Type query, press `Ctrl+S`, press `n`, type name, press Enter, snippet saved.
+**Files modified**:
+- `src/snippets/snippet_state.rs` - SnippetMode enum, create mode methods, validation
+- `src/snippets/snippet_events.rs` - mode dispatcher, `n` key handler, CreateName event handlers
+- `src/snippets/snippet_render.rs` - create mode UI rendering
+- `src/snippets/snippet_storage.rs` - save_snippets() and serialize_snippets_toml()
+- `src/snippets.rs` - export SnippetMode
 
-**Tests**: Mode transition tests, save tests.
+**Tests added**: 23 new tests (state transitions, validation, notifications, rendering)
+
+**Manual test**: Type query, press `Ctrl+S`, press `n`, type name, press Enter → snippet saved at top of list. Verify empty name/query show yellow warning notification that auto-dismisses.
 
 ---
 
@@ -395,27 +415,39 @@ Each phase delivers the smallest testable feature. Manual TUI testing after each
 ### Phase 9: Rename Snippet
 **Goal**: Press `r` to rename selected snippet.
 
+**Implementation requirements** (based on Phase 7):
+- Use case-insensitive duplicate checking when validating new name
+- Show warning notification for validation errors (empty name, duplicate)
+- Trim whitespace from new name
+- Keep snippet in same position (don't move to top like create)
+
 **Files to modify**:
-- `src/snippets/snippet_state.rs` - add SnippetMode::EditName
+- `src/snippets/snippet_state.rs` - add SnippetMode::EditName, rename_snippet() with validation
 - `src/snippets/snippet_events.rs` - handle `r` key, rename mode events
 
-**Manual test**: Select snippet, press `r`, change name, press Enter, name updated.
+**Manual test**: Select snippet, press `r`, change name, press Enter, name updated. Try duplicate name (case-insensitive), verify warning notification.
 
-**Tests**: Rename event tests, duplicate name handling.
+**Tests**: Rename event tests, case-insensitive duplicate name handling, notification tests.
 
 ---
 
 ### Phase 10: Edit Snippet Query
 **Goal**: Press `e` to edit selected snippet's query.
 
+**Implementation requirements** (based on Phase 7):
+- Validate query is not empty before saving
+- Trim whitespace from query
+- Show warning notification for validation errors
+- Keep snippet in same position
+
 **Files to modify**:
-- `src/snippets/snippet_state.rs` - add SnippetMode::EditQuery
+- `src/snippets/snippet_state.rs` - add SnippetMode::EditQuery, edit_query() with validation
 - `src/snippets/snippet_events.rs` - handle `e` key, edit mode events
 - `src/snippets/snippet_render.rs` - render query editor
 
-**Manual test**: Select snippet, press `e`, modify query, press Enter, query updated.
+**Manual test**: Select snippet, press `e`, modify query, press Enter, query updated. Try empty query, verify warning notification.
 
-**Tests**: Edit event tests.
+**Tests**: Edit event tests, query validation tests, notification tests.
 
 ---
 
@@ -467,14 +499,18 @@ Each phase delivers the smallest testable feature. Manual TUI testing after each
 **Goal**: Handle all edge cases gracefully.
 
 **Edge cases**:
-- Empty snippets (show "No snippets yet. Press 'n' to create one.")
-- Invalid TOML file (log warning, use empty list)
-- Very long query (wrap in preview)
-- Duplicate names (show error, prevent save)
-- Special characters in names
-- Missing config directory (create on first save)
+- ✅ Empty snippets (show "No snippets yet. Press 'n' to create one.") - implemented in Phase 2
+- ✅ Invalid TOML file (log warning, use empty list) - implemented in Phase 2
+- ✅ Very long query (wrap in preview) - implemented in Phase 4
+- ✅ Duplicate names (case-insensitive, show warning, prevent save) - implemented in Phase 7
+- ✅ Special characters in names - handled by TOML serialization in Phase 7
+- ✅ Missing config directory (create on first save) - implemented in Phase 7
+- ✅ Empty name validation - implemented in Phase 7
+- ✅ Empty query validation - implemented in Phase 7
+- ✅ Whitespace trimming (name and query) - implemented in Phase 7
+- Remaining: Additional edge cases for rename/edit/delete operations
 
-**Tests**: Edge case unit tests.
+**Tests**: Most edge case tests already implemented across previous phases.
 
 ---
 

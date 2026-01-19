@@ -12,7 +12,21 @@ pub struct Snippet {
     pub description: Option<String>,
 }
 
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub enum SnippetMode {
+    #[default]
+    Browse,
+    CreateName,
+}
+
 fn create_search_textarea() -> TextArea<'static> {
+    let mut textarea = TextArea::default();
+    textarea.set_cursor_line_style(Style::default());
+    textarea.set_cursor_style(Style::default().add_modifier(Modifier::REVERSED));
+    textarea
+}
+
+fn create_name_textarea() -> TextArea<'static> {
     let mut textarea = TextArea::default();
     textarea.set_cursor_line_style(Style::default());
     textarea.set_cursor_style(Style::default().add_modifier(Modifier::REVERSED));
@@ -21,13 +35,17 @@ fn create_search_textarea() -> TextArea<'static> {
 
 pub struct SnippetState {
     visible: bool,
+    mode: SnippetMode,
     snippets: Vec<Snippet>,
     filtered_indices: Vec<usize>,
     search_textarea: TextArea<'static>,
+    name_textarea: TextArea<'static>,
+    pending_query: String,
     selected_index: usize,
     scroll_offset: usize,
     visible_count: usize,
     matcher: SnippetMatcher,
+    persist_to_disk: bool,
 }
 
 impl Default for SnippetState {
@@ -40,13 +58,35 @@ impl SnippetState {
     pub fn new() -> Self {
         Self {
             visible: false,
+            mode: SnippetMode::Browse,
             snippets: Vec::new(),
             filtered_indices: Vec::new(),
             search_textarea: create_search_textarea(),
+            name_textarea: create_name_textarea(),
+            pending_query: String::new(),
             selected_index: 0,
             scroll_offset: 0,
             visible_count: 10,
             matcher: SnippetMatcher::new(),
+            persist_to_disk: true,
+        }
+    }
+
+    #[cfg(test)]
+    pub fn new_without_persistence() -> Self {
+        Self {
+            visible: false,
+            mode: SnippetMode::Browse,
+            snippets: Vec::new(),
+            filtered_indices: Vec::new(),
+            search_textarea: create_search_textarea(),
+            name_textarea: create_name_textarea(),
+            pending_query: String::new(),
+            selected_index: 0,
+            scroll_offset: 0,
+            visible_count: 10,
+            matcher: SnippetMatcher::new(),
+            persist_to_disk: false,
         }
     }
 
@@ -62,8 +102,12 @@ impl SnippetState {
 
     pub fn close(&mut self) {
         self.visible = false;
+        self.mode = SnippetMode::Browse;
         self.search_textarea.select_all();
         self.search_textarea.cut();
+        self.name_textarea.select_all();
+        self.name_textarea.cut();
+        self.pending_query.clear();
         self.selected_index = 0;
         self.scroll_offset = 0;
         self.filtered_indices = (0..self.snippets.len()).collect();
@@ -74,7 +118,79 @@ impl SnippetState {
     }
 
     pub fn is_editing(&self) -> bool {
-        false
+        matches!(self.mode, SnippetMode::CreateName)
+    }
+
+    pub fn mode(&self) -> &SnippetMode {
+        &self.mode
+    }
+
+    pub fn pending_query(&self) -> &str {
+        &self.pending_query
+    }
+
+    pub fn enter_create_mode(&mut self, current_query: &str) {
+        self.mode = SnippetMode::CreateName;
+        self.pending_query = current_query.to_string();
+        self.name_textarea.select_all();
+        self.name_textarea.cut();
+    }
+
+    pub fn cancel_create(&mut self) {
+        self.mode = SnippetMode::Browse;
+        self.pending_query.clear();
+        self.name_textarea.select_all();
+        self.name_textarea.cut();
+    }
+
+    pub fn save_new_snippet(&mut self) -> Result<(), String> {
+        let name = self
+            .name_textarea
+            .lines()
+            .first()
+            .map(|s| s.trim().to_string())
+            .unwrap_or_default();
+
+        if name.is_empty() {
+            return Err("Name cannot be empty".to_string());
+        }
+
+        let query = self.pending_query.trim();
+        if query.is_empty() {
+            return Err("Query cannot be empty".to_string());
+        }
+
+        let name_lower = name.to_lowercase();
+        if self
+            .snippets
+            .iter()
+            .any(|s| s.name.to_lowercase() == name_lower)
+        {
+            return Err(format!("Snippet '{}' already exists", name));
+        }
+
+        let snippet = Snippet {
+            name,
+            query: query.to_string(),
+            description: None,
+        };
+
+        self.snippets.insert(0, snippet);
+
+        if self.persist_to_disk
+            && let Err(e) = super::snippet_storage::save_snippets(&self.snippets)
+        {
+            self.snippets.remove(0);
+            return Err(format!("Failed to save: {}", e));
+        }
+
+        self.filtered_indices = (0..self.snippets.len()).collect();
+        self.cancel_create();
+        Ok(())
+    }
+
+    pub fn name_textarea_mut(&mut self) -> &mut TextArea<'static> {
+        &mut self.name_textarea
     }
 
     pub fn snippets(&self) -> &[Snippet] {
@@ -196,6 +312,20 @@ impl SnippetState {
         self.update_filter();
         self.selected_index = 0;
         self.scroll_offset = 0;
+    }
+
+    #[cfg(test)]
+    pub fn name_input(&self) -> &str {
+        self.name_textarea
+            .lines()
+            .first()
+            .map(|s| s.as_str())
+            .unwrap_or("")
+    }
+
+    #[cfg(test)]
+    pub fn disable_persistence(&mut self) {
+        self.persist_to_disk = false;
     }
 }
 

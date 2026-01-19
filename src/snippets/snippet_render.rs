@@ -6,16 +6,25 @@ use ratatui::{
     widgets::{Block, Borders, Paragraph},
 };
 
-use super::snippet_state::SnippetState;
+use super::snippet_state::{SnippetMode, SnippetState};
 use crate::ai::render::text::wrap_text;
 use crate::widgets::popup;
 
 const MIN_LIST_HEIGHT: u16 = 3;
 const SEARCH_HEIGHT: u16 = 3;
+const NAME_INPUT_HEIGHT: u16 = 3;
+const HINTS_HEIGHT: u16 = 3;
 
 pub fn render_popup(state: &mut SnippetState, frame: &mut Frame, results_area: Rect) {
     popup::clear_area(frame, results_area);
 
+    match state.mode() {
+        SnippetMode::Browse => render_browse_mode(state, frame, results_area),
+        SnippetMode::CreateName => render_create_mode(state, frame, results_area),
+    }
+}
+
+fn render_browse_mode(state: &mut SnippetState, frame: &mut Frame, results_area: Rect) {
     let selected_snippet = state.selected_snippet().cloned();
     let total_count = state.snippets().len();
     let filtered_count = state.filtered_count();
@@ -235,6 +244,102 @@ fn build_preview_content(
             ))
         })
         .collect()
+}
+
+fn render_create_mode(state: &mut SnippetState, frame: &mut Frame, area: Rect) {
+    let inner_width = area.width.saturating_sub(4) as usize;
+    let pending_query = state.pending_query().to_string();
+    let query_lines = wrap_text(&pending_query, inner_width);
+    let query_display_height = (query_lines.len() as u16 + 2).min(area.height / 3).max(3);
+
+    let min_required = NAME_INPUT_HEIGHT + query_display_height + HINTS_HEIGHT;
+    if area.height < min_required {
+        render_create_minimal(state, frame, area);
+        return;
+    }
+
+    let layout = Layout::vertical([
+        Constraint::Length(NAME_INPUT_HEIGHT),
+        Constraint::Length(query_display_height),
+        Constraint::Min(1),
+        Constraint::Length(HINTS_HEIGHT),
+    ])
+    .split(area);
+
+    let name_area = layout[0];
+    let query_area = layout[1];
+    let hints_area = layout[3];
+
+    render_name_input(state, frame, name_area);
+    render_query_display(&pending_query, inner_width, frame, query_area);
+    render_create_hints(frame, hints_area);
+}
+
+fn render_create_minimal(state: &mut SnippetState, frame: &mut Frame, area: Rect) {
+    let name_textarea = state.name_textarea_mut();
+    name_textarea.set_block(
+        Block::default()
+            .borders(Borders::ALL)
+            .title(" New Snippet - Name ")
+            .border_style(Style::default().fg(Color::Yellow))
+            .style(Style::default().bg(Color::Black)),
+    );
+    name_textarea.set_style(Style::default().fg(Color::White).bg(Color::Black));
+    frame.render_widget(&*name_textarea, area);
+}
+
+fn render_name_input(state: &mut SnippetState, frame: &mut Frame, area: Rect) {
+    let name_textarea = state.name_textarea_mut();
+    name_textarea.set_block(
+        Block::default()
+            .borders(Borders::ALL)
+            .title(" Name ")
+            .border_style(Style::default().fg(Color::Yellow))
+            .style(Style::default().bg(Color::Black)),
+    );
+    name_textarea.set_style(Style::default().fg(Color::White).bg(Color::Black));
+    frame.render_widget(&*name_textarea, area);
+}
+
+fn render_query_display(query: &str, max_width: usize, frame: &mut Frame, area: Rect) {
+    let wrapped_query = wrap_text(query, max_width);
+    let content: Vec<Line<'static>> = wrapped_query
+        .into_iter()
+        .map(|line| {
+            Line::from(Span::styled(
+                format!(" {}", line),
+                Style::default().fg(Color::DarkGray),
+            ))
+        })
+        .collect();
+
+    let display = Paragraph::new(content).block(
+        Block::default()
+            .borders(Borders::ALL)
+            .title(" Query (from current) ")
+            .border_style(Style::default().fg(Color::Cyan))
+            .style(Style::default().bg(Color::Black)),
+    );
+
+    frame.render_widget(display, area);
+}
+
+fn render_create_hints(frame: &mut Frame, area: Rect) {
+    let hints = Line::from(vec![
+        Span::styled(" [Enter]", Style::default().fg(Color::Yellow)),
+        Span::styled(" Save  ", Style::default().fg(Color::White)),
+        Span::styled("[Esc]", Style::default().fg(Color::Yellow)),
+        Span::styled(" Cancel", Style::default().fg(Color::White)),
+    ]);
+
+    let hints_widget = Paragraph::new(vec![hints]).block(
+        Block::default()
+            .borders(Borders::ALL)
+            .border_style(Style::default().fg(Color::Cyan))
+            .style(Style::default().bg(Color::Black)),
+    );
+
+    frame.render_widget(hints_widget, area);
 }
 
 #[cfg(test)]

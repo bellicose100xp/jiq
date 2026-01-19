@@ -1,9 +1,17 @@
 use ratatui::crossterm::event::{KeyCode, KeyEvent};
 use tui_textarea::Input;
 
+use super::snippet_state::SnippetMode;
 use crate::app::App;
 
 pub fn handle_snippet_popup_key(app: &mut App, key: KeyEvent) {
+    match app.snippets.mode() {
+        SnippetMode::Browse => handle_browse_mode(app, key),
+        SnippetMode::CreateName => handle_create_name_mode(app, key),
+    }
+}
+
+fn handle_browse_mode(app: &mut App, key: KeyEvent) {
     match key.code {
         KeyCode::Esc => {
             app.snippets.close();
@@ -21,11 +29,32 @@ pub fn handle_snippet_popup_key(app: &mut App, key: KeyEvent) {
             }
             app.snippets.close();
         }
+        KeyCode::Char('n') => {
+            let current_query = app.input.query().to_string();
+            app.snippets.enter_create_mode(&current_query);
+        }
         _ => {
             let input = Input::from(key);
             if app.snippets.search_textarea_mut().input(input) {
                 app.snippets.on_search_input_changed();
             }
+        }
+    }
+}
+
+fn handle_create_name_mode(app: &mut App, key: KeyEvent) {
+    match key.code {
+        KeyCode::Esc => {
+            app.snippets.cancel_create();
+        }
+        KeyCode::Enter => {
+            if let Err(e) = app.snippets.save_new_snippet() {
+                app.notification.show_warning(&e);
+            }
+        }
+        _ => {
+            let input = Input::from(key);
+            app.snippets.name_textarea_mut().input(input);
         }
     }
 }

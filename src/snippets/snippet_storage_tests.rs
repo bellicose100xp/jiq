@@ -211,3 +211,123 @@ description = "Filter \"error\" types"
         Some("Filter \"error\" types".to_string())
     );
 }
+
+#[test]
+fn test_serialize_snippets_toml_empty() {
+    let snippets: Vec<Snippet> = vec![];
+    let result = serialize_snippets_toml(&snippets);
+    assert!(result.contains("snippets = []"));
+}
+
+#[test]
+fn test_serialize_snippets_toml_single_snippet() {
+    let snippets = vec![Snippet {
+        name: "Test".to_string(),
+        query: ".test".to_string(),
+        description: None,
+    }];
+    let result = serialize_snippets_toml(&snippets);
+    assert!(result.contains("[[snippets]]"));
+    assert!(result.contains("name = \"Test\""));
+    assert!(result.contains("query = \".test\""));
+    assert!(!result.contains("description"));
+}
+
+#[test]
+fn test_serialize_snippets_toml_with_description() {
+    let snippets = vec![Snippet {
+        name: "Test".to_string(),
+        query: ".test".to_string(),
+        description: Some("A test snippet".to_string()),
+    }];
+    let result = serialize_snippets_toml(&snippets);
+    assert!(result.contains("[[snippets]]"));
+    assert!(result.contains("name = \"Test\""));
+    assert!(result.contains("query = \".test\""));
+    assert!(result.contains("description = \"A test snippet\""));
+}
+
+#[test]
+fn test_serialize_snippets_toml_multiple_snippets() {
+    let snippets = vec![
+        Snippet {
+            name: "First".to_string(),
+            query: ".first".to_string(),
+            description: None,
+        },
+        Snippet {
+            name: "Second".to_string(),
+            query: ".second".to_string(),
+            description: Some("Desc".to_string()),
+        },
+    ];
+    let result = serialize_snippets_toml(&snippets);
+
+    let count = result.matches("[[snippets]]").count();
+    assert_eq!(count, 2);
+}
+
+#[test]
+fn test_serialize_and_parse_roundtrip() {
+    let original = vec![
+        Snippet {
+            name: "First".to_string(),
+            query: ".first | keys".to_string(),
+            description: Some("Get keys from first".to_string()),
+        },
+        Snippet {
+            name: "Second".to_string(),
+            query: ".[].value".to_string(),
+            description: None,
+        },
+    ];
+
+    let serialized = serialize_snippets_toml(&original);
+    let parsed = parse_snippets_toml(&serialized);
+
+    assert_eq!(parsed.len(), original.len());
+    assert_eq!(parsed[0].name, original[0].name);
+    assert_eq!(parsed[0].query, original[0].query);
+    assert_eq!(parsed[0].description, original[0].description);
+    assert_eq!(parsed[1].name, original[1].name);
+    assert_eq!(parsed[1].query, original[1].query);
+    assert_eq!(parsed[1].description, original[1].description);
+}
+
+#[test]
+fn test_save_snippets_creates_file() {
+    let temp_dir = TempDir::new().unwrap();
+    let file_path = temp_dir.path().join("jiq").join("snippets.toml");
+
+    let snippets = vec![Snippet {
+        name: "Test".to_string(),
+        query: ".test".to_string(),
+        description: None,
+    }];
+
+    fs::create_dir_all(file_path.parent().unwrap()).unwrap();
+    let content = serialize_snippets_toml(&snippets);
+    fs::write(&file_path, content).unwrap();
+
+    let loaded = load_snippets_from_path(&file_path);
+    assert_eq!(loaded.len(), 1);
+    assert_eq!(loaded[0].name, "Test");
+}
+
+#[test]
+fn test_serialize_snippets_toml_special_characters() {
+    let snippets = vec![Snippet {
+        name: "Select errors".to_string(),
+        query: ".[] | select(.type == \"error\")".to_string(),
+        description: Some("Filter \"error\" types".to_string()),
+    }];
+    let result = serialize_snippets_toml(&snippets);
+
+    let parsed = parse_snippets_toml(&result);
+    assert_eq!(parsed.len(), 1);
+    assert_eq!(parsed[0].query, ".[] | select(.type == \"error\")");
+    assert_eq!(
+        parsed[0].description,
+        Some("Filter \"error\" types".to_string())
+    );
+}

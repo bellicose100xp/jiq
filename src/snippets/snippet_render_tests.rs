@@ -349,3 +349,82 @@ fn snapshot_no_matches_message() {
     let output = render_snippet_popup_to_string(&mut state, results_area, 80, 24);
     assert_snapshot!(output);
 }
+
+#[test]
+fn snapshot_create_mode_empty_name() {
+    let mut state = SnippetState::new();
+    state.enter_create_mode(".test | keys");
+
+    let results_area = Rect {
+        x: 0,
+        y: 0,
+        width: 80,
+        height: 20,
+    };
+    let output = render_snippet_popup_to_string(&mut state, results_area, 80, 24);
+    assert_snapshot!(output);
+}
+
+#[test]
+fn snapshot_create_mode_with_name_typed() {
+    let mut state = SnippetState::new();
+    state.enter_create_mode(".test | keys");
+    state.name_textarea_mut().insert_str("My Snippet");
+
+    let results_area = Rect {
+        x: 0,
+        y: 0,
+        width: 80,
+        height: 20,
+    };
+    let output = render_snippet_popup_to_string(&mut state, results_area, 80, 24);
+    assert_snapshot!(output);
+}
+
+#[test]
+fn snapshot_create_mode_with_long_query() {
+    let mut state = SnippetState::new();
+    state.enter_create_mode(
+        ".data[] | select(.status == \"active\" and .type == \"premium\") | {id, name, email}",
+    );
+
+    let results_area = Rect {
+        x: 0,
+        y: 0,
+        width: 80,
+        height: 20,
+    };
+    let output = render_snippet_popup_to_string(&mut state, results_area, 80, 24);
+    assert_snapshot!(output);
+}
+
+#[test]
+fn snapshot_create_mode_narrow_terminal() {
+    let mut state = SnippetState::new();
+    state.enter_create_mode(".test");
+    state.name_textarea_mut().insert_str("Test");
+
+    let results_area = Rect {
+        x: 0,
+        y: 0,
+        width: 40,
+        height: 15,
+    };
+    let output = render_snippet_popup_to_string(&mut state, results_area, 40, 20);
+    assert_snapshot!(output);
+}
+
+#[test]
+fn snapshot_create_mode_small_height() {
+    let mut state = SnippetState::new();
+    state.enter_create_mode(".test");
+
+    let results_area = Rect {
+        x: 0,
+        y: 0,
+        width: 80,
+        height: 6,
+    };
+    let output = render_snippet_popup_to_string(&mut state, results_area, 80, 10);
+    assert_snapshot!(output);
+}
