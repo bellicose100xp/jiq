@@ -12,7 +12,7 @@
 - [x] Phase 1: Empty Popup Shell
 - [x] Phase 2: Load and Display Snippets
 - [x] Phase 3: List Navigation and Selection
-- [ ] Phase 4: Preview Pane
+- [x] Phase 4: Preview Pane
 - [ ] Phase 5: Apply Snippet
 - [ ] Phase 6: Fuzzy Search
 - [ ] Phase 7: Create New Snippet (Name Entry)
@@ -20,7 +20,7 @@
 - [ ] Phase 9: Rename Snippet
 - [ ] Phase 10: Edit Snippet Query
 - [ ] Phase 11: Delete Snippet with Confirmation
-- [ ] Phase 12: Scroll Support for Long Lists
+- [x] Phase 12: Scroll Support for Long Lists (implemented in Phase 4)
 - [ ] Phase 13: Visual Polish
 - [ ] Phase 14: Edge Cases and Error Handling
 
@@ -95,9 +95,18 @@ When user presses Enter to apply a snippet:
 - Results sorted by fuzzy score descending (best matches first)
 - Use same `TextArea` configuration as history's `create_search_textarea`
 
+### Layout Design (Updated in Phase 4)
+- **Vertical layout**: List on top, query preview on bottom (both use full width)
+- **Original plan**: Horizontal 40/60 split was changed because queries benefit from full terminal width
+- **Preview pane**: Shows only the query (no description), titled "Query Preview"
+- **Description display**: Shown inline next to snippet name in gray, truncated if too long
+- **Dynamic preview height**: Adjusts based on wrapped query content, capped at 50% of available height
+- **Scroll support**: Implemented early (originally Phase 12) to keep selection visible in long lists
+
 ### Long Query Preview
 - Use `wrap_text` utility (from AI rendering) for long queries in preview pane
 - Prevents layout overflow and maintains readability
+- Full terminal width allows longer queries to display with fewer wrapped lines
 
 ### Test Coverage
 - Unit tests for all state transitions and business logic
@@ -170,18 +179,19 @@ Note: The snippets popup fills the entire results pane area, replacing the JSON 
 
 ### Browse Mode
 ```
-┌─ Snippets (3/5) ─────────────────────────────────────────────────┐
-│ Search: [____________________________]                           │
-├─────────────────────────────┬────────────────────────────────────┤
-│ ► Select all keys           │ Query:                             │
-│   Filter by type            │ keys                               │
-│   Flatten arrays            │                                    │
-│                             │ Description:                       │
-│                             │ Returns array of all keys          │
-├─────────────────────────────┴────────────────────────────────────┤
-│ [Enter] Apply  [n]ew  [e]dit  [r]ename  [d]elete  [Esc] Close    │
+┌─ Snippets (3) ───────────────────────────────────────────────────┐
+│ ► Select all keys - Returns array of all keys in an object       │
+│   Filter by type - Filters items matching a specific type        │
+│   Flatten arrays                                                 │
+│                                                                  │
+└──────────────────────────────────────────────────────────────────┘
+┌─ Query Preview ──────────────────────────────────────────────────┐
+│ keys                                                             │
 └──────────────────────────────────────────────────────────────────┘
 ```
+
+Note: Description appears inline next to snippet name (in gray). Preview shows only the query.
+Search bar will be added in Phase 6.
 
 ### Create Mode
 ```
@@ -293,14 +303,23 @@ Each phase delivers the smallest testable feature. Manual TUI testing after each
 ---
 
 ### Phase 4: Preview Pane
-**Goal**: Show selected snippet's query and description in preview pane.
+**Goal**: Show selected snippet's query in preview pane with description inline in list.
 
-**Files to modify**:
-- `src/snippets/snippet_render.rs` - split layout 40/60, render preview pane, use `wrap_text` for long queries
+**Deviations from original plan**:
+- Changed from horizontal 40/60 split to vertical layout (list top, preview bottom)
+- Preview shows only query, not description (titled "Query Preview")
+- Description now displays inline next to snippet name in gray
+- Preview height is dynamic based on wrapped query content
+- Scroll support implemented early (originally Phase 12) to keep selection visible
 
-**Manual test**: Navigate list, see preview update with query text. Test with long query to verify wrapping.
+**Files modified**:
+- `src/snippets/snippet_render.rs` - vertical layout, query-only preview, inline descriptions
+- `src/snippets/snippet_state.rs` - added scroll_offset, visible_count, set_visible_count(), visible_snippets()
+- `src/app/app_render.rs` - changed to pass `&mut SnippetState` for scroll updates
 
-**Tests**: Render snapshot tests for preview, including long query wrapping.
+**Manual test**: Navigate list, see preview update with query text. Test with long query to verify wrapping. Verify scroll keeps selection visible with 30+ snippets.
+
+**Tests**: Render snapshot tests for preview, scroll behavior tests.
 
 ---
 
@@ -415,17 +434,20 @@ Each phase delivers the smallest testable feature. Manual TUI testing after each
 ---
 
 ### Phase 12: Scroll Support for Long Lists
+**Status**: ✅ Implemented in Phase 4
+
 **Goal**: Handle lists longer than viewport with scroll offset.
 
-Note: The snippets popup fills the entire results area (fixed size determined by terminal). No dynamic height adjustment needed - just scroll within the available space.
+**Implementation** (completed in Phase 4):
+- `scroll_offset` and `visible_count` added to SnippetState
+- `set_visible_count()` called by render to update visible item count based on list area height
+- `visible_snippets()` returns iterator over only visible items
+- `adjust_scroll_to_selection()` keeps selected item in view during navigation
+- Visible count dynamically calculated from available list height minus borders
 
-**Files to modify**:
-- `src/snippets/snippet_state.rs` - add scroll_offset, calculate visible item count from render area
-- `src/snippets/snippet_render.rs` - render visible slice with scroll indicators
-
-**Manual test**: Add 20+ snippets, verify scrolling works smoothly within the results area.
-
-**Tests**: Scroll offset tests, boundary tests.
+**Files modified** (in Phase 4):
+- `src/snippets/snippet_state.rs` - scroll state and navigation adjustments
+- `src/snippets/snippet_render.rs` - renders only visible slice, calculates visible count
 
 ---
 

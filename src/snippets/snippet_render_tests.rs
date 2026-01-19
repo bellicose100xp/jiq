@@ -11,7 +11,7 @@ fn create_test_terminal(width: u16, height: u16) -> Terminal<TestBackend> {
 }
 
 fn render_snippet_popup_to_string(
-    state: &SnippetState,
+    state: &mut SnippetState,
     results_area: Rect,
     width: u16,
     height: u16,
@@ -31,40 +31,40 @@ fn create_state_with_snippets(snippets: Vec<Snippet>) -> SnippetState {
 
 #[test]
 fn snapshot_empty_snippet_popup() {
-    let state = SnippetState::new();
+    let mut state = SnippetState::new();
     let results_area = Rect {
         x: 0,
         y: 0,
         width: 80,
         height: 20,
     };
-    let output = render_snippet_popup_to_string(&state, results_area, 80, 24);
+    let output = render_snippet_popup_to_string(&mut state, results_area, 80, 24);
     assert_snapshot!(output);
 }
 
 #[test]
 fn snapshot_snippet_popup_narrow_terminal() {
-    let state = SnippetState::new();
+    let mut state = SnippetState::new();
     let results_area = Rect {
         x: 0,
         y: 0,
         width: 40,
         height: 15,
     };
-    let output = render_snippet_popup_to_string(&state, results_area, 40, 20);
+    let output = render_snippet_popup_to_string(&mut state, results_area, 40, 20);
     assert_snapshot!(output);
 }
 
 #[test]
 fn snapshot_snippet_popup_small_height() {
-    let state = SnippetState::new();
+    let mut state = SnippetState::new();
     let results_area = Rect {
         x: 0,
         y: 0,
         width: 80,
         height: 6,
     };
-    let output = render_snippet_popup_to_string(&state, results_area, 80, 10);
+    let output = render_snippet_popup_to_string(&mut state, results_area, 80, 10);
     assert_snapshot!(output);
 }
 
@@ -87,14 +87,14 @@ fn snapshot_snippet_popup_with_snippets() {
             description: Some("Filter items by type".to_string()),
         },
     ];
-    let state = create_state_with_snippets(snippets);
+    let mut state = create_state_with_snippets(snippets);
     let results_area = Rect {
         x: 0,
         y: 0,
         width: 80,
         height: 20,
     };
-    let output = render_snippet_popup_to_string(&state, results_area, 80, 24);
+    let output = render_snippet_popup_to_string(&mut state, results_area, 80, 24);
     assert_snapshot!(output);
 }
 
@@ -105,14 +105,14 @@ fn snapshot_snippet_popup_with_single_snippet() {
         query: ".".to_string(),
         description: None,
     }];
-    let state = create_state_with_snippets(snippets);
+    let mut state = create_state_with_snippets(snippets);
     let results_area = Rect {
         x: 0,
         y: 0,
         width: 80,
         height: 20,
     };
-    let output = render_snippet_popup_to_string(&state, results_area, 80, 24);
+    let output = render_snippet_popup_to_string(&mut state, results_area, 80, 24);
     assert_snapshot!(output);
 }
 
@@ -130,14 +130,14 @@ fn snapshot_snippet_popup_with_snippets_narrow() {
             description: None,
         },
     ];
-    let state = create_state_with_snippets(snippets);
+    let mut state = create_state_with_snippets(snippets);
     let results_area = Rect {
         x: 0,
         y: 0,
         width: 40,
         height: 15,
     };
-    let output = render_snippet_popup_to_string(&state, results_area, 40, 20);
+    let output = render_snippet_popup_to_string(&mut state, results_area, 40, 20);
     assert_snapshot!(output);
 }
 
@@ -169,7 +169,7 @@ fn snapshot_snippet_popup_with_second_item_selected() {
         width: 80,
         height: 20,
     };
-    let output = render_snippet_popup_to_string(&state, results_area, 80, 24);
+    let output = render_snippet_popup_to_string(&mut state, results_area, 80, 24);
     assert_snapshot!(output);
 }
 
@@ -201,6 +201,92 @@ fn snapshot_snippet_popup_with_last_item_selected() {
         width: 80,
         height: 20,
     };
-    let output = render_snippet_popup_to_string(&state, results_area, 80, 24);
+    let output = render_snippet_popup_to_string(&mut state, results_area, 80, 24);
+    assert_snapshot!(output);
+}
+
+#[test]
+fn snapshot_preview_with_description() {
+    let snippets = vec![
+        Snippet {
+            name: "Select all keys".to_string(),
+            query: "keys".to_string(),
+            description: Some("Returns an array of all keys in the object".to_string()),
+        },
+        Snippet {
+            name: "Flatten arrays".to_string(),
+            query: "flatten".to_string(),
+            description: Some("Flattens nested arrays into a single array".to_string()),
+        },
+    ];
+    let mut state = create_state_with_snippets(snippets);
+    let results_area = Rect {
+        x: 0,
+        y: 0,
+        width: 80,
+        height: 20,
+    };
+    let output = render_snippet_popup_to_string(&mut state, results_area, 80, 24);
+    assert_snapshot!(output);
+}
+
+#[test]
+fn snapshot_preview_with_long_query_wrapping() {
+    let snippets = vec![Snippet {
+        name: "Complex filter".to_string(),
+        query: ".data[] | select(.status == \"active\" and .type == \"premium\") | {id, name, email, created_at, metadata}".to_string(),
+        description: Some("Filters active premium users and extracts key fields".to_string()),
+    }];
+    let mut state = create_state_with_snippets(snippets);
+    let results_area = Rect {
+        x: 0,
+        y: 0,
+        width: 80,
+        height: 20,
+    };
+    let output = render_snippet_popup_to_string(&mut state, results_area, 80, 24);
+    assert_snapshot!(output);
+}
+
+#[test]
+fn snapshot_very_short_height_falls_back_to_list_only() {
+    let snippets = vec![
+        Snippet {
+            name: "Keys".to_string(),
+            query: "keys".to_string(),
+            description: Some("Get keys".to_string()),
+        },
+        Snippet {
+            name: "Flatten".to_string(),
+            query: "flatten".to_string(),
+            description: None,
+        },
+    ];
+    let mut state = create_state_with_snippets(snippets);
+    let results_area = Rect {
+        x: 0,
+        y: 0,
+        width: 60,
+        height: 5,
+    };
+    let output = render_snippet_popup_to_string(&mut state, results_area, 60, 8);
+    assert_snapshot!(output);
+}
+
+#[test]
+fn snapshot_preview_without_description() {
+    let snippets = vec![Snippet {
+        name: "Identity".to_string(),
+        query: ".".to_string(),
+        description: None,
+    }];
+    let mut state = create_state_with_snippets(snippets);
+    let results_area = Rect {
+        x: 0,
+        y: 0,
+        width: 80,
+        height: 20,
+    };
+    let output = render_snippet_popup_to_string(&mut state, results_area, 80, 24);
     assert_snapshot!(output);
 }

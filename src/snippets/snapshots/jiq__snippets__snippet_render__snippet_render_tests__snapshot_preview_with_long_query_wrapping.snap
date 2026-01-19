@@ -2,10 +2,9 @@
 source: src/snippets/snippet_render_tests.rs
 expression: output
 ---
-"┌ Snippets (3) ────────────────────────────────────────────────────────────────┐"
-"│   Select all keys                                                            │"
-"│   Flatten arrays                                                             │"
-"│ ► Filter by type                                                             │"
+"┌ Snippets (1) ────────────────────────────────────────────────────────────────┐"
+"│ ► Complex filter - Filters active premium users and extracts key fields      │"
+"│                                                                              │"
 "│                                                                              │"
 "│                                                                              │"
 "│                                                                              │"
@@ -20,7 +19,8 @@ expression: output
 "│                                                                              │"
 "└──────────────────────────────────────────────────────────────────────────────┘"
 "┌ Query Preview ───────────────────────────────────────────────────────────────┐"
-"│ .[] | select(.type == "error")                                               │"
+"│ .data[] | select(.status == "active" and .type == "premium") | {id, name,    │"
+"│ email, created_at, metadata}                                                 │"
 "└──────────────────────────────────────────────────────────────────────────────┘"
 "                                                                                "
 "                                                                                "

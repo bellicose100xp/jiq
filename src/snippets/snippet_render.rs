@@ -1,49 +1,63 @@
 use ratatui::{
     Frame,
-    layout::Rect,
+    layout::{Constraint, Layout, Rect},
     style::{Color, Modifier, Style},
     text::{Line, Span},
     widgets::{Block, Borders, Paragraph},
 };
 
 use super::snippet_state::SnippetState;
+use crate::ai::render::text::wrap_text;
 use crate::widgets::popup;
 
-pub fn render_popup(state: &SnippetState, frame: &mut Frame, results_area: Rect) {
+const MIN_LIST_HEIGHT: u16 = 3;
+
+pub fn render_popup(state: &mut SnippetState, frame: &mut Frame, results_area: Rect) {
     popup::clear_area(frame, results_area);
 
-    let snippets = state.snippets();
-    let selected_index = state.selected_index();
+    let selected_snippet = state.selected_snippet().cloned();
+    let snippet_count = state.snippets().len();
 
-    let content = if snippets.is_empty() {
-        vec![Line::from(vec![Span::styled(
-            "   No snippets yet. Press 'n' to create one.",
-            Style::default().fg(Color::DarkGray),
-        )])]
-    } else {
-        snippets
-            .iter()
-            .enumerate()
-            .map(|(i, s)| {
-                let is_selected = i == selected_index;
-                let prefix = if is_selected { " ► " } else { "   " };
-                let style = if is_selected {
-                    Style::default()
-                        .fg(Color::Yellow)
-                        .add_modifier(Modifier::BOLD)
-                } else {
-                    Style::default()
-                };
-                Line::from(vec![Span::styled(format!("{}{}", prefix, s.name), style)])
-            })
-            .collect()
-    };
+    let inner_width = results_area.width.saturating_sub(4) as usize;
+    let preview_content_height = calculate_preview_height(selected_snippet.as_ref(), inner_width);
+    let preview_height = (preview_content_height as u16 + 2).min(results_area.height / 2);
 
-    let title = if snippets.is_empty() {
-        " Snippets ".to_string()
-    } else {
-        format!(" Snippets ({}) ", snippets.len())
-    };
+    if results_area.height < MIN_LIST_HEIGHT + preview_height {
+        let visible_count = results_area.height.saturating_sub(2) as usize;
+        state.set_visible_count(visible_count);
+        render_list_only(state, frame, results_area);
+        return;
+    }
+
+    let layout = Layout::vertical([
+        Constraint::Min(MIN_LIST_HEIGHT),
+        Constraint::Length(preview_height),
+    ])
+    .split(results_area);
+
+    let list_area = layout[0];
+    let preview_area = layout[1];
+
+    let visible_count = list_area.height.saturating_sub(2) as usize;
+    state.set_visible_count(visible_count);
+
+    render_list(state, snippet_count, frame, list_area);
+    render_preview(selected_snippet.as_ref(), inner_width, frame, preview_area);
+}
+
+fn calculate_preview_height(
+    snippet: Option<&super::snippet_state::Snippet>,
+    max_width: usize,
+) -> usize {
+    match snippet {
+        Some(s) => wrap_text(&s.query, max_width).len(),
+        None => 1,
+    }
+}
+
+fn render_list_only(state: &SnippetState, frame: &mut Frame, area: Rect) {
+    let content = build_list_content_from_visible(state, area.width);
+    let title = build_list_title(state.snippets().len());
 
     let popup = Paragraph::new(content).block(
         Block::default()
@@ -53,7 +67,120 @@ pub fn render_popup(state: &SnippetState, frame: &mut Frame, results_area: Rect)
             .style(Style::default().bg(Color::Black)),
     );
 
-    frame.render_widget(popup, results_area);
+    frame.render_widget(popup, area);
+}
+
+fn render_list(state: &SnippetState, snippet_count: usize, frame: &mut Frame, area: Rect) {
+    let content = build_list_content_from_visible(state, area.width);
+    let title = build_list_title(snippet_count);
+
+    let list = Paragraph::new(content).block(
+        Block::default()
+            .borders(Borders::ALL)
+            .title(title)
+            .border_style(Style::default().fg(Color::Cyan))
+            .style(Style::default().bg(Color::Black)),
+    );
+
+    frame.render_widget(list, area);
+}
+
+fn render_preview(
+    selected_snippet: Option<&super::snippet_state::Snippet>,
+    inner_width: usize,
+    frame: &mut Frame,
+    area: Rect,
+) {
+    let content = match selected_snippet {
+        Some(snippet) => build_preview_content(snippet, inner_width),
+        None => vec![Line::from(Span::styled(
+            " No snippet selected",
+            Style::default().fg(Color::DarkGray),
+        ))],
+    };
+
+    let preview = Paragraph::new(content).block(
+        Block::default()
+            .borders(Borders::ALL)
+            .title(" Query Preview ")
+            .border_style(Style::default().fg(Color::Cyan))
+            .style(Style::default().bg(Color::Black)),
+    );
+
+    frame.render_widget(preview, area);
+}
+
+fn build_list_content_from_visible(state: &SnippetState, area_width: u16) -> Vec<Line<'static>> {
+    if state.snippets().is_empty() {
+        vec![Line::from(vec![Span::styled(
+            "   No snippets yet. Press 'n' to create one.",
+            Style::default().fg(Color::DarkGray),
+        )])]
+    } else {
+        let selected_index = state.selected_index();
+        let max_width = area_width.saturating_sub(4) as usize;
+
+        state
+            .visible_snippets()
+            .map(|(i, s)| {
+                let is_selected = i == selected_index;
+                let prefix = if is_selected { " ► " } else { "   " };
+                let name_style = if is_selected {
+                    Style::default()
+                        .fg(Color::Yellow)
+                        .add_modifier(Modifier::BOLD)
+                } else {
+                    Style::default()
+                };
+
+                let mut spans = vec![Span::styled(format!("{}{}", prefix, s.name), name_style)];
+
+                if let Some(desc) = &s.description {
+                    let name_len = prefix.len() + s.name.len();
+                    let separator = " - ";
+                    let available = max_width.saturating_sub(name_len + separator.len());
+
+                    if available > 10 {
+                        let truncated_desc = if desc.len() > available {
+                            format!("{}…", &desc[..available.saturating_sub(1)])
+                        } else {
+                            desc.clone()
+                        };
+                        spans.push(Span::styled(
+                            format!("{}{}", separator, truncated_desc),
+                            Style::default().fg(Color::DarkGray),
+                        ));
+                    }
+                }
+
+                Line::from(spans)
+            })
+            .collect()
+    }
+}
+
+fn build_list_title(count: usize) -> String {
+    if count == 0 {
+        " Snippets ".to_string()
+    } else {
+        format!(" Snippets ({}) ", count)
+    }
+}
+
+fn build_preview_content(
+    snippet: &super::snippet_state::Snippet,
+    max_width: usize,
+) -> Vec<Line<'static>> {
+    let wrapped_query = wrap_text(&snippet.query, max_width);
+    wrapped_query
+        .into_iter()
+        .map(|line| {
+            Line::from(Span::styled(
+                format!(" {}", line),
+                Style::default().fg(Color::White),
+            ))
+        })
+        .collect()
 }
 
 #[cfg(test)]

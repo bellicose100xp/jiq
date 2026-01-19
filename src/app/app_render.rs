@@ -42,7 +42,7 @@ impl App {
         }
 
         if self.snippets.is_visible() {
-            crate::snippets::snippet_render::render_popup(&self.snippets, frame, results_area);
+            crate::snippets::snippet_render::render_popup(&mut self.snippets, frame, results_area);
         }
 
         if self.error_overlay_visible
