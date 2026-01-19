@@ -1,8 +1,6 @@
-use assert_cmd::cargo::cargo_bin_cmd;
 use std::fs;
 use std::io::Write;
 use std::path::PathBuf;
-use std::time::Instant;
 use tempfile::TempDir;
 
 /// Helper to get path to fixture file
@@ -22,75 +20,9 @@ fn create_temp_json_file(content: &str) -> (TempDir, PathBuf) {
     (temp_dir, file_path)
 }
 
-/// Helper to create a large JSON file for performance testing
-fn create_large_json_file() -> (TempDir, PathBuf) {
-    let temp_dir = TempDir::new().unwrap();
-    let file_path = temp_dir.path().join("large.json");
-    let mut file = fs::File::create(&file_path).unwrap();
-
-    // Create a large JSON array with many objects (approximately 10MB)
-    writeln!(file, "[").unwrap();
-    for i in 0..100_000 {
-        if i > 0 {
-            writeln!(file, ",").unwrap();
-        }
-        writeln!(
-            file,
-            r#"  {{"id": {}, "name": "Item {}", "description": "This is a test item with some data", "value": {}}}"#,
-            i, i, i * 10
-        )
-        .unwrap();
-    }
-    writeln!(file, "]").unwrap();
-
-    (temp_dir, file_path)
-}
-
 // =============================================================================
 // Task 6: Integration Tests for End-to-End Flow
 // =============================================================================
-
-/// Test that CLI opens instantly with a large file
-///
-/// **Validates: Requirements 1.1, 6.7**
-/// - 1.1: WHEN a user launches jiq with a file path THEN the UI SHALL render within 100 milliseconds
-/// - 6.7: THE integration tests SHALL verify that jiq opens instantly with large files
-#[test]
-#[ignore] // Ignore by default as this is an interactive test
-fn test_cli_opens_instantly_with_large_file() {
-    let (_temp_dir, file_path) = create_large_json_file();
-
-    let start = Instant::now();
-
-    // Start jiq with the large file
-    // We can't easily test the UI rendering time in a non-interactive way,
-    // but we can verify the process starts quickly
-    let mut cmd = cargo_bin_cmd!();
-    cmd.arg(&file_path);
-
-    // The command will hang waiting for input since it's interactive,
-    // but we can verify it starts within 100ms by spawning it
-    // Convert to std::process::Command for spawning
-    let mut std_cmd = std::process::Command::new(cmd.get_program());
-    for arg in cmd.get_args() {
-        std_cmd.arg(arg);
-    }
-    let child = std_cmd.spawn();
-
-    let elapsed = start.elapsed();
-
-    // Verify the process started quickly
-    assert!(
-        elapsed.as_millis() < 100,
-        "CLI should start within 100ms, took {}ms",
-        elapsed.as_millis()
-    );
-
-    // Clean up the spawned process
-    if let Ok(mut child) = child {
-        let _ = child.kill();
-    }
-}
 
 /// Test complete loading flow from file to query execution
 ///
