@@ -13,7 +13,7 @@
 - [x] Phase 2: Load and Display Snippets
 - [x] Phase 3: List Navigation and Selection
 - [x] Phase 4: Preview Pane
-- [ ] Phase 5: Apply Snippet
+- [x] Phase 5: Apply Snippet
 - [ ] Phase 6: Fuzzy Search
 - [ ] Phase 7: Create New Snippet (Name Entry)
 - [ ] Phase 8: Create with Description
