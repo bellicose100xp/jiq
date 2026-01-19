@@ -11,6 +11,7 @@ pub fn handle_snippet_popup_key(app: &mut App, key: KeyEvent) {
         SnippetMode::CreateDescription => handle_create_description_mode(app, key),
         SnippetMode::EditName { .. } => handle_edit_name_mode(app, key),
         SnippetMode::EditQuery { .. } => handle_edit_query_mode(app, key),
+        SnippetMode::ConfirmDelete { .. } => handle_confirm_delete_mode(app, key),
     }
 }
 
@@ -44,6 +45,11 @@ fn handle_browse_mode(app: &mut App, key: KeyEvent) {
         KeyCode::Char('e') => {
             if app.snippets.selected_snippet().is_some() {
                 app.snippets.enter_edit_query_mode();
+            }
+        }
+        KeyCode::Char('d') | KeyCode::Char('x') => {
+            if app.snippets.selected_snippet().is_some() {
+                app.snippets.enter_delete_mode();
             }
         }
         _ => {
@@ -127,6 +133,20 @@ fn handle_edit_query_mode(app: &mut App, key: KeyEvent) {
             let input = Input::from(key);
             app.snippets.query_textarea_mut().input(input);
         }
+    }
+}
+
+fn handle_confirm_delete_mode(app: &mut App, key: KeyEvent) {
+    match key.code {
+        KeyCode::Enter => {
+            if let Err(e) = app.snippets.confirm_delete() {
+                app.notification.show_warning(&e);
+            }
+        }
+        KeyCode::Esc => {
+            app.snippets.cancel_delete();
+        }
+        _ => {}
     }
 }
 

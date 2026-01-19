@@ -2,6 +2,8 @@
 mod apply_tests;
 #[path = "snippet_events_tests/create_tests.rs"]
 mod create_tests;
+#[path = "snippet_events_tests/delete_tests.rs"]
+mod delete_tests;
 #[path = "snippet_events_tests/description_tests.rs"]
 mod description_tests;
 #[path = "snippet_events_tests/edit_query_tests.rs"]

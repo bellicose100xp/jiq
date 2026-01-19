@@ -19,7 +19,7 @@
 - [x] Phase 8: Create with Description
 - [x] Phase 9: Rename Snippet
 - [x] Phase 10: Edit Snippet Query
-- [ ] Phase 11: Delete Snippet with Confirmation
+- [x] Phase 11: Delete Snippet with Confirmation
 - [x] Phase 12: Scroll Support for Long Lists (implemented in Phase 4)
 - [ ] Phase 13: Visual Polish
 - [ ] Phase 14: Edge Cases and Error Handling
@@ -249,8 +249,8 @@ Search bar will be added in Phase 6.
 ### ConfirmDelete Mode
 | Key | Action |
 |-----|--------|
-| `y` / `Enter` | Confirm delete |
-| `n` / `Esc` | Cancel |
+| `Enter` | Confirm delete |
+| `Esc` | Cancel |
 
 ---
 
@@ -471,14 +471,26 @@ Each phase delivers the smallest testable feature. Manual TUI testing after each
 ### Phase 11: Delete Snippet with Confirmation
 **Goal**: Press `d` to delete with confirmation dialog.
 
-**Files to modify**:
-- `src/snippets/snippet_state.rs` - add SnippetMode::ConfirmDelete
-- `src/snippets/snippet_events.rs` - handle `d` key, confirm mode events
-- `src/snippets/snippet_render.rs` - render confirmation dialog
+**Implementation notes**:
+- Added `SnippetMode::ConfirmDelete { snippet_name: String }` variant to track which snippet is being deleted
+- Delete triggered by `d` or `x` keys in browse mode (both keys work)
+- Confirmation: `Enter` confirms, `Esc` cancels (simple and clear)
+- Other keys are ignored during confirmation (no text input)
+- Selection adjusts when deleting last item (moves up by one)
+- Filtered indices rebuilt after deletion
+- Confirmation dialog is centered in the results area with red border
+- Long snippet names truncated to 30 characters with ellipsis
+- `is_editing()` returns false for ConfirmDelete mode (not a text editing mode)
+- Note: `d` and `x` keys are now reserved in browse mode and cannot be used in search queries
 
-**Manual test**: Select snippet, press `d`, see confirmation, press `y` to delete.
+**Files modified**:
+- `src/snippets/snippet_state.rs` - ConfirmDelete mode, enter_delete_mode(), cancel_delete(), confirm_delete()
+- `src/snippets/snippet_events.rs` - handle `d`/`x` keys in browse mode, handle_confirm_delete_mode()
+- `src/snippets/snippet_render.rs` - render_confirm_delete_mode() with centered dialog
 
-**Tests**: Delete confirmation flow tests.
+**Tests added**: 14 state tests, 8 event tests, 4 snapshot tests
+
+**Manual test**: Select snippet, press `d`, see confirmation, press `Enter` to delete. Try `Esc` to cancel.
 
 ---
 

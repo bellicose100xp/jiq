@@ -682,3 +682,83 @@ fn snapshot_edit_query_mode_small_height() {
     let output = render_snippet_popup_to_string(&mut state, results_area, 80, 10);
     assert_snapshot!(output);
 }
+
+#[test]
+fn snapshot_confirm_delete_mode() {
+    let mut state = SnippetState::new_without_persistence();
+    state.set_snippets(vec![Snippet {
+        name: "My Snippet".to_string(),
+        query: ".test | keys".to_string(),
+        description: None,
+    }]);
+    state.enter_delete_mode();
+
+    let results_area = Rect {
+        x: 0,
+        y: 0,
+        width: 80,
+        height: 20,
+    };
+    let output = render_snippet_popup_to_string(&mut state, results_area, 80, 24);
+    assert_snapshot!(output);
+}
+
+#[test]
+fn snapshot_confirm_delete_mode_narrow_terminal() {
+    let mut state = SnippetState::new_without_persistence();
+    state.set_snippets(vec![Snippet {
+        name: "My Snippet".to_string(),
+        query: ".test".to_string(),
+        description: None,
+    }]);
+    state.enter_delete_mode();
+
+    let results_area = Rect {
+        x: 0,
+        y: 0,
+        width: 40,
+        height: 15,
+    };
+    let output = render_snippet_popup_to_string(&mut state, results_area, 40, 20);
+    assert_snapshot!(output);
+}
+
+#[test]
+fn snapshot_confirm_delete_mode_long_name() {
+    let mut state = SnippetState::new_without_persistence();
+    state.set_snippets(vec![Snippet {
+        name: "This is a very long snippet name that should be truncated".to_string(),
+        query: ".test".to_string(),
+        description: None,
+    }]);
+    state.enter_delete_mode();
+
+    let results_area = Rect {
+        x: 0,
+        y: 0,
+        width: 80,
+        height: 20,
+    };
+    let output = render_snippet_popup_to_string(&mut state, results_area, 80, 24);
+    assert_snapshot!(output);
+}
+
+#[test]
+fn snapshot_confirm_delete_mode_small_area() {
+    let mut state = SnippetState::new_without_persistence();
+    state.set_snippets(vec![Snippet {
+        name: "Test".to_string(),
+        query: ".test".to_string(),
+        description: None,
+    }]);
+    state.enter_delete_mode();
+
+    let results_area = Rect {
+        x: 0,
+        y: 0,
+        width: 50,
+        height: 10,
+    };
+    let output = render_snippet_popup_to_string(&mut state, results_area, 50, 15);
+    assert_snapshot!(output);
+}

@@ -24,6 +24,9 @@ pub enum SnippetMode {
     EditQuery {
         snippet_name: String,
     },
+    ConfirmDelete {
+        snippet_name: String,
+    },
 }
 
 fn create_search_textarea() -> TextArea<'static> {
@@ -195,6 +198,9 @@ impl SnippetState {
             SnippetMode::EditQuery { snippet_name } => SnippetMode::EditQuery {
                 snippet_name: snippet_name.clone(),
             },
+            SnippetMode::ConfirmDelete { snippet_name } => SnippetMode::ConfirmDelete {
+                snippet_name: snippet_name.clone(),
+            },
         };
     }
 
@@ -207,6 +213,9 @@ impl SnippetState {
                 original_name: original_name.clone(),
             },
             SnippetMode::EditQuery { snippet_name } => SnippetMode::EditQuery {
+                snippet_name: snippet_name.clone(),
+            },
+            SnippetMode::ConfirmDelete { snippet_name } => SnippetMode::ConfirmDelete {
                 snippet_name: snippet_name.clone(),
             },
         };
@@ -389,6 +398,51 @@ impl SnippetState {
         }
 
         self.cancel_edit_query();
+        Ok(())
+    }
+
+    pub fn enter_delete_mode(&mut self) {
+        if let Some(snippet) = self.selected_snippet() {
+            let snippet_name = snippet.name.clone();
+            self.mode = SnippetMode::ConfirmDelete { snippet_name };
+        }
+    }
+
+    pub fn cancel_delete(&mut self) {
+        self.mode = SnippetMode::Browse;
+    }
+
+    pub fn confirm_delete(&mut self) -> Result<(), String> {
+        let SnippetMode::ConfirmDelete { ref snippet_name } = self.mode else {
+            return Err("Not in delete confirmation mode".to_string());
+        };
+        let snippet_name = snippet_name.clone();
+
+        let snippet_idx = self
+            .filtered_indices
+            .get(self.selected_index)
+            .copied()
+            .ok_or_else(|| "No snippet selected".to_string())?;
+
+        if self.snippets[snippet_idx].name != snippet_name {
+            return Err("Selected snippet does not match".to_string());
+        }
+
+        let removed_snippet = self.snippets.remove(snippet_idx);
+
+        if self.persist_to_disk
+            && let Err(e) = super::snippet_storage::save_snippets(&self.snippets)
+        {
+            self.snippets.insert(snippet_idx, removed_snippet);
+            return Err(format!("Failed to save: {}", e));
+        }
+
+        self.filtered_indices = (0..self.snippets.len()).collect();
+        if self.selected_index >= self.filtered_indices.len() && self.selected_index > 0 {
+            self.selected_index -= 1;
+        }
+        self.adjust_scroll_to_selection();
+        self.mode = SnippetMode::Browse;
         Ok(())
     }
 

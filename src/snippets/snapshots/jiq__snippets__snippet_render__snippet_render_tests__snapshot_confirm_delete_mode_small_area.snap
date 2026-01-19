@@ -1,0 +1,19 @@
+---
+source: src/snippets/snippet_render_tests.rs
+expression: output
+---
+"                                                  "
+"  ┌ Confirm Delete ────────────────────────────┐  "
+"  │                                            │  "
+"  │ Delete "Test"?                             │  "
+"  │                                            │  "
+"  │ [Enter] Confirm    [Esc] Cancel            │  "
+"  │                                            │  "
+"  └────────────────────────────────────────────┘  "
+"                                                  "
+"                                                  "
+"                                                  "
+"                                                  "
+"                                                  "
+"                                                  "
+"                                                  "

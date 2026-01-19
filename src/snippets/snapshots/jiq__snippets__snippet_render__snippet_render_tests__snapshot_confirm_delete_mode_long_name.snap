@@ -1,0 +1,28 @@
+---
+source: src/snippets/snippet_render_tests.rs
+expression: output
+---
+"                                                                                "
+"                                                                                "
+"                                                                                "
+"                                                                                "
+"                                                                                "
+"                                                                                "
+"               ┌ Confirm Delete ────────────────────────────────┐               "
+"               │                                                │               "
+"               │ Delete "This is a very long snippet n…"?       │               "
+"               │                                                │               "
+"               │ [Enter] Confirm    [Esc] Cancel                │               "
+"               │                                                │               "
+"               └────────────────────────────────────────────────┘               "
+"                                                                                "
+"                                                                                "
+"                                                                                "
+"                                                                                "
+"                                                                                "
+"                                                                                "
+"                                                                                "
+"                                                                                "
+"                                                                                "
+"                                                                                "
+"                                                                                "

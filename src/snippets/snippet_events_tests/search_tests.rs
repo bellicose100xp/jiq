@@ -102,8 +102,8 @@ fn test_search_clears_when_popup_closes() {
         description: None,
     }]);
 
-    app.handle_key_event(key(KeyCode::Char('x')));
-    assert_eq!(app.snippets.search_query(), "x");
+    app.handle_key_event(key(KeyCode::Char('z')));
+    assert_eq!(app.snippets.search_query(), "z");
 
     app.handle_key_event(key(KeyCode::Esc));
     assert!(!app.snippets.is_visible());

@@ -4,6 +4,8 @@ pub use super::{Snippet, SnippetMode, SnippetState};
 mod basic_tests;
 #[path = "snippet_state_tests/create_tests.rs"]
 mod create_tests;
+#[path = "snippet_state_tests/delete_tests.rs"]
+mod delete_tests;
 #[path = "snippet_state_tests/description_tests.rs"]
 mod description_tests;
 #[path = "snippet_state_tests/edit_query_tests.rs"]

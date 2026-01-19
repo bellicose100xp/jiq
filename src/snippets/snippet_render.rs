@@ -27,6 +27,7 @@ pub fn render_popup(state: &mut SnippetState, frame: &mut Frame, results_area: R
         }
         SnippetMode::EditName { .. } => render_edit_name_mode(state, frame, results_area),
         SnippetMode::EditQuery { .. } => render_edit_query_mode(state, frame, results_area),
+        SnippetMode::ConfirmDelete { .. } => render_confirm_delete_mode(state, frame, results_area),
     }
 }
 
@@ -432,9 +433,10 @@ fn render_create_hints(mode: &SnippetMode, frame: &mut Frame, area: Rect) {
             Span::styled("[Esc]", Style::default().fg(Color::Yellow)),
             Span::styled(" Cancel", Style::default().fg(Color::White)),
         ]),
-        SnippetMode::Browse | SnippetMode::EditName { .. } | SnippetMode::EditQuery { .. } => {
-            Line::from(vec![])
-        }
+        SnippetMode::Browse
+        | SnippetMode::EditName { .. }
+        | SnippetMode::EditQuery { .. }
+        | SnippetMode::ConfirmDelete { .. } => Line::from(vec![]),
     };
 
     let hints_widget = Paragraph::new(vec![hints]).block(
@@ -575,6 +577,52 @@ fn render_edit_query_hints(frame: &mut Frame, area: Rect) {
     );
 
     frame.render_widget(hints_widget, area);
+}
+
+fn render_confirm_delete_mode(state: &SnippetState, frame: &mut Frame, area: Rect) {
+    let snippet_name = match state.mode() {
+        SnippetMode::ConfirmDelete { snippet_name } => snippet_name.clone(),
+        _ => String::new(),
+    };
+
+    let dialog_height: u16 = 7;
+    let dialog_width = (area.width.saturating_sub(4)).min(50);
+    let dialog_x = area.x + (area.width.saturating_sub(dialog_width)) / 2;
+    let dialog_y = area.y + (area.height.saturating_sub(dialog_height)) / 2;
+
+    let dialog_area = Rect::new(dialog_x, dialog_y, dialog_width, dialog_height);
+
+    let truncated_name = if snippet_name.len() > 30 {
+        format!("{}…", &snippet_name[..29])
+    } else {
+        snippet_name
+    };
+
+    let content = vec![
+        Line::from(""),
+        Line::from(Span::styled(
+            format!(" Delete \"{}\"?", truncated_name),
+            Style::default().fg(Color::White),
+        )),
+        Line::from(""),
+        Line::from(vec![
+            Span::styled(" [Enter]", Style::default().fg(Color::Yellow)),
+            Span::styled(" Confirm    ", Style::default().fg(Color::White)),
+            Span::styled("[Esc]", Style::default().fg(Color::Yellow)),
+            Span::styled(" Cancel", Style::default().fg(Color::White)),
+        ]),
+    ];
+
+    let dialog = Paragraph::new(content).block(
+        Block::default()
+            .borders(Borders::ALL)
+            .title(" Confirm Delete ")
+            .border_style(Style::default().fg(Color::Red))
+            .style(Style::default().bg(Color::Black)),
+    );
+
+    popup::clear_area(frame, dialog_area);
+    frame.render_widget(dialog, dialog_area);
 }
 
 #[cfg(test)]
