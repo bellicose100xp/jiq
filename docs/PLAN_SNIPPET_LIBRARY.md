@@ -44,6 +44,57 @@ Add a Snippet Library feature to jiq that allows users to save, manage, and reus
 - **Operations**: Add (`n`), Remove (`d`/`x`), Rename (`r`), Edit query (`e`)
 - **100% test coverage** with unit tests and snapshot tests
 
+## Architecture Decisions
+
+### Event Routing and Popup Priority
+- When snippets popup is visible, it captures all keystrokes (similar to history popup)
+- Event flow: Check `snippets.is_visible()` early in event handling, before global keys
+- Route events to `snippet_events::handle_event()` when visible, short-circuiting other handlers
+- `Ctrl+S` global trigger added in `app_events/global.rs`, gated to not fire when snippets already visible
+
+### Popup Stacking and Visibility
+- **Render order** (back to front): AI/tooltip → autocomplete → history → **snippets**
+- Snippets popup renders on top of all other popups when visible
+- **On open**: Hide autocomplete popup (same as history behavior)
+- **On close**: Return focus to query input field
+- Snippets and history popups are mutually exclusive (opening one closes the other)
+
+### Storage Location
+- **Path**: `~/.config/jiq/snippets.toml` (intentionally different from history)
+- **Rationale**: Snippets are reusable and worth syncing across machines; history is ephemeral and machine-specific
+- **Concurrency**: "Last writer wins" - no file locking (same as history)
+- **Missing directory**: Create `~/.config/jiq/` on first save if it doesn't exist
+
+### Apply Snippet Behavior
+When user presses Enter to apply a snippet:
+1. Replace query input text with snippet query
+2. Execute the query immediately
+3. Reset JSON output scroll position to top
+4. Clear any existing error overlay
+5. Close snippets popup
+6. Return focus to query input
+
+### List Navigation
+- **No wrap-around**: Navigation stops at list boundaries
+- Up at first item: stays at first item
+- Down at last item: stays at last item
+
+### Fuzzy Search Behavior
+- Mirror `HistoryMatcher` pattern: multi-term AND matching, score-based sorting
+- Results sorted by fuzzy score descending (best matches first)
+- Use same `TextArea` configuration as history's `create_search_textarea`
+
+### Long Query Preview
+- Use `wrap_text` utility (from AI rendering) for long queries in preview pane
+- Prevents layout overflow and maintains readability
+
+### Test Coverage
+- Unit tests for all state transitions and business logic
+- Snapshot tests for all render states
+- Event handling tests for all keybindings
+- Storage tests for TOML read/write edge cases
+- Coverage verified via `cargo test` - all new code paths must have corresponding tests
+
 ## Module Structure
 
 ```
@@ -178,18 +229,25 @@ Each phase delivers the smallest testable feature. Manual TUI testing after each
 ### Phase 1: Empty Popup Shell
 **Goal**: `Ctrl+S` opens an empty popup, `Esc` closes it.
 
+**Event routing setup** (per Architecture Decisions):
+- Add `snippets.is_visible()` check early in event handling
+- Route to `snippet_events::handle_event()` when visible, short-circuiting other handlers
+- On open: hide autocomplete, close history popup if open
+- On close: return focus to query input
+
 **Files to create/modify**:
 - `src/snippets.rs` - module root
 - `src/snippets/snippet_state.rs` - minimal SnippetState (visible flag only)
 - `src/snippets/snippet_events.rs` - handle Esc to close
 - `src/snippets/snippet_render.rs` - render empty bordered box with title
 - `src/app/app_state.rs` - add `snippets: SnippetState` field
-- `src/app/app_events/global.rs` - add `Ctrl+S` trigger
-- `src/app/app_render.rs` - call snippet render when visible
+- `src/app/app_events/global.rs` - add `Ctrl+S` trigger (gated when snippets already visible)
+- `src/app/app_events.rs` - add snippets visibility check and event routing
+- `src/app/app_render.rs` - call snippet render when visible (renders on top of other popups)
 
-**Manual test**: Run jiq, press `Ctrl+S`, see empty popup, press `Esc`, popup closes.
+**Manual test**: Run jiq, press `Ctrl+S`, see empty popup, press `Esc`, popup closes. Verify autocomplete hidden when popup opens.
 
-**Tests**: State visibility toggle, Esc closes popup.
+**Tests**: State visibility toggle, Esc closes popup, event routing short-circuits.
 
 ---
 
@@ -215,9 +273,9 @@ Each phase delivers the smallest testable feature. Manual TUI testing after each
 - `src/snippets/snippet_events.rs` - handle Up/Down/j/k keys
 - `src/snippets/snippet_render.rs` - highlight selected item with `►`
 
-**Manual test**: Open popup, use arrow keys to navigate, see selection move.
+**Manual test**: Open popup, use arrow keys to navigate, see selection move. Verify navigation stops at boundaries (no wrap-around).
 
-**Tests**: Navigation bounds, wrap-around behavior (or boundary stop).
+**Tests**: Navigation bounds, boundary stop behavior.
 
 ---
 
@@ -225,38 +283,51 @@ Each phase delivers the smallest testable feature. Manual TUI testing after each
 **Goal**: Show selected snippet's query and description in preview pane.
 
 **Files to modify**:
-- `src/snippets/snippet_render.rs` - split layout 40/60, render preview pane
+- `src/snippets/snippet_render.rs` - split layout 40/60, render preview pane, use `wrap_text` for long queries
 
-**Manual test**: Navigate list, see preview update with query text.
+**Manual test**: Navigate list, see preview update with query text. Test with long query to verify wrapping.
 
-**Tests**: Render snapshot tests for preview.
+**Tests**: Render snapshot tests for preview, including long query wrapping.
 
 ---
 
 ### Phase 5: Apply Snippet
-**Goal**: Press Enter to apply selected snippet (replace current query).
+**Goal**: Press Enter to apply selected snippet with full execution flow.
+
+**Apply behavior** (per Architecture Decisions):
+1. Replace query input text with snippet query
+2. Execute the query immediately
+3. Reset JSON output scroll position to top
+4. Clear any existing error overlay
+5. Close snippets popup
+6. Return focus to query input
 
 **Files to modify**:
-- `src/snippets/snippet_events.rs` - handle Enter key, replace query, close popup
+- `src/snippets/snippet_events.rs` - handle Enter key, implement full apply flow
 
-**Manual test**: Select snippet, press Enter, query input replaced, popup closes.
+**Manual test**: Select snippet, press Enter. Verify: query replaced, results update immediately, scroll resets, popup closes.
 
-**Tests**: Event test for Enter applying snippet.
+**Tests**: Event test for Enter applying snippet, verify all state changes.
 
 ---
 
 ### Phase 6: Fuzzy Search
 **Goal**: Type to filter snippets by name.
 
+**Implementation** (per Architecture Decisions):
+- Mirror `HistoryMatcher` pattern: multi-term AND matching
+- Sort results by fuzzy score descending (best matches first)
+- Use `create_search_textarea` style from history
+
 **Files to create/modify**:
-- `src/snippets/snippet_matcher.rs` - SnippetMatcher with fuzzy matching
+- `src/snippets/snippet_matcher.rs` - SnippetMatcher with fuzzy matching (mirror HistoryMatcher)
 - `src/snippets/snippet_state.rs` - add search_textarea, filtered_indices
 - `src/snippets/snippet_events.rs` - route typing to search textarea
 - `src/snippets/snippet_render.rs` - render search bar
 
-**Manual test**: Type partial name, see list filter in real-time.
+**Manual test**: Type partial name, see list filter in real-time. Verify best matches appear first.
 
-**Tests**: Matcher tests, filter state tests.
+**Tests**: Matcher tests (multi-term, scoring, empty query), filter state tests.
 
 ---
 
