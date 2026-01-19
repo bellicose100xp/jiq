@@ -2,10 +2,10 @@
 source: src/snippets/snippet_render_tests.rs
 expression: output
 ---
-"┌ Snippets (1) ────────────────────────────────────────────────────────────────┐"
-"│ ► Identity                                                                   │"
-"│                                                                              │"
-"│                                                                              │"
+"┌ Snippets (3) ────────────────────────────────────────────────────────────────┐"
+"│   Select all keys                                                            │"
+"│   Flatten arrays                                                             │"
+"│ ► Filter by type                                                             │"
 "│                                                                              │"
 "│                                                                              │"
 "│                                                                              │"

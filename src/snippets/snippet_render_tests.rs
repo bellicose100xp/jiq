@@ -140,3 +140,67 @@ fn snapshot_snippet_popup_with_snippets_narrow() {
     let output = render_snippet_popup_to_string(&state, results_area, 40, 20);
     assert_snapshot!(output);
 }
+
+#[test]
+fn snapshot_snippet_popup_with_second_item_selected() {
+    let snippets = vec![
+        Snippet {
+            name: "Select all keys".to_string(),
+            query: "keys".to_string(),
+            description: Some("Returns array of all keys".to_string()),
+        },
+        Snippet {
+            name: "Flatten arrays".to_string(),
+            query: "flatten".to_string(),
+            description: None,
+        },
+        Snippet {
+            name: "Filter by type".to_string(),
+            query: ".[] | select(.type == \"error\")".to_string(),
+            description: Some("Filter items by type".to_string()),
+        },
+    ];
+    let mut state = create_state_with_snippets(snippets);
+    state.set_selected_index(1);
+
+    let results_area = Rect {
+        x: 0,
+        y: 0,
+        width: 80,
+        height: 20,
+    };
+    let output = render_snippet_popup_to_string(&state, results_area, 80, 24);
+    assert_snapshot!(output);
+}
+
+#[test]
+fn snapshot_snippet_popup_with_last_item_selected() {
+    let snippets = vec![
+        Snippet {
+            name: "Select all keys".to_string(),
+            query: "keys".to_string(),
+            description: None,
+        },
+        Snippet {
+            name: "Flatten arrays".to_string(),
+            query: "flatten".to_string(),
+            description: None,
+        },
+        Snippet {
+            name: "Filter by type".to_string(),
+            query: ".[] | select(.type == \"error\")".to_string(),
+            description: None,
+        },
+    ];
+    let mut state = create_state_with_snippets(snippets);
+    state.set_selected_index(2);
+
+    let results_area = Rect {
+        x: 0,
+        y: 0,
+        width: 80,
+        height: 20,
+    };
+    let output = render_snippet_popup_to_string(&state, results_area, 80, 24);
+    assert_snapshot!(output);
+}

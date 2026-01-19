@@ -11,7 +11,7 @@
 
 - [x] Phase 1: Empty Popup Shell
 - [x] Phase 2: Load and Display Snippets
-- [ ] Phase 3: List Navigation and Selection
+- [x] Phase 3: List Navigation and Selection
 - [ ] Phase 4: Preview Pane
 - [ ] Phase 5: Apply Snippet
 - [ ] Phase 6: Fuzzy Search

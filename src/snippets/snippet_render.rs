@@ -1,7 +1,7 @@
 use ratatui::{
     Frame,
     layout::Rect,
-    style::{Color, Style},
+    style::{Color, Modifier, Style},
     text::{Line, Span},
     widgets::{Block, Borders, Paragraph},
 };
@@ -13,6 +13,8 @@ pub fn render_popup(state: &SnippetState, frame: &mut Frame, results_area: Rect)
     popup::clear_area(frame, results_area);
 
     let snippets = state.snippets();
+    let selected_index = state.selected_index();
+
     let content = if snippets.is_empty() {
         vec![Line::from(vec![Span::styled(
             "   No snippets yet. Press 'n' to create one.",
@@ -21,7 +23,19 @@ pub fn render_popup(state: &SnippetState, frame: &mut Frame, results_area: Rect)
     } else {
         snippets
             .iter()
-            .map(|s| Line::from(vec![Span::raw(format!("   {}", s.name))]))
+            .enumerate()
+            .map(|(i, s)| {
+                let is_selected = i == selected_index;
+                let prefix = if is_selected { " ► " } else { "   " };
+                let style = if is_selected {
+                    Style::default()
+                        .fg(Color::Yellow)
+                        .add_modifier(Modifier::BOLD)
+                } else {
+                    Style::default()
+                };
+                Line::from(vec![Span::styled(format!("{}{}", prefix, s.name), style)])
+            })
             .collect()
     };
 
