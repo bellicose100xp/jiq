@@ -25,6 +25,7 @@ mod query;
 mod results;
 mod scroll;
 mod search;
+mod snippets;
 mod stats;
 mod syntax_highlight;
 #[cfg(test)]

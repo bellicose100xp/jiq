@@ -18,6 +18,7 @@ pub mod query;
 pub mod results;
 pub mod scroll;
 pub mod search;
+pub mod snippets;
 pub mod stats;
 pub mod syntax_highlight;
 

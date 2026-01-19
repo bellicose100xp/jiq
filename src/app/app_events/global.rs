@@ -15,8 +15,26 @@ fn accept_autocomplete_suggestion(app: &mut App) -> bool {
     false
 }
 
+fn is_ctrl_s(key: &KeyEvent) -> bool {
+    key.code == KeyCode::Char('s') && key.modifiers.contains(KeyModifiers::CONTROL)
+}
+
+fn is_truly_global_key(key: &KeyEvent) -> bool {
+    key.code == KeyCode::F(1)
+        || key.code == KeyCode::Char('?')
+        || (key.code == KeyCode::Char('c') && key.modifiers.contains(KeyModifiers::CONTROL))
+}
+
 pub fn handle_global_keys(app: &mut App, key: KeyEvent) -> bool {
-    if app.history.is_visible() && key.code != KeyCode::BackTab {
+    if app.snippets.is_visible() && !is_truly_global_key(&key) {
+        return false;
+    }
+
+    if app.history.is_visible()
+        && !is_truly_global_key(&key)
+        && !is_ctrl_s(&key)
+        && key.code != KeyCode::BackTab
+    {
         return false;
     }
 
@@ -205,7 +223,9 @@ pub fn handle_global_keys(app: &mut App, key: KeyEvent) -> bool {
             true
         }
         KeyCode::Char('?') => {
-            if app.input.editor_mode == crate::editor::EditorMode::Normal
+            let snippets_allows = app.snippets.is_visible() && !app.snippets.is_editing();
+            if snippets_allows
+                || app.input.editor_mode == crate::editor::EditorMode::Normal
                 || app.focus == Focus::ResultsPane
             {
                 app.help.visible = !app.help.visible;
@@ -250,6 +270,13 @@ pub fn handle_global_keys(app: &mut App, key: KeyEvent) -> bool {
                 app.tooltip.enabled = app.saved_tooltip_visibility;
             }
 
+            true
+        }
+
+        KeyCode::Char('s') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+            app.snippets.open();
+            app.autocomplete.hide();
+            app.history.close();
             true
         }
 

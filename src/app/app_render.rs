@@ -41,6 +41,10 @@ impl App {
             crate::history::history_render::render_popup(self, frame, input_area);
         }
 
+        if self.snippets.is_visible() {
+            crate::snippets::snippet_render::render_popup(frame, results_area);
+        }
+
         if self.error_overlay_visible
             && let Some(query) = &self.query
             && query.result.is_err()

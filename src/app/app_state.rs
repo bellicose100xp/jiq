@@ -8,6 +8,7 @@ use crate::notification::NotificationState;
 use crate::query::{Debouncer, QueryState};
 use crate::scroll::ScrollState;
 use crate::search::SearchState;
+use crate::snippets::SnippetState;
 use crate::stats::{self, StatsState};
 use crate::tooltip::{self, TooltipState};
 
@@ -41,6 +42,7 @@ pub struct App {
     pub stats: StatsState,
     pub debouncer: Debouncer,
     pub search: SearchState,
+    pub snippets: SnippetState,
     pub ai: AiState,
     pub saved_tooltip_visibility: bool,
     pub input_json_schema: Option<String>,
@@ -137,6 +139,7 @@ impl App {
             stats: StatsState::default(),
             debouncer: Debouncer::new(),
             search: SearchState::new(),
+            snippets: SnippetState::new(),
             ai: ai_state,
             saved_tooltip_visibility: config.tooltip.auto_show,
             input_json_schema: None,

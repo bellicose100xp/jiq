@@ -8,6 +8,7 @@ use crate::editor;
 use crate::editor::EditorMode;
 use crate::history;
 use crate::results;
+use crate::snippets;
 
 mod global;
 
@@ -90,6 +91,11 @@ impl App {
     }
 
     fn handle_input_field_key(&mut self, key: KeyEvent) {
+        if self.snippets.is_visible() {
+            snippets::snippet_events::handle_snippet_popup_key(self, key);
+            return;
+        }
+
         if self.history.is_visible() {
             history::history_events::handle_history_popup_key(self, key);
             return;

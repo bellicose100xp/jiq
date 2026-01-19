@@ -5,10 +5,11 @@
 1. **Commit after each phase** - Each phase should be committed separately with a descriptive commit message
 2. **100% test coverage** - All new code must have complete test coverage before committing
 3. **Manual TUI testing** - Verify functionality manually before marking phase complete
+4. **Update docs for deviations** - Any changes made during implementation that differ from the original plan must be documented. Update architecture decisions and modify affected later phases to account for these changes
 
 ## Phase Checklist
 
-- [ ] Phase 1: Empty Popup Shell
+- [x] Phase 1: Empty Popup Shell
 - [ ] Phase 2: Load and Display Snippets
 - [ ] Phase 3: List Navigation and Selection
 - [ ] Phase 4: Preview Pane
@@ -47,10 +48,20 @@ Add a Snippet Library feature to jiq that allows users to save, manage, and reus
 ## Architecture Decisions
 
 ### Event Routing and Popup Priority
-- When snippets popup is visible, it captures all keystrokes (similar to history popup)
+- When snippets popup is visible, it captures most keystrokes (similar to history popup)
 - Event flow: Check `snippets.is_visible()` early in event handling, before global keys
 - Route events to `snippet_events::handle_event()` when visible, short-circuiting other handlers
 - `Ctrl+S` global trigger added in `app_events/global.rs`, gated to not fire when snippets already visible
+
+### Truly Global Keys
+Certain keys work regardless of popup state for essential user control:
+- **`F1`** - Help popup toggle (users should always be able to see keybindings)
+- **`?`** - Help popup toggle (when not in a text editing context)
+- **`Ctrl+C`** - Quit application (users should always be able to exit)
+
+Note: `Shift+Tab` (BackTab) is allowed through for history popup (to switch focus and close it), but is captured by snippets popup since snippets is a modal that may use Tab/Shift+Tab for its own navigation.
+
+Note: `?` toggles help when snippets popup is visible and not in editing mode (CreateName, CreateDescription, EditName, EditQuery). When editing, `?` is captured as a character input.
 
 ### Popup Stacking and Visibility
 - **Render order** (back to front): AI/tooltip → autocomplete → history → **snippets**
@@ -154,6 +165,8 @@ pub enum SnippetMode {
 ```
 
 ## UI Layout
+
+Note: The snippets popup fills the entire results pane area, replacing the JSON output while visible. The popup height adapts to the terminal size.
 
 ### Browse Mode
 ```
@@ -404,11 +417,13 @@ Each phase delivers the smallest testable feature. Manual TUI testing after each
 ### Phase 12: Scroll Support for Long Lists
 **Goal**: Handle lists longer than viewport with scroll offset.
 
+Note: The snippets popup fills the entire results area (fixed size determined by terminal). No dynamic height adjustment needed - just scroll within the available space.
+
 **Files to modify**:
-- `src/snippets/snippet_state.rs` - add scroll_offset, viewport calculations
+- `src/snippets/snippet_state.rs` - add scroll_offset, calculate visible item count from render area
 - `src/snippets/snippet_render.rs` - render visible slice with scroll indicators
 
-**Manual test**: Add 20+ snippets, verify scrolling works smoothly.
+**Manual test**: Add 20+ snippets, verify scrolling works smoothly within the results area.
 
 **Tests**: Scroll offset tests, boundary tests.
 
