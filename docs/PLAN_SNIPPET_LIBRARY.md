@@ -17,7 +17,7 @@
 - [x] Phase 6: Fuzzy Search
 - [x] Phase 7: Create New Snippet (Name Entry)
 - [x] Phase 8: Create with Description
-- [ ] Phase 9: Rename Snippet
+- [x] Phase 9: Rename Snippet
 - [ ] Phase 10: Edit Snippet Query
 - [ ] Phase 11: Delete Snippet with Confirmation
 - [x] Phase 12: Scroll Support for Long Lists (implemented in Phase 4)
@@ -426,19 +426,22 @@ Each phase delivers the smallest testable feature. Manual TUI testing after each
 ### Phase 9: Rename Snippet
 **Goal**: Press `r` to rename selected snippet.
 
-**Implementation requirements** (based on Phase 7):
-- Use case-insensitive duplicate checking when validating new name
-- Show warning notification for validation errors (empty name, duplicate)
-- Trim whitespace from new name
-- Keep snippet in same position (don't move to top like create)
+**Implementation notes**:
+- Added `SnippetMode::EditName { original_name: String }` variant to track original name for duplicate detection
+- Name validation: rejects empty names, trims whitespace
+- Case-insensitive duplicate check: renaming to same name (different case) is allowed
+- Snippet stays in same position after rename (not moved to top like create)
+- Error notifications use `show_warning()` for auto-dismiss after 10 seconds
+- Render shows "Rename Snippet" title with yellow active border and hints bar
 
-**Files to modify**:
-- `src/snippets/snippet_state.rs` - add SnippetMode::EditName, rename_snippet() with validation
-- `src/snippets/snippet_events.rs` - handle `r` key, rename mode events
+**Files modified**:
+- `src/snippets/snippet_state.rs` - EditName mode, enter_rename_mode(), cancel_rename(), rename_snippet() with validation
+- `src/snippets/snippet_events.rs` - handle `r` key in browse mode, handle_edit_name_mode()
+- `src/snippets/snippet_render.rs` - render_edit_name_mode(), render_rename_name_input(), render_rename_hints()
+
+**Tests added**: 36 new tests (state: 16 tests, events: 13 tests, render: 5 snapshot tests)
 
 **Manual test**: Select snippet, press `r`, change name, press Enter, name updated. Try duplicate name (case-insensitive), verify warning notification.
-
-**Tests**: Rename event tests, case-insensitive duplicate name handling, notification tests.
 
 ---
 

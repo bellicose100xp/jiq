@@ -18,6 +18,9 @@ pub enum SnippetMode {
     Browse,
     CreateName,
     CreateDescription,
+    EditName {
+        original_name: String,
+    },
 }
 
 fn create_search_textarea() -> TextArea<'static> {
@@ -133,7 +136,7 @@ impl SnippetState {
     pub fn is_editing(&self) -> bool {
         matches!(
             self.mode,
-            SnippetMode::CreateName | SnippetMode::CreateDescription
+            SnippetMode::CreateName | SnippetMode::CreateDescription | SnippetMode::EditName { .. }
         )
     }
 
@@ -164,18 +167,24 @@ impl SnippetState {
     }
 
     pub fn next_create_field(&mut self) {
-        self.mode = match self.mode {
+        self.mode = match &self.mode {
             SnippetMode::CreateName => SnippetMode::CreateDescription,
             SnippetMode::CreateDescription => SnippetMode::CreateName,
             SnippetMode::Browse => SnippetMode::Browse,
+            SnippetMode::EditName { original_name } => SnippetMode::EditName {
+                original_name: original_name.clone(),
+            },
         };
     }
 
     pub fn prev_create_field(&mut self) {
-        self.mode = match self.mode {
+        self.mode = match &self.mode {
             SnippetMode::CreateDescription => SnippetMode::CreateName,
             SnippetMode::CreateName => SnippetMode::CreateDescription,
             SnippetMode::Browse => SnippetMode::Browse,
+            SnippetMode::EditName { original_name } => SnippetMode::EditName {
+                original_name: original_name.clone(),
+            },
         };
     }
 
@@ -229,6 +238,68 @@ impl SnippetState {
 
         self.filtered_indices = (0..self.snippets.len()).collect();
         self.cancel_create();
+        Ok(())
+    }
+
+    pub fn enter_rename_mode(&mut self) {
+        if let Some(snippet) = self.selected_snippet() {
+            let original_name = snippet.name.clone();
+            self.name_textarea.select_all();
+            self.name_textarea.cut();
+            self.name_textarea.insert_str(&original_name);
+            self.mode = SnippetMode::EditName { original_name };
+        }
+    }
+
+    pub fn cancel_rename(&mut self) {
+        self.mode = SnippetMode::Browse;
+        self.name_textarea.select_all();
+        self.name_textarea.cut();
+    }
+
+    pub fn rename_snippet(&mut self) -> Result<(), String> {
+        let SnippetMode::EditName { ref original_name } = self.mode else {
+            return Err("Not in rename mode".to_string());
+        };
+        let original_name = original_name.clone();
+
+        let new_name = self
+            .name_textarea
+            .lines()
+            .first()
+            .map(|s| s.trim().to_string())
+            .unwrap_or_default();
+
+        if new_name.is_empty() {
+            return Err("Name cannot be empty".to_string());
+        }
+
+        let new_name_lower = new_name.to_lowercase();
+        let original_name_lower = original_name.to_lowercase();
+
+        if self.snippets.iter().any(|s| {
+            let s_lower = s.name.to_lowercase();
+            s_lower == new_name_lower && s_lower != original_name_lower
+        }) {
+            return Err(format!("Snippet '{}' already exists", new_name));
+        }
+
+        let snippet_idx = self
+            .filtered_indices
+            .get(self.selected_index)
+            .copied()
+            .ok_or_else(|| "No snippet selected".to_string())?;
+
+        self.snippets[snippet_idx].name = new_name;
+
+        if self.persist_to_disk
+            && let Err(e) = super::snippet_storage::save_snippets(&self.snippets)
+        {
+            self.snippets[snippet_idx].name = original_name;
+            return Err(format!("Failed to save: {}", e));
+        }
+
+        self.cancel_rename();
         Ok(())
     }
 

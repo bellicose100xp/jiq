@@ -516,3 +516,86 @@ fn snapshot_create_name_mode_with_description_field_visible() {
     let output = render_snippet_popup_to_string(&mut state, results_area, 80, 24);
     assert_snapshot!(output);
 }
+
+#[test]
+fn snapshot_rename_mode_with_original_name() {
+    let mut state = SnippetState::new_without_persistence();
+    state.set_snippets(vec![Snippet {
+        name: "My Snippet".to_string(),
+        query: ".test | keys".to_string(),
+        description: None,
+    }]);
+    state.enter_rename_mode();
+
+    let results_area = Rect {
+        x: 0,
+        y: 0,
+        width: 80,
+        height: 20,
+    };
+    let output = render_snippet_popup_to_string(&mut state, results_area, 80, 24);
+    assert_snapshot!(output);
+}
+
+#[test]
+fn snapshot_rename_mode_with_edited_name() {
+    let mut state = SnippetState::new_without_persistence();
+    state.set_snippets(vec![Snippet {
+        name: "Old Name".to_string(),
+        query: ".test".to_string(),
+        description: None,
+    }]);
+    state.enter_rename_mode();
+    state.name_textarea_mut().select_all();
+    state.name_textarea_mut().cut();
+    state.name_textarea_mut().insert_str("New Name");
+
+    let results_area = Rect {
+        x: 0,
+        y: 0,
+        width: 80,
+        height: 20,
+    };
+    let output = render_snippet_popup_to_string(&mut state, results_area, 80, 24);
+    assert_snapshot!(output);
+}
+
+#[test]
+fn snapshot_rename_mode_narrow_terminal() {
+    let mut state = SnippetState::new_without_persistence();
+    state.set_snippets(vec![Snippet {
+        name: "My Snippet".to_string(),
+        query: ".test".to_string(),
+        description: None,
+    }]);
+    state.enter_rename_mode();
+
+    let results_area = Rect {
+        x: 0,
+        y: 0,
+        width: 40,
+        height: 15,
+    };
+    let output = render_snippet_popup_to_string(&mut state, results_area, 40, 20);
+    assert_snapshot!(output);
+}
+
+#[test]
+fn snapshot_rename_mode_small_height() {
+    let mut state = SnippetState::new_without_persistence();
+    state.set_snippets(vec![Snippet {
+        name: "My Snippet".to_string(),
+        query: ".test".to_string(),
+        description: None,
+    }]);
+    state.enter_rename_mode();
+
+    let results_area = Rect {
+        x: 0,
+        y: 0,
+        width: 80,
+        height: 4,
+    };
+    let output = render_snippet_popup_to_string(&mut state, results_area, 80, 10);
+    assert_snapshot!(output);
+}

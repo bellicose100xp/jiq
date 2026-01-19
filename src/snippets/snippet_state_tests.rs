@@ -8,5 +8,7 @@ mod create_tests;
 mod description_tests;
 #[path = "snippet_state_tests/navigation_tests.rs"]
 mod navigation_tests;
+#[path = "snippet_state_tests/rename_tests.rs"]
+mod rename_tests;
 #[path = "snippet_state_tests/search_tests.rs"]
 mod search_tests;

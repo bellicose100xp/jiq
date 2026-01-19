@@ -8,5 +8,7 @@ mod description_tests;
 mod navigation_tests;
 #[path = "snippet_events_tests/open_close_tests.rs"]
 mod open_close_tests;
+#[path = "snippet_events_tests/rename_tests.rs"]
+mod rename_tests;
 #[path = "snippet_events_tests/search_tests.rs"]
 mod search_tests;

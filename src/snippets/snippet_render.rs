@@ -24,6 +24,7 @@ pub fn render_popup(state: &mut SnippetState, frame: &mut Frame, results_area: R
         SnippetMode::CreateName | SnippetMode::CreateDescription => {
             render_create_mode(state, frame, results_area)
         }
+        SnippetMode::EditName { .. } => render_edit_name_mode(state, frame, results_area),
     }
 }
 
@@ -429,8 +430,73 @@ fn render_create_hints(mode: &SnippetMode, frame: &mut Frame, area: Rect) {
             Span::styled("[Esc]", Style::default().fg(Color::Yellow)),
             Span::styled(" Cancel", Style::default().fg(Color::White)),
         ]),
-        SnippetMode::Browse => Line::from(vec![]),
+        SnippetMode::Browse | SnippetMode::EditName { .. } => Line::from(vec![]),
     };
+
+    let hints_widget = Paragraph::new(vec![hints]).block(
+        Block::default()
+            .borders(Borders::ALL)
+            .border_style(Style::default().fg(Color::Cyan))
+            .style(Style::default().bg(Color::Black)),
+    );
+
+    frame.render_widget(hints_widget, area);
+}
+
+fn render_edit_name_mode(state: &mut SnippetState, frame: &mut Frame, area: Rect) {
+    let min_required = NAME_INPUT_HEIGHT + HINTS_HEIGHT;
+    if area.height < min_required {
+        render_edit_name_minimal(state, frame, area);
+        return;
+    }
+
+    let layout = Layout::vertical([
+        Constraint::Length(NAME_INPUT_HEIGHT),
+        Constraint::Min(1),
+        Constraint::Length(HINTS_HEIGHT),
+    ])
+    .split(area);
+
+    let name_area = layout[0];
+    let hints_area = layout[2];
+
+    render_rename_name_input(state, frame, name_area);
+    render_rename_hints(frame, hints_area);
+}
+
+fn render_edit_name_minimal(state: &mut SnippetState, frame: &mut Frame, area: Rect) {
+    let name_textarea = state.name_textarea_mut();
+    name_textarea.set_block(
+        Block::default()
+            .borders(Borders::ALL)
+            .title(" Rename Snippet ")
+            .border_style(Style::default().fg(Color::Yellow))
+            .style(Style::default().bg(Color::Black)),
+    );
+    name_textarea.set_style(Style::default().fg(Color::White).bg(Color::Black));
+    frame.render_widget(&*name_textarea, area);
+}
+
+fn render_rename_name_input(state: &mut SnippetState, frame: &mut Frame, area: Rect) {
+    let name_textarea = state.name_textarea_mut();
+    name_textarea.set_block(
+        Block::default()
+            .borders(Borders::ALL)
+            .title(" Rename Snippet ")
+            .border_style(Style::default().fg(Color::Yellow))
+            .style(Style::default().bg(Color::Black)),
+    );
+    name_textarea.set_style(Style::default().fg(Color::White).bg(Color::Black));
+    frame.render_widget(&*name_textarea, area);
+}
+
+fn render_rename_hints(frame: &mut Frame, area: Rect) {
+    let hints = Line::from(vec![
+        Span::styled(" [Enter]", Style::default().fg(Color::Yellow)),
+        Span::styled(" Save  ", Style::default().fg(Color::White)),
+        Span::styled("[Esc]", Style::default().fg(Color::Yellow)),
+        Span::styled(" Cancel", Style::default().fg(Color::White)),
+    ]);
 
     let hints_widget = Paragraph::new(vec![hints]).block(
         Block::default()
