@@ -1,5 +1,4 @@
 use crate::test_utils::test_helpers::test_app;
-use proptest::prelude::*;
 
 #[test]
 fn test_initial_state_needs_render_is_true() {
@@ -131,67 +130,79 @@ fn test_needs_animation_false_when_idle() {
     );
 }
 
-proptest! {
-    #![proptest_config(ProptestConfig::with_cases(100))]
+#[test]
+fn test_mark_dirty_idempotent() {
+    let mut app = test_app(r#"{"test": true}"#);
+    app.clear_dirty();
 
-    #[test]
-    fn prop_mark_dirty_idempotent(call_count in 1usize..10) {
-        let mut app = test_app(r#"{"test": true}"#);
-        app.clear_dirty();
+    app.mark_dirty();
+    app.mark_dirty();
+    app.mark_dirty();
 
-        for _ in 0..call_count {
-            app.mark_dirty();
-        }
+    assert!(
+        app.needs_render,
+        "Multiple mark_dirty calls should still result in needs_render=true"
+    );
+}
 
-        prop_assert!(
-            app.needs_render,
-            "Multiple mark_dirty calls should still result in needs_render=true"
-        );
-    }
+#[test]
+fn test_should_render_with_dirty() {
+    let mut app = test_app(r#"{"test": true}"#);
+    app.needs_render = true;
+    app.ai.loading = false;
+    app.query.as_mut().unwrap().cancel_in_flight();
+    app.file_loader = None;
+    app.notification.dismiss();
 
-    #[test]
-    fn prop_should_render_reflects_dirty_or_animation(
-        dirty in any::<bool>(),
-        ai_loading in any::<bool>()
-    ) {
-        let mut app = test_app(r#"{"test": true}"#);
+    assert!(
+        app.should_render(),
+        "should_render should return true when dirty"
+    );
+}
 
-        app.needs_render = dirty;
-        app.ai.loading = ai_loading;
-        if let Some(query) = app.query.as_mut() {
-            query.cancel_in_flight();
-        }
-        app.file_loader = None;
-        app.notification.dismiss();
+#[test]
+fn test_should_render_with_ai_loading() {
+    let mut app = test_app(r#"{"test": true}"#);
+    app.needs_render = false;
+    app.ai.loading = true;
+    app.query.as_mut().unwrap().cancel_in_flight();
+    app.file_loader = None;
+    app.notification.dismiss();
 
-        let expected = dirty || ai_loading;
-        prop_assert_eq!(
-            app.should_render(),
-            expected,
-            "should_render should return true if dirty OR animation needed"
-        );
-    }
+    assert!(
+        app.should_render(),
+        "should_render should return true when ai_loading"
+    );
+}
 
-    #[test]
-    fn prop_clear_dirty_makes_render_depend_on_animation(
-        ai_loading in any::<bool>()
-    ) {
-        let mut app = test_app(r#"{"test": true}"#);
+#[test]
+fn test_clear_dirty_with_ai_loading() {
+    let mut app = test_app(r#"{"test": true}"#);
+    app.mark_dirty();
+    app.clear_dirty();
+    app.ai.loading = true;
+    app.query.as_mut().unwrap().cancel_in_flight();
+    app.file_loader = None;
+    app.notification.dismiss();
 
-        app.mark_dirty();
-        app.clear_dirty();
+    assert!(
+        app.should_render(),
+        "After clear_dirty with ai_loading, should_render should return true"
+    );
+}
 
-        app.ai.loading = ai_loading;
-        if let Some(query) = app.query.as_mut() {
-            query.cancel_in_flight();
-        }
-        app.file_loader = None;
-        app.notification.dismiss();
+#[test]
+fn test_clear_dirty_without_ai_loading() {
+    let mut app = test_app(r#"{"test": true}"#);
+    app.mark_dirty();
+    app.clear_dirty();
+    app.ai.loading = false;
+    app.query.as_mut().unwrap().cancel_in_flight();
+    app.file_loader = None;
+    app.notification.dismiss();
 
-        prop_assert_eq!(
-            app.should_render(),
-            ai_loading,
-            "After clear_dirty, should_render should depend only on animation"
-        );
-    }
+    assert!(
+        !app.should_render(),
+        "After clear_dirty without ai_loading, should_render should return false"
+    );
 }

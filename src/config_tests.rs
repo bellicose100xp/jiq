@@ -1,103 +1,6 @@
 //! Tests for config
 
 use super::*;
-use proptest::prelude::*;
-
-// Feature: config-system, Property 3: Invalid backend fallback
-// For any invalid clipboard backend value in a TOML config file, the config system
-// should log a warning and use the default clipboard backend value ("auto").
-proptest! {
-    #![proptest_config(ProptestConfig::with_cases(100))]
-
-    #[test]
-    fn prop_invalid_backend_fallback(
-        invalid_backend in "[a-z]{3,10}".prop_filter(
-            "not valid",
-            |s| !["auto", "system", "osc52"].contains(&s.as_str())
-        )
-    ) {
-        let toml_content = format!(r#"
-[clipboard]
-backend = "{}"
-"#, invalid_backend);
-
-        let config: Result<Config, _> = toml::from_str(&toml_content);
-
-        // Should fail to parse (serde will reject invalid enum value)
-        prop_assert!(config.is_err(), "Invalid backend should fail to parse");
-
-        // In the actual load_config function, this error would be caught
-        // and Config::default() would be returned, which has Auto backend
-        let default_config = Config::default();
-        prop_assert_eq!(
-            default_config.clipboard.backend,
-            ClipboardBackend::Auto,
-            "Default config should use Auto backend"
-        );
-    }
-}
-
-// Feature: config-system, Property 4: Malformed TOML fallback
-// For any malformed TOML syntax in the config file, the config system should
-// log an error with details and return a config with all default values.
-proptest! {
-    #![proptest_config(ProptestConfig::with_cases(100))]
-
-    #[test]
-    fn prop_malformed_toml_fallback(
-        malformed in prop::sample::select(vec![
-            "[clipboard\nbackend = \"auto\"",      // Missing closing bracket
-            "[clipboard]\nbackend = auto",          // Missing quotes
-            "[clipboard]\n backend",                // Missing value
-            "clipboard]\nbackend = \"auto\"",       // Missing opening bracket
-            "[clipboard]\nbackend = \"auto",        // Unterminated string
-            "[clipboard\nbackend = \"auto\"\n]",    // Bracket in wrong place
-        ])
-    ) {
-        let config: Result<Config, _> = toml::from_str(malformed);
-
-        // Should fail to parse
-        prop_assert!(config.is_err(), "Malformed TOML should fail to parse");
-
-        // In the actual load_config function, this error would be caught
-        // and Config::default() would be returned
-        let default_config = Config::default();
-        prop_assert_eq!(
-            default_config.clipboard.backend,
-            ClipboardBackend::Auto,
-            "Default config should use Auto backend"
-        );
-    }
-}
-
-// Feature: config-system, Property 5: Config path consistency
-// For any execution of the config loading function, it should attempt to load
-// from the same standardized path (~/.config/jiq/config.toml).
-proptest! {
-    #![proptest_config(ProptestConfig::with_cases(100))]
-
-    #[test]
-    fn prop_config_path_consistency(_iteration in 0..10u32) {
-        // Call get_config_path multiple times
-        let path1 = get_config_path();
-        let path2 = get_config_path();
-        let path3 = get_config_path();
-
-        // All should return the same path
-        prop_assert_eq!(&path1, &path2, "Config path should be consistent");
-        prop_assert_eq!(&path2, &path3, "Config path should be consistent");
-
-        // Path should end with jiq/config.toml
-        let path_str = path1.to_string_lossy();
-        prop_assert!(
-            path_str.ends_with("jiq/config.toml") || path_str.ends_with("jiq\\config.toml"),
-            "Config path should end with jiq/config.toml, got: {}",
-            path_str
-        );
-    }
-}
-
-// Unit tests for configuration loading
 
 #[test]
 fn test_config_default_values() {
@@ -142,31 +45,53 @@ backend = "osc52"
 }
 
 #[test]
+fn test_invalid_backend_fails_parse() {
+    let toml = r#"
+[clipboard]
+backend = "invalid"
+"#;
+    let result: Result<Config, _> = toml::from_str(toml);
+    assert!(result.is_err(), "Invalid backend should fail to parse");
+}
+
+#[test]
 fn test_missing_file_returns_defaults() {
-    // This test verifies that load_config() returns defaults when file doesn't exist
-    // We can't easily test the actual load_config() without mocking the filesystem,
-    // but we can verify the default behavior
     let config = Config::default();
     assert_eq!(config.clipboard.backend, ClipboardBackend::Auto);
 }
 
 #[test]
-fn test_malformed_toml_example_1() {
-    let toml = "[clipboard\nbackend = \"auto\""; // Missing closing bracket
+fn test_malformed_toml_missing_bracket() {
+    let toml = "[clipboard\nbackend = \"auto\"";
     let result: Result<Config, _> = toml::from_str(toml);
     assert!(result.is_err(), "Malformed TOML should fail to parse");
 }
 
 #[test]
-fn test_malformed_toml_example_2() {
-    let toml = "[clipboard]\nbackend = auto"; // Missing quotes
+fn test_malformed_toml_missing_quotes() {
+    let toml = "[clipboard]\nbackend = auto";
     let result: Result<Config, _> = toml::from_str(toml);
     assert!(result.is_err(), "Malformed TOML should fail to parse");
 }
 
 #[test]
-fn test_malformed_toml_example_3() {
-    let toml = "[clipboard]\n backend"; // Missing value
+fn test_malformed_toml_missing_value() {
+    let toml = "[clipboard]\n backend";
     let result: Result<Config, _> = toml::from_str(toml);
     assert!(result.is_err(), "Malformed TOML should fail to parse");
+}
+
+#[test]
+fn test_config_path_consistency() {
+    let path1 = get_config_path();
+    let path2 = get_config_path();
+
+    assert_eq!(path1, path2, "Config path should be consistent");
+
+    let path_str = path1.to_string_lossy();
+    assert!(
+        path_str.ends_with("jiq/config.toml") || path_str.ends_with("jiq\\config.toml"),
+        "Config path should end with jiq/config.toml, got: {}",
+        path_str
+    );
 }

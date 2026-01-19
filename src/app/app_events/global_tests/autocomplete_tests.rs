@@ -1,7 +1,6 @@
 //! Autocomplete acceptance tests
 
 use super::*;
-use proptest::prelude::*;
 
 // ========== Tab Autocomplete Acceptance Tests ==========
 
@@ -254,32 +253,18 @@ fn test_enter_with_alt_modifier_bypasses_autocomplete_check() {
     assert_eq!(app.output_mode, Some(OutputMode::Query));
 }
 
-// ========== Property-Based Tests for Enter Key Autocomplete ==========
+// ========== Unit Tests for Enter Key Autocomplete ==========
 
-// Feature: enter-key-autocomplete, Property 1: Enter and Tab equivalence for autocomplete selection
-// *For any* application state where the autocomplete popup is visible with at least one suggestion,
-// pressing Enter should produce the exact same query string as pressing Tab.
-// **Validates: Requirements 3.1**
-proptest! {
-    #![proptest_config(ProptestConfig::with_cases(100))]
+#[test]
+fn test_enter_tab_equivalence_for_autocomplete() {
+    let suggestions = [
+        ("name", crate::autocomplete::SuggestionType::Field),
+        ("age", crate::autocomplete::SuggestionType::Field),
+        ("length", crate::autocomplete::SuggestionType::Function),
+        ("keys", crate::autocomplete::SuggestionType::Function),
+    ];
 
-    #[test]
-    fn prop_enter_tab_equivalence_for_autocomplete(
-        // Generate different suggestion types
-        suggestion_type in prop_oneof![
-            Just(crate::autocomplete::SuggestionType::Field),
-            Just(crate::autocomplete::SuggestionType::Function),
-        ],
-        // Generate different suggestion texts
-        suggestion_text in prop_oneof![
-            Just("name"),
-            Just("age"),
-            Just("city"),
-            Just("length"),
-            Just("keys"),
-        ],
-    ) {
-        // Create two identical app instances
+    for (text, stype) in suggestions {
         let mut app_enter = app_with_query(".");
         app_enter.input.editor_mode = EditorMode::Insert;
         app_enter.focus = Focus::InputField;
@@ -288,138 +273,90 @@ proptest! {
         app_tab.input.editor_mode = EditorMode::Insert;
         app_tab.focus = Focus::InputField;
 
-        // Set up identical autocomplete suggestions
-        let suggestion = crate::autocomplete::Suggestion::new(suggestion_text, suggestion_type.clone());
-        app_enter.autocomplete.update_suggestions(vec![suggestion.clone()]);
+        let suggestion = crate::autocomplete::Suggestion::new(text, stype.clone());
+        app_enter
+            .autocomplete
+            .update_suggestions(vec![suggestion.clone()]);
         app_tab.autocomplete.update_suggestions(vec![suggestion]);
 
-        // Verify both have visible autocomplete
-        prop_assert!(app_enter.autocomplete.is_visible());
-        prop_assert!(app_tab.autocomplete.is_visible());
+        assert!(app_enter.autocomplete.is_visible());
+        assert!(app_tab.autocomplete.is_visible());
 
-        // Press Enter on one, Tab on the other
         app_enter.handle_key_event(key(KeyCode::Enter));
         app_tab.handle_key_event(key(KeyCode::Tab));
 
-        // Both should produce the same query string
-        prop_assert_eq!(
+        assert_eq!(
             app_enter.query(),
             app_tab.query(),
-            "Enter and Tab should produce identical query strings"
+            "Enter and Tab should produce identical query strings for '{}'",
+            text
         );
 
-        // Both should have autocomplete hidden
-        prop_assert!(
-            !app_enter.autocomplete.is_visible(),
-            "Autocomplete should be hidden after Enter"
-        );
-        prop_assert!(
-            !app_tab.autocomplete.is_visible(),
-            "Autocomplete should be hidden after Tab"
-        );
+        assert!(!app_enter.autocomplete.is_visible());
+        assert!(!app_tab.autocomplete.is_visible());
     }
 }
 
-// Feature: enter-key-autocomplete, Property 2: Enter accepts autocomplete and closes popup
-// *For any* application state where the autocomplete popup is visible,
-// pressing Enter should result in the autocomplete popup being hidden
-// and the selected suggestion text appearing in the query.
-// **Validates: Requirements 1.1, 1.2**
-proptest! {
-    #![proptest_config(ProptestConfig::with_cases(100))]
+#[test]
+fn test_enter_accepts_autocomplete_and_closes_popup() {
+    let suggestions = ["name", "age", "city", "services", "items"];
 
-    #[test]
-    fn prop_enter_accepts_autocomplete_and_closes_popup(
-        // Generate different suggestion texts
-        suggestion_text in prop_oneof![
-            Just("name"),
-            Just("age"),
-            Just("city"),
-            Just("services"),
-            Just("items"),
-        ],
-    ) {
+    for text in suggestions {
         let mut app = app_with_query(".");
         app.input.editor_mode = EditorMode::Insert;
         app.focus = Focus::InputField;
 
-        // Set up autocomplete with a suggestion
-        let suggestion = crate::autocomplete::Suggestion::new(
-            suggestion_text,
-            crate::autocomplete::SuggestionType::Field,
-        );
+        let suggestion =
+            crate::autocomplete::Suggestion::new(text, crate::autocomplete::SuggestionType::Field);
         app.autocomplete.update_suggestions(vec![suggestion]);
 
-        // Verify autocomplete is visible
-        prop_assert!(app.autocomplete.is_visible());
+        assert!(app.autocomplete.is_visible());
 
-        // Press Enter
         app.handle_key_event(key(KeyCode::Enter));
 
-        // Autocomplete should be hidden
-        prop_assert!(
+        assert!(
             !app.autocomplete.is_visible(),
             "Autocomplete should be hidden after Enter"
         );
-
-        // Query should contain the suggestion text
-        prop_assert!(
-            app.query().contains(suggestion_text),
+        assert!(
+            app.query().contains(text),
             "Query '{}' should contain suggestion text '{}'",
             app.query(),
-            suggestion_text
+            text
         );
-
-        // Should NOT have quit (autocomplete acceptance, not exit)
-        prop_assert!(
+        assert!(
             !app.should_quit,
             "Should not quit when accepting autocomplete"
         );
     }
 }
 
-// Feature: enter-key-autocomplete, Property 3: Enter exits when autocomplete not visible
-// *For any* application state where the autocomplete popup is not visible,
-// pressing Enter should set the should_quit flag to true and output_mode to Results.
-// **Validates: Requirements 2.1**
-proptest! {
-    #![proptest_config(ProptestConfig::with_cases(100))]
+#[test]
+fn test_enter_exits_when_autocomplete_not_visible() {
+    let focus_states = [Focus::InputField, Focus::ResultsPane];
+    let editor_modes = [EditorMode::Insert, EditorMode::Normal];
 
-    #[test]
-    fn prop_enter_exits_when_autocomplete_not_visible(
-        // Test with different focus states
-        focus_on_input in any::<bool>(),
-        // Test with different editor modes
-        insert_mode in any::<bool>(),
-    ) {
-        let mut app = app_with_query(".");
-        app.focus = if focus_on_input {
-            Focus::InputField
-        } else {
-            Focus::ResultsPane
-        };
-        app.input.editor_mode = if insert_mode {
-            EditorMode::Insert
-        } else {
-            EditorMode::Normal
-        };
+    for focus in focus_states {
+        for mode in editor_modes {
+            let mut app = app_with_query(".");
+            app.focus = focus;
+            app.input.editor_mode = mode;
 
-        // Ensure autocomplete is NOT visible
-        app.autocomplete.hide();
-        prop_assert!(!app.autocomplete.is_visible());
+            app.autocomplete.hide();
+            assert!(!app.autocomplete.is_visible());
 
-        // Press Enter
-        app.handle_key_event(key(KeyCode::Enter));
+            app.handle_key_event(key(KeyCode::Enter));
 
-        // Should quit with Results output mode
-        prop_assert!(
-            app.should_quit,
-            "Should quit when Enter pressed without autocomplete"
-        );
-        prop_assert_eq!(
-            app.output_mode,
-            Some(OutputMode::Results),
-            "Output mode should be Results"
-        );
+            assert!(
+                app.should_quit,
+                "Should quit when Enter pressed without autocomplete (focus: {:?}, mode: {:?})",
+                focus, mode
+            );
+            assert_eq!(
+                app.output_mode,
+                Some(OutputMode::Results),
+                "Output mode should be Results"
+            );
+        }
     }
 }

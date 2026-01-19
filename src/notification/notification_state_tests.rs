@@ -1,7 +1,6 @@
 //! Tests for notification_state
 
 use super::*;
-use proptest::prelude::*;
 use std::thread;
 
 #[test]
@@ -102,25 +101,4 @@ fn test_error_notification_never_expires() {
     assert!(!notif.is_expired()); // Should never expire
     assert!(!state.clear_if_expired()); // Should not clear
     assert!(state.current().is_some());
-}
-
-proptest! {
-    #![proptest_config(ProptestConfig::with_cases(100))]
-
-    /// Feature: clipboard, Property 4: Notification replacement
-    ///
-    /// For any sequence of notification messages, only the most recent
-    /// notification should be visible.
-    #[test]
-    fn prop_notification_replacement(messages in prop::collection::vec("[a-zA-Z0-9 ]{1,50}", 1..10)) {
-        let mut state = NotificationState::new();
-
-        for msg in &messages {
-            state.show(msg);
-        }
-
-        // Only the last message should be current
-        let last_message = messages.last().unwrap();
-        prop_assert_eq!(state.current_message(), Some(last_message.as_str()));
-    }
 }

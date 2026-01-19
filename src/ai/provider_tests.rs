@@ -20,4 +20,3 @@ pub(crate) use super::*;
 pub(crate) use crate::config::ai_types::{
     AiConfig, AiProviderType, AnthropicConfig, BedrockConfig, GeminiConfig, OpenAiConfig,
 };
-pub(crate) use proptest::prelude::*;

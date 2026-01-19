@@ -21,41 +21,28 @@ fn get_functions_not_requiring_args() -> Vec<&'static crate::autocomplete::jq_fu
         .collect()
 }
 
-// **Feature: enhanced-autocomplete, Property 1: Functions requiring arguments get parenthesis appended**
-// *For any* jq function marked with `needs_parens = true`, when that function is inserted
-// via Tab completion, the resulting query text SHALL end with the function name followed
-// by an opening parenthesis `(`.
-// **Validates: Requirements 1.1**
-proptest! {
-    #![proptest_config(ProptestConfig::with_cases(100))]
+#[test]
+fn test_all_functions_requiring_args_get_parenthesis() {
+    let funcs = get_functions_requiring_args();
+    assert!(
+        !funcs.is_empty(),
+        "Should have functions requiring arguments"
+    );
 
-    #[test]
-    fn prop_functions_requiring_args_get_parenthesis(index in 0usize..100) {
-        let funcs = get_functions_requiring_args();
-        if funcs.is_empty() {
-            return Ok(());
-        }
-
-        let func = funcs[index % funcs.len()];
-
-        // Create a suggestion with needs_parens = true
+    for func in funcs {
         let suggestion = Suggestion::new(func.name, SuggestionType::Function)
             .with_needs_parens(true)
             .with_signature(func.signature);
 
-        // Set up test environment with a partial query that would trigger function context
-        // e.g., typing "sel" should complete to "select("
         let partial = &func.name[..func.name.len().min(3)];
         let (mut textarea, mut query_state) = setup_insertion_test(partial);
 
-        // Insert the suggestion
         insert_suggestion(&mut textarea, &mut query_state, &suggestion);
 
-        // Verify the result ends with function name followed by (
         let result = textarea.lines()[0].clone();
         let expected_suffix = format!("{}(", func.name);
 
-        prop_assert!(
+        assert!(
             result.ends_with(&expected_suffix),
             "Function '{}' with needs_parens=true should result in '{}' but got '{}'",
             func.name,
@@ -65,39 +52,27 @@ proptest! {
     }
 }
 
-// **Feature: enhanced-autocomplete, Property 2: Functions not requiring arguments get no parenthesis**
-// *For any* jq function marked with `needs_parens = false`, when that function is inserted
-// via Tab completion, the resulting query text SHALL contain only the function name
-// without any trailing parenthesis.
-// **Validates: Requirements 1.2**
-proptest! {
-    #![proptest_config(ProptestConfig::with_cases(100))]
+#[test]
+fn test_all_functions_not_requiring_args_get_no_parenthesis() {
+    let funcs = get_functions_not_requiring_args();
+    assert!(
+        !funcs.is_empty(),
+        "Should have functions not requiring arguments"
+    );
 
-    #[test]
-    fn prop_functions_not_requiring_args_get_no_parenthesis(index in 0usize..100) {
-        let funcs = get_functions_not_requiring_args();
-        if funcs.is_empty() {
-            return Ok(());
-        }
-
-        let func = funcs[index % funcs.len()];
-
-        // Create a suggestion with needs_parens = false
+    for func in funcs {
         let suggestion = Suggestion::new(func.name, SuggestionType::Function)
             .with_needs_parens(false)
             .with_signature(func.signature);
 
-        // Set up test environment with a partial query
         let partial = &func.name[..func.name.len().min(3)];
         let (mut textarea, mut query_state) = setup_insertion_test(partial);
 
-        // Insert the suggestion
         insert_suggestion(&mut textarea, &mut query_state, &suggestion);
 
-        // Verify the result ends with function name (no parenthesis)
         let result = textarea.lines()[0].clone();
 
-        prop_assert!(
+        assert!(
             result.ends_with(func.name),
             "Function '{}' with needs_parens=false should end with '{}' but got '{}'",
             func.name,
@@ -105,8 +80,7 @@ proptest! {
             result
         );
 
-        // Also verify it does NOT end with (
-        prop_assert!(
+        assert!(
             !result.ends_with(&format!("{}(", func.name)),
             "Function '{}' with needs_parens=false should NOT have '(' appended, but got '{}'",
             func.name,
@@ -115,46 +89,32 @@ proptest! {
     }
 }
 
-// **Feature: enhanced-autocomplete, Property 3: Cursor positioned after parenthesis for argument functions**
-// *For any* jq function marked with `needs_parens = true`, after Tab insertion, the cursor
-// position SHALL equal the length of the inserted text (function name + opening parenthesis).
-// **Validates: Requirements 1.3**
-proptest! {
-    #![proptest_config(ProptestConfig::with_cases(100))]
+#[test]
+fn test_all_functions_cursor_positioned_correctly() {
+    let funcs = get_functions_requiring_args();
+    assert!(
+        !funcs.is_empty(),
+        "Should have functions requiring arguments"
+    );
 
-    #[test]
-    fn prop_cursor_positioned_after_parenthesis(index in 0usize..100) {
-        let funcs = get_functions_requiring_args();
-        if funcs.is_empty() {
-            return Ok(());
-        }
-
-        let func = funcs[index % funcs.len()];
-
-        // Create a suggestion with needs_parens = true
+    for func in funcs {
         let suggestion = Suggestion::new(func.name, SuggestionType::Function)
             .with_needs_parens(true)
             .with_signature(func.signature);
 
-        // Set up test environment with a partial query
         let partial = &func.name[..func.name.len().min(3)];
         let (mut textarea, mut query_state) = setup_insertion_test(partial);
 
-        // Insert the suggestion
         insert_suggestion(&mut textarea, &mut query_state, &suggestion);
 
-        // Verify cursor position is at the end of the inserted text
         let result = textarea.lines()[0].clone();
         let cursor_col = textarea.cursor().1;
         let expected_cursor_pos = result.len();
 
-        prop_assert_eq!(
-            cursor_col,
-            expected_cursor_pos,
+        assert_eq!(
+            cursor_col, expected_cursor_pos,
             "Cursor should be at position {} (end of '{}') but was at {}",
-            expected_cursor_pos,
-            result,
-            cursor_col
+            expected_cursor_pos, result, cursor_col
         );
     }
 }

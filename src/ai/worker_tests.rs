@@ -1,7 +1,6 @@
 //! Tests for AI worker thread
 
 use super::*;
-use proptest::prelude::*;
 use std::sync::mpsc;
 use tokio_util::sync::CancellationToken;
 
@@ -138,55 +137,45 @@ fn test_cancellation_token_cancelled_after_cancel() {
     assert!(token.is_cancelled());
 }
 
-// **Feature: ai-request-cancellation, Property 6: Idempotent cancellation**
-// *For any* CancellationToken, calling cancel() multiple times should have the same
-// effect as calling it once - the token remains cancelled.
-// **Validates: Requirements 3.3**
-proptest! {
-    #![proptest_config(ProptestConfig::with_cases(100))]
+#[test]
+fn test_cancellation_is_idempotent() {
+    let token = CancellationToken::new();
+    assert!(!token.is_cancelled());
 
-    #[test]
-    fn prop_cancellation_is_idempotent(
-        cancel_count in 1usize..10usize,
-    ) {
-        let token = CancellationToken::new();
+    token.cancel();
+    assert!(token.is_cancelled());
 
-        // Initially not cancelled
-        prop_assert!(!token.is_cancelled(), "Token should not be cancelled initially");
+    token.cancel();
+    token.cancel();
+    assert!(
+        token.is_cancelled(),
+        "Token should remain cancelled after multiple cancel()"
+    );
+}
 
-        // Cancel multiple times
-        for _ in 0..cancel_count {
-            token.cancel();
+#[test]
+fn test_cancel_signal_aborts_request() {
+    let (response_tx, response_rx) = mpsc::channel();
+    let cancel_token = CancellationToken::new();
+    let request_id = 42;
+
+    cancel_token.cancel();
+
+    run_async(handle_query_async(
+        &None,
+        "test prompt",
+        request_id,
+        cancel_token,
+        &response_tx,
+    ));
+
+    let response = response_rx.recv().unwrap();
+    match response {
+        AiResponse::Cancelled {
+            request_id: resp_id,
+        } => {
+            assert_eq!(resp_id, request_id);
         }
-
-        // Should still be cancelled
-        prop_assert!(token.is_cancelled(), "Token should be cancelled after cancel()");
-
-        // Cancel again to verify idempotence
-        token.cancel();
-        prop_assert!(token.is_cancelled(), "Token should remain cancelled after additional cancel()");
-    }
-
-    #[test]
-    fn prop_cancel_signal_aborts_request(
-        request_id in 1u64..1000u64,
-    ) {
-        let (response_tx, response_rx) = mpsc::channel();
-        let cancel_token = CancellationToken::new();
-
-        // Cancel the token
-        cancel_token.cancel();
-
-        // handle_query_async should detect cancellation and send Cancelled response
-        run_async(handle_query_async(&None, "test prompt", request_id, cancel_token, &response_tx));
-
-        // Should have sent Cancelled response with correct request_id
-        let response = response_rx.recv().unwrap();
-        match response {
-            AiResponse::Cancelled { request_id: resp_id } => {
-                prop_assert_eq!(resp_id, request_id, "Cancelled response should have correct request_id");
-            }
-            _ => prop_assert!(false, "Should have sent Cancelled response, got {:?}", response),
-        }
+        _ => panic!("Should have sent Cancelled response, got {:?}", response),
     }
 }

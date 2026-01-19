@@ -1,50 +1,53 @@
-use std::time::{Duration, Instant};
+use std::time::Instant;
 
 const DEBOUNCE_MS: u64 = 150;
-#[derive(Debug)]
-pub struct Debouncer {
-    /// Timestamp of the last input that triggered a debounce
-    last_input_time: Option<Instant>,
-    /// Whether there's a pending query execution waiting for debounce to expire
-    pending_execution: bool,
+
+#[cfg(test)]
+pub const TEST_DEBOUNCE_MS: u64 = DEBOUNCE_MS;
+
+fn system_time_ms() -> u64 {
+    use std::sync::OnceLock;
+    static START: OnceLock<Instant> = OnceLock::new();
+    START.get_or_init(Instant::now).elapsed().as_millis() as u64
 }
 
-impl Default for Debouncer {
-    fn default() -> Self {
-        Self::new()
-    }
+#[derive(Debug, Default)]
+pub struct Debouncer {
+    scheduled_at_ms: Option<u64>,
+    pending_execution: bool,
 }
 
 impl Debouncer {
     pub fn new() -> Self {
-        Self {
-            last_input_time: None,
-            pending_execution: false,
-        }
+        Self::default()
     }
 
     pub fn schedule_execution(&mut self) {
-        self.last_input_time = Some(Instant::now());
+        self.schedule_execution_at(system_time_ms());
+    }
+
+    pub fn schedule_execution_at(&mut self, current_time_ms: u64) {
+        self.scheduled_at_ms = Some(current_time_ms);
         self.pending_execution = true;
     }
 
     pub fn should_execute(&self) -> bool {
+        self.should_execute_at(system_time_ms())
+    }
+
+    pub fn should_execute_at(&self, current_time_ms: u64) -> bool {
         if !self.pending_execution {
             return false;
         }
-
-        match self.last_input_time {
-            Some(last_time) => {
-                let elapsed = last_time.elapsed();
-                elapsed >= Duration::from_millis(DEBOUNCE_MS)
-            }
+        match self.scheduled_at_ms {
+            Some(scheduled) => current_time_ms >= scheduled + DEBOUNCE_MS,
             None => false,
         }
     }
 
     pub fn mark_executed(&mut self) {
         self.pending_execution = false;
-        self.last_input_time = None;
+        self.scheduled_at_ms = None;
     }
 
     pub fn has_pending(&self) -> bool {
