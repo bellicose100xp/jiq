@@ -2,12 +2,12 @@
 source: src/snippets/snippet_render_tests.rs
 expression: output
 ---
+"┌ Search ──────────────────────────────────────────────────────────────────────┐"
+"│                                                                              │"
+"└──────────────────────────────────────────────────────────────────────────────┘"
 "┌ Snippets (2) ────────────────────────────────────────────────────────────────┐"
 "│ ► Select all keys - Returns an array of all keys in the object               │"
 "│   Flatten arrays - Flattens nested arrays into a single array                │"
-"│                                                                              │"
-"│                                                                              │"
-"│                                                                              │"
 "│                                                                              │"
 "│                                                                              │"
 "│                                                                              │"

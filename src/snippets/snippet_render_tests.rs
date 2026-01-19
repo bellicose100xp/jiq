@@ -290,3 +290,62 @@ fn snapshot_preview_without_description() {
     let output = render_snippet_popup_to_string(&mut state, results_area, 80, 24);
     assert_snapshot!(output);
 }
+
+#[test]
+fn snapshot_filtered_results_with_search() {
+    let snippets = vec![
+        Snippet {
+            name: "Select all keys".to_string(),
+            query: "keys".to_string(),
+            description: Some("Returns array of all keys".to_string()),
+        },
+        Snippet {
+            name: "Flatten arrays".to_string(),
+            query: "flatten".to_string(),
+            description: None,
+        },
+        Snippet {
+            name: "Select items".to_string(),
+            query: ".[]".to_string(),
+            description: Some("Select all items".to_string()),
+        },
+    ];
+    let mut state = create_state_with_snippets(snippets);
+    state.set_search_query("select");
+
+    let results_area = Rect {
+        x: 0,
+        y: 0,
+        width: 80,
+        height: 20,
+    };
+    let output = render_snippet_popup_to_string(&mut state, results_area, 80, 24);
+    assert_snapshot!(output);
+}
+
+#[test]
+fn snapshot_no_matches_message() {
+    let snippets = vec![
+        Snippet {
+            name: "Select keys".to_string(),
+            query: "keys".to_string(),
+            description: None,
+        },
+        Snippet {
+            name: "Flatten arrays".to_string(),
+            query: "flatten".to_string(),
+            description: None,
+        },
+    ];
+    let mut state = create_state_with_snippets(snippets);
+    state.set_search_query("xyz123");
+
+    let results_area = Rect {
+        x: 0,
+        y: 0,
+        width: 80,
+        height: 20,
+    };
+    let output = render_snippet_popup_to_string(&mut state, results_area, 80, 24);
+    assert_snapshot!(output);
+}

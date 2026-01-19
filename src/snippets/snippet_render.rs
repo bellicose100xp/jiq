@@ -11,37 +11,43 @@ use crate::ai::render::text::wrap_text;
 use crate::widgets::popup;
 
 const MIN_LIST_HEIGHT: u16 = 3;
+const SEARCH_HEIGHT: u16 = 3;
 
 pub fn render_popup(state: &mut SnippetState, frame: &mut Frame, results_area: Rect) {
     popup::clear_area(frame, results_area);
 
     let selected_snippet = state.selected_snippet().cloned();
-    let snippet_count = state.snippets().len();
+    let total_count = state.snippets().len();
+    let filtered_count = state.filtered_count();
 
     let inner_width = results_area.width.saturating_sub(4) as usize;
     let preview_content_height = calculate_preview_height(selected_snippet.as_ref(), inner_width);
     let preview_height = (preview_content_height as u16 + 2).min(results_area.height / 2);
 
-    if results_area.height < MIN_LIST_HEIGHT + preview_height {
-        let visible_count = results_area.height.saturating_sub(2) as usize;
-        state.set_visible_count(visible_count);
-        render_list_only(state, frame, results_area);
+    let min_required = SEARCH_HEIGHT + MIN_LIST_HEIGHT + preview_height;
+    if results_area.height < min_required {
+        let visible_count = results_area.height.saturating_sub(SEARCH_HEIGHT + 2) as usize;
+        state.set_visible_count(visible_count.max(1));
+        render_minimal(state, filtered_count, total_count, frame, results_area);
         return;
     }
 
     let layout = Layout::vertical([
+        Constraint::Length(SEARCH_HEIGHT),
         Constraint::Min(MIN_LIST_HEIGHT),
         Constraint::Length(preview_height),
     ])
     .split(results_area);
 
-    let list_area = layout[0];
-    let preview_area = layout[1];
+    let search_area = layout[0];
+    let list_area = layout[1];
+    let preview_area = layout[2];
 
     let visible_count = list_area.height.saturating_sub(2) as usize;
     state.set_visible_count(visible_count);
 
-    render_list(state, snippet_count, frame, list_area);
+    render_search(state, frame, search_area);
+    render_list(state, filtered_count, total_count, frame, list_area);
     render_preview(selected_snippet.as_ref(), inner_width, frame, preview_area);
 }
 
@@ -55,24 +61,65 @@ fn calculate_preview_height(
     }
 }
 
-fn render_list_only(state: &SnippetState, frame: &mut Frame, area: Rect) {
-    let content = build_list_content_from_visible(state, area.width);
-    let title = build_list_title(state.snippets().len());
+fn render_minimal(
+    state: &mut SnippetState,
+    filtered_count: usize,
+    total_count: usize,
+    frame: &mut Frame,
+    area: Rect,
+) {
+    if area.height < SEARCH_HEIGHT + MIN_LIST_HEIGHT {
+        let content = build_list_content_from_visible(state, area.width);
+        let title = build_list_title(filtered_count, total_count);
+        let popup = Paragraph::new(content).block(
+            Block::default()
+                .borders(Borders::ALL)
+                .title(title)
+                .border_style(Style::default().fg(Color::Cyan))
+                .style(Style::default().bg(Color::Black)),
+        );
+        frame.render_widget(popup, area);
+        return;
+    }
 
-    let popup = Paragraph::new(content).block(
+    let layout = Layout::vertical([
+        Constraint::Length(SEARCH_HEIGHT),
+        Constraint::Min(MIN_LIST_HEIGHT),
+    ])
+    .split(area);
+
+    let search_area = layout[0];
+    let list_area = layout[1];
+
+    let visible_count = list_area.height.saturating_sub(2) as usize;
+    state.set_visible_count(visible_count);
+
+    render_search(state, frame, search_area);
+    render_list(state, filtered_count, total_count, frame, list_area);
+}
+
+fn render_search(state: &mut SnippetState, frame: &mut Frame, area: Rect) {
+    let search_textarea = state.search_textarea_mut();
+    search_textarea.set_block(
         Block::default()
             .borders(Borders::ALL)
-            .title(title)
+            .title(" Search ")
             .border_style(Style::default().fg(Color::Cyan))
             .style(Style::default().bg(Color::Black)),
     );
-
-    frame.render_widget(popup, area);
+    search_textarea.set_style(Style::default().fg(Color::White).bg(Color::Black));
+    frame.render_widget(&*search_textarea, area);
 }
 
-fn render_list(state: &SnippetState, snippet_count: usize, frame: &mut Frame, area: Rect) {
+fn render_list(
+    state: &SnippetState,
+    filtered_count: usize,
+    total_count: usize,
+    frame: &mut Frame,
+    area: Rect,
+) {
     let content = build_list_content_from_visible(state, area.width);
-    let title = build_list_title(snippet_count);
+    let title = build_list_title(filtered_count, total_count);
 
     let list = Paragraph::new(content).block(
         Block::default()
@@ -111,9 +158,14 @@ fn render_preview(
 }
 
 fn build_list_content_from_visible(state: &SnippetState, area_width: u16) -> Vec<Line<'static>> {
-    if state.snippets().is_empty() {
+    if state.filtered_count() == 0 {
+        let message = if state.snippets().is_empty() {
+            "   No snippets yet. Press 'n' to create one."
+        } else {
+            "   No matches"
+        };
         vec![Line::from(vec![Span::styled(
-            "   No snippets yet. Press 'n' to create one.",
+            message,
             Style::default().fg(Color::DarkGray),
         )])]
     } else {
@@ -159,11 +211,13 @@ fn build_list_content_from_visible(state: &SnippetState, area_width: u16) -> Vec
     }
 }
 
-fn build_list_title(count: usize) -> String {
-    if count == 0 {
+fn build_list_title(filtered_count: usize, total_count: usize) -> String {
+    if total_count == 0 {
         " Snippets ".to_string()
+    } else if filtered_count == total_count {
+        format!(" Snippets ({}) ", total_count)
     } else {
-        format!(" Snippets ({}) ", count)
+        format!(" Snippets ({}/{}) ", filtered_count, total_count)
     }
 }
 

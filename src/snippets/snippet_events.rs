@@ -1,4 +1,5 @@
 use ratatui::crossterm::event::{KeyCode, KeyEvent};
+use tui_textarea::Input;
 
 use crate::app::App;
 
@@ -7,10 +8,10 @@ pub fn handle_snippet_popup_key(app: &mut App, key: KeyEvent) {
         KeyCode::Esc => {
             app.snippets.close();
         }
-        KeyCode::Up | KeyCode::Char('k') => {
+        KeyCode::Up => {
             app.snippets.select_prev();
         }
-        KeyCode::Down | KeyCode::Char('j') => {
+        KeyCode::Down => {
             app.snippets.select_next();
         }
         KeyCode::Enter => {
@@ -20,7 +21,12 @@ pub fn handle_snippet_popup_key(app: &mut App, key: KeyEvent) {
             }
             app.snippets.close();
         }
-        _ => {}
+        _ => {
+            let input = Input::from(key);
+            if app.snippets.search_textarea_mut().input(input) {
+                app.snippets.on_search_input_changed();
+            }
+        }
     }
 }
 

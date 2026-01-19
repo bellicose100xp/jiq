@@ -2,13 +2,13 @@
 source: src/snippets/snippet_render_tests.rs
 expression: output
 ---
+"┌ Search ──────────────────────────────────────────────────────────────────────┐"
+"│                                                                              │"
+"└──────────────────────────────────────────────────────────────────────────────┘"
 "┌ Snippets (3) ────────────────────────────────────────────────────────────────┐"
 "│ ► Select all keys - Returns array of all keys                                │"
 "│   Flatten arrays                                                             │"
 "│   Filter by type - Filter items by type                                      │"
-"│                                                                              │"
-"│                                                                              │"
-"│                                                                              │"
 "│                                                                              │"
 "│                                                                              │"
 "│                                                                              │"
