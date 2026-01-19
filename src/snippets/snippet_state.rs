@@ -21,6 +21,9 @@ pub enum SnippetMode {
     EditName {
         original_name: String,
     },
+    EditQuery {
+        snippet_name: String,
+    },
 }
 
 fn create_search_textarea() -> TextArea<'static> {
@@ -44,6 +47,13 @@ fn create_description_textarea() -> TextArea<'static> {
     textarea
 }
 
+fn create_query_textarea() -> TextArea<'static> {
+    let mut textarea = TextArea::default();
+    textarea.set_cursor_line_style(Style::default());
+    textarea.set_cursor_style(Style::default().add_modifier(Modifier::REVERSED));
+    textarea
+}
+
 pub struct SnippetState {
     visible: bool,
     mode: SnippetMode,
@@ -52,6 +62,7 @@ pub struct SnippetState {
     search_textarea: TextArea<'static>,
     name_textarea: TextArea<'static>,
     description_textarea: TextArea<'static>,
+    query_textarea: TextArea<'static>,
     pending_query: String,
     selected_index: usize,
     scroll_offset: usize,
@@ -76,6 +87,7 @@ impl SnippetState {
             search_textarea: create_search_textarea(),
             name_textarea: create_name_textarea(),
             description_textarea: create_description_textarea(),
+            query_textarea: create_query_textarea(),
             pending_query: String::new(),
             selected_index: 0,
             scroll_offset: 0,
@@ -95,6 +107,7 @@ impl SnippetState {
             search_textarea: create_search_textarea(),
             name_textarea: create_name_textarea(),
             description_textarea: create_description_textarea(),
+            query_textarea: create_query_textarea(),
             pending_query: String::new(),
             selected_index: 0,
             scroll_offset: 0,
@@ -123,6 +136,8 @@ impl SnippetState {
         self.name_textarea.cut();
         self.description_textarea.select_all();
         self.description_textarea.cut();
+        self.query_textarea.select_all();
+        self.query_textarea.cut();
         self.pending_query.clear();
         self.selected_index = 0;
         self.scroll_offset = 0;
@@ -136,7 +151,10 @@ impl SnippetState {
     pub fn is_editing(&self) -> bool {
         matches!(
             self.mode,
-            SnippetMode::CreateName | SnippetMode::CreateDescription | SnippetMode::EditName { .. }
+            SnippetMode::CreateName
+                | SnippetMode::CreateDescription
+                | SnippetMode::EditName { .. }
+                | SnippetMode::EditQuery { .. }
         )
     }
 
@@ -174,6 +192,9 @@ impl SnippetState {
             SnippetMode::EditName { original_name } => SnippetMode::EditName {
                 original_name: original_name.clone(),
             },
+            SnippetMode::EditQuery { snippet_name } => SnippetMode::EditQuery {
+                snippet_name: snippet_name.clone(),
+            },
         };
     }
 
@@ -184,6 +205,9 @@ impl SnippetState {
             SnippetMode::Browse => SnippetMode::Browse,
             SnippetMode::EditName { original_name } => SnippetMode::EditName {
                 original_name: original_name.clone(),
+            },
+            SnippetMode::EditQuery { snippet_name } => SnippetMode::EditQuery {
+                snippet_name: snippet_name.clone(),
             },
         };
     }
@@ -309,6 +333,63 @@ impl SnippetState {
 
     pub fn description_textarea_mut(&mut self) -> &mut TextArea<'static> {
         &mut self.description_textarea
+    }
+
+    pub fn query_textarea_mut(&mut self) -> &mut TextArea<'static> {
+        &mut self.query_textarea
+    }
+
+    pub fn enter_edit_query_mode(&mut self) {
+        if let Some(snippet) = self.selected_snippet() {
+            let snippet_name = snippet.name.clone();
+            let query = snippet.query.clone();
+            self.query_textarea.select_all();
+            self.query_textarea.cut();
+            self.query_textarea.insert_str(&query);
+            self.mode = SnippetMode::EditQuery { snippet_name };
+        }
+    }
+
+    pub fn cancel_edit_query(&mut self) {
+        self.mode = SnippetMode::Browse;
+        self.query_textarea.select_all();
+        self.query_textarea.cut();
+    }
+
+    pub fn update_snippet_query(&mut self) -> Result<(), String> {
+        let SnippetMode::EditQuery { .. } = self.mode else {
+            return Err("Not in edit query mode".to_string());
+        };
+
+        let new_query = self
+            .query_textarea
+            .lines()
+            .first()
+            .map(|s| s.trim().to_string())
+            .unwrap_or_default();
+
+        if new_query.is_empty() {
+            return Err("Query cannot be empty".to_string());
+        }
+
+        let snippet_idx = self
+            .filtered_indices
+            .get(self.selected_index)
+            .copied()
+            .ok_or_else(|| "No snippet selected".to_string())?;
+
+        let original_query = self.snippets[snippet_idx].query.clone();
+        self.snippets[snippet_idx].query = new_query;
+
+        if self.persist_to_disk
+            && let Err(e) = super::snippet_storage::save_snippets(&self.snippets)
+        {
+            self.snippets[snippet_idx].query = original_query;
+            return Err(format!("Failed to save: {}", e));
+        }
+
+        self.cancel_edit_query();
+        Ok(())
     }
 
     pub fn snippets(&self) -> &[Snippet] {
@@ -444,6 +525,15 @@ impl SnippetState {
     #[cfg(test)]
     pub fn description_input(&self) -> &str {
         self.description_textarea
+            .lines()
+            .first()
+            .map(|s| s.as_str())
+            .unwrap_or("")
+    }
+
+    #[cfg(test)]
+    pub fn query_input(&self) -> &str {
+        self.query_textarea
             .lines()
             .first()
             .map(|s| s.as_str())

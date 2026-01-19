@@ -599,3 +599,86 @@ fn snapshot_rename_mode_small_height() {
     let output = render_snippet_popup_to_string(&mut state, results_area, 80, 10);
     assert_snapshot!(output);
 }
+
+#[test]
+fn snapshot_edit_query_mode_with_original_query() {
+    let mut state = SnippetState::new_without_persistence();
+    state.set_snippets(vec![Snippet {
+        name: "My Snippet".to_string(),
+        query: ".test | keys".to_string(),
+        description: None,
+    }]);
+    state.enter_edit_query_mode();
+
+    let results_area = Rect {
+        x: 0,
+        y: 0,
+        width: 80,
+        height: 20,
+    };
+    let output = render_snippet_popup_to_string(&mut state, results_area, 80, 24);
+    assert_snapshot!(output);
+}
+
+#[test]
+fn snapshot_edit_query_mode_with_edited_query() {
+    let mut state = SnippetState::new_without_persistence();
+    state.set_snippets(vec![Snippet {
+        name: "My Snippet".to_string(),
+        query: ".old".to_string(),
+        description: None,
+    }]);
+    state.enter_edit_query_mode();
+    state.query_textarea_mut().select_all();
+    state.query_textarea_mut().cut();
+    state.query_textarea_mut().insert_str(".new | keys | sort");
+
+    let results_area = Rect {
+        x: 0,
+        y: 0,
+        width: 80,
+        height: 20,
+    };
+    let output = render_snippet_popup_to_string(&mut state, results_area, 80, 24);
+    assert_snapshot!(output);
+}
+
+#[test]
+fn snapshot_edit_query_mode_narrow_terminal() {
+    let mut state = SnippetState::new_without_persistence();
+    state.set_snippets(vec![Snippet {
+        name: "My Snippet".to_string(),
+        query: ".test".to_string(),
+        description: None,
+    }]);
+    state.enter_edit_query_mode();
+
+    let results_area = Rect {
+        x: 0,
+        y: 0,
+        width: 40,
+        height: 15,
+    };
+    let output = render_snippet_popup_to_string(&mut state, results_area, 40, 20);
+    assert_snapshot!(output);
+}
+
+#[test]
+fn snapshot_edit_query_mode_small_height() {
+    let mut state = SnippetState::new_without_persistence();
+    state.set_snippets(vec![Snippet {
+        name: "My Snippet".to_string(),
+        query: ".test".to_string(),
+        description: None,
+    }]);
+    state.enter_edit_query_mode();
+
+    let results_area = Rect {
+        x: 0,
+        y: 0,
+        width: 80,
+        height: 4,
+    };
+    let output = render_snippet_popup_to_string(&mut state, results_area, 80, 10);
+    assert_snapshot!(output);
+}

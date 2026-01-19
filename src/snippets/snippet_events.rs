@@ -10,6 +10,7 @@ pub fn handle_snippet_popup_key(app: &mut App, key: KeyEvent) {
         SnippetMode::CreateName => handle_create_name_mode(app, key),
         SnippetMode::CreateDescription => handle_create_description_mode(app, key),
         SnippetMode::EditName { .. } => handle_edit_name_mode(app, key),
+        SnippetMode::EditQuery { .. } => handle_edit_query_mode(app, key),
     }
 }
 
@@ -38,6 +39,11 @@ fn handle_browse_mode(app: &mut App, key: KeyEvent) {
         KeyCode::Char('r') => {
             if app.snippets.selected_snippet().is_some() {
                 app.snippets.enter_rename_mode();
+            }
+        }
+        KeyCode::Char('e') => {
+            if app.snippets.selected_snippet().is_some() {
+                app.snippets.enter_edit_query_mode();
             }
         }
         _ => {
@@ -103,6 +109,23 @@ fn handle_edit_name_mode(app: &mut App, key: KeyEvent) {
         _ => {
             let input = Input::from(key);
             app.snippets.name_textarea_mut().input(input);
+        }
+    }
+}
+
+fn handle_edit_query_mode(app: &mut App, key: KeyEvent) {
+    match key.code {
+        KeyCode::Esc => {
+            app.snippets.cancel_edit_query();
+        }
+        KeyCode::Enter => {
+            if let Err(e) = app.snippets.update_snippet_query() {
+                app.notification.show_warning(&e);
+            }
+        }
+        _ => {
+            let input = Input::from(key);
+            app.snippets.query_textarea_mut().input(input);
         }
     }
 }

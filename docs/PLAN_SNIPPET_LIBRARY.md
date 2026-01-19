@@ -18,7 +18,7 @@
 - [x] Phase 7: Create New Snippet (Name Entry)
 - [x] Phase 8: Create with Description
 - [x] Phase 9: Rename Snippet
-- [ ] Phase 10: Edit Snippet Query
+- [x] Phase 10: Edit Snippet Query
 - [ ] Phase 11: Delete Snippet with Confirmation
 - [x] Phase 12: Scroll Support for Long Lists (implemented in Phase 4)
 - [ ] Phase 13: Visual Polish
@@ -448,20 +448,23 @@ Each phase delivers the smallest testable feature. Manual TUI testing after each
 ### Phase 10: Edit Snippet Query
 **Goal**: Press `e` to edit selected snippet's query.
 
-**Implementation requirements** (based on Phase 7):
-- Validate query is not empty before saving
-- Trim whitespace from query
-- Show warning notification for validation errors
-- Keep snippet in same position
+**Implementation notes**:
+- Added `SnippetMode::EditQuery { snippet_name: String }` variant to track which snippet is being edited
+- Added `query_textarea` field to `SnippetState` for editing
+- Query validation: rejects empty queries, trims whitespace
+- Snippet stays in same position after edit (not moved like create)
+- Error notifications use `show_warning()` for auto-dismiss after 10 seconds
+- Render shows "Edit Query" title with yellow active border and hints bar
+- Note: 'e' key is now reserved in browse mode and cannot be used in search queries
 
-**Files to modify**:
-- `src/snippets/snippet_state.rs` - add SnippetMode::EditQuery, edit_query() with validation
-- `src/snippets/snippet_events.rs` - handle `e` key, edit mode events
-- `src/snippets/snippet_render.rs` - render query editor
+**Files modified**:
+- `src/snippets/snippet_state.rs` - EditQuery mode, enter_edit_query_mode(), cancel_edit_query(), update_snippet_query() with validation
+- `src/snippets/snippet_events.rs` - handle `e` key in browse mode, handle_edit_query_mode()
+- `src/snippets/snippet_render.rs` - render_edit_query_mode(), render_edit_query_input(), render_edit_query_hints()
+
+**Tests added**: 16 state tests, 10 event tests, 4 snapshot tests
 
 **Manual test**: Select snippet, press `e`, modify query, press Enter, query updated. Try empty query, verify warning notification.
-
-**Tests**: Edit event tests, query validation tests, notification tests.
 
 ---
 

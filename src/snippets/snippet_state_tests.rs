@@ -6,6 +6,8 @@ mod basic_tests;
 mod create_tests;
 #[path = "snippet_state_tests/description_tests.rs"]
 mod description_tests;
+#[path = "snippet_state_tests/edit_query_tests.rs"]
+mod edit_query_tests;
 #[path = "snippet_state_tests/navigation_tests.rs"]
 mod navigation_tests;
 #[path = "snippet_state_tests/rename_tests.rs"]
