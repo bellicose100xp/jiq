@@ -8,6 +8,7 @@ pub fn handle_snippet_popup_key(app: &mut App, key: KeyEvent) {
     match app.snippets.mode() {
         SnippetMode::Browse => handle_browse_mode(app, key),
         SnippetMode::CreateName => handle_create_name_mode(app, key),
+        SnippetMode::CreateDescription => handle_create_description_mode(app, key),
     }
 }
 
@@ -47,14 +48,38 @@ fn handle_create_name_mode(app: &mut App, key: KeyEvent) {
         KeyCode::Esc => {
             app.snippets.cancel_create();
         }
+        KeyCode::Enter | KeyCode::Tab => {
+            app.snippets.next_create_field();
+        }
+        KeyCode::BackTab => {
+            app.snippets.prev_create_field();
+        }
+        _ => {
+            let input = Input::from(key);
+            app.snippets.name_textarea_mut().input(input);
+        }
+    }
+}
+
+fn handle_create_description_mode(app: &mut App, key: KeyEvent) {
+    match key.code {
+        KeyCode::Esc => {
+            app.snippets.cancel_create();
+        }
         KeyCode::Enter => {
             if let Err(e) = app.snippets.save_new_snippet() {
                 app.notification.show_warning(&e);
             }
         }
+        KeyCode::Tab => {
+            app.snippets.next_create_field();
+        }
+        KeyCode::BackTab => {
+            app.snippets.prev_create_field();
+        }
         _ => {
             let input = Input::from(key);
-            app.snippets.name_textarea_mut().input(input);
+            app.snippets.description_textarea_mut().input(input);
         }
     }
 }

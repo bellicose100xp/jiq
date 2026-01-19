@@ -428,3 +428,91 @@ fn snapshot_create_mode_small_height() {
     let output = render_snippet_popup_to_string(&mut state, results_area, 80, 10);
     assert_snapshot!(output);
 }
+
+#[test]
+fn snapshot_create_description_mode_empty() {
+    let mut state = SnippetState::new();
+    state.enter_create_mode(".test | keys");
+    state.name_textarea_mut().insert_str("My Snippet");
+    state.next_create_field();
+
+    let results_area = Rect {
+        x: 0,
+        y: 0,
+        width: 80,
+        height: 20,
+    };
+    let output = render_snippet_popup_to_string(&mut state, results_area, 80, 24);
+    assert_snapshot!(output);
+}
+
+#[test]
+fn snapshot_create_description_mode_with_text() {
+    let mut state = SnippetState::new();
+    state.enter_create_mode(".test | keys");
+    state.name_textarea_mut().insert_str("My Snippet");
+    state.next_create_field();
+    state
+        .description_textarea_mut()
+        .insert_str("A helpful description");
+
+    let results_area = Rect {
+        x: 0,
+        y: 0,
+        width: 80,
+        height: 20,
+    };
+    let output = render_snippet_popup_to_string(&mut state, results_area, 80, 24);
+    assert_snapshot!(output);
+}
+
+#[test]
+fn snapshot_create_description_mode_narrow() {
+    let mut state = SnippetState::new();
+    state.enter_create_mode(".test");
+    state.name_textarea_mut().insert_str("Test");
+    state.next_create_field();
+    state.description_textarea_mut().insert_str("Desc");
+
+    let results_area = Rect {
+        x: 0,
+        y: 0,
+        width: 40,
+        height: 15,
+    };
+    let output = render_snippet_popup_to_string(&mut state, results_area, 40, 20);
+    assert_snapshot!(output);
+}
+
+#[test]
+fn snapshot_create_description_mode_small_height() {
+    let mut state = SnippetState::new();
+    state.enter_create_mode(".test");
+    state.name_textarea_mut().insert_str("Test");
+    state.next_create_field();
+
+    let results_area = Rect {
+        x: 0,
+        y: 0,
+        width: 80,
+        height: 6,
+    };
+    let output = render_snippet_popup_to_string(&mut state, results_area, 80, 10);
+    assert_snapshot!(output);
+}
+
+#[test]
+fn snapshot_create_name_mode_with_description_field_visible() {
+    let mut state = SnippetState::new();
+    state.enter_create_mode(".test | keys");
+    state.name_textarea_mut().insert_str("My Snippet");
+
+    let results_area = Rect {
+        x: 0,
+        y: 0,
+        width: 80,
+        height: 20,
+    };
+    let output = render_snippet_popup_to_string(&mut state, results_area, 80, 24);
+    assert_snapshot!(output);
+}

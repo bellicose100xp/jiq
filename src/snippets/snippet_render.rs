@@ -13,6 +13,7 @@ use crate::widgets::popup;
 const MIN_LIST_HEIGHT: u16 = 3;
 const SEARCH_HEIGHT: u16 = 3;
 const NAME_INPUT_HEIGHT: u16 = 3;
+const DESCRIPTION_INPUT_HEIGHT: u16 = 3;
 const HINTS_HEIGHT: u16 = 3;
 
 pub fn render_popup(state: &mut SnippetState, frame: &mut Frame, results_area: Rect) {
@@ -20,7 +21,9 @@ pub fn render_popup(state: &mut SnippetState, frame: &mut Frame, results_area: R
 
     match state.mode() {
         SnippetMode::Browse => render_browse_mode(state, frame, results_area),
-        SnippetMode::CreateName => render_create_mode(state, frame, results_area),
+        SnippetMode::CreateName | SnippetMode::CreateDescription => {
+            render_create_mode(state, frame, results_area)
+        }
     }
 }
 
@@ -250,17 +253,20 @@ fn render_create_mode(state: &mut SnippetState, frame: &mut Frame, area: Rect) {
     let inner_width = area.width.saturating_sub(4) as usize;
     let pending_query = state.pending_query().to_string();
     let query_lines = wrap_text(&pending_query, inner_width);
-    let query_display_height = (query_lines.len() as u16 + 2).min(area.height / 3).max(3);
+    let query_display_height = (query_lines.len() as u16 + 2).min(area.height / 4).max(3);
+    let mode = state.mode().clone();
 
-    let min_required = NAME_INPUT_HEIGHT + query_display_height + HINTS_HEIGHT;
+    let min_required =
+        NAME_INPUT_HEIGHT + query_display_height + DESCRIPTION_INPUT_HEIGHT + HINTS_HEIGHT;
     if area.height < min_required {
-        render_create_minimal(state, frame, area);
+        render_create_minimal(state, &mode, frame, area);
         return;
     }
 
     let layout = Layout::vertical([
         Constraint::Length(NAME_INPUT_HEIGHT),
         Constraint::Length(query_display_height),
+        Constraint::Length(DESCRIPTION_INPUT_HEIGHT),
         Constraint::Min(1),
         Constraint::Length(HINTS_HEIGHT),
     ])
@@ -268,37 +274,120 @@ fn render_create_mode(state: &mut SnippetState, frame: &mut Frame, area: Rect) {
 
     let name_area = layout[0];
     let query_area = layout[1];
-    let hints_area = layout[3];
+    let description_area = layout[2];
+    let hints_area = layout[4];
 
-    render_name_input(state, frame, name_area);
+    let is_name_active = mode == SnippetMode::CreateName;
+    render_name_input(state, is_name_active, frame, name_area);
     render_query_display(&pending_query, inner_width, frame, query_area);
-    render_create_hints(frame, hints_area);
+    render_description_input(state, !is_name_active, frame, description_area);
+    render_create_hints(&mode, frame, hints_area);
 }
 
-fn render_create_minimal(state: &mut SnippetState, frame: &mut Frame, area: Rect) {
-    let name_textarea = state.name_textarea_mut();
-    name_textarea.set_block(
-        Block::default()
-            .borders(Borders::ALL)
-            .title(" New Snippet - Name ")
-            .border_style(Style::default().fg(Color::Yellow))
-            .style(Style::default().bg(Color::Black)),
-    );
-    name_textarea.set_style(Style::default().fg(Color::White).bg(Color::Black));
-    frame.render_widget(&*name_textarea, area);
+fn render_create_minimal(
+    state: &mut SnippetState,
+    mode: &SnippetMode,
+    frame: &mut Frame,
+    area: Rect,
+) {
+    let is_name_active = *mode == SnippetMode::CreateName;
+
+    if is_name_active {
+        let name_textarea = state.name_textarea_mut();
+        name_textarea.set_block(
+            Block::default()
+                .borders(Borders::ALL)
+                .title(" New Snippet - Name ")
+                .border_style(Style::default().fg(Color::Yellow))
+                .style(Style::default().bg(Color::Black)),
+        );
+        name_textarea.set_style(Style::default().fg(Color::White).bg(Color::Black));
+        frame.render_widget(&*name_textarea, area);
+    } else {
+        let desc_textarea = state.description_textarea_mut();
+        desc_textarea.set_block(
+            Block::default()
+                .borders(Borders::ALL)
+                .title(" New Snippet - Description ")
+                .border_style(Style::default().fg(Color::Yellow))
+                .style(Style::default().bg(Color::Black)),
+        );
+        desc_textarea.set_style(Style::default().fg(Color::White).bg(Color::Black));
+        frame.render_widget(&*desc_textarea, area);
+    }
 }
 
-fn render_name_input(state: &mut SnippetState, frame: &mut Frame, area: Rect) {
+fn render_name_input(state: &mut SnippetState, is_active: bool, frame: &mut Frame, area: Rect) {
+    let border_color = if is_active {
+        Color::Yellow
+    } else {
+        Color::Cyan
+    };
     let name_textarea = state.name_textarea_mut();
     name_textarea.set_block(
         Block::default()
             .borders(Borders::ALL)
             .title(" Name ")
-            .border_style(Style::default().fg(Color::Yellow))
+            .border_style(Style::default().fg(border_color))
             .style(Style::default().bg(Color::Black)),
     );
     name_textarea.set_style(Style::default().fg(Color::White).bg(Color::Black));
-    frame.render_widget(&*name_textarea, area);
+    if is_active {
+        frame.render_widget(&*name_textarea, area);
+    } else {
+        let content = name_textarea
+            .lines()
+            .first()
+            .map(|s| s.as_str())
+            .unwrap_or("");
+        let display = Paragraph::new(format!(" {}", content)).block(
+            Block::default()
+                .borders(Borders::ALL)
+                .title(" Name ")
+                .border_style(Style::default().fg(Color::Cyan))
+                .style(Style::default().bg(Color::Black)),
+        );
+        frame.render_widget(display, area);
+    }
+}
+
+fn render_description_input(
+    state: &mut SnippetState,
+    is_active: bool,
+    frame: &mut Frame,
+    area: Rect,
+) {
+    let border_color = if is_active {
+        Color::Yellow
+    } else {
+        Color::Cyan
+    };
+    let desc_textarea = state.description_textarea_mut();
+    desc_textarea.set_block(
+        Block::default()
+            .borders(Borders::ALL)
+            .title(" Description (optional) ")
+            .border_style(Style::default().fg(border_color))
+            .style(Style::default().bg(Color::Black)),
+    );
+    desc_textarea.set_style(Style::default().fg(Color::White).bg(Color::Black));
+    if is_active {
+        frame.render_widget(&*desc_textarea, area);
+    } else {
+        let content = desc_textarea
+            .lines()
+            .first()
+            .map(|s| s.as_str())
+            .unwrap_or("");
+        let display = Paragraph::new(format!(" {}", content)).block(
+            Block::default()
+                .borders(Borders::ALL)
+                .title(" Description (optional) ")
+                .border_style(Style::default().fg(Color::Cyan))
+                .style(Style::default().bg(Color::Black)),
+        );
+        frame.render_widget(display, area);
+    }
 }
 
 fn render_query_display(query: &str, max_width: usize, frame: &mut Frame, area: Rect) {
@@ -324,13 +413,24 @@ fn render_query_display(query: &str, max_width: usize, frame: &mut Frame, area: 
     frame.render_widget(display, area);
 }
 
-fn render_create_hints(frame: &mut Frame, area: Rect) {
-    let hints = Line::from(vec![
-        Span::styled(" [Enter]", Style::default().fg(Color::Yellow)),
-        Span::styled(" Save  ", Style::default().fg(Color::White)),
-        Span::styled("[Esc]", Style::default().fg(Color::Yellow)),
-        Span::styled(" Cancel", Style::default().fg(Color::White)),
-    ]);
+fn render_create_hints(mode: &SnippetMode, frame: &mut Frame, area: Rect) {
+    let hints = match mode {
+        SnippetMode::CreateName => Line::from(vec![
+            Span::styled(" [Enter/Tab]", Style::default().fg(Color::Yellow)),
+            Span::styled(" Next  ", Style::default().fg(Color::White)),
+            Span::styled("[Esc]", Style::default().fg(Color::Yellow)),
+            Span::styled(" Cancel", Style::default().fg(Color::White)),
+        ]),
+        SnippetMode::CreateDescription => Line::from(vec![
+            Span::styled(" [Enter]", Style::default().fg(Color::Yellow)),
+            Span::styled(" Save  ", Style::default().fg(Color::White)),
+            Span::styled("[Tab]", Style::default().fg(Color::Yellow)),
+            Span::styled(" Switch  ", Style::default().fg(Color::White)),
+            Span::styled("[Esc]", Style::default().fg(Color::Yellow)),
+            Span::styled(" Cancel", Style::default().fg(Color::White)),
+        ]),
+        SnippetMode::Browse => Line::from(vec![]),
+    };
 
     let hints_widget = Paragraph::new(vec![hints]).block(
         Block::default()

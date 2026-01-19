@@ -16,7 +16,7 @@
 - [x] Phase 5: Apply Snippet
 - [x] Phase 6: Fuzzy Search
 - [x] Phase 7: Create New Snippet (Name Entry)
-- [ ] Phase 8: Create with Description
+- [x] Phase 8: Create with Description
 - [ ] Phase 9: Rename Snippet
 - [ ] Phase 10: Edit Snippet Query
 - [ ] Phase 11: Delete Snippet with Confirmation
@@ -401,14 +401,25 @@ Each phase delivers the smallest testable feature. Manual TUI testing after each
 ### Phase 8: Create with Description
 **Goal**: After entering name, optionally enter description.
 
-**Files to modify**:
-- `src/snippets/snippet_state.rs` - add SnippetMode::CreateDescription
-- `src/snippets/snippet_events.rs` - Tab/Enter to move between fields
-- `src/snippets/snippet_render.rs` - render description field
+**Implementation notes**:
+- Added `SnippetMode::CreateDescription` variant
+- Added `description_textarea` field to `SnippetState`
+- Field navigation with Tab/Shift+Tab cycles between Name and Description fields
+- Enter in Name field moves to Description field
+- Enter in Description field saves the snippet
+- Description is optional - empty description saved as `None`
+- Description trimmed before saving, whitespace-only treated as empty
+- Active field highlighted with yellow border, inactive with cyan
+- Hints bar updates based on current field
 
-**Manual test**: Create snippet, add description, verify in TOML file.
+**Files modified**:
+- `src/snippets/snippet_state.rs` - CreateDescription mode, description_textarea, cycling navigation
+- `src/snippets/snippet_events.rs` - Tab/Shift+Tab cycling, separate handlers for each mode
+- `src/snippets/snippet_render.rs` - description input field, active/inactive styling, updated hints
 
-**Tests**: Field navigation tests.
+**Tests added**: 20+ new tests (state transitions, field cycling, description saving, rendering)
+
+**Manual test**: Create snippet, add description, verify in TOML file. Test Tab cycles between fields in both directions.
 
 ---
 

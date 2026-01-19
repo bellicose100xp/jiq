@@ -17,6 +17,7 @@ pub enum SnippetMode {
     #[default]
     Browse,
     CreateName,
+    CreateDescription,
 }
 
 fn create_search_textarea() -> TextArea<'static> {
@@ -33,6 +34,13 @@ fn create_name_textarea() -> TextArea<'static> {
     textarea
 }
 
+fn create_description_textarea() -> TextArea<'static> {
+    let mut textarea = TextArea::default();
+    textarea.set_cursor_line_style(Style::default());
+    textarea.set_cursor_style(Style::default().add_modifier(Modifier::REVERSED));
+    textarea
+}
+
 pub struct SnippetState {
     visible: bool,
     mode: SnippetMode,
@@ -40,6 +48,7 @@ pub struct SnippetState {
     filtered_indices: Vec<usize>,
     search_textarea: TextArea<'static>,
     name_textarea: TextArea<'static>,
+    description_textarea: TextArea<'static>,
     pending_query: String,
     selected_index: usize,
     scroll_offset: usize,
@@ -63,6 +72,7 @@ impl SnippetState {
             filtered_indices: Vec::new(),
             search_textarea: create_search_textarea(),
             name_textarea: create_name_textarea(),
+            description_textarea: create_description_textarea(),
             pending_query: String::new(),
             selected_index: 0,
             scroll_offset: 0,
@@ -81,6 +91,7 @@ impl SnippetState {
             filtered_indices: Vec::new(),
             search_textarea: create_search_textarea(),
             name_textarea: create_name_textarea(),
+            description_textarea: create_description_textarea(),
             pending_query: String::new(),
             selected_index: 0,
             scroll_offset: 0,
@@ -107,6 +118,8 @@ impl SnippetState {
         self.search_textarea.cut();
         self.name_textarea.select_all();
         self.name_textarea.cut();
+        self.description_textarea.select_all();
+        self.description_textarea.cut();
         self.pending_query.clear();
         self.selected_index = 0;
         self.scroll_offset = 0;
@@ -118,7 +131,10 @@ impl SnippetState {
     }
 
     pub fn is_editing(&self) -> bool {
-        matches!(self.mode, SnippetMode::CreateName)
+        matches!(
+            self.mode,
+            SnippetMode::CreateName | SnippetMode::CreateDescription
+        )
     }
 
     pub fn mode(&self) -> &SnippetMode {
@@ -134,6 +150,8 @@ impl SnippetState {
         self.pending_query = current_query.to_string();
         self.name_textarea.select_all();
         self.name_textarea.cut();
+        self.description_textarea.select_all();
+        self.description_textarea.cut();
     }
 
     pub fn cancel_create(&mut self) {
@@ -141,6 +159,24 @@ impl SnippetState {
         self.pending_query.clear();
         self.name_textarea.select_all();
         self.name_textarea.cut();
+        self.description_textarea.select_all();
+        self.description_textarea.cut();
+    }
+
+    pub fn next_create_field(&mut self) {
+        self.mode = match self.mode {
+            SnippetMode::CreateName => SnippetMode::CreateDescription,
+            SnippetMode::CreateDescription => SnippetMode::CreateName,
+            SnippetMode::Browse => SnippetMode::Browse,
+        };
+    }
+
+    pub fn prev_create_field(&mut self) {
+        self.mode = match self.mode {
+            SnippetMode::CreateDescription => SnippetMode::CreateName,
+            SnippetMode::CreateName => SnippetMode::CreateDescription,
+            SnippetMode::Browse => SnippetMode::Browse,
+        };
     }
 
     pub fn save_new_snippet(&mut self) -> Result<(), String> {
@@ -169,10 +205,17 @@ impl SnippetState {
             return Err(format!("Snippet '{}' already exists", name));
         }
 
+        let description = self
+            .description_textarea
+            .lines()
+            .first()
+            .map(|s| s.trim().to_string())
+            .filter(|s| !s.is_empty());
+
         let snippet = Snippet {
             name,
             query: query.to_string(),
-            description: None,
+            description,
         };
 
         self.snippets.insert(0, snippet);
@@ -191,6 +234,10 @@ impl SnippetState {
 
     pub fn name_textarea_mut(&mut self) -> &mut TextArea<'static> {
         &mut self.name_textarea
+    }
+
+    pub fn description_textarea_mut(&mut self) -> &mut TextArea<'static> {
+        &mut self.description_textarea
     }
 
     pub fn snippets(&self) -> &[Snippet] {
@@ -317,6 +364,15 @@ impl SnippetState {
     #[cfg(test)]
     pub fn name_input(&self) -> &str {
         self.name_textarea
+            .lines()
+            .first()
+            .map(|s| s.as_str())
+            .unwrap_or("")
+    }
+
+    #[cfg(test)]
+    pub fn description_input(&self) -> &str {
+        self.description_textarea
             .lines()
             .first()
             .map(|s| s.as_str())
