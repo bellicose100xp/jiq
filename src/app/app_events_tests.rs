@@ -4,7 +4,7 @@ use crate::app::Focus;
 use crate::editor::EditorMode;
 use crate::test_utils::test_helpers::{app_with_query, key_with_mods, test_app};
 use proptest::prelude::*;
-use ratatui::crossterm::event::{KeyCode, KeyModifiers};
+use ratatui::crossterm::event::{KeyCode, KeyModifiers, MouseButton, MouseEvent, MouseEventKind};
 use std::sync::Arc;
 
 #[test]
@@ -237,4 +237,91 @@ fn test_ctrl_u_scrolls_results_from_input_field_operator_mode() {
 
     assert_eq!(app.results_scroll.offset, 10);
     assert_eq!(app.focus, Focus::InputField);
+}
+
+fn mouse_event(kind: MouseEventKind) -> MouseEvent {
+    MouseEvent {
+        kind,
+        column: 0,
+        row: 0,
+        modifiers: KeyModifiers::NONE,
+    }
+}
+
+#[test]
+fn test_mouse_scroll_down_increases_offset() {
+    let mut app = app_with_query(".");
+
+    let content: String = (0..50).map(|i| format!("line{}\n", i)).collect();
+    let query_state = app.query.as_mut().unwrap();
+    query_state.result = Ok(content.clone());
+    query_state.last_successful_result = Some(Arc::new(content.clone()));
+    query_state.cached_line_count = content.lines().count() as u32;
+
+    let line_count = app.results_line_count_u32();
+    app.results_scroll.update_bounds(line_count, 20);
+    app.results_scroll.offset = 0;
+
+    app.handle_mouse_event(mouse_event(MouseEventKind::ScrollDown));
+
+    assert_eq!(app.results_scroll.offset, 3);
+}
+
+#[test]
+fn test_mouse_scroll_up_decreases_offset() {
+    let mut app = app_with_query(".");
+    app.results_scroll.offset = 10;
+    app.results_scroll.viewport_height = 20;
+
+    app.handle_mouse_event(mouse_event(MouseEventKind::ScrollUp));
+
+    assert_eq!(app.results_scroll.offset, 7);
+}
+
+#[test]
+fn test_mouse_scroll_up_stops_at_zero() {
+    let mut app = app_with_query(".");
+    app.results_scroll.offset = 2;
+    app.results_scroll.viewport_height = 20;
+
+    app.handle_mouse_event(mouse_event(MouseEventKind::ScrollUp));
+
+    assert_eq!(app.results_scroll.offset, 0);
+}
+
+#[test]
+fn test_mouse_scroll_down_multiple_times() {
+    let mut app = app_with_query(".");
+
+    let content: String = (0..50).map(|i| format!("line{}\n", i)).collect();
+    let query_state = app.query.as_mut().unwrap();
+    query_state.result = Ok(content.clone());
+    query_state.last_successful_result = Some(Arc::new(content.clone()));
+    query_state.cached_line_count = content.lines().count() as u32;
+
+    let line_count = app.results_line_count_u32();
+    app.results_scroll.update_bounds(line_count, 20);
+    app.results_scroll.offset = 0;
+
+    app.handle_mouse_event(mouse_event(MouseEventKind::ScrollDown));
+    app.handle_mouse_event(mouse_event(MouseEventKind::ScrollDown));
+    app.handle_mouse_event(mouse_event(MouseEventKind::ScrollDown));
+
+    assert_eq!(app.results_scroll.offset, 9);
+}
+
+#[test]
+fn test_mouse_other_events_ignored() {
+    let mut app = app_with_query(".");
+    app.results_scroll.offset = 5;
+    app.results_scroll.viewport_height = 20;
+
+    app.handle_mouse_event(mouse_event(MouseEventKind::Down(MouseButton::Left)));
+    assert_eq!(app.results_scroll.offset, 5);
+
+    app.handle_mouse_event(mouse_event(MouseEventKind::Up(MouseButton::Left)));
+    assert_eq!(app.results_scroll.offset, 5);
+
+    app.handle_mouse_event(mouse_event(MouseEventKind::Moved));
+    assert_eq!(app.results_scroll.offset, 5);
 }

@@ -1,7 +1,9 @@
 use clap::Parser;
 use color_eyre::Result;
 use ratatui::DefaultTerminal;
-use ratatui::crossterm::event::{DisableBracketedPaste, EnableBracketedPaste};
+use ratatui::crossterm::event::{
+    DisableBracketedPaste, DisableMouseCapture, EnableBracketedPaste, EnableMouseCapture,
+};
 use ratatui::crossterm::execute;
 use ratatui::crossterm::terminal::{
     EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode,
@@ -123,7 +125,12 @@ fn validate_jq_exists() -> Result<(), JiqError> {
 fn init_terminal() -> Result<DefaultTerminal> {
     let hook = std::panic::take_hook();
     std::panic::set_hook(Box::new(move |info| {
-        let _ = execute!(stdout(), DisableBracketedPaste, LeaveAlternateScreen);
+        let _ = execute!(
+            stdout(),
+            DisableMouseCapture,
+            DisableBracketedPaste,
+            LeaveAlternateScreen
+        );
         let _ = disable_raw_mode();
         hook(info);
     }));
@@ -131,7 +138,12 @@ fn init_terminal() -> Result<DefaultTerminal> {
     enable_raw_mode()?;
 
     // If any subsequent operations fail, ensure raw mode is disabled
-    match execute!(stdout(), EnterAlternateScreen, EnableBracketedPaste) {
+    match execute!(
+        stdout(),
+        EnterAlternateScreen,
+        EnableBracketedPaste,
+        EnableMouseCapture
+    ) {
         Ok(_) => {}
         Err(e) => {
             let _ = disable_raw_mode();
@@ -142,7 +154,12 @@ fn init_terminal() -> Result<DefaultTerminal> {
     match ratatui::Terminal::new(ratatui::backend::CrosstermBackend::new(stdout())) {
         Ok(terminal) => Ok(terminal),
         Err(e) => {
-            let _ = execute!(stdout(), DisableBracketedPaste, LeaveAlternateScreen);
+            let _ = execute!(
+                stdout(),
+                DisableMouseCapture,
+                DisableBracketedPaste,
+                LeaveAlternateScreen
+            );
             let _ = disable_raw_mode();
             Err(e.into())
         }
@@ -151,7 +168,12 @@ fn init_terminal() -> Result<DefaultTerminal> {
 
 /// Restore terminal to normal state
 fn restore_terminal() -> Result<()> {
-    let _ = execute!(stdout(), DisableBracketedPaste, LeaveAlternateScreen);
+    let _ = execute!(
+        stdout(),
+        DisableMouseCapture,
+        DisableBracketedPaste,
+        LeaveAlternateScreen
+    );
     disable_raw_mode()?;
     Ok(())
 }
