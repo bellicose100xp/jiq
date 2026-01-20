@@ -3,6 +3,7 @@ pub const HELP_ENTRIES: &[(&str, &str)] = &[
     ("", "── GLOBAL ──"),
     ("F1 or ?", "Toggle this help"),
     ("Ctrl+A", "Toggle AI assistant"),
+    ("Ctrl+S", "Open snippets manager"),
     ("Ctrl+C", "Quit without output"),
     ("Enter", "Output filtered JSON and exit"),
     ("Ctrl+Q", "Output query string only and exit"),
@@ -76,3 +77,7 @@ pub const HELP_ENTRIES: &[(&str, &str)] = &[
 ];
 
 pub const HELP_FOOTER: &str = "j/k: scroll | g/G: top/bottom | F1/q/?: close";
+
+#[cfg(test)]
+#[path = "help_content_tests.rs"]
+mod help_content_tests;
