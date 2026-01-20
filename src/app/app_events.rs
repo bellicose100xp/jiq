@@ -1,4 +1,6 @@
-use ratatui::crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
+use ratatui::crossterm::event::{
+    self, Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers, MouseEvent, MouseEventKind,
+};
 use std::io;
 use std::time::Duration;
 
@@ -49,6 +51,10 @@ impl App {
                 Event::Resize(_, _) => {
                     self.mark_dirty();
                 }
+                Event::Mouse(mouse_event) => {
+                    self.handle_mouse_event(mouse_event);
+                    self.mark_dirty();
+                }
                 _ => {}
             }
         }
@@ -69,6 +75,18 @@ impl App {
         self.update_autocomplete();
 
         self.update_tooltip();
+    }
+
+    fn handle_mouse_event(&mut self, mouse: MouseEvent) {
+        match mouse.kind {
+            MouseEventKind::ScrollDown => {
+                self.results_scroll.scroll_down(3);
+            }
+            MouseEventKind::ScrollUp => {
+                self.results_scroll.scroll_up(3);
+            }
+            _ => {}
+        }
     }
 
     pub fn handle_key_event(&mut self, key: KeyEvent) {
