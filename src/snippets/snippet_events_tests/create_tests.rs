@@ -62,7 +62,7 @@ fn test_typing_in_create_mode_updates_name() {
 }
 
 #[test]
-fn test_enter_in_create_name_mode_moves_to_description() {
+fn test_enter_in_create_name_mode_saves_snippet() {
     let mut app = app_with_query(".test | keys");
     app.input.editor_mode = EditorMode::Insert;
     app.snippets.disable_persistence();
@@ -81,7 +81,9 @@ fn test_enter_in_create_name_mode_moves_to_description() {
 
     app.handle_key_event(key(KeyCode::Enter));
 
-    assert_eq!(*app.snippets.mode(), SnippetMode::CreateDescription);
+    assert_eq!(*app.snippets.mode(), SnippetMode::Browse);
+    assert_eq!(app.snippets.snippets().len(), 1);
+    assert_eq!(app.snippets.snippets()[0].name, "My Snip");
 }
 
 #[test]
@@ -101,8 +103,9 @@ fn test_enter_in_create_description_mode_saves_snippet() {
     app.handle_key_event(key(KeyCode::Char('n')));
     app.handle_key_event(key(KeyCode::Char('i')));
     app.handle_key_event(key(KeyCode::Char('p')));
-    app.handle_key_event(key(KeyCode::Enter));
-    app.handle_key_event(key(KeyCode::Enter));
+    app.handle_key_event(key(KeyCode::Enter)); // Name -> Query
+    app.handle_key_event(key(KeyCode::Enter)); // Query -> Description
+    app.handle_key_event(key(KeyCode::Enter)); // Save
 
     assert_eq!(*app.snippets.mode(), SnippetMode::Browse);
     assert_eq!(app.snippets.snippets().len(), 1);
@@ -111,7 +114,7 @@ fn test_enter_in_create_description_mode_saves_snippet() {
 }
 
 #[test]
-fn test_enter_with_empty_name_moves_to_description() {
+fn test_enter_with_empty_name_shows_error() {
     let mut app = app_with_query(".test");
     app.input.editor_mode = EditorMode::Insert;
     app.snippets.disable_persistence();
@@ -122,8 +125,9 @@ fn test_enter_with_empty_name_moves_to_description() {
 
     app.handle_key_event(key(KeyCode::Enter));
 
-    assert_eq!(*app.snippets.mode(), SnippetMode::CreateDescription);
+    assert_eq!(*app.snippets.mode(), SnippetMode::CreateName);
     assert_eq!(app.snippets.snippets().len(), 0);
+    assert!(app.notification.current().is_some());
 }
 
 #[test]
@@ -199,7 +203,7 @@ fn test_popup_closes_after_successful_save() {
     app.handle_key_event(key(KeyCode::Char('e')));
     app.handle_key_event(key(KeyCode::Char('s')));
     app.handle_key_event(key(KeyCode::Char('t')));
-    app.handle_key_event(key(KeyCode::Enter));
+    app.handle_key_event(key(KeyCode::Enter)); // Name -> Query
 
     assert!(app.snippets.is_visible());
 }
@@ -213,10 +217,9 @@ fn test_empty_name_shows_error_notification() {
     app.handle_key_event(key_with_mods(KeyCode::Char('s'), KeyModifiers::CONTROL));
     app.snippets.set_snippets(vec![]);
     app.handle_key_event(key(KeyCode::Char('n')));
-    app.handle_key_event(key(KeyCode::Enter));
-    app.handle_key_event(key(KeyCode::Enter));
+    app.handle_key_event(key(KeyCode::Enter)); // Try to create with empty name
 
-    assert_eq!(*app.snippets.mode(), SnippetMode::CreateDescription);
+    assert_eq!(*app.snippets.mode(), SnippetMode::CreateName);
     assert!(app.notification.current().is_some());
     let notification = app.notification.current().unwrap();
     assert!(notification.message.contains("Name cannot be empty"));
@@ -236,10 +239,9 @@ fn test_empty_query_shows_error_notification() {
     app.handle_key_event(key(KeyCode::Char('e')));
     app.handle_key_event(key(KeyCode::Char('s')));
     app.handle_key_event(key(KeyCode::Char('t')));
-    app.handle_key_event(key(KeyCode::Enter));
-    app.handle_key_event(key(KeyCode::Enter));
+    app.handle_key_event(key(KeyCode::Enter)); // Try to create with empty query
 
-    assert_eq!(*app.snippets.mode(), SnippetMode::CreateDescription);
+    assert_eq!(*app.snippets.mode(), SnippetMode::CreateName);
     assert!(app.notification.current().is_some());
     let notification = app.notification.current().unwrap();
     assert!(notification.message.contains("Query cannot be empty"));
@@ -267,10 +269,9 @@ fn test_duplicate_name_shows_error_notification() {
     app.handle_key_event(key(KeyCode::Char('i')));
     app.handle_key_event(key(KeyCode::Char('n')));
     app.handle_key_event(key(KeyCode::Char('g')));
-    app.handle_key_event(key(KeyCode::Enter));
-    app.handle_key_event(key(KeyCode::Enter));
+    app.handle_key_event(key(KeyCode::Enter)); // Try to create
 
-    assert_eq!(*app.snippets.mode(), SnippetMode::CreateDescription);
+    assert_eq!(*app.snippets.mode(), SnippetMode::CreateName);
     assert!(app.notification.current().is_some());
     let notification = app.notification.current().unwrap();
     assert!(notification.message.contains("already exists"));
@@ -299,10 +300,9 @@ fn test_case_insensitive_duplicate_shows_notification() {
     app.handle_key_event(key(KeyCode::Char('p')));
     app.handle_key_event(key(KeyCode::Char('e')));
     app.handle_key_event(key(KeyCode::Char('t')));
-    app.handle_key_event(key(KeyCode::Enter));
-    app.handle_key_event(key(KeyCode::Enter));
+    app.handle_key_event(key(KeyCode::Enter)); // Try to create
 
-    assert_eq!(*app.snippets.mode(), SnippetMode::CreateDescription);
+    assert_eq!(*app.snippets.mode(), SnippetMode::CreateName);
     assert!(app.notification.current().is_some());
 }
 
@@ -323,8 +323,7 @@ fn test_new_snippets_appear_at_top_of_list() {
     app.handle_key_event(key(KeyCode::Char('N')));
     app.handle_key_event(key(KeyCode::Char('e')));
     app.handle_key_event(key(KeyCode::Char('w')));
-    app.handle_key_event(key(KeyCode::Enter));
-    app.handle_key_event(key(KeyCode::Enter));
+    app.handle_key_event(key(KeyCode::Enter)); // Create
 
     assert_eq!(app.snippets.snippets()[0].name, "New");
     assert_eq!(app.snippets.selected_index(), 0);

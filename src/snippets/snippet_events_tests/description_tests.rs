@@ -4,7 +4,7 @@ use crate::test_utils::test_helpers::{app_with_query, key, key_with_mods};
 use crossterm::event::{KeyCode, KeyModifiers};
 
 #[test]
-fn test_tab_in_create_name_mode_moves_to_description() {
+fn test_tab_in_create_name_mode_moves_to_query() {
     let mut app = app_with_query(".test");
     app.input.editor_mode = EditorMode::Insert;
     app.snippets.disable_persistence();
@@ -12,6 +12,22 @@ fn test_tab_in_create_name_mode_moves_to_description() {
     app.handle_key_event(key_with_mods(KeyCode::Char('s'), KeyModifiers::CONTROL));
     app.handle_key_event(key(KeyCode::Char('n')));
     assert_eq!(*app.snippets.mode(), SnippetMode::CreateName);
+
+    app.handle_key_event(key(KeyCode::Tab));
+
+    assert_eq!(*app.snippets.mode(), SnippetMode::CreateQuery);
+}
+
+#[test]
+fn test_tab_in_create_query_mode_moves_to_description() {
+    let mut app = app_with_query(".test");
+    app.input.editor_mode = EditorMode::Insert;
+    app.snippets.disable_persistence();
+
+    app.handle_key_event(key_with_mods(KeyCode::Char('s'), KeyModifiers::CONTROL));
+    app.handle_key_event(key(KeyCode::Char('n')));
+    app.handle_key_event(key(KeyCode::Tab)); // Name -> Query
+    assert_eq!(*app.snippets.mode(), SnippetMode::CreateQuery);
 
     app.handle_key_event(key(KeyCode::Tab));
 
@@ -26,7 +42,8 @@ fn test_typing_in_create_description_mode() {
 
     app.handle_key_event(key_with_mods(KeyCode::Char('s'), KeyModifiers::CONTROL));
     app.handle_key_event(key(KeyCode::Char('n')));
-    app.handle_key_event(key(KeyCode::Tab));
+    app.handle_key_event(key(KeyCode::Tab)); // Name -> Query
+    app.handle_key_event(key(KeyCode::Tab)); // Query -> Description
     assert_eq!(*app.snippets.mode(), SnippetMode::CreateDescription);
 
     app.handle_key_event(key(KeyCode::Char('D')));
@@ -38,19 +55,20 @@ fn test_typing_in_create_description_mode() {
 }
 
 #[test]
-fn test_shift_tab_in_description_mode_goes_back_to_name() {
+fn test_shift_tab_in_description_mode_goes_back_to_query() {
     let mut app = app_with_query(".test");
     app.input.editor_mode = EditorMode::Insert;
     app.snippets.disable_persistence();
 
     app.handle_key_event(key_with_mods(KeyCode::Char('s'), KeyModifiers::CONTROL));
     app.handle_key_event(key(KeyCode::Char('n')));
-    app.handle_key_event(key(KeyCode::Tab));
+    app.handle_key_event(key(KeyCode::Tab)); // Name -> Query
+    app.handle_key_event(key(KeyCode::Tab)); // Query -> Description
     assert_eq!(*app.snippets.mode(), SnippetMode::CreateDescription);
 
     app.handle_key_event(key(KeyCode::BackTab));
 
-    assert_eq!(*app.snippets.mode(), SnippetMode::CreateName);
+    assert_eq!(*app.snippets.mode(), SnippetMode::CreateQuery);
 }
 
 #[test]
@@ -61,7 +79,8 @@ fn test_tab_in_description_mode_cycles_to_name() {
 
     app.handle_key_event(key_with_mods(KeyCode::Char('s'), KeyModifiers::CONTROL));
     app.handle_key_event(key(KeyCode::Char('n')));
-    app.handle_key_event(key(KeyCode::Tab));
+    app.handle_key_event(key(KeyCode::Tab)); // Name -> Query
+    app.handle_key_event(key(KeyCode::Tab)); // Query -> Description
     assert_eq!(*app.snippets.mode(), SnippetMode::CreateDescription);
 
     app.handle_key_event(key(KeyCode::Tab));
@@ -101,7 +120,8 @@ fn test_enter_in_description_mode_saves_snippet_with_description() {
     app.handle_key_event(key(KeyCode::Char('n')));
     app.handle_key_event(key(KeyCode::Char('i')));
     app.handle_key_event(key(KeyCode::Char('p')));
-    app.handle_key_event(key(KeyCode::Tab));
+    app.handle_key_event(key(KeyCode::Tab)); // Name -> Query
+    app.handle_key_event(key(KeyCode::Tab)); // Query -> Description
 
     app.handle_key_event(key(KeyCode::Char('T')));
     app.handle_key_event(key(KeyCode::Char('e')));
@@ -126,7 +146,8 @@ fn test_esc_in_description_mode_cancels() {
 
     app.handle_key_event(key_with_mods(KeyCode::Char('s'), KeyModifiers::CONTROL));
     app.handle_key_event(key(KeyCode::Char('n')));
-    app.handle_key_event(key(KeyCode::Tab));
+    app.handle_key_event(key(KeyCode::Tab)); // Name -> Query
+    app.handle_key_event(key(KeyCode::Tab)); // Query -> Description
     assert_eq!(*app.snippets.mode(), SnippetMode::CreateDescription);
 
     app.handle_key_event(key(KeyCode::Esc));
@@ -143,7 +164,8 @@ fn test_question_mark_blocked_in_description_mode() {
 
     app.handle_key_event(key_with_mods(KeyCode::Char('s'), KeyModifiers::CONTROL));
     app.handle_key_event(key(KeyCode::Char('n')));
-    app.handle_key_event(key(KeyCode::Tab));
+    app.handle_key_event(key(KeyCode::Tab)); // Name -> Query
+    app.handle_key_event(key(KeyCode::Tab)); // Query -> Description
 
     app.handle_key_event(key(KeyCode::Char('?')));
 
@@ -160,7 +182,8 @@ fn test_empty_name_in_description_mode_shows_error() {
     app.handle_key_event(key_with_mods(KeyCode::Char('s'), KeyModifiers::CONTROL));
     app.snippets.set_snippets(vec![]);
     app.handle_key_event(key(KeyCode::Char('n')));
-    app.handle_key_event(key(KeyCode::Tab));
+    app.handle_key_event(key(KeyCode::Tab)); // Name -> Query
+    app.handle_key_event(key(KeyCode::Tab)); // Query -> Description
     app.handle_key_event(key(KeyCode::Enter));
 
     assert_eq!(*app.snippets.mode(), SnippetMode::CreateDescription);
@@ -176,7 +199,8 @@ fn test_is_editing_true_in_description_mode() {
 
     app.handle_key_event(key_with_mods(KeyCode::Char('s'), KeyModifiers::CONTROL));
     app.handle_key_event(key(KeyCode::Char('n')));
-    app.handle_key_event(key(KeyCode::Tab));
+    app.handle_key_event(key(KeyCode::Tab)); // Name -> Query
+    app.handle_key_event(key(KeyCode::Tab)); // Query -> Description
 
     assert!(app.snippets.is_editing());
 }
@@ -189,7 +213,8 @@ fn test_backspace_in_description_mode() {
 
     app.handle_key_event(key_with_mods(KeyCode::Char('s'), KeyModifiers::CONTROL));
     app.handle_key_event(key(KeyCode::Char('n')));
-    app.handle_key_event(key(KeyCode::Tab));
+    app.handle_key_event(key(KeyCode::Tab)); // Name -> Query
+    app.handle_key_event(key(KeyCode::Tab)); // Query -> Description
 
     app.handle_key_event(key(KeyCode::Char('A')));
     app.handle_key_event(key(KeyCode::Char('B')));
@@ -214,7 +239,8 @@ fn test_save_snippet_with_optional_description() {
     app.handle_key_event(key(KeyCode::Char('e')));
     app.handle_key_event(key(KeyCode::Char('s')));
     app.handle_key_event(key(KeyCode::Char('t')));
-    app.handle_key_event(key(KeyCode::Tab));
+    app.handle_key_event(key(KeyCode::Tab)); // Name -> Query
+    app.handle_key_event(key(KeyCode::Tab)); // Query -> Description
     app.handle_key_event(key(KeyCode::Enter));
 
     assert_eq!(app.snippets.snippets().len(), 1);

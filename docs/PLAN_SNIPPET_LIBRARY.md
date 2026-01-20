@@ -42,7 +42,7 @@ Add a Snippet Library feature to jiq that allows users to save, manage, and reus
 - **Apply mode**: Replace current query entirely when snippet selected
 - **Save flow**: `Ctrl+S` opens manager → press `n` to create new snippet from current query
 - **Edit inline** in TUI (no external editor)
-- **Operations**: Add (`n`), Remove (`d`/`x`), Rename (`r`), Edit query (`e`)
+- **Operations**: Add (`n`), Remove (`d`/`x`), Edit all fields (`e`)
 - **100% test coverage** with unit tests and snapshot tests
 
 ## Architecture Decisions
@@ -372,62 +372,72 @@ Each phase delivers the smallest testable feature. Manual TUI testing after each
 
 ---
 
-### Phase 7: Create New Snippet (Name Entry)
-**Goal**: Press `n` to enter create mode, type name, press Enter to save.
+### Phase 7: Create New Snippet (Name Entry) (Updated)
+**Goal**: Press `n` to enter create mode with 3-field workflow: Name → Query → Description.
 
 **Implementation notes**:
-- Added `SnippetMode` enum with `Browse` and `CreateName` variants
+- Added `SnippetMode` enum with `Browse`, `CreateName`, `CreateQuery`, and `CreateDescription` variants
 - Name validation: rejects empty names, trims whitespace
-- Query validation: rejects empty queries (not in original plan)
+- Query validation: rejects empty queries
 - Duplicate check: case-insensitive comparison ("Keys" vs "keys" are duplicates)
 - Sort order: new snippets inserted at beginning (newest-first, not in original plan)
 - Error notifications: use `show_warning()` for auto-dismiss after 10 seconds
-- Vertical layout: Name input → Query display → Hints bar
-- Minimal height fallback: Shows only name input when space limited
+- **Query editing in create mode**: Query field is editable, pre-populated with current query but can be modified
+- All 3 textareas cleared when entering create mode, query textarea populated with current query
+- **Enter behavior**: Validates and saves snippet, exits to Browse mode
+- **Tab behavior**: Advances to next field (Name → Query → Description → Name cycle)
+- **Shift+Tab behavior**: Goes to previous field
+- Vertical layout: Name input → Query input → Description input → Hints bar
+- Minimal height fallback: Shows only active field when space limited
+- Hints show: `[Enter] Create  [Tab] Next  [Shift+Tab] Prev  [Esc] Cancel`
 
 **Files modified**:
-- `src/snippets/snippet_state.rs` - SnippetMode enum, create mode methods, validation
-- `src/snippets/snippet_events.rs` - mode dispatcher, `n` key handler, CreateName event handlers
-- `src/snippets/snippet_render.rs` - create mode UI rendering
+- `src/snippets/snippet_state.rs` - SnippetMode enum, create mode methods, validation, next_field()/prev_field() for field cycling
+- `src/snippets/snippet_events.rs` - mode dispatcher, `n` key handler, CreateName/CreateQuery/CreateDescription event handlers
+- `src/snippets/snippet_render.rs` - create mode UI rendering with 3 fields
 - `src/snippets/snippet_storage.rs` - save_snippets() and serialize_snippets_toml()
 - `src/snippets.rs` - export SnippetMode
 
-**Tests added**: 23 new tests (state transitions, validation, notifications, rendering)
+**Tests updated**: 40+ tests updated to reflect 3-field workflow
 
-**Manual test**: Type query, press `Ctrl+S`, press `n`, type name, press Enter → snippet saved at top of list. Verify empty name/query show yellow warning notification that auto-dismisses.
+**Manual test**: Type query, press `Ctrl+S`, press `n`, see query pre-populated, type name, press Enter → snippet saved. Or Tab through Name → Query → Description to edit all fields.
 
 ---
 
-### Phase 8: Create with Description
-**Goal**: After entering name, optionally enter description.
+### Phase 8: Create with Description (Updated - Merged into Phase 7)
+**Goal**: 3-field create workflow: Name → Query → Description.
 
 **Implementation notes**:
-- Added `SnippetMode::CreateDescription` variant
-- Added `description_textarea` field to `SnippetState`
-- Field navigation with Tab/Shift+Tab cycles between Name and Description fields
-- Enter in Name field moves to Description field
-- Enter in Description field saves the snippet
+- Unified into Phase 7 as a comprehensive 3-field create workflow
+- Added `SnippetMode::CreateQuery` variant for query editing during creation
+- Field navigation with Tab/Shift+Tab cycles through all 3 fields: Name → Query → Description → Name
+- **Enter behavior**: Validates and saves snippet from any field, exits to Browse mode
+- **Tab behavior**: Advances to next field without saving
+- **Shift+Tab behavior**: Goes to previous field without saving
+- Query field pre-populated with current query but fully editable
 - Description is optional - empty description saved as `None`
 - Description trimmed before saving, whitespace-only treated as empty
-- Active field highlighted with yellow border, inactive with cyan
-- Hints bar updates based on current field
+- All 3 fields shown simultaneously with active field highlighted in yellow, inactive in cyan
+- Hints bar: `[Enter] Create  [Tab] Next  [Shift+Tab] Prev  [Esc] Cancel`
 
 **Files modified**:
-- `src/snippets/snippet_state.rs` - CreateDescription mode, description_textarea, cycling navigation
-- `src/snippets/snippet_events.rs` - Tab/Shift+Tab cycling, separate handlers for each mode
-- `src/snippets/snippet_render.rs` - description input field, active/inactive styling, updated hints
+- `src/snippets/snippet_state.rs` - CreateQuery mode added, query_textarea populated in enter_create_mode()
+- `src/snippets/snippet_events.rs` - handle_create_query_mode() added, Enter saves from any field
+- `src/snippets/snippet_render.rs` - render_create_query_input() added, all 3 fields shown
 
-**Tests added**: 20+ new tests (state transitions, field cycling, description saving, rendering)
+**Tests updated**: 30+ tests updated to reflect 3-field workflow with query editing
 
-**Manual test**: Create snippet, add description, verify in TOML file. Test Tab cycles between fields in both directions.
+**Manual test**: Press `n`, see query pre-populated, type name, press Tab to edit query, press Enter → saves. Or Tab through all fields before creating.
 
 ---
 
-### Phase 9: Rename Snippet
-**Goal**: Press `r` to rename selected snippet.
+### Phase 9: Rename Snippet (Merged into Phase 10)
+**Goal**: Rename snippet functionality.
 
 **Implementation notes**:
-- Added `SnippetMode::EditName { original_name: String }` variant to track original name for duplicate detection
+- This functionality has been merged into Phase 10 as part of the unified edit mode
+- `r` key removed - use `e` key instead which opens unified edit mode starting at Name field
+- Added `SnippetMode::EditName { original_name: String }` variant (now part of unified edit)
 - Name validation: rejects empty names, trims whitespace
 - Case-insensitive duplicate check: renaming to same name (different case) is allowed
 - Snippet stays in same position after rename (not moved to top like create)
@@ -445,26 +455,36 @@ Each phase delivers the smallest testable feature. Manual TUI testing after each
 
 ---
 
-### Phase 10: Edit Snippet Query
-**Goal**: Press `e` to edit selected snippet's query.
+### Phase 10: Unified Edit Mode with `e` Key (Updated)
+**Goal**: Press `e` to edit all fields of selected snippet (Name, Query, Description).
 
 **Implementation notes**:
-- Added `SnippetMode::EditQuery { snippet_name: String }` variant to track which snippet is being edited
-- Added `query_textarea` field to `SnippetState` for editing
-- Query validation: rejects empty queries, trims whitespace
-- Snippet stays in same position after edit (not moved like create)
+- **Removed `r` key** - no longer shows "Rename" in browse hints, unified into `e` key
+- **Unified edit mode**: `e` key now opens edit mode for all 3 fields with Tab cycling
+- Added `SnippetMode::EditQuery { original_query: String }` variant
+- Added `SnippetMode::EditDescription { original_description: Option<String> }` variant
+- Modified `SnippetMode::EditName { original_name: String }` (was previously used only for rename)
+- All 3 textareas (name, query, description) populated immediately when entering edit mode
+- Field navigation: `next_field()` and `prev_field()` cycle through Name → Query → Description
+- **Enter behavior**: Validates and saves current field, then exits to Browse mode
+- **Tab behavior**: Validates and saves current field, then advances to next field
+- **Shift+Tab behavior**: Validates and saves current field, then goes to previous field
+- Each field validates independently: name and query cannot be empty, description is optional
+- Unified `cancel_edit()` clears all 3 textareas and returns to Browse mode
+- Renamed methods: `rename_snippet()` → `update_snippet_name()`, `enter_rename_mode()` → `enter_edit_mode()`
 - Error notifications use `show_warning()` for auto-dismiss after 10 seconds
-- Render shows "Edit Query" title with yellow active border and hints bar
+- Render shows unified edit view with all 3 fields, active field has yellow border, inactive fields have cyan border
+- Hints show: `[Enter] Update  [Tab] Next  [Shift+Tab] Prev  [Esc] Cancel`
 - Note: 'e' key is now reserved in browse mode and cannot be used in search queries
 
 **Files modified**:
-- `src/snippets/snippet_state.rs` - EditQuery mode, enter_edit_query_mode(), cancel_edit_query(), update_snippet_query() with validation
-- `src/snippets/snippet_events.rs` - handle `e` key in browse mode, handle_edit_query_mode()
-- `src/snippets/snippet_render.rs` - render_edit_query_mode(), render_edit_query_input(), render_edit_query_hints()
+- `src/snippets/snippet_state.rs` - Added EditQuery and EditDescription modes, unified enter_edit_mode(), cancel_edit(), update_snippet_name/query/description(), next_field(), prev_field()
+- `src/snippets/snippet_events.rs` - Removed `r` key handler, unified `e` key behavior, separate handlers for each edit mode field
+- `src/snippets/snippet_render.rs` - Unified render_edit_mode() showing all 3 fields simultaneously, updated hints
 
-**Tests added**: 16 state tests, 10 event tests, 4 snapshot tests
+**Tests updated**: Updated 60+ tests to reflect new unified edit behavior
 
-**Manual test**: Select snippet, press `e`, modify query, press Enter, query updated. Try empty query, verify warning notification.
+**Manual test**: Select snippet, press `e`, see all 3 fields populated, press Enter to save and exit, or Tab to navigate fields.
 
 ---
 
@@ -512,11 +532,12 @@ Each phase delivers the smallest testable feature. Manual TUI testing after each
 
 ---
 
-### Phase 13: Visual Polish
+### Phase 13: Visual Polish (Updated)
 **Goal**: Improve visual design (colors, borders, hints bar).
 
 **Implementation notes**:
-- Added context-sensitive hints bar to browse mode showing keybindings: `[↑/↓] Navigate  [Enter] Apply  [n] New  [r] Rename  [e] Edit  [d] Delete  [Esc] Close`
+- Added context-sensitive hints bar to browse mode showing keybindings: `[↑/↓] Navigate  [Enter] Apply  [n] New  [e] Edit  [d] Delete  [Esc] Close`
+- Note: `[r] Rename` removed as it's been unified into `[e] Edit`
 - Improved selected item highlighting with cyan background (matching history popup style)
 - Selected item description also highlighted with matching background
 - Padding added to extend highlight to full width

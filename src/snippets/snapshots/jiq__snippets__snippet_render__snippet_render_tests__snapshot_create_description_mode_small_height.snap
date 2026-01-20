@@ -2,8 +2,8 @@
 source: src/snippets/snippet_render_tests.rs
 expression: output
 ---
-"┌ New Snippet - Description ───────────────────────────────────────────────────┐"
-"│                                                                              │"
+"┌ New Snippet - Query ─────────────────────────────────────────────────────────┐"
+"│.test                                                                         │"
 "│                                                                              │"
 "│                                                                              │"
 "│                                                                              │"

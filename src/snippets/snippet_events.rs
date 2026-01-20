@@ -8,9 +8,11 @@ pub fn handle_snippet_popup_key(app: &mut App, key: KeyEvent) {
     match app.snippets.mode() {
         SnippetMode::Browse => handle_browse_mode(app, key),
         SnippetMode::CreateName => handle_create_name_mode(app, key),
+        SnippetMode::CreateQuery => handle_create_query_mode(app, key),
         SnippetMode::CreateDescription => handle_create_description_mode(app, key),
         SnippetMode::EditName { .. } => handle_edit_name_mode(app, key),
         SnippetMode::EditQuery { .. } => handle_edit_query_mode(app, key),
+        SnippetMode::EditDescription { .. } => handle_edit_description_mode(app, key),
         SnippetMode::ConfirmDelete { .. } => handle_confirm_delete_mode(app, key),
     }
 }
@@ -37,14 +39,9 @@ fn handle_browse_mode(app: &mut App, key: KeyEvent) {
             let current_query = app.input.query().to_string();
             app.snippets.enter_create_mode(&current_query);
         }
-        KeyCode::Char('r') => {
-            if app.snippets.selected_snippet().is_some() {
-                app.snippets.enter_rename_mode();
-            }
-        }
         KeyCode::Char('e') => {
             if app.snippets.selected_snippet().is_some() {
-                app.snippets.enter_edit_query_mode();
+                app.snippets.enter_edit_mode();
             }
         }
         KeyCode::Char('d') | KeyCode::Char('x') => {
@@ -66,15 +63,43 @@ fn handle_create_name_mode(app: &mut App, key: KeyEvent) {
         KeyCode::Esc => {
             app.snippets.cancel_create();
         }
-        KeyCode::Enter | KeyCode::Tab => {
-            app.snippets.next_create_field();
+        KeyCode::Enter => {
+            if let Err(e) = app.snippets.save_new_snippet() {
+                app.notification.show_warning(&e);
+            }
+        }
+        KeyCode::Tab => {
+            app.snippets.next_field();
         }
         KeyCode::BackTab => {
-            app.snippets.prev_create_field();
+            app.snippets.prev_field();
         }
         _ => {
             let input = Input::from(key);
             app.snippets.name_textarea_mut().input(input);
+        }
+    }
+}
+
+fn handle_create_query_mode(app: &mut App, key: KeyEvent) {
+    match key.code {
+        KeyCode::Esc => {
+            app.snippets.cancel_create();
+        }
+        KeyCode::Enter => {
+            if let Err(e) = app.snippets.save_new_snippet() {
+                app.notification.show_warning(&e);
+            }
+        }
+        KeyCode::Tab => {
+            app.snippets.next_field();
+        }
+        KeyCode::BackTab => {
+            app.snippets.prev_field();
+        }
+        _ => {
+            let input = Input::from(key);
+            app.snippets.query_textarea_mut().input(input);
         }
     }
 }
@@ -90,10 +115,10 @@ fn handle_create_description_mode(app: &mut App, key: KeyEvent) {
             }
         }
         KeyCode::Tab => {
-            app.snippets.next_create_field();
+            app.snippets.next_field();
         }
         KeyCode::BackTab => {
-            app.snippets.prev_create_field();
+            app.snippets.prev_field();
         }
         _ => {
             let input = Input::from(key);
@@ -105,11 +130,27 @@ fn handle_create_description_mode(app: &mut App, key: KeyEvent) {
 fn handle_edit_name_mode(app: &mut App, key: KeyEvent) {
     match key.code {
         KeyCode::Esc => {
-            app.snippets.cancel_rename();
+            app.snippets.cancel_edit();
         }
         KeyCode::Enter => {
-            if let Err(e) = app.snippets.rename_snippet() {
+            if let Err(e) = app.snippets.update_snippet_name() {
                 app.notification.show_warning(&e);
+            } else {
+                app.snippets.cancel_edit();
+            }
+        }
+        KeyCode::Tab => {
+            if let Err(e) = app.snippets.update_snippet_name() {
+                app.notification.show_warning(&e);
+            } else {
+                app.snippets.next_field();
+            }
+        }
+        KeyCode::BackTab => {
+            if let Err(e) = app.snippets.update_snippet_name() {
+                app.notification.show_warning(&e);
+            } else {
+                app.snippets.prev_field();
             }
         }
         _ => {
@@ -122,16 +163,65 @@ fn handle_edit_name_mode(app: &mut App, key: KeyEvent) {
 fn handle_edit_query_mode(app: &mut App, key: KeyEvent) {
     match key.code {
         KeyCode::Esc => {
-            app.snippets.cancel_edit_query();
+            app.snippets.cancel_edit();
         }
         KeyCode::Enter => {
             if let Err(e) = app.snippets.update_snippet_query() {
                 app.notification.show_warning(&e);
+            } else {
+                app.snippets.cancel_edit();
+            }
+        }
+        KeyCode::Tab => {
+            if let Err(e) = app.snippets.update_snippet_query() {
+                app.notification.show_warning(&e);
+            } else {
+                app.snippets.next_field();
+            }
+        }
+        KeyCode::BackTab => {
+            if let Err(e) = app.snippets.update_snippet_query() {
+                app.notification.show_warning(&e);
+            } else {
+                app.snippets.prev_field();
             }
         }
         _ => {
             let input = Input::from(key);
             app.snippets.query_textarea_mut().input(input);
+        }
+    }
+}
+
+fn handle_edit_description_mode(app: &mut App, key: KeyEvent) {
+    match key.code {
+        KeyCode::Esc => {
+            app.snippets.cancel_edit();
+        }
+        KeyCode::Enter => {
+            if let Err(e) = app.snippets.update_snippet_description() {
+                app.notification.show_warning(&e);
+            } else {
+                app.snippets.cancel_edit();
+            }
+        }
+        KeyCode::Tab => {
+            if let Err(e) = app.snippets.update_snippet_description() {
+                app.notification.show_warning(&e);
+            } else {
+                app.snippets.next_field();
+            }
+        }
+        KeyCode::BackTab => {
+            if let Err(e) = app.snippets.update_snippet_description() {
+                app.notification.show_warning(&e);
+            } else {
+                app.snippets.prev_field();
+            }
+        }
+        _ => {
+            let input = Input::from(key);
+            app.snippets.description_textarea_mut().input(input);
         }
     }
 }

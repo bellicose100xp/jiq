@@ -434,7 +434,7 @@ fn snapshot_create_description_mode_empty() {
     let mut state = SnippetState::new();
     state.enter_create_mode(".test | keys");
     state.name_textarea_mut().insert_str("My Snippet");
-    state.next_create_field();
+    state.next_field();
 
     let results_area = Rect {
         x: 0,
@@ -451,7 +451,7 @@ fn snapshot_create_description_mode_with_text() {
     let mut state = SnippetState::new();
     state.enter_create_mode(".test | keys");
     state.name_textarea_mut().insert_str("My Snippet");
-    state.next_create_field();
+    state.next_field();
     state
         .description_textarea_mut()
         .insert_str("A helpful description");
@@ -471,7 +471,7 @@ fn snapshot_create_description_mode_narrow() {
     let mut state = SnippetState::new();
     state.enter_create_mode(".test");
     state.name_textarea_mut().insert_str("Test");
-    state.next_create_field();
+    state.next_field();
     state.description_textarea_mut().insert_str("Desc");
 
     let results_area = Rect {
@@ -489,7 +489,7 @@ fn snapshot_create_description_mode_small_height() {
     let mut state = SnippetState::new();
     state.enter_create_mode(".test");
     state.name_textarea_mut().insert_str("Test");
-    state.next_create_field();
+    state.next_field();
 
     let results_area = Rect {
         x: 0,
@@ -525,7 +525,7 @@ fn snapshot_rename_mode_with_original_name() {
         query: ".test | keys".to_string(),
         description: None,
     }]);
-    state.enter_rename_mode();
+    state.enter_edit_mode();
 
     let results_area = Rect {
         x: 0,
@@ -545,7 +545,7 @@ fn snapshot_rename_mode_with_edited_name() {
         query: ".test".to_string(),
         description: None,
     }]);
-    state.enter_rename_mode();
+    state.enter_edit_mode();
     state.name_textarea_mut().select_all();
     state.name_textarea_mut().cut();
     state.name_textarea_mut().insert_str("New Name");
@@ -568,7 +568,7 @@ fn snapshot_rename_mode_narrow_terminal() {
         query: ".test".to_string(),
         description: None,
     }]);
-    state.enter_rename_mode();
+    state.enter_edit_mode();
 
     let results_area = Rect {
         x: 0,
@@ -588,7 +588,7 @@ fn snapshot_rename_mode_small_height() {
         query: ".test".to_string(),
         description: None,
     }]);
-    state.enter_rename_mode();
+    state.enter_edit_mode();
 
     let results_area = Rect {
         x: 0,
@@ -608,7 +608,7 @@ fn snapshot_edit_query_mode_with_original_query() {
         query: ".test | keys".to_string(),
         description: None,
     }]);
-    state.enter_edit_query_mode();
+    state.enter_edit_mode();
 
     let results_area = Rect {
         x: 0,
@@ -628,7 +628,7 @@ fn snapshot_edit_query_mode_with_edited_query() {
         query: ".old".to_string(),
         description: None,
     }]);
-    state.enter_edit_query_mode();
+    state.enter_edit_mode();
     state.query_textarea_mut().select_all();
     state.query_textarea_mut().cut();
     state.query_textarea_mut().insert_str(".new | keys | sort");
@@ -651,7 +651,7 @@ fn snapshot_edit_query_mode_narrow_terminal() {
         query: ".test".to_string(),
         description: None,
     }]);
-    state.enter_edit_query_mode();
+    state.enter_edit_mode();
 
     let results_area = Rect {
         x: 0,
@@ -671,7 +671,7 @@ fn snapshot_edit_query_mode_small_height() {
         query: ".test".to_string(),
         description: None,
     }]);
-    state.enter_edit_query_mode();
+    state.enter_edit_mode();
 
     let results_area = Rect {
         x: 0,

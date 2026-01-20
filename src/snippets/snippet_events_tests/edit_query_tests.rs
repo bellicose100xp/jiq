@@ -4,7 +4,7 @@ use crate::test_utils::test_helpers::{app_with_query, key, key_with_mods};
 use crossterm::event::{KeyCode, KeyModifiers};
 
 #[test]
-fn test_e_key_enters_edit_query_mode() {
+fn test_e_key_enters_edit_mode() {
     let mut app = app_with_query(".test");
     app.input.editor_mode = EditorMode::Insert;
     app.snippets.disable_persistence();
@@ -21,7 +21,7 @@ fn test_e_key_enters_edit_query_mode() {
 
     assert!(matches!(
         app.snippets.mode(),
-        SnippetMode::EditQuery { snippet_name } if snippet_name == "My Snippet"
+        SnippetMode::EditName { original_name } if original_name == "My Snippet"
     ));
 }
 
@@ -41,7 +41,7 @@ fn test_e_key_with_no_snippets_does_nothing() {
 }
 
 #[test]
-fn test_esc_in_edit_query_mode_cancels() {
+fn test_esc_in_edit_mode_cancels() {
     let mut app = app_with_query(".test");
     app.input.editor_mode = EditorMode::Insert;
     app.snippets.disable_persistence();
@@ -62,87 +62,114 @@ fn test_esc_in_edit_query_mode_cancels() {
 }
 
 #[test]
-fn test_typing_in_edit_query_mode_updates_query() {
+fn test_tab_in_edit_name_mode_saves_and_navigates_to_query() {
     let mut app = app_with_query(".test");
     app.input.editor_mode = EditorMode::Insert;
     app.snippets.disable_persistence();
 
     app.handle_key_event(key_with_mods(KeyCode::Char('s'), KeyModifiers::CONTROL));
     app.snippets.set_snippets(vec![Snippet {
-        name: "My Snippet".to_string(),
+        name: "Old".to_string(),
         query: ".old".to_string(),
         description: None,
     }]);
     app.snippets.on_search_input_changed();
     app.handle_key_event(key(KeyCode::Char('e')));
 
-    for _ in 0..4 {
+    for _ in 0..3 {
         app.handle_key_event(key(KeyCode::Backspace));
     }
-    app.handle_key_event(key(KeyCode::Char('.')));
-    app.handle_key_event(key(KeyCode::Char('n')));
+    app.handle_key_event(key(KeyCode::Char('N')));
     app.handle_key_event(key(KeyCode::Char('e')));
     app.handle_key_event(key(KeyCode::Char('w')));
 
-    assert_eq!(app.snippets.query_input(), ".new");
+    assert!(matches!(app.snippets.mode(), SnippetMode::EditName { .. }));
+    app.handle_key_event(key(KeyCode::Tab));
+
+    assert!(matches!(app.snippets.mode(), SnippetMode::EditQuery { .. }));
+    assert_eq!(app.snippets.snippets()[0].name, "New");
 }
 
 #[test]
-fn test_enter_in_edit_query_mode_saves() {
+fn test_typing_in_edit_name_mode_updates_name() {
     let mut app = app_with_query(".test");
     app.input.editor_mode = EditorMode::Insert;
     app.snippets.disable_persistence();
 
     app.handle_key_event(key_with_mods(KeyCode::Char('s'), KeyModifiers::CONTROL));
     app.snippets.set_snippets(vec![Snippet {
-        name: "My Snippet".to_string(),
-        query: ".old".to_string(),
+        name: "Old".to_string(),
+        query: ".test".to_string(),
         description: None,
     }]);
     app.snippets.on_search_input_changed();
     app.handle_key_event(key(KeyCode::Char('e')));
 
-    for _ in 0..4 {
+    for _ in 0..3 {
         app.handle_key_event(key(KeyCode::Backspace));
     }
-    app.handle_key_event(key(KeyCode::Char('.')));
-    app.handle_key_event(key(KeyCode::Char('n')));
+    app.handle_key_event(key(KeyCode::Char('N')));
+    app.handle_key_event(key(KeyCode::Char('e')));
+    app.handle_key_event(key(KeyCode::Char('w')));
+
+    assert_eq!(app.snippets.name_input(), "New");
+}
+
+#[test]
+fn test_enter_in_edit_name_mode_saves_and_exits() {
+    let mut app = app_with_query(".test");
+    app.input.editor_mode = EditorMode::Insert;
+    app.snippets.disable_persistence();
+
+    app.handle_key_event(key_with_mods(KeyCode::Char('s'), KeyModifiers::CONTROL));
+    app.snippets.set_snippets(vec![Snippet {
+        name: "Old".to_string(),
+        query: ".test".to_string(),
+        description: None,
+    }]);
+    app.snippets.on_search_input_changed();
+    app.handle_key_event(key(KeyCode::Char('e')));
+
+    for _ in 0..3 {
+        app.handle_key_event(key(KeyCode::Backspace));
+    }
+    app.handle_key_event(key(KeyCode::Char('N')));
     app.handle_key_event(key(KeyCode::Char('e')));
     app.handle_key_event(key(KeyCode::Char('w')));
     app.handle_key_event(key(KeyCode::Enter));
 
     assert_eq!(*app.snippets.mode(), SnippetMode::Browse);
-    assert_eq!(app.snippets.snippets()[0].query, ".new");
+    assert_eq!(app.snippets.snippets()[0].name, "New");
 }
 
 #[test]
-fn test_edit_query_empty_shows_error() {
+fn test_edit_name_empty_shows_error() {
     let mut app = app_with_query(".test");
     app.input.editor_mode = EditorMode::Insert;
     app.snippets.disable_persistence();
 
     app.handle_key_event(key_with_mods(KeyCode::Char('s'), KeyModifiers::CONTROL));
     app.snippets.set_snippets(vec![Snippet {
-        name: "My Snippet".to_string(),
-        query: ".old".to_string(),
+        name: "Old".to_string(),
+        query: ".test".to_string(),
         description: None,
     }]);
     app.snippets.on_search_input_changed();
     app.handle_key_event(key(KeyCode::Char('e')));
 
-    for _ in 0..4 {
+    for _ in 0..3 {
         app.handle_key_event(key(KeyCode::Backspace));
     }
     app.handle_key_event(key(KeyCode::Enter));
 
-    assert!(matches!(app.snippets.mode(), SnippetMode::EditQuery { .. }));
+    assert!(matches!(app.snippets.mode(), SnippetMode::EditName { .. }));
     assert!(app.notification.current().is_some());
     let notification = app.notification.current().unwrap();
     assert!(notification.message.contains("empty"));
 }
 
 #[test]
-fn test_is_editing_true_in_edit_query_mode() {
+fn test_is_editing_true_in_edit_mode() {
     let mut app = app_with_query(".test");
     app.input.editor_mode = EditorMode::Insert;
     app.snippets.disable_persistence();
@@ -161,7 +188,7 @@ fn test_is_editing_true_in_edit_query_mode() {
 }
 
 #[test]
-fn test_question_mark_blocked_in_edit_query_mode() {
+fn test_question_mark_blocked_in_edit_mode() {
     let mut app = app_with_query(".test");
     app.input.editor_mode = EditorMode::Insert;
     app.snippets.disable_persistence();
@@ -178,24 +205,40 @@ fn test_question_mark_blocked_in_edit_query_mode() {
     app.handle_key_event(key(KeyCode::Char('?')));
 
     assert!(!app.help.visible);
-    assert!(app.snippets.query_input().contains('?'));
+    assert!(app.snippets.name_input().contains('?'));
 }
 
 #[test]
-fn test_edit_query_preserves_name_and_description() {
+fn test_full_edit_flow_name_query_description() {
     let mut app = app_with_query(".test");
     app.input.editor_mode = EditorMode::Insert;
     app.snippets.disable_persistence();
 
     app.handle_key_event(key_with_mods(KeyCode::Char('s'), KeyModifiers::CONTROL));
     app.snippets.set_snippets(vec![Snippet {
-        name: "My Snippet".to_string(),
+        name: "OldName".to_string(),
         query: ".old".to_string(),
-        description: Some("My description".to_string()),
+        description: Some("Old desc".to_string()),
     }]);
     app.snippets.on_search_input_changed();
-    app.handle_key_event(key(KeyCode::Char('e')));
 
+    // Enter edit mode (starts in EditName)
+    app.handle_key_event(key(KeyCode::Char('e')));
+    assert!(matches!(app.snippets.mode(), SnippetMode::EditName { .. }));
+
+    // Edit name and go to query with Tab
+    for _ in 0..7 {
+        app.handle_key_event(key(KeyCode::Backspace));
+    }
+    app.handle_key_event(key(KeyCode::Char('N')));
+    app.handle_key_event(key(KeyCode::Char('e')));
+    app.handle_key_event(key(KeyCode::Char('w')));
+    app.handle_key_event(key(KeyCode::Tab)); // Save name and go to query
+
+    assert!(matches!(app.snippets.mode(), SnippetMode::EditQuery { .. }));
+    assert_eq!(app.snippets.snippets()[0].name, "New");
+
+    // Edit query and go to description with Tab
     for _ in 0..4 {
         app.handle_key_event(key(KeyCode::Backspace));
     }
@@ -203,12 +246,26 @@ fn test_edit_query_preserves_name_and_description() {
     app.handle_key_event(key(KeyCode::Char('n')));
     app.handle_key_event(key(KeyCode::Char('e')));
     app.handle_key_event(key(KeyCode::Char('w')));
+    app.handle_key_event(key(KeyCode::Tab)); // Save query and go to description
+
+    assert!(matches!(
+        app.snippets.mode(),
+        SnippetMode::EditDescription { .. }
+    ));
+    assert_eq!(app.snippets.snippets()[0].query, ".new");
+
+    // Edit description and save with Enter
+    for _ in 0..8 {
+        app.handle_key_event(key(KeyCode::Backspace));
+    }
+    app.handle_key_event(key(KeyCode::Char('N')));
+    app.handle_key_event(key(KeyCode::Char('e')));
+    app.handle_key_event(key(KeyCode::Char('w')));
     app.handle_key_event(key(KeyCode::Enter));
 
-    assert_eq!(app.snippets.snippets()[0].name, "My Snippet");
-    assert_eq!(app.snippets.snippets()[0].query, ".new");
+    assert_eq!(*app.snippets.mode(), SnippetMode::Browse);
     assert_eq!(
         app.snippets.snippets()[0].description,
-        Some("My description".to_string())
+        Some("New".to_string())
     );
 }

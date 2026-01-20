@@ -23,11 +23,12 @@ pub fn render_popup(state: &mut SnippetState, frame: &mut Frame, results_area: R
 
     match state.mode() {
         SnippetMode::Browse => render_browse_mode(state, frame, results_area),
-        SnippetMode::CreateName | SnippetMode::CreateDescription => {
+        SnippetMode::CreateName | SnippetMode::CreateQuery | SnippetMode::CreateDescription => {
             render_create_mode(state, frame, results_area)
         }
-        SnippetMode::EditName { .. } => render_edit_name_mode(state, frame, results_area),
-        SnippetMode::EditQuery { .. } => render_edit_query_mode(state, frame, results_area),
+        SnippetMode::EditName { .. }
+        | SnippetMode::EditQuery { .. }
+        | SnippetMode::EditDescription { .. } => render_edit_mode(state, frame, results_area),
         SnippetMode::ConfirmDelete { .. } => render_confirm_delete_mode(state, frame, results_area),
     }
 }
@@ -185,8 +186,6 @@ fn render_browse_hints(frame: &mut Frame, area: Rect) {
         Span::styled(" Apply  ", Style::default().fg(Color::DarkGray)),
         Span::styled("[n]", Style::default().fg(Color::Yellow)),
         Span::styled(" New  ", Style::default().fg(Color::DarkGray)),
-        Span::styled("[r]", Style::default().fg(Color::Yellow)),
-        Span::styled(" Rename  ", Style::default().fg(Color::DarkGray)),
         Span::styled("[e]", Style::default().fg(Color::Yellow)),
         Span::styled(" Edit  ", Style::default().fg(Color::DarkGray)),
         Span::styled("[d]", Style::default().fg(Color::Yellow)),
@@ -301,14 +300,10 @@ fn build_preview_content(
 }
 
 fn render_create_mode(state: &mut SnippetState, frame: &mut Frame, area: Rect) {
-    let inner_width = area.width.saturating_sub(4) as usize;
-    let pending_query = state.pending_query().to_string();
-    let query_lines = wrap_text(&pending_query, inner_width);
-    let query_display_height = (query_lines.len() as u16 + 2).min(area.height / 4).max(3);
     let mode = state.mode().clone();
 
     let min_required =
-        NAME_INPUT_HEIGHT + query_display_height + DESCRIPTION_INPUT_HEIGHT + HINTS_HEIGHT;
+        NAME_INPUT_HEIGHT + QUERY_INPUT_HEIGHT + DESCRIPTION_INPUT_HEIGHT + HINTS_HEIGHT;
     if area.height < min_required {
         render_create_minimal(state, &mode, frame, area);
         return;
@@ -316,7 +311,7 @@ fn render_create_mode(state: &mut SnippetState, frame: &mut Frame, area: Rect) {
 
     let layout = Layout::vertical([
         Constraint::Length(NAME_INPUT_HEIGHT),
-        Constraint::Length(query_display_height),
+        Constraint::Length(QUERY_INPUT_HEIGHT),
         Constraint::Length(DESCRIPTION_INPUT_HEIGHT),
         Constraint::Min(1),
         Constraint::Length(HINTS_HEIGHT),
@@ -329,9 +324,12 @@ fn render_create_mode(state: &mut SnippetState, frame: &mut Frame, area: Rect) {
     let hints_area = layout[4];
 
     let is_name_active = mode == SnippetMode::CreateName;
-    render_name_input(state, is_name_active, frame, name_area);
-    render_query_display(&pending_query, inner_width, frame, query_area);
-    render_description_input(state, !is_name_active, frame, description_area);
+    let is_query_active = mode == SnippetMode::CreateQuery;
+    let is_desc_active = mode == SnippetMode::CreateDescription;
+
+    render_create_name_input(state, is_name_active, frame, name_area);
+    render_create_query_input(state, is_query_active, frame, query_area);
+    render_create_description_input(state, is_desc_active, frame, description_area);
     render_create_hints(&mode, frame, hints_area);
 }
 
@@ -341,34 +339,53 @@ fn render_create_minimal(
     frame: &mut Frame,
     area: Rect,
 ) {
-    let is_name_active = *mode == SnippetMode::CreateName;
-
-    if is_name_active {
-        let name_textarea = state.name_textarea_mut();
-        name_textarea.set_block(
-            Block::default()
-                .borders(Borders::ALL)
-                .title(" New Snippet - Name ")
-                .border_style(Style::default().fg(Color::Yellow))
-                .style(Style::default().bg(Color::Black)),
-        );
-        name_textarea.set_style(Style::default().fg(Color::White).bg(Color::Black));
-        frame.render_widget(&*name_textarea, area);
-    } else {
-        let desc_textarea = state.description_textarea_mut();
-        desc_textarea.set_block(
-            Block::default()
-                .borders(Borders::ALL)
-                .title(" New Snippet - Description ")
-                .border_style(Style::default().fg(Color::Yellow))
-                .style(Style::default().bg(Color::Black)),
-        );
-        desc_textarea.set_style(Style::default().fg(Color::White).bg(Color::Black));
-        frame.render_widget(&*desc_textarea, area);
+    match mode {
+        SnippetMode::CreateName => {
+            let name_textarea = state.name_textarea_mut();
+            name_textarea.set_block(
+                Block::default()
+                    .borders(Borders::ALL)
+                    .title(" New Snippet - Name ")
+                    .border_style(Style::default().fg(Color::Yellow))
+                    .style(Style::default().bg(Color::Black)),
+            );
+            name_textarea.set_style(Style::default().fg(Color::White).bg(Color::Black));
+            frame.render_widget(&*name_textarea, area);
+        }
+        SnippetMode::CreateQuery => {
+            let query_textarea = state.query_textarea_mut();
+            query_textarea.set_block(
+                Block::default()
+                    .borders(Borders::ALL)
+                    .title(" New Snippet - Query ")
+                    .border_style(Style::default().fg(Color::Yellow))
+                    .style(Style::default().bg(Color::Black)),
+            );
+            query_textarea.set_style(Style::default().fg(Color::White).bg(Color::Black));
+            frame.render_widget(&*query_textarea, area);
+        }
+        SnippetMode::CreateDescription => {
+            let desc_textarea = state.description_textarea_mut();
+            desc_textarea.set_block(
+                Block::default()
+                    .borders(Borders::ALL)
+                    .title(" New Snippet - Description ")
+                    .border_style(Style::default().fg(Color::Yellow))
+                    .style(Style::default().bg(Color::Black)),
+            );
+            desc_textarea.set_style(Style::default().fg(Color::White).bg(Color::Black));
+            frame.render_widget(&*desc_textarea, area);
+        }
+        _ => {}
     }
 }
 
-fn render_name_input(state: &mut SnippetState, is_active: bool, frame: &mut Frame, area: Rect) {
+fn render_create_name_input(
+    state: &mut SnippetState,
+    is_active: bool,
+    frame: &mut Frame,
+    area: Rect,
+) {
     let border_color = if is_active {
         Color::Yellow
     } else {
@@ -402,7 +419,46 @@ fn render_name_input(state: &mut SnippetState, is_active: bool, frame: &mut Fram
     }
 }
 
-fn render_description_input(
+fn render_create_query_input(
+    state: &mut SnippetState,
+    is_active: bool,
+    frame: &mut Frame,
+    area: Rect,
+) {
+    let border_color = if is_active {
+        Color::Yellow
+    } else {
+        Color::Cyan
+    };
+    let query_textarea = state.query_textarea_mut();
+    query_textarea.set_block(
+        Block::default()
+            .borders(Borders::ALL)
+            .title(" Query ")
+            .border_style(Style::default().fg(border_color))
+            .style(Style::default().bg(Color::Black)),
+    );
+    query_textarea.set_style(Style::default().fg(Color::White).bg(Color::Black));
+    if is_active {
+        frame.render_widget(&*query_textarea, area);
+    } else {
+        let content = query_textarea
+            .lines()
+            .first()
+            .map(|s| s.as_str())
+            .unwrap_or("");
+        let display = Paragraph::new(format!(" {}", content)).block(
+            Block::default()
+                .borders(Borders::ALL)
+                .title(" Query ")
+                .border_style(Style::default().fg(Color::Cyan))
+                .style(Style::default().bg(Color::Black)),
+        );
+        frame.render_widget(display, area);
+    }
+}
+
+fn render_create_description_input(
     state: &mut SnippetState,
     is_active: bool,
     frame: &mut Frame,
@@ -441,49 +497,21 @@ fn render_description_input(
     }
 }
 
-fn render_query_display(query: &str, max_width: usize, frame: &mut Frame, area: Rect) {
-    let wrapped_query = wrap_text(query, max_width);
-    let content: Vec<Line<'static>> = wrapped_query
-        .into_iter()
-        .map(|line| {
-            Line::from(Span::styled(
-                format!(" {}", line),
-                Style::default().fg(Color::DarkGray),
-            ))
-        })
-        .collect();
-
-    let display = Paragraph::new(content).block(
-        Block::default()
-            .borders(Borders::ALL)
-            .title(" Query (from current) ")
-            .border_style(Style::default().fg(Color::Cyan))
-            .style(Style::default().bg(Color::Black)),
-    );
-
-    frame.render_widget(display, area);
-}
-
 fn render_create_hints(mode: &SnippetMode, frame: &mut Frame, area: Rect) {
     let hints = match mode {
-        SnippetMode::CreateName => Line::from(vec![
-            Span::styled(" [Enter/Tab]", Style::default().fg(Color::Yellow)),
-            Span::styled(" Next  ", Style::default().fg(Color::White)),
-            Span::styled("[Esc]", Style::default().fg(Color::Yellow)),
-            Span::styled(" Cancel", Style::default().fg(Color::White)),
-        ]),
-        SnippetMode::CreateDescription => Line::from(vec![
-            Span::styled(" [Enter]", Style::default().fg(Color::Yellow)),
-            Span::styled(" Save  ", Style::default().fg(Color::White)),
-            Span::styled("[Tab]", Style::default().fg(Color::Yellow)),
-            Span::styled(" Switch  ", Style::default().fg(Color::White)),
-            Span::styled("[Esc]", Style::default().fg(Color::Yellow)),
-            Span::styled(" Cancel", Style::default().fg(Color::White)),
-        ]),
-        SnippetMode::Browse
-        | SnippetMode::EditName { .. }
-        | SnippetMode::EditQuery { .. }
-        | SnippetMode::ConfirmDelete { .. } => Line::from(vec![]),
+        SnippetMode::CreateName | SnippetMode::CreateQuery | SnippetMode::CreateDescription => {
+            Line::from(vec![
+                Span::styled(" [Enter]", Style::default().fg(Color::Yellow)),
+                Span::styled(" Create  ", Style::default().fg(Color::White)),
+                Span::styled("[Tab]", Style::default().fg(Color::Yellow)),
+                Span::styled(" Next  ", Style::default().fg(Color::White)),
+                Span::styled("[Shift+Tab]", Style::default().fg(Color::Yellow)),
+                Span::styled(" Prev  ", Style::default().fg(Color::White)),
+                Span::styled("[Esc]", Style::default().fg(Color::Yellow)),
+                Span::styled(" Cancel", Style::default().fg(Color::White)),
+            ])
+        }
+        _ => Line::from(vec![]),
     };
 
     let hints_widget = Paragraph::new(vec![hints]).block(
@@ -496,125 +524,220 @@ fn render_create_hints(mode: &SnippetMode, frame: &mut Frame, area: Rect) {
     frame.render_widget(hints_widget, area);
 }
 
-fn render_edit_name_mode(state: &mut SnippetState, frame: &mut Frame, area: Rect) {
-    let min_required = NAME_INPUT_HEIGHT + HINTS_HEIGHT;
+fn render_edit_mode(state: &mut SnippetState, frame: &mut Frame, area: Rect) {
+    let mode = state.mode().clone();
+
+    let min_required =
+        NAME_INPUT_HEIGHT + QUERY_INPUT_HEIGHT + DESCRIPTION_INPUT_HEIGHT + HINTS_HEIGHT;
     if area.height < min_required {
-        render_edit_name_minimal(state, frame, area);
+        render_edit_minimal(state, &mode, frame, area);
         return;
     }
 
     let layout = Layout::vertical([
         Constraint::Length(NAME_INPUT_HEIGHT),
+        Constraint::Length(QUERY_INPUT_HEIGHT),
+        Constraint::Length(DESCRIPTION_INPUT_HEIGHT),
         Constraint::Min(1),
         Constraint::Length(HINTS_HEIGHT),
     ])
     .split(area);
 
     let name_area = layout[0];
-    let hints_area = layout[2];
+    let query_area = layout[1];
+    let description_area = layout[2];
+    let hints_area = layout[4];
 
-    render_rename_name_input(state, frame, name_area);
-    render_rename_hints(frame, hints_area);
+    let is_name_active = matches!(mode, SnippetMode::EditName { .. });
+    let is_query_active = matches!(mode, SnippetMode::EditQuery { .. });
+    let is_desc_active = matches!(mode, SnippetMode::EditDescription { .. });
+
+    render_edit_name_input(state, is_name_active, frame, name_area);
+    render_edit_query_input(state, is_query_active, frame, query_area);
+    render_edit_description_input(state, is_desc_active, frame, description_area);
+    render_edit_hints(&mode, frame, hints_area);
 }
 
-fn render_edit_name_minimal(state: &mut SnippetState, frame: &mut Frame, area: Rect) {
-    let name_textarea = state.name_textarea_mut();
-    name_textarea.set_block(
-        Block::default()
-            .borders(Borders::ALL)
-            .title(" Rename Snippet ")
-            .border_style(Style::default().fg(Color::Yellow))
-            .style(Style::default().bg(Color::Black)),
-    );
-    name_textarea.set_style(Style::default().fg(Color::White).bg(Color::Black));
-    frame.render_widget(&*name_textarea, area);
-}
-
-fn render_rename_name_input(state: &mut SnippetState, frame: &mut Frame, area: Rect) {
-    let name_textarea = state.name_textarea_mut();
-    name_textarea.set_block(
-        Block::default()
-            .borders(Borders::ALL)
-            .title(" Rename Snippet ")
-            .border_style(Style::default().fg(Color::Yellow))
-            .style(Style::default().bg(Color::Black)),
-    );
-    name_textarea.set_style(Style::default().fg(Color::White).bg(Color::Black));
-    frame.render_widget(&*name_textarea, area);
-}
-
-fn render_rename_hints(frame: &mut Frame, area: Rect) {
-    let hints = Line::from(vec![
-        Span::styled(" [Enter]", Style::default().fg(Color::Yellow)),
-        Span::styled(" Save  ", Style::default().fg(Color::White)),
-        Span::styled("[Esc]", Style::default().fg(Color::Yellow)),
-        Span::styled(" Cancel", Style::default().fg(Color::White)),
-    ]);
-
-    let hints_widget = Paragraph::new(vec![hints]).block(
-        Block::default()
-            .borders(Borders::ALL)
-            .border_style(Style::default().fg(Color::Cyan))
-            .style(Style::default().bg(Color::Black)),
-    );
-
-    frame.render_widget(hints_widget, area);
-}
-
-fn render_edit_query_mode(state: &mut SnippetState, frame: &mut Frame, area: Rect) {
-    let min_required = QUERY_INPUT_HEIGHT + HINTS_HEIGHT;
-    if area.height < min_required {
-        render_edit_query_minimal(state, frame, area);
-        return;
+fn render_edit_minimal(
+    state: &mut SnippetState,
+    mode: &SnippetMode,
+    frame: &mut Frame,
+    area: Rect,
+) {
+    match mode {
+        SnippetMode::EditName { .. } => {
+            let name_textarea = state.name_textarea_mut();
+            name_textarea.set_block(
+                Block::default()
+                    .borders(Borders::ALL)
+                    .title(" Edit Snippet - Name ")
+                    .border_style(Style::default().fg(Color::Yellow))
+                    .style(Style::default().bg(Color::Black)),
+            );
+            name_textarea.set_style(Style::default().fg(Color::White).bg(Color::Black));
+            frame.render_widget(&*name_textarea, area);
+        }
+        SnippetMode::EditQuery { .. } => {
+            let query_textarea = state.query_textarea_mut();
+            query_textarea.set_block(
+                Block::default()
+                    .borders(Borders::ALL)
+                    .title(" Edit Snippet - Query ")
+                    .border_style(Style::default().fg(Color::Yellow))
+                    .style(Style::default().bg(Color::Black)),
+            );
+            query_textarea.set_style(Style::default().fg(Color::White).bg(Color::Black));
+            frame.render_widget(&*query_textarea, area);
+        }
+        SnippetMode::EditDescription { .. } => {
+            let desc_textarea = state.description_textarea_mut();
+            desc_textarea.set_block(
+                Block::default()
+                    .borders(Borders::ALL)
+                    .title(" Edit Snippet - Description ")
+                    .border_style(Style::default().fg(Color::Yellow))
+                    .style(Style::default().bg(Color::Black)),
+            );
+            desc_textarea.set_style(Style::default().fg(Color::White).bg(Color::Black));
+            frame.render_widget(&*desc_textarea, area);
+        }
+        _ => {}
     }
-
-    let layout = Layout::vertical([
-        Constraint::Length(QUERY_INPUT_HEIGHT),
-        Constraint::Min(1),
-        Constraint::Length(HINTS_HEIGHT),
-    ])
-    .split(area);
-
-    let query_area = layout[0];
-    let hints_area = layout[2];
-
-    render_edit_query_input(state, frame, query_area);
-    render_edit_query_hints(frame, hints_area);
 }
 
-fn render_edit_query_minimal(state: &mut SnippetState, frame: &mut Frame, area: Rect) {
+fn render_edit_name_input(
+    state: &mut SnippetState,
+    is_active: bool,
+    frame: &mut Frame,
+    area: Rect,
+) {
+    let border_color = if is_active {
+        Color::Yellow
+    } else {
+        Color::Cyan
+    };
+    let name_textarea = state.name_textarea_mut();
+    name_textarea.set_block(
+        Block::default()
+            .borders(Borders::ALL)
+            .title(" Name ")
+            .border_style(Style::default().fg(border_color))
+            .style(Style::default().bg(Color::Black)),
+    );
+    name_textarea.set_style(Style::default().fg(Color::White).bg(Color::Black));
+    if is_active {
+        frame.render_widget(&*name_textarea, area);
+    } else {
+        let content = name_textarea
+            .lines()
+            .first()
+            .map(|s| s.as_str())
+            .unwrap_or("");
+        let display = Paragraph::new(format!(" {}", content)).block(
+            Block::default()
+                .borders(Borders::ALL)
+                .title(" Name ")
+                .border_style(Style::default().fg(Color::Cyan))
+                .style(Style::default().bg(Color::Black)),
+        );
+        frame.render_widget(display, area);
+    }
+}
+
+fn render_edit_query_input(
+    state: &mut SnippetState,
+    is_active: bool,
+    frame: &mut Frame,
+    area: Rect,
+) {
+    let border_color = if is_active {
+        Color::Yellow
+    } else {
+        Color::Cyan
+    };
     let query_textarea = state.query_textarea_mut();
     query_textarea.set_block(
         Block::default()
             .borders(Borders::ALL)
-            .title(" Edit Query ")
-            .border_style(Style::default().fg(Color::Yellow))
+            .title(" Query ")
+            .border_style(Style::default().fg(border_color))
             .style(Style::default().bg(Color::Black)),
     );
     query_textarea.set_style(Style::default().fg(Color::White).bg(Color::Black));
-    frame.render_widget(&*query_textarea, area);
+    if is_active {
+        frame.render_widget(&*query_textarea, area);
+    } else {
+        let content = query_textarea
+            .lines()
+            .first()
+            .map(|s| s.as_str())
+            .unwrap_or("");
+        let display = Paragraph::new(format!(" {}", content)).block(
+            Block::default()
+                .borders(Borders::ALL)
+                .title(" Query ")
+                .border_style(Style::default().fg(Color::Cyan))
+                .style(Style::default().bg(Color::Black)),
+        );
+        frame.render_widget(display, area);
+    }
 }
 
-fn render_edit_query_input(state: &mut SnippetState, frame: &mut Frame, area: Rect) {
-    let query_textarea = state.query_textarea_mut();
-    query_textarea.set_block(
+fn render_edit_description_input(
+    state: &mut SnippetState,
+    is_active: bool,
+    frame: &mut Frame,
+    area: Rect,
+) {
+    let border_color = if is_active {
+        Color::Yellow
+    } else {
+        Color::Cyan
+    };
+    let desc_textarea = state.description_textarea_mut();
+    desc_textarea.set_block(
         Block::default()
             .borders(Borders::ALL)
-            .title(" Edit Query ")
-            .border_style(Style::default().fg(Color::Yellow))
+            .title(" Description (optional) ")
+            .border_style(Style::default().fg(border_color))
             .style(Style::default().bg(Color::Black)),
     );
-    query_textarea.set_style(Style::default().fg(Color::White).bg(Color::Black));
-    frame.render_widget(&*query_textarea, area);
+    desc_textarea.set_style(Style::default().fg(Color::White).bg(Color::Black));
+    if is_active {
+        frame.render_widget(&*desc_textarea, area);
+    } else {
+        let content = desc_textarea
+            .lines()
+            .first()
+            .map(|s| s.as_str())
+            .unwrap_or("");
+        let display = Paragraph::new(format!(" {}", content)).block(
+            Block::default()
+                .borders(Borders::ALL)
+                .title(" Description (optional) ")
+                .border_style(Style::default().fg(Color::Cyan))
+                .style(Style::default().bg(Color::Black)),
+        );
+        frame.render_widget(display, area);
+    }
 }
 
-fn render_edit_query_hints(frame: &mut Frame, area: Rect) {
-    let hints = Line::from(vec![
-        Span::styled(" [Enter]", Style::default().fg(Color::Yellow)),
-        Span::styled(" Save  ", Style::default().fg(Color::White)),
-        Span::styled("[Esc]", Style::default().fg(Color::Yellow)),
-        Span::styled(" Cancel", Style::default().fg(Color::White)),
-    ]);
+fn render_edit_hints(mode: &SnippetMode, frame: &mut Frame, area: Rect) {
+    let hints = match mode {
+        SnippetMode::EditName { .. }
+        | SnippetMode::EditQuery { .. }
+        | SnippetMode::EditDescription { .. } => Line::from(vec![
+            Span::styled(" [Enter]", Style::default().fg(Color::Yellow)),
+            Span::styled(" Update  ", Style::default().fg(Color::White)),
+            Span::styled("[Tab]", Style::default().fg(Color::Yellow)),
+            Span::styled(" Next  ", Style::default().fg(Color::White)),
+            Span::styled("[Shift+Tab]", Style::default().fg(Color::Yellow)),
+            Span::styled(" Prev  ", Style::default().fg(Color::White)),
+            Span::styled("[Esc]", Style::default().fg(Color::Yellow)),
+            Span::styled(" Cancel", Style::default().fg(Color::White)),
+        ]),
+        _ => Line::from(vec![]),
+    };
 
     let hints_widget = Paragraph::new(vec![hints]).block(
         Block::default()

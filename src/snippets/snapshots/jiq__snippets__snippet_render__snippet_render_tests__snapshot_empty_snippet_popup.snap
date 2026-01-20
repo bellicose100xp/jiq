@@ -21,7 +21,7 @@ expression: output
 "┌ Snippet Preview ─────────────────────────────────────────────────────────────┐"
 "│ No snippet selected                                                          │"
 "└──────────────────────────────────────────────────────────────────────────────┘"
-" [↑/↓] Navigate  [Enter] Apply  [n] New  [r] Rename  [e] Edit  [d] Delete  [Esc]"
+" [↑/↓] Navigate  [Enter] Apply  [n] New  [e] Edit  [d] Delete  [Esc] Close      "
 "                                                                                "
 "                                                                                "
 "                                                                                "

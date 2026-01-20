@@ -17,12 +17,16 @@ pub enum SnippetMode {
     #[default]
     Browse,
     CreateName,
+    CreateQuery,
     CreateDescription,
     EditName {
         original_name: String,
     },
     EditQuery {
-        snippet_name: String,
+        original_query: String,
+    },
+    EditDescription {
+        original_description: Option<String>,
     },
     ConfirmDelete {
         snippet_name: String,
@@ -155,9 +159,11 @@ impl SnippetState {
         matches!(
             self.mode,
             SnippetMode::CreateName
+                | SnippetMode::CreateQuery
                 | SnippetMode::CreateDescription
                 | SnippetMode::EditName { .. }
                 | SnippetMode::EditQuery { .. }
+                | SnippetMode::EditDescription { .. }
         )
     }
 
@@ -165,6 +171,7 @@ impl SnippetState {
         &self.mode
     }
 
+    #[cfg(test)]
     pub fn pending_query(&self) -> &str {
         &self.pending_query
     }
@@ -174,6 +181,9 @@ impl SnippetState {
         self.pending_query = current_query.to_string();
         self.name_textarea.select_all();
         self.name_textarea.cut();
+        self.query_textarea.select_all();
+        self.query_textarea.cut();
+        self.query_textarea.insert_str(current_query);
         self.description_textarea.select_all();
         self.description_textarea.cut();
     }
@@ -183,42 +193,134 @@ impl SnippetState {
         self.pending_query.clear();
         self.name_textarea.select_all();
         self.name_textarea.cut();
+        self.query_textarea.select_all();
+        self.query_textarea.cut();
         self.description_textarea.select_all();
         self.description_textarea.cut();
     }
 
-    pub fn next_create_field(&mut self) {
-        self.mode = match &self.mode {
-            SnippetMode::CreateName => SnippetMode::CreateDescription,
-            SnippetMode::CreateDescription => SnippetMode::CreateName,
-            SnippetMode::Browse => SnippetMode::Browse,
-            SnippetMode::EditName { original_name } => SnippetMode::EditName {
-                original_name: original_name.clone(),
-            },
-            SnippetMode::EditQuery { snippet_name } => SnippetMode::EditQuery {
-                snippet_name: snippet_name.clone(),
-            },
-            SnippetMode::ConfirmDelete { snippet_name } => SnippetMode::ConfirmDelete {
-                snippet_name: snippet_name.clone(),
-            },
-        };
+    pub fn next_field(&mut self) {
+        let snippet_info = self
+            .selected_snippet()
+            .map(|s| (s.name.clone(), s.query.clone(), s.description.clone()));
+        let pending_query = self.pending_query.clone();
+        let current_query = self
+            .query_textarea
+            .lines()
+            .first()
+            .map(|s| s.to_string())
+            .unwrap_or_default();
+
+        match self.mode.clone() {
+            SnippetMode::CreateName => {
+                self.mode = SnippetMode::CreateQuery;
+                self.query_textarea.select_all();
+                self.query_textarea.cut();
+                self.query_textarea.insert_str(&pending_query);
+            }
+            SnippetMode::CreateQuery => {
+                self.pending_query = current_query;
+                self.mode = SnippetMode::CreateDescription;
+            }
+            SnippetMode::CreateDescription => {
+                self.mode = SnippetMode::CreateName;
+            }
+            SnippetMode::EditName { .. } => {
+                if let Some((_, query, _)) = snippet_info {
+                    self.query_textarea.select_all();
+                    self.query_textarea.cut();
+                    self.query_textarea.insert_str(&query);
+                    self.mode = SnippetMode::EditQuery {
+                        original_query: query,
+                    };
+                }
+            }
+            SnippetMode::EditQuery { .. } => {
+                if let Some((_, _, description)) = snippet_info {
+                    self.description_textarea.select_all();
+                    self.description_textarea.cut();
+                    if let Some(ref desc) = description {
+                        self.description_textarea.insert_str(desc);
+                    }
+                    self.mode = SnippetMode::EditDescription {
+                        original_description: description,
+                    };
+                }
+            }
+            SnippetMode::EditDescription { .. } => {
+                if let Some((name, _, _)) = snippet_info {
+                    self.name_textarea.select_all();
+                    self.name_textarea.cut();
+                    self.name_textarea.insert_str(&name);
+                    self.mode = SnippetMode::EditName {
+                        original_name: name,
+                    };
+                }
+            }
+            SnippetMode::Browse | SnippetMode::ConfirmDelete { .. } => {}
+        }
     }
 
-    pub fn prev_create_field(&mut self) {
-        self.mode = match &self.mode {
-            SnippetMode::CreateDescription => SnippetMode::CreateName,
-            SnippetMode::CreateName => SnippetMode::CreateDescription,
-            SnippetMode::Browse => SnippetMode::Browse,
-            SnippetMode::EditName { original_name } => SnippetMode::EditName {
-                original_name: original_name.clone(),
-            },
-            SnippetMode::EditQuery { snippet_name } => SnippetMode::EditQuery {
-                snippet_name: snippet_name.clone(),
-            },
-            SnippetMode::ConfirmDelete { snippet_name } => SnippetMode::ConfirmDelete {
-                snippet_name: snippet_name.clone(),
-            },
-        };
+    pub fn prev_field(&mut self) {
+        let snippet_info = self
+            .selected_snippet()
+            .map(|s| (s.name.clone(), s.query.clone(), s.description.clone()));
+        let pending_query = self.pending_query.clone();
+        let current_query = self
+            .query_textarea
+            .lines()
+            .first()
+            .map(|s| s.to_string())
+            .unwrap_or_default();
+
+        match self.mode.clone() {
+            SnippetMode::CreateName => {
+                self.mode = SnippetMode::CreateDescription;
+            }
+            SnippetMode::CreateQuery => {
+                self.pending_query = current_query;
+                self.mode = SnippetMode::CreateName;
+            }
+            SnippetMode::CreateDescription => {
+                self.mode = SnippetMode::CreateQuery;
+                self.query_textarea.select_all();
+                self.query_textarea.cut();
+                self.query_textarea.insert_str(&pending_query);
+            }
+            SnippetMode::EditName { .. } => {
+                if let Some((_, _, description)) = snippet_info {
+                    self.description_textarea.select_all();
+                    self.description_textarea.cut();
+                    if let Some(ref desc) = description {
+                        self.description_textarea.insert_str(desc);
+                    }
+                    self.mode = SnippetMode::EditDescription {
+                        original_description: description,
+                    };
+                }
+            }
+            SnippetMode::EditQuery { .. } => {
+                if let Some((name, _, _)) = snippet_info {
+                    self.name_textarea.select_all();
+                    self.name_textarea.cut();
+                    self.name_textarea.insert_str(&name);
+                    self.mode = SnippetMode::EditName {
+                        original_name: name,
+                    };
+                }
+            }
+            SnippetMode::EditDescription { .. } => {
+                if let Some((_, query, _)) = snippet_info {
+                    self.query_textarea.select_all();
+                    self.query_textarea.cut();
+                    self.query_textarea.insert_str(&query);
+                    self.mode = SnippetMode::EditQuery {
+                        original_query: query,
+                    };
+                }
+            }
+            SnippetMode::Browse | SnippetMode::ConfirmDelete { .. } => {}
+        }
     }
 
     pub fn save_new_snippet(&mut self) -> Result<(), String> {
@@ -274,25 +376,9 @@ impl SnippetState {
         Ok(())
     }
 
-    pub fn enter_rename_mode(&mut self) {
-        if let Some(snippet) = self.selected_snippet() {
-            let original_name = snippet.name.clone();
-            self.name_textarea.select_all();
-            self.name_textarea.cut();
-            self.name_textarea.insert_str(&original_name);
-            self.mode = SnippetMode::EditName { original_name };
-        }
-    }
-
-    pub fn cancel_rename(&mut self) {
-        self.mode = SnippetMode::Browse;
-        self.name_textarea.select_all();
-        self.name_textarea.cut();
-    }
-
-    pub fn rename_snippet(&mut self) -> Result<(), String> {
+    pub fn update_snippet_name(&mut self) -> Result<(), String> {
         let SnippetMode::EditName { ref original_name } = self.mode else {
-            return Err("Not in rename mode".to_string());
+            return Err("Not in edit name mode".to_string());
         };
         let original_name = original_name.clone();
 
@@ -332,7 +418,6 @@ impl SnippetState {
             return Err(format!("Failed to save: {}", e));
         }
 
-        self.cancel_rename();
         Ok(())
     }
 
@@ -348,21 +433,38 @@ impl SnippetState {
         &mut self.query_textarea
     }
 
-    pub fn enter_edit_query_mode(&mut self) {
+    pub fn enter_edit_mode(&mut self) {
         if let Some(snippet) = self.selected_snippet() {
-            let snippet_name = snippet.name.clone();
+            let original_name = snippet.name.clone();
             let query = snippet.query.clone();
+            let description = snippet.description.clone();
+
+            self.name_textarea.select_all();
+            self.name_textarea.cut();
+            self.name_textarea.insert_str(&original_name);
+
             self.query_textarea.select_all();
             self.query_textarea.cut();
             self.query_textarea.insert_str(&query);
-            self.mode = SnippetMode::EditQuery { snippet_name };
+
+            self.description_textarea.select_all();
+            self.description_textarea.cut();
+            if let Some(ref desc) = description {
+                self.description_textarea.insert_str(desc);
+            }
+
+            self.mode = SnippetMode::EditName { original_name };
         }
     }
 
-    pub fn cancel_edit_query(&mut self) {
+    pub fn cancel_edit(&mut self) {
         self.mode = SnippetMode::Browse;
+        self.name_textarea.select_all();
+        self.name_textarea.cut();
         self.query_textarea.select_all();
         self.query_textarea.cut();
+        self.description_textarea.select_all();
+        self.description_textarea.cut();
     }
 
     pub fn update_snippet_query(&mut self) -> Result<(), String> {
@@ -397,7 +499,37 @@ impl SnippetState {
             return Err(format!("Failed to save: {}", e));
         }
 
-        self.cancel_edit_query();
+        Ok(())
+    }
+
+    pub fn update_snippet_description(&mut self) -> Result<(), String> {
+        let SnippetMode::EditDescription { .. } = self.mode else {
+            return Err("Not in edit description mode".to_string());
+        };
+
+        let new_description = self
+            .description_textarea
+            .lines()
+            .first()
+            .map(|s| s.trim().to_string())
+            .filter(|s| !s.is_empty());
+
+        let snippet_idx = self
+            .filtered_indices
+            .get(self.selected_index)
+            .copied()
+            .ok_or_else(|| "No snippet selected".to_string())?;
+
+        let original_description = self.snippets[snippet_idx].description.clone();
+        self.snippets[snippet_idx].description = new_description;
+
+        if self.persist_to_disk
+            && let Err(e) = super::snippet_storage::save_snippets(&self.snippets)
+        {
+            self.snippets[snippet_idx].description = original_description;
+            return Err(format!("Failed to save: {}", e));
+        }
+
         Ok(())
     }
 

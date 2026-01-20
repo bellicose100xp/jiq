@@ -1,7 +1,12 @@
 use super::*;
 
+fn enter_edit_query_mode(state: &mut SnippetState) {
+    state.enter_edit_mode();
+    state.next_field(); // EditName -> EditQuery
+}
+
 #[test]
-fn test_enter_edit_query_mode() {
+fn test_enter_edit_query_via_next_field() {
     let mut state = SnippetState::new_without_persistence();
     state.set_snippets(vec![Snippet {
         name: "My Snippet".to_string(),
@@ -9,36 +14,29 @@ fn test_enter_edit_query_mode() {
         description: None,
     }]);
 
-    state.enter_edit_query_mode();
+    state.enter_edit_mode();
+    assert!(matches!(state.mode(), SnippetMode::EditName { .. }));
 
+    state.next_field();
     assert!(matches!(
         state.mode(),
-        SnippetMode::EditQuery { snippet_name } if snippet_name == "My Snippet"
+        SnippetMode::EditQuery { original_query } if original_query == ".test | keys"
     ));
     assert!(state.is_editing());
     assert_eq!(state.query_input(), ".test | keys");
 }
 
 #[test]
-fn test_enter_edit_query_mode_with_no_snippets() {
-    let mut state = SnippetState::new_without_persistence();
-
-    state.enter_edit_query_mode();
-
-    assert_eq!(*state.mode(), SnippetMode::Browse);
-}
-
-#[test]
-fn test_cancel_edit_query() {
+fn test_cancel_edit_in_query_mode() {
     let mut state = SnippetState::new_without_persistence();
     state.set_snippets(vec![Snippet {
         name: "My Snippet".to_string(),
         query: ".test".to_string(),
         description: None,
     }]);
-    state.enter_edit_query_mode();
+    enter_edit_query_mode(&mut state);
 
-    state.cancel_edit_query();
+    state.cancel_edit();
 
     assert_eq!(*state.mode(), SnippetMode::Browse);
     assert_eq!(state.query_input(), "");
@@ -52,7 +50,7 @@ fn test_update_snippet_query_success() {
         query: ".old".to_string(),
         description: None,
     }]);
-    state.enter_edit_query_mode();
+    enter_edit_query_mode(&mut state);
 
     state.query_textarea_mut().select_all();
     state.query_textarea_mut().cut();
@@ -61,7 +59,8 @@ fn test_update_snippet_query_success() {
     let result = state.update_snippet_query();
     assert!(result.is_ok());
     assert_eq!(state.snippets()[0].query, ".new | keys");
-    assert_eq!(*state.mode(), SnippetMode::Browse);
+    // Update methods no longer change mode - caller handles navigation
+    assert!(matches!(state.mode(), SnippetMode::EditQuery { .. }));
 }
 
 #[test]
@@ -72,7 +71,7 @@ fn test_update_snippet_query_empty_fails() {
         query: ".test".to_string(),
         description: None,
     }]);
-    state.enter_edit_query_mode();
+    enter_edit_query_mode(&mut state);
 
     state.query_textarea_mut().select_all();
     state.query_textarea_mut().cut();
@@ -91,7 +90,7 @@ fn test_update_snippet_query_whitespace_only_fails() {
         query: ".test".to_string(),
         description: None,
     }]);
-    state.enter_edit_query_mode();
+    enter_edit_query_mode(&mut state);
 
     state.query_textarea_mut().select_all();
     state.query_textarea_mut().cut();
@@ -110,7 +109,7 @@ fn test_update_snippet_query_trims_whitespace() {
         query: ".old".to_string(),
         description: None,
     }]);
-    state.enter_edit_query_mode();
+    enter_edit_query_mode(&mut state);
 
     state.query_textarea_mut().select_all();
     state.query_textarea_mut().cut();
@@ -142,7 +141,7 @@ fn test_edit_query_keeps_snippet_position() {
         },
     ]);
     state.set_selected_index(1);
-    state.enter_edit_query_mode();
+    enter_edit_query_mode(&mut state);
 
     state.query_textarea_mut().select_all();
     state.query_textarea_mut().cut();
@@ -163,7 +162,7 @@ fn test_edit_query_preserves_name_and_description() {
         query: ".old".to_string(),
         description: Some("My description".to_string()),
     }]);
-    state.enter_edit_query_mode();
+    enter_edit_query_mode(&mut state);
 
     state.query_textarea_mut().select_all();
     state.query_textarea_mut().cut();
@@ -203,7 +202,7 @@ fn test_is_editing_in_edit_query_mode() {
     }]);
 
     assert!(!state.is_editing());
-    state.enter_edit_query_mode();
+    enter_edit_query_mode(&mut state);
     assert!(state.is_editing());
 }
 
@@ -216,7 +215,7 @@ fn test_close_resets_edit_query_mode() {
         description: None,
     }]);
     state.open();
-    state.enter_edit_query_mode();
+    enter_edit_query_mode(&mut state);
 
     state.close();
 
@@ -232,7 +231,7 @@ fn test_edit_query_same_query_succeeds() {
         query: ".test".to_string(),
         description: None,
     }]);
-    state.enter_edit_query_mode();
+    enter_edit_query_mode(&mut state);
 
     let result = state.update_snippet_query();
     assert!(result.is_ok());
@@ -240,7 +239,7 @@ fn test_edit_query_same_query_succeeds() {
 }
 
 #[test]
-fn test_enter_edit_query_populates_textarea() {
+fn test_edit_query_populates_textarea() {
     let mut state = SnippetState::new_without_persistence();
     state.set_snippets(vec![Snippet {
         name: "Complex Query".to_string(),
@@ -248,10 +247,54 @@ fn test_enter_edit_query_populates_textarea() {
         description: None,
     }]);
 
-    state.enter_edit_query_mode();
+    enter_edit_query_mode(&mut state);
 
     assert_eq!(
         state.query_input(),
         ".data[] | select(.active) | {id, name}"
     );
+}
+
+#[test]
+fn test_edit_mode_field_cycling() {
+    let mut state = SnippetState::new_without_persistence();
+    state.set_snippets(vec![Snippet {
+        name: "Test".to_string(),
+        query: ".test".to_string(),
+        description: Some("Desc".to_string()),
+    }]);
+
+    state.enter_edit_mode();
+    assert!(matches!(state.mode(), SnippetMode::EditName { .. }));
+
+    state.next_field();
+    assert!(matches!(state.mode(), SnippetMode::EditQuery { .. }));
+
+    state.next_field();
+    assert!(matches!(state.mode(), SnippetMode::EditDescription { .. }));
+
+    state.next_field();
+    assert!(matches!(state.mode(), SnippetMode::EditName { .. }));
+}
+
+#[test]
+fn test_edit_mode_prev_field_cycling() {
+    let mut state = SnippetState::new_without_persistence();
+    state.set_snippets(vec![Snippet {
+        name: "Test".to_string(),
+        query: ".test".to_string(),
+        description: Some("Desc".to_string()),
+    }]);
+
+    state.enter_edit_mode();
+    assert!(matches!(state.mode(), SnippetMode::EditName { .. }));
+
+    state.prev_field();
+    assert!(matches!(state.mode(), SnippetMode::EditDescription { .. }));
+
+    state.prev_field();
+    assert!(matches!(state.mode(), SnippetMode::EditQuery { .. }));
+
+    state.prev_field();
+    assert!(matches!(state.mode(), SnippetMode::EditName { .. }));
 }
