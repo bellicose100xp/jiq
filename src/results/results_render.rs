@@ -1,6 +1,6 @@
 use ratatui::{
     Frame,
-    layout::{Constraint, Layout, Rect},
+    layout::{Alignment, Constraint, Layout, Rect},
     style::{Color, Modifier, Style},
     text::{Line, Span, Text},
     widgets::{Block, Borders, Paragraph},
@@ -10,6 +10,8 @@ use crate::app::App;
 use crate::search::Match;
 use crate::search::search_render::SEARCH_BAR_HEIGHT;
 use crate::widgets::popup;
+
+use crate::scroll::ScrollState;
 
 const MATCH_HIGHLIGHT_BG: Color = Color::Rgb(128, 128, 128);
 const MATCH_HIGHLIGHT_FG: Color = Color::White;
@@ -35,6 +37,20 @@ fn get_spinner(frame_count: u64) -> (char, Color) {
     let char_idx = index % SPINNER_CHARS.len();
     let color_idx = index % SPINNER_COLORS.len();
     (SPINNER_CHARS[char_idx], SPINNER_COLORS[color_idx])
+}
+
+fn format_position_indicator(scroll: &ScrollState, line_count: u32) -> String {
+    if line_count == 0 {
+        return String::new();
+    }
+    let start = scroll.offset as u32 + 1;
+    let end = (scroll.offset as u32 + scroll.viewport_height as u32).min(line_count);
+    let percentage = if line_count > 0 {
+        (scroll.offset as u32 * 100) / line_count
+    } else {
+        0
+    };
+    format!("L{}-{}/{} ({}%)", start, end, line_count, percentage)
 }
 
 pub fn render_pane(app: &mut App, frame: &mut Frame, area: Rect) {
@@ -68,6 +84,18 @@ pub fn render_pane(app: &mut App, frame: &mut Frame, area: Rect) {
 
     let is_pending = query_state.is_pending();
     let stats_info = app.stats.display().unwrap_or_else(|| "Results".to_string());
+
+    // Calculate viewport dimensions and position indicator early for title
+    let viewport_height = results_area.height.saturating_sub(2);
+    let viewport_width = results_area.width.saturating_sub(2);
+    let line_count = app.results_line_count_u32();
+    app.results_scroll
+        .update_bounds(line_count, viewport_height);
+    if let Some(q) = &app.query {
+        app.results_scroll
+            .update_h_bounds(q.max_line_width(), viewport_width);
+    }
+    let position_indicator = format_position_indicator(&app.results_scroll, line_count);
 
     let (title, unfocused_border_color) = if query_state.result.is_err() {
         // ERROR: Yellow text, yellow border (unfocused)
@@ -136,6 +164,15 @@ pub fn render_pane(app: &mut App, frame: &mut Frame, area: Rect) {
         }
     };
 
+    let right_title: Option<Line<'_>> = if !position_indicator.is_empty() {
+        Some(Line::from(Span::styled(
+            format!(" {} ", position_indicator),
+            Style::default().fg(unfocused_border_color),
+        )))
+    } else {
+        None
+    };
+
     let border_color = if app.focus == crate::app::Focus::ResultsPane {
         Color::Cyan
     } else {
@@ -146,18 +183,13 @@ pub fn render_pane(app: &mut App, frame: &mut Frame, area: Rect) {
 
     // Always render from cached pre-rendered text
     if let Some(rendered) = &query_state.last_successful_result_rendered {
-        let viewport_height = results_area.height.saturating_sub(2);
-        let viewport_width = results_area.width.saturating_sub(2);
-        let line_count = app.results_line_count_u32();
-        app.results_scroll
-            .update_bounds(line_count, viewport_height);
-        app.results_scroll
-            .update_h_bounds(query_state.max_line_width(), viewport_width);
-
-        let block = Block::default()
+        let mut block = Block::default()
             .borders(Borders::ALL)
             .title(title)
             .border_style(Style::default().fg(border_color));
+        if let Some(rt) = right_title.clone() {
+            block = block.title_top(rt.alignment(Alignment::Right));
+        }
 
         // Use cached pre-rendered text
         // Optimization: Only clone visible viewport to avoid massive allocations
@@ -203,10 +235,13 @@ pub fn render_pane(app: &mut App, frame: &mut Frame, area: Rect) {
         frame.render_widget(content, results_area);
     } else {
         // No successful result yet - show empty
-        let block = Block::default()
+        let mut block = Block::default()
             .borders(Borders::ALL)
             .title(title)
             .border_style(Style::default().fg(border_color));
+        if let Some(rt) = right_title {
+            block = block.title_top(rt.alignment(Alignment::Right));
+        }
 
         let empty_text = Text::from("");
         let content = Paragraph::new(empty_text).block(block);

@@ -2,7 +2,7 @@
 source: src/app/app_render_tests/popup_tests.rs
 expression: output
 ---
-"┌ Obj┌ Keyboard Shortcuts ────────────────────────────────────────────────┐────┐"
+"┌ Obj┌ Keyboard Shortcuts ────────────────────────────────────────────────┐0%) ┐"
 "│{   │  0/^            Jump to left edge                                  │    │"
 "│  "t│  $              Jump to right edge                                 │    │"
 "│}   │  g/Home         Jump to top                                        │    │"

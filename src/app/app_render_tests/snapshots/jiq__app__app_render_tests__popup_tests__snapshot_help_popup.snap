@@ -2,7 +2,7 @@
 source: src/app/app_render_tests/popup_tests.rs
 expression: output
 ---
-"┌ Obj┌ Keyboard Shortcuts ────────────────────────────────────────────────┐────┐"
+"┌ Obj┌ Keyboard Shortcuts ────────────────────────────────────────────────┐0%) ┐"
 "│{   │                                                                    │    │"
 "│  "t│  ── GLOBAL ──                                                      │    │"
 "│}   │  F1 or ?        Toggle this help                                   │    │"

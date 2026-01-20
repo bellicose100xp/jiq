@@ -184,3 +184,83 @@ mod spinner_tests {
         );
     }
 }
+
+#[cfg(test)]
+mod position_indicator_tests {
+    use super::super::format_position_indicator;
+    use crate::scroll::ScrollState;
+
+    fn create_scroll_state(offset: u16, viewport_height: u16, max_offset: u16) -> ScrollState {
+        ScrollState {
+            offset,
+            max_offset,
+            viewport_height,
+            h_offset: 0,
+            max_h_offset: 0,
+            viewport_width: 80,
+        }
+    }
+
+    #[test]
+    fn test_empty_content_returns_empty_string() {
+        let scroll = create_scroll_state(0, 20, 0);
+        assert_eq!(format_position_indicator(&scroll, 0), "");
+    }
+
+    #[test]
+    fn test_single_line() {
+        let scroll = create_scroll_state(0, 20, 0);
+        assert_eq!(format_position_indicator(&scroll, 1), "L1-1/1 (0%)");
+    }
+
+    #[test]
+    fn test_at_top() {
+        let scroll = create_scroll_state(0, 20, 80);
+        assert_eq!(format_position_indicator(&scroll, 100), "L1-20/100 (0%)");
+    }
+
+    #[test]
+    fn test_at_bottom() {
+        let scroll = create_scroll_state(80, 20, 80);
+        assert_eq!(format_position_indicator(&scroll, 100), "L81-100/100 (80%)");
+    }
+
+    #[test]
+    fn test_middle_position() {
+        let scroll = create_scroll_state(45, 20, 80);
+        assert_eq!(format_position_indicator(&scroll, 100), "L46-65/100 (45%)");
+    }
+
+    #[test]
+    fn test_viewport_larger_than_content() {
+        let scroll = create_scroll_state(0, 50, 0);
+        assert_eq!(format_position_indicator(&scroll, 10), "L1-10/10 (0%)");
+    }
+
+    #[test]
+    fn test_small_file_exact_viewport() {
+        let scroll = create_scroll_state(0, 20, 0);
+        assert_eq!(format_position_indicator(&scroll, 20), "L1-20/20 (0%)");
+    }
+
+    #[test]
+    fn test_large_file() {
+        let scroll = create_scroll_state(500, 50, 950);
+        assert_eq!(
+            format_position_indicator(&scroll, 1000),
+            "L501-550/1000 (50%)"
+        );
+    }
+
+    #[test]
+    fn test_percentage_rounding() {
+        let scroll = create_scroll_state(33, 20, 80);
+        assert_eq!(format_position_indicator(&scroll, 100), "L34-53/100 (33%)");
+    }
+
+    #[test]
+    fn test_near_end_clamping() {
+        let scroll = create_scroll_state(95, 20, 80);
+        assert_eq!(format_position_indicator(&scroll, 100), "L96-100/100 (95%)");
+    }
+}
