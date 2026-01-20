@@ -2,7 +2,7 @@
 source: src/app/app_render_tests/search_tests.rs
 expression: output
 ---
-"┌ Object | L1-5/5 (0%) ────────────────────────────────────────────────────────┐"
+"┌ Object ───────────────────────────────────────────────────────── L1-5/5 (0%) ┐"
 "│{                                                                             │"
 "│  "name": "Alice",                                                            │"
 "│  "email": "alice@example.com",                                               │"

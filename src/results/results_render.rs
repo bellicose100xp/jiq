@@ -1,6 +1,6 @@
 use ratatui::{
     Frame,
-    layout::{Constraint, Layout, Rect},
+    layout::{Alignment, Constraint, Layout, Rect},
     style::{Color, Modifier, Style},
     text::{Line, Span, Text},
     widgets::{Block, Borders, Paragraph},
@@ -112,16 +112,8 @@ pub fn render_pane(app: &mut App, frame: &mut Frame, area: Rect) {
             Style::default().fg(Color::Yellow),
         ));
         if !stats_info.is_empty() {
-            let position_part = if position_indicator.is_empty() {
-                String::new()
-            } else {
-                format!("| {} ", position_indicator)
-            };
             spans.push(Span::styled(
-                format!(
-                    "| {} {}| Showing last successful result ",
-                    stats_info, position_part
-                ),
+                format!("| {} | Showing last successful result ", stats_info),
                 Style::default().fg(Color::Yellow),
             ));
         }
@@ -136,26 +128,16 @@ pub fn render_pane(app: &mut App, frame: &mut Frame, area: Rect) {
                 Style::default().fg(spinner_color),
             ));
         }
-        let position_part = if position_indicator.is_empty() {
-            String::new()
-        } else {
-            format!("| {} ", position_indicator)
-        };
         spans.push(Span::styled(
             format!(
-                " ∅ No Results | {} {}| Showing last non-empty result ",
-                stats_info, position_part
+                " ∅ No Results | {} | Showing last non-empty result ",
+                stats_info
             ),
             Style::default().fg(Color::Gray),
         ));
         (Line::from(spans), Color::DarkGray)
     } else {
         // SUCCESS: Green text, green border (unfocused)
-        let position_part = if position_indicator.is_empty() {
-            String::new()
-        } else {
-            format!("| {} ", position_indicator)
-        };
         if is_pending {
             let (spinner_char, spinner_color) = get_spinner(app.frame_count);
             (
@@ -165,7 +147,7 @@ pub fn render_pane(app: &mut App, frame: &mut Frame, area: Rect) {
                         Style::default().fg(spinner_color),
                     ),
                     Span::styled(
-                        format!("{} {}", stats_info, position_part),
+                        format!("{} ", stats_info),
                         Style::default().fg(Color::Green),
                     ),
                 ]),
@@ -174,12 +156,21 @@ pub fn render_pane(app: &mut App, frame: &mut Frame, area: Rect) {
         } else {
             (
                 Line::from(Span::styled(
-                    format!(" {} {}", stats_info, position_part),
+                    format!(" {} ", stats_info),
                     Style::default().fg(Color::Green),
                 )),
                 Color::Green,
             )
         }
+    };
+
+    let right_title: Option<Line<'_>> = if !position_indicator.is_empty() {
+        Some(Line::from(Span::styled(
+            format!(" {} ", position_indicator),
+            Style::default().fg(unfocused_border_color),
+        )))
+    } else {
+        None
     };
 
     let border_color = if app.focus == crate::app::Focus::ResultsPane {
@@ -192,10 +183,13 @@ pub fn render_pane(app: &mut App, frame: &mut Frame, area: Rect) {
 
     // Always render from cached pre-rendered text
     if let Some(rendered) = &query_state.last_successful_result_rendered {
-        let block = Block::default()
+        let mut block = Block::default()
             .borders(Borders::ALL)
             .title(title)
             .border_style(Style::default().fg(border_color));
+        if let Some(rt) = right_title.clone() {
+            block = block.title_top(rt.alignment(Alignment::Right));
+        }
 
         // Use cached pre-rendered text
         // Optimization: Only clone visible viewport to avoid massive allocations
@@ -241,10 +235,13 @@ pub fn render_pane(app: &mut App, frame: &mut Frame, area: Rect) {
         frame.render_widget(content, results_area);
     } else {
         // No successful result yet - show empty
-        let block = Block::default()
+        let mut block = Block::default()
             .borders(Borders::ALL)
             .title(title)
             .border_style(Style::default().fg(border_color));
+        if let Some(rt) = right_title {
+            block = block.title_top(rt.alignment(Alignment::Right));
+        }
 
         let empty_text = Text::from("");
         let content = Paragraph::new(empty_text).block(block);
