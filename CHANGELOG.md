@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.13.1] - 2026-01-19
+
+### Fixed
+- Added missing Ctrl+S keybinding documentation to help popup and global keybinds section
+
 ## [3.13.0] - 2026-01-19
 
 ### Added
