@@ -1,0 +1,6 @@
+---
+source: src/help/help_line_render_tests.rs
+assertion_line: 59
+expression: output
+---
+" F1/?: Help | Shift+Tab: Switch Pane | Ctrl+S: Snippets | Enter: Output Result | Ctrl+Q: Output Query | q: Quit         "

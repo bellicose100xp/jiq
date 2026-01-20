@@ -13,15 +13,19 @@ pub fn render_line(app: &App, frame: &mut Frame, area: Rect) {
     {
         let query_empty = app.query().is_empty();
         if query_empty {
-            " F1: Help | Shift+Tab: Switch Pane | Ctrl+P/N: Cycle History | ↑/Ctrl+R: History"
+            " F1: Help | Shift+Tab: Switch Pane | Ctrl+S: Snippets | Ctrl+P/N: Cycle History | ↑/Ctrl+R: History"
         } else {
-            " F1: Help | Shift+Tab: Switch Pane | ↑/Ctrl+R: History | Enter: Output Result | Ctrl+Q: Output Query"
+            " F1: Help | Shift+Tab: Switch Pane | Ctrl+S: Snippets | ↑/Ctrl+R: History | Enter: Output Result | Ctrl+Q: Output Query"
         }
     } else {
-        " F1/?: Help | Shift+Tab: Switch Pane | Enter: Output Result | Ctrl+Q: Output Query | q: Quit"
+        " F1/?: Help | Shift+Tab: Switch Pane | Ctrl+S: Snippets | Enter: Output Result | Ctrl+Q: Output Query | q: Quit"
     };
 
     let help = Paragraph::new(help_text).style(Style::default().fg(Color::DarkGray));
 
     frame.render_widget(help, area);
 }
+
+#[cfg(test)]
+#[path = "help_line_render_tests.rs"]
+mod help_line_render_tests;
