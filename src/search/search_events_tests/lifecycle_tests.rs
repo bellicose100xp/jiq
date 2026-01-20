@@ -58,3 +58,86 @@ fn test_text_input_updates_query() {
 
     assert_eq!(app.search.query(), "test");
 }
+
+#[test]
+fn test_open_search_hides_ai_and_saves_state() {
+    let mut app = test_app(r#"{"name": "test"}"#);
+    app.ai.visible = true;
+
+    open_search(&mut app);
+
+    assert!(!app.ai.visible);
+    assert!(app.saved_ai_visibility_for_search);
+}
+
+#[test]
+fn test_open_search_hides_tooltip_and_saves_state() {
+    let mut app = test_app(r#"{"name": "test"}"#);
+    app.tooltip.enabled = true;
+
+    open_search(&mut app);
+
+    assert!(!app.tooltip.enabled);
+    assert!(app.saved_tooltip_visibility_for_search);
+}
+
+#[test]
+fn test_close_search_restores_ai_visibility() {
+    let mut app = test_app(r#"{"name": "test"}"#);
+    app.ai.visible = true;
+
+    open_search(&mut app);
+    assert!(!app.ai.visible);
+
+    close_search(&mut app);
+    assert!(app.ai.visible);
+}
+
+#[test]
+fn test_close_search_restores_tooltip_visibility() {
+    let mut app = test_app(r#"{"name": "test"}"#);
+    app.tooltip.enabled = true;
+
+    open_search(&mut app);
+    assert!(!app.tooltip.enabled);
+
+    close_search(&mut app);
+    assert!(app.tooltip.enabled);
+}
+
+#[test]
+fn test_open_search_preserves_hidden_ai_state() {
+    let mut app = test_app(r#"{"name": "test"}"#);
+    app.ai.visible = false;
+
+    open_search(&mut app);
+    close_search(&mut app);
+
+    assert!(!app.ai.visible);
+}
+
+#[test]
+fn test_open_search_preserves_disabled_tooltip_state() {
+    let mut app = test_app(r#"{"name": "test"}"#);
+    app.tooltip.enabled = false;
+
+    open_search(&mut app);
+    close_search(&mut app);
+
+    assert!(!app.tooltip.enabled);
+}
+
+#[test]
+fn test_open_close_search_with_both_ai_and_tooltip_active() {
+    let mut app = test_app(r#"{"name": "test"}"#);
+    app.ai.visible = true;
+    app.tooltip.enabled = true;
+
+    open_search(&mut app);
+    assert!(!app.ai.visible);
+    assert!(!app.tooltip.enabled);
+
+    close_search(&mut app);
+    assert!(app.ai.visible);
+    assert!(app.tooltip.enabled);
+}

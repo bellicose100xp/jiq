@@ -106,12 +106,18 @@ pub fn handle_search_key(app: &mut App, key: KeyEvent) -> bool {
 }
 
 pub fn open_search(app: &mut App) {
+    app.saved_ai_visibility_for_search = app.ai.visible;
+    app.ai.visible = false;
+    app.saved_tooltip_visibility_for_search = app.tooltip.enabled;
+    app.tooltip.enabled = false;
     app.search.open();
     app.focus = Focus::ResultsPane;
 }
 
 pub fn close_search(app: &mut App) {
     app.search.close();
+    app.ai.visible = app.saved_ai_visibility_for_search;
+    app.tooltip.enabled = app.saved_tooltip_visibility_for_search;
 }
 
 #[cfg(test)]
