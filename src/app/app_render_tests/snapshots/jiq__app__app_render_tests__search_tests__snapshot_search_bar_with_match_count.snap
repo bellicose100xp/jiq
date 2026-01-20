@@ -2,7 +2,7 @@
 source: src/app/app_render_tests/search_tests.rs
 expression: output
 ---
-"┌ Array [3 objects] ───────────────────────────────────────────────────────────┐"
+"┌ Array [3 objects] | L1-11/11 (0%) ───────────────────────────────────────────┐"
 "│[                                                                             │"
 "│  {                                                                           │"
 "│    "name": "alice"                                                           │"
