@@ -25,4 +25,4 @@ expression: output
 "┌ Query [INSERT] ────────────────────────────────────────── Ctrl+T for tooltip ┐"
 "│                                                                              │"
 "└──────────────────────────────────────────────────────────────────────────────┘"
-" F1: Help | Shift+Tab: Switch Pane | Ctrl+P/N: Cycle History | ↑/Ctrl+R: History"
+" F1: Help | Shift+Tab: Switch Pane | Ctrl+S: Snippets | Ctrl+P/N: Cycle History "
