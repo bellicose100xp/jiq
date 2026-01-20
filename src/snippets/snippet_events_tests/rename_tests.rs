@@ -17,7 +17,7 @@ fn test_e_key_enters_edit_name_mode() {
     }]);
     app.snippets.on_search_input_changed();
 
-    app.handle_key_event(key(KeyCode::Char('e')));
+    app.handle_key_event(key_with_mods(KeyCode::Char('e'), KeyModifiers::CONTROL));
 
     assert!(matches!(
         app.snippets.mode(),
@@ -35,7 +35,7 @@ fn test_e_key_with_no_snippets_does_nothing() {
     app.snippets.set_snippets(vec![]);
     app.snippets.on_search_input_changed();
 
-    app.handle_key_event(key(KeyCode::Char('e')));
+    app.handle_key_event(key_with_mods(KeyCode::Char('e'), KeyModifiers::CONTROL));
 
     assert_eq!(*app.snippets.mode(), SnippetMode::Browse);
 }
@@ -53,7 +53,7 @@ fn test_esc_in_edit_name_mode_cancels() {
         description: None,
     }]);
     app.snippets.on_search_input_changed();
-    app.handle_key_event(key(KeyCode::Char('e')));
+    app.handle_key_event(key_with_mods(KeyCode::Char('e'), KeyModifiers::CONTROL));
 
     app.handle_key_event(key(KeyCode::Esc));
 
@@ -74,7 +74,7 @@ fn test_typing_in_edit_name_mode_updates_name() {
         description: None,
     }]);
     app.snippets.on_search_input_changed();
-    app.handle_key_event(key(KeyCode::Char('e')));
+    app.handle_key_event(key_with_mods(KeyCode::Char('e'), KeyModifiers::CONTROL));
 
     for _ in 0..3 {
         app.handle_key_event(key(KeyCode::Backspace));
@@ -99,7 +99,7 @@ fn test_enter_in_edit_name_mode_saves_and_exits() {
         description: None,
     }]);
     app.snippets.on_search_input_changed();
-    app.handle_key_event(key(KeyCode::Char('e')));
+    app.handle_key_event(key_with_mods(KeyCode::Char('e'), KeyModifiers::CONTROL));
 
     for _ in 0..3 {
         app.handle_key_event(key(KeyCode::Backspace));
@@ -126,7 +126,7 @@ fn test_edit_name_empty_shows_error() {
         description: None,
     }]);
     app.snippets.on_search_input_changed();
-    app.handle_key_event(key(KeyCode::Char('e')));
+    app.handle_key_event(key_with_mods(KeyCode::Char('e'), KeyModifiers::CONTROL));
 
     for _ in 0..3 {
         app.handle_key_event(key(KeyCode::Backspace));
@@ -159,7 +159,7 @@ fn test_edit_name_duplicate_shows_error() {
         },
     ]);
     app.snippets.on_search_input_changed();
-    app.handle_key_event(key(KeyCode::Char('e')));
+    app.handle_key_event(key_with_mods(KeyCode::Char('e'), KeyModifiers::CONTROL));
 
     for _ in 0..5 {
         app.handle_key_event(key(KeyCode::Backspace));
@@ -191,7 +191,7 @@ fn test_edit_same_name_succeeds() {
         description: None,
     }]);
     app.snippets.on_search_input_changed();
-    app.handle_key_event(key(KeyCode::Char('e')));
+    app.handle_key_event(key_with_mods(KeyCode::Char('e'), KeyModifiers::CONTROL));
 
     app.handle_key_event(key(KeyCode::Enter));
 
@@ -214,7 +214,7 @@ fn test_is_editing_true_in_edit_name_mode() {
     app.snippets.on_search_input_changed();
     assert!(!app.snippets.is_editing());
 
-    app.handle_key_event(key(KeyCode::Char('e')));
+    app.handle_key_event(key_with_mods(KeyCode::Char('e'), KeyModifiers::CONTROL));
     assert!(app.snippets.is_editing());
 }
 
@@ -231,7 +231,7 @@ fn test_question_mark_blocked_in_edit_name_mode() {
         description: None,
     }]);
     app.snippets.on_search_input_changed();
-    app.handle_key_event(key(KeyCode::Char('e')));
+    app.handle_key_event(key_with_mods(KeyCode::Char('e'), KeyModifiers::CONTROL));
 
     app.handle_key_event(key(KeyCode::Char('?')));
 

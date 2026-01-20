@@ -1,4 +1,4 @@
-use ratatui::crossterm::event::{KeyCode, KeyEvent};
+use ratatui::crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use tui_textarea::Input;
 
 use super::snippet_state::SnippetMode;
@@ -35,16 +35,16 @@ fn handle_browse_mode(app: &mut App, key: KeyEvent) {
             }
             app.snippets.close();
         }
-        KeyCode::Char('n') => {
+        KeyCode::Char('n') if key.modifiers.contains(KeyModifiers::CONTROL) => {
             let current_query = app.input.query().to_string();
             app.snippets.enter_create_mode(&current_query);
         }
-        KeyCode::Char('e') => {
+        KeyCode::Char('e') if key.modifiers.contains(KeyModifiers::CONTROL) => {
             if app.snippets.selected_snippet().is_some() {
                 app.snippets.enter_edit_mode();
             }
         }
-        KeyCode::Char('d') | KeyCode::Char('x') => {
+        KeyCode::Char('d') if key.modifiers.contains(KeyModifiers::CONTROL) => {
             if app.snippets.selected_snippet().is_some() {
                 app.snippets.enter_delete_mode();
             }

@@ -184,11 +184,11 @@ fn render_browse_hints(frame: &mut Frame, area: Rect) {
         Span::styled(" Navigate  ", Style::default().fg(Color::DarkGray)),
         Span::styled("[Enter]", Style::default().fg(Color::Yellow)),
         Span::styled(" Apply  ", Style::default().fg(Color::DarkGray)),
-        Span::styled("[n]", Style::default().fg(Color::Yellow)),
+        Span::styled("[Ctrl+N]", Style::default().fg(Color::Yellow)),
         Span::styled(" New  ", Style::default().fg(Color::DarkGray)),
-        Span::styled("[e]", Style::default().fg(Color::Yellow)),
+        Span::styled("[Ctrl+E]", Style::default().fg(Color::Yellow)),
         Span::styled(" Edit  ", Style::default().fg(Color::DarkGray)),
-        Span::styled("[d]", Style::default().fg(Color::Yellow)),
+        Span::styled("[Ctrl+D]", Style::default().fg(Color::Yellow)),
         Span::styled(" Delete  ", Style::default().fg(Color::DarkGray)),
         Span::styled("[Esc]", Style::default().fg(Color::Yellow)),
         Span::styled(" Close", Style::default().fg(Color::DarkGray)),
@@ -203,7 +203,7 @@ fn render_browse_hints(frame: &mut Frame, area: Rect) {
 fn build_list_content_from_visible(state: &SnippetState, area_width: u16) -> Vec<Line<'static>> {
     if state.filtered_count() == 0 {
         let message = if state.snippets().is_empty() {
-            "   No snippets yet. Press 'n' to create one."
+            "   No snippets yet. Press Ctrl+N to create one."
         } else {
             "   No matches"
         };

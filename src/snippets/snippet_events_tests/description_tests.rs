@@ -10,7 +10,7 @@ fn test_tab_in_create_name_mode_moves_to_query() {
     app.snippets.disable_persistence();
 
     app.handle_key_event(key_with_mods(KeyCode::Char('s'), KeyModifiers::CONTROL));
-    app.handle_key_event(key(KeyCode::Char('n')));
+    app.handle_key_event(key_with_mods(KeyCode::Char('n'), KeyModifiers::CONTROL));
     assert_eq!(*app.snippets.mode(), SnippetMode::CreateName);
 
     app.handle_key_event(key(KeyCode::Tab));
@@ -25,7 +25,7 @@ fn test_tab_in_create_query_mode_moves_to_description() {
     app.snippets.disable_persistence();
 
     app.handle_key_event(key_with_mods(KeyCode::Char('s'), KeyModifiers::CONTROL));
-    app.handle_key_event(key(KeyCode::Char('n')));
+    app.handle_key_event(key_with_mods(KeyCode::Char('n'), KeyModifiers::CONTROL));
     app.handle_key_event(key(KeyCode::Tab)); // Name -> Query
     assert_eq!(*app.snippets.mode(), SnippetMode::CreateQuery);
 
@@ -41,7 +41,7 @@ fn test_typing_in_create_description_mode() {
     app.snippets.disable_persistence();
 
     app.handle_key_event(key_with_mods(KeyCode::Char('s'), KeyModifiers::CONTROL));
-    app.handle_key_event(key(KeyCode::Char('n')));
+    app.handle_key_event(key_with_mods(KeyCode::Char('n'), KeyModifiers::CONTROL));
     app.handle_key_event(key(KeyCode::Tab)); // Name -> Query
     app.handle_key_event(key(KeyCode::Tab)); // Query -> Description
     assert_eq!(*app.snippets.mode(), SnippetMode::CreateDescription);
@@ -61,7 +61,7 @@ fn test_shift_tab_in_description_mode_goes_back_to_query() {
     app.snippets.disable_persistence();
 
     app.handle_key_event(key_with_mods(KeyCode::Char('s'), KeyModifiers::CONTROL));
-    app.handle_key_event(key(KeyCode::Char('n')));
+    app.handle_key_event(key_with_mods(KeyCode::Char('n'), KeyModifiers::CONTROL));
     app.handle_key_event(key(KeyCode::Tab)); // Name -> Query
     app.handle_key_event(key(KeyCode::Tab)); // Query -> Description
     assert_eq!(*app.snippets.mode(), SnippetMode::CreateDescription);
@@ -78,7 +78,7 @@ fn test_tab_in_description_mode_cycles_to_name() {
     app.snippets.disable_persistence();
 
     app.handle_key_event(key_with_mods(KeyCode::Char('s'), KeyModifiers::CONTROL));
-    app.handle_key_event(key(KeyCode::Char('n')));
+    app.handle_key_event(key_with_mods(KeyCode::Char('n'), KeyModifiers::CONTROL));
     app.handle_key_event(key(KeyCode::Tab)); // Name -> Query
     app.handle_key_event(key(KeyCode::Tab)); // Query -> Description
     assert_eq!(*app.snippets.mode(), SnippetMode::CreateDescription);
@@ -95,7 +95,7 @@ fn test_shift_tab_in_name_mode_cycles_to_description() {
     app.snippets.disable_persistence();
 
     app.handle_key_event(key_with_mods(KeyCode::Char('s'), KeyModifiers::CONTROL));
-    app.handle_key_event(key(KeyCode::Char('n')));
+    app.handle_key_event(key_with_mods(KeyCode::Char('n'), KeyModifiers::CONTROL));
     assert_eq!(*app.snippets.mode(), SnippetMode::CreateName);
 
     app.handle_key_event(key(KeyCode::BackTab));
@@ -111,7 +111,7 @@ fn test_enter_in_description_mode_saves_snippet_with_description() {
 
     app.handle_key_event(key_with_mods(KeyCode::Char('s'), KeyModifiers::CONTROL));
     app.snippets.set_snippets(vec![]);
-    app.handle_key_event(key(KeyCode::Char('n')));
+    app.handle_key_event(key_with_mods(KeyCode::Char('n'), KeyModifiers::CONTROL));
 
     app.handle_key_event(key(KeyCode::Char('M')));
     app.handle_key_event(key(KeyCode::Char('y')));
@@ -145,7 +145,7 @@ fn test_esc_in_description_mode_cancels() {
     app.snippets.disable_persistence();
 
     app.handle_key_event(key_with_mods(KeyCode::Char('s'), KeyModifiers::CONTROL));
-    app.handle_key_event(key(KeyCode::Char('n')));
+    app.handle_key_event(key_with_mods(KeyCode::Char('n'), KeyModifiers::CONTROL));
     app.handle_key_event(key(KeyCode::Tab)); // Name -> Query
     app.handle_key_event(key(KeyCode::Tab)); // Query -> Description
     assert_eq!(*app.snippets.mode(), SnippetMode::CreateDescription);
@@ -163,7 +163,7 @@ fn test_question_mark_blocked_in_description_mode() {
     app.snippets.disable_persistence();
 
     app.handle_key_event(key_with_mods(KeyCode::Char('s'), KeyModifiers::CONTROL));
-    app.handle_key_event(key(KeyCode::Char('n')));
+    app.handle_key_event(key_with_mods(KeyCode::Char('n'), KeyModifiers::CONTROL));
     app.handle_key_event(key(KeyCode::Tab)); // Name -> Query
     app.handle_key_event(key(KeyCode::Tab)); // Query -> Description
 
@@ -181,7 +181,7 @@ fn test_empty_name_in_description_mode_shows_error() {
 
     app.handle_key_event(key_with_mods(KeyCode::Char('s'), KeyModifiers::CONTROL));
     app.snippets.set_snippets(vec![]);
-    app.handle_key_event(key(KeyCode::Char('n')));
+    app.handle_key_event(key_with_mods(KeyCode::Char('n'), KeyModifiers::CONTROL));
     app.handle_key_event(key(KeyCode::Tab)); // Name -> Query
     app.handle_key_event(key(KeyCode::Tab)); // Query -> Description
     app.handle_key_event(key(KeyCode::Enter));
@@ -198,7 +198,7 @@ fn test_is_editing_true_in_description_mode() {
     app.input.editor_mode = EditorMode::Insert;
 
     app.handle_key_event(key_with_mods(KeyCode::Char('s'), KeyModifiers::CONTROL));
-    app.handle_key_event(key(KeyCode::Char('n')));
+    app.handle_key_event(key_with_mods(KeyCode::Char('n'), KeyModifiers::CONTROL));
     app.handle_key_event(key(KeyCode::Tab)); // Name -> Query
     app.handle_key_event(key(KeyCode::Tab)); // Query -> Description
 
@@ -212,7 +212,7 @@ fn test_backspace_in_description_mode() {
     app.snippets.disable_persistence();
 
     app.handle_key_event(key_with_mods(KeyCode::Char('s'), KeyModifiers::CONTROL));
-    app.handle_key_event(key(KeyCode::Char('n')));
+    app.handle_key_event(key_with_mods(KeyCode::Char('n'), KeyModifiers::CONTROL));
     app.handle_key_event(key(KeyCode::Tab)); // Name -> Query
     app.handle_key_event(key(KeyCode::Tab)); // Query -> Description
 
@@ -233,7 +233,7 @@ fn test_save_snippet_with_optional_description() {
 
     app.handle_key_event(key_with_mods(KeyCode::Char('s'), KeyModifiers::CONTROL));
     app.snippets.set_snippets(vec![]);
-    app.handle_key_event(key(KeyCode::Char('n')));
+    app.handle_key_event(key_with_mods(KeyCode::Char('n'), KeyModifiers::CONTROL));
 
     app.handle_key_event(key(KeyCode::Char('T')));
     app.handle_key_event(key(KeyCode::Char('e')));

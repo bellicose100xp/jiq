@@ -17,29 +17,7 @@ fn test_d_key_enters_delete_mode() {
     }]);
     app.snippets.on_search_input_changed();
 
-    app.handle_key_event(key(KeyCode::Char('d')));
-
-    assert!(matches!(
-        app.snippets.mode(),
-        SnippetMode::ConfirmDelete { snippet_name } if snippet_name == "My Snippet"
-    ));
-}
-
-#[test]
-fn test_x_key_enters_delete_mode() {
-    let mut app = app_with_query(".test");
-    app.input.editor_mode = EditorMode::Insert;
-    app.snippets.disable_persistence();
-
-    app.handle_key_event(key_with_mods(KeyCode::Char('s'), KeyModifiers::CONTROL));
-    app.snippets.set_snippets(vec![Snippet {
-        name: "My Snippet".to_string(),
-        query: ".test".to_string(),
-        description: None,
-    }]);
-    app.snippets.on_search_input_changed();
-
-    app.handle_key_event(key(KeyCode::Char('x')));
+    app.handle_key_event(key_with_mods(KeyCode::Char('d'), KeyModifiers::CONTROL));
 
     assert!(matches!(
         app.snippets.mode(),
@@ -57,7 +35,7 @@ fn test_d_key_with_no_snippets_does_nothing() {
     app.snippets.set_snippets(vec![]);
     app.snippets.on_search_input_changed();
 
-    app.handle_key_event(key(KeyCode::Char('d')));
+    app.handle_key_event(key_with_mods(KeyCode::Char('d'), KeyModifiers::CONTROL));
 
     assert_eq!(*app.snippets.mode(), SnippetMode::Browse);
 }
@@ -75,7 +53,7 @@ fn test_enter_confirms_delete() {
         description: None,
     }]);
     app.snippets.on_search_input_changed();
-    app.handle_key_event(key(KeyCode::Char('d')));
+    app.handle_key_event(key_with_mods(KeyCode::Char('d'), KeyModifiers::CONTROL));
 
     app.handle_key_event(key(KeyCode::Enter));
 
@@ -96,7 +74,7 @@ fn test_esc_cancels_delete() {
         description: None,
     }]);
     app.snippets.on_search_input_changed();
-    app.handle_key_event(key(KeyCode::Char('d')));
+    app.handle_key_event(key_with_mods(KeyCode::Char('d'), KeyModifiers::CONTROL));
 
     app.handle_key_event(key(KeyCode::Esc));
 
@@ -118,7 +96,7 @@ fn test_other_keys_ignored_in_confirm_delete_mode() {
         description: None,
     }]);
     app.snippets.on_search_input_changed();
-    app.handle_key_event(key(KeyCode::Char('d')));
+    app.handle_key_event(key_with_mods(KeyCode::Char('d'), KeyModifiers::CONTROL));
 
     app.handle_key_event(key(KeyCode::Char('a')));
     app.handle_key_event(key(KeyCode::Char('y')));
@@ -154,7 +132,7 @@ fn test_delete_adjusts_selection_when_deleting_last() {
     ]);
     app.snippets.on_search_input_changed();
     app.handle_key_event(key(KeyCode::Down));
-    app.handle_key_event(key(KeyCode::Char('d')));
+    app.handle_key_event(key_with_mods(KeyCode::Char('d'), KeyModifiers::CONTROL));
     app.handle_key_event(key(KeyCode::Enter));
 
     assert_eq!(app.snippets.selected_index(), 0);
@@ -177,6 +155,6 @@ fn test_is_editing_false_in_confirm_delete_mode() {
     app.snippets.on_search_input_changed();
 
     assert!(!app.snippets.is_editing());
-    app.handle_key_event(key(KeyCode::Char('d')));
+    app.handle_key_event(key_with_mods(KeyCode::Char('d'), KeyModifiers::CONTROL));
     assert!(!app.snippets.is_editing());
 }
