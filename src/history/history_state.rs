@@ -122,18 +122,18 @@ impl HistoryState {
 
     pub fn select_next(&mut self) {
         if !self.filtered_indices.is_empty() {
-            self.selected_index = (self.selected_index + 1) % self.filtered_indices.len();
+            if self.selected_index + 1 < self.filtered_indices.len() {
+                self.selected_index += 1;
+            }
             self.adjust_scroll_to_selection();
         }
     }
 
     pub fn select_previous(&mut self) {
         if !self.filtered_indices.is_empty() {
-            self.selected_index = if self.selected_index == 0 {
-                self.filtered_indices.len() - 1
-            } else {
-                self.selected_index - 1
-            };
+            if self.selected_index > 0 {
+                self.selected_index -= 1;
+            }
             self.adjust_scroll_to_selection();
         }
     }

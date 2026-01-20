@@ -43,15 +43,16 @@ fn test_close_resets_state() {
 }
 
 #[test]
-fn test_navigation_wraps() {
+fn test_navigation_stops_at_edges() {
     let mut state = create_test_state(vec![".foo", ".bar", ".baz"]);
     state.filtered_indices = vec![0, 1, 2];
 
     state.select_previous();
-    assert_eq!(state.selected_index(), 2);
-
-    state.select_next();
     assert_eq!(state.selected_index(), 0);
+
+    state.selected_index = 2;
+    state.select_next();
+    assert_eq!(state.selected_index(), 2);
 }
 
 #[test]
@@ -69,11 +70,9 @@ fn test_selected_entry() {
 fn test_textarea_search_input() {
     let mut state = create_test_state(vec![".foo", ".bar", ".baz"]);
 
-    // Insert text via TextArea
     state.search_textarea_mut().insert_str("fo");
     assert_eq!(state.search_query(), "fo");
 
-    // Clear via select_all + cut
     state.search_textarea_mut().select_all();
     state.search_textarea_mut().cut();
     assert_eq!(state.search_query(), "");
@@ -104,7 +103,7 @@ fn test_single_entry_navigation() {
     let mut state = create_test_state(vec![".only"]);
     state.filtered_indices = vec![0];
 
-    // Should wrap to same entry
+    // Should stay on the same entry
     state.select_next();
     assert_eq!(state.selected_index(), 0);
     assert_eq!(state.selected_entry(), Some(".only"));
@@ -320,25 +319,7 @@ fn test_scroll_offset_resets_on_filter_change() {
 }
 
 #[test]
-fn test_scroll_wraps_to_bottom_shows_last_entries() {
-    let entries: Vec<&str> = (0..20).map(|_| ".test").collect();
-    let mut state = create_test_state(entries);
-    state.filtered_indices = (0..20).collect();
-    state.selected_index = 0;
-    state.scroll_offset = 0;
-
-    state.select_previous();
-
-    assert_eq!(state.selected_index(), 19);
-    assert_eq!(state.scroll_offset, 5);
-
-    let visible: Vec<_> = state.visible_entries().collect();
-    assert_eq!(visible.len(), MAX_VISIBLE_HISTORY);
-    assert_eq!(visible[0].0, 19);
-}
-
-#[test]
-fn test_scroll_wraps_to_top_shows_first_entries() {
+fn test_scroll_stops_at_bottom() {
     let entries: Vec<&str> = (0..20).map(|_| ".test").collect();
     let mut state = create_test_state(entries);
     state.filtered_indices = (0..20).collect();
@@ -347,10 +328,20 @@ fn test_scroll_wraps_to_top_shows_first_entries() {
 
     state.select_next();
 
+    assert_eq!(state.selected_index(), 19);
+    assert_eq!(state.scroll_offset, 5);
+}
+
+#[test]
+fn test_scroll_stops_at_top() {
+    let entries: Vec<&str> = (0..20).map(|_| ".test").collect();
+    let mut state = create_test_state(entries);
+    state.filtered_indices = (0..20).collect();
+    state.selected_index = 0;
+    state.scroll_offset = 0;
+
+    state.select_previous();
+
     assert_eq!(state.selected_index(), 0);
     assert_eq!(state.scroll_offset, 0);
-
-    let visible: Vec<_> = state.visible_entries().collect();
-    assert_eq!(visible.len(), MAX_VISIBLE_HISTORY);
-    assert_eq!(visible[MAX_VISIBLE_HISTORY - 1].0, 0);
 }
