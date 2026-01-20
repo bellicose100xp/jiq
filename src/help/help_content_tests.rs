@@ -3,6 +3,7 @@
 use super::*;
 
 #[test]
+#[allow(clippy::const_is_empty)]
 fn test_help_entries_not_empty() {
     assert!(!HELP_ENTRIES.is_empty());
 }
@@ -84,6 +85,7 @@ fn test_help_entries_contains_expected_sections() {
 }
 
 #[test]
+#[allow(clippy::const_is_empty)]
 fn test_help_footer_not_empty() {
     assert!(!HELP_FOOTER.is_empty());
 }
