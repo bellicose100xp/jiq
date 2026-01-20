@@ -21,7 +21,7 @@
 - [x] Phase 10: Edit Snippet Query
 - [x] Phase 11: Delete Snippet with Confirmation
 - [x] Phase 12: Scroll Support for Long Lists (implemented in Phase 4)
-- [ ] Phase 13: Visual Polish
+- [x] Phase 13: Visual Polish
 - [ ] Phase 14: Edge Cases and Error Handling
 
 ---
@@ -515,12 +515,21 @@ Each phase delivers the smallest testable feature. Manual TUI testing after each
 ### Phase 13: Visual Polish
 **Goal**: Improve visual design (colors, borders, hints bar).
 
-**Files to modify**:
-- `src/snippets/snippet_render.rs` - add context-sensitive hints bar, improve styling
+**Implementation notes**:
+- Added context-sensitive hints bar to browse mode showing keybindings: `[↑/↓] Navigate  [Enter] Apply  [n] New  [r] Rename  [e] Edit  [d] Delete  [Esc] Close`
+- Improved selected item highlighting with cyan background (matching history popup style)
+- Selected item description also highlighted with matching background
+- Padding added to extend highlight to full width
+- Fixed scroll bug in `visible_snippets()` that was double-counting scroll offset
+- Renamed "Query Preview" to "Snippet Preview" for consistency
 
-**Manual test**: Verify UI looks polished and consistent with jiq style.
+**Files modified**:
+- `src/snippets/snippet_render.rs` - added `render_browse_hints()`, updated selected item styling, renamed preview title
+- `src/snippets/snippet_state.rs` - fixed `visible_snippets()` index calculation bug
 
-**Tests**: Updated snapshot tests.
+**Tests added/updated**: 12 snapshot tests updated
+
+**Manual test**: Verified hints bar displays, selected item highlighting works, scrolling keeps selection visible with 90 snippets.
 
 ---
 

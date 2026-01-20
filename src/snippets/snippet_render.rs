@@ -16,6 +16,7 @@ const NAME_INPUT_HEIGHT: u16 = 3;
 const DESCRIPTION_INPUT_HEIGHT: u16 = 3;
 const QUERY_INPUT_HEIGHT: u16 = 3;
 const HINTS_HEIGHT: u16 = 3;
+const BROWSE_HINTS_HEIGHT: u16 = 1;
 
 pub fn render_popup(state: &mut SnippetState, frame: &mut Frame, results_area: Rect) {
     popup::clear_area(frame, results_area);
@@ -40,7 +41,7 @@ fn render_browse_mode(state: &mut SnippetState, frame: &mut Frame, results_area:
     let preview_content_height = calculate_preview_height(selected_snippet.as_ref(), inner_width);
     let preview_height = (preview_content_height as u16 + 2).min(results_area.height / 2);
 
-    let min_required = SEARCH_HEIGHT + MIN_LIST_HEIGHT + preview_height;
+    let min_required = SEARCH_HEIGHT + MIN_LIST_HEIGHT + preview_height + BROWSE_HINTS_HEIGHT;
     if results_area.height < min_required {
         let visible_count = results_area.height.saturating_sub(SEARCH_HEIGHT + 2) as usize;
         state.set_visible_count(visible_count.max(1));
@@ -52,12 +53,14 @@ fn render_browse_mode(state: &mut SnippetState, frame: &mut Frame, results_area:
         Constraint::Length(SEARCH_HEIGHT),
         Constraint::Min(MIN_LIST_HEIGHT),
         Constraint::Length(preview_height),
+        Constraint::Length(BROWSE_HINTS_HEIGHT),
     ])
     .split(results_area);
 
     let search_area = layout[0];
     let list_area = layout[1];
     let preview_area = layout[2];
+    let hints_area = layout[3];
 
     let visible_count = list_area.height.saturating_sub(2) as usize;
     state.set_visible_count(visible_count);
@@ -65,6 +68,7 @@ fn render_browse_mode(state: &mut SnippetState, frame: &mut Frame, results_area:
     render_search(state, frame, search_area);
     render_list(state, filtered_count, total_count, frame, list_area);
     render_preview(selected_snippet.as_ref(), inner_width, frame, preview_area);
+    render_browse_hints(frame, hints_area);
 }
 
 fn calculate_preview_height(
@@ -165,12 +169,36 @@ fn render_preview(
     let preview = Paragraph::new(content).block(
         Block::default()
             .borders(Borders::ALL)
-            .title(" Query Preview ")
+            .title(" Snippet Preview ")
             .border_style(Style::default().fg(Color::Cyan))
             .style(Style::default().bg(Color::Black)),
     );
 
     frame.render_widget(preview, area);
+}
+
+fn render_browse_hints(frame: &mut Frame, area: Rect) {
+    let hints = Line::from(vec![
+        Span::styled(" [↑/↓]", Style::default().fg(Color::Yellow)),
+        Span::styled(" Navigate  ", Style::default().fg(Color::DarkGray)),
+        Span::styled("[Enter]", Style::default().fg(Color::Yellow)),
+        Span::styled(" Apply  ", Style::default().fg(Color::DarkGray)),
+        Span::styled("[n]", Style::default().fg(Color::Yellow)),
+        Span::styled(" New  ", Style::default().fg(Color::DarkGray)),
+        Span::styled("[r]", Style::default().fg(Color::Yellow)),
+        Span::styled(" Rename  ", Style::default().fg(Color::DarkGray)),
+        Span::styled("[e]", Style::default().fg(Color::Yellow)),
+        Span::styled(" Edit  ", Style::default().fg(Color::DarkGray)),
+        Span::styled("[d]", Style::default().fg(Color::Yellow)),
+        Span::styled(" Delete  ", Style::default().fg(Color::DarkGray)),
+        Span::styled("[Esc]", Style::default().fg(Color::Yellow)),
+        Span::styled(" Close", Style::default().fg(Color::DarkGray)),
+    ]);
+
+    let hints_widget =
+        Paragraph::new(hints).style(Style::default().fg(Color::DarkGray).bg(Color::Black));
+
+    frame.render_widget(hints_widget, area);
 }
 
 fn build_list_content_from_visible(state: &SnippetState, area_width: u16) -> Vec<Line<'static>> {
@@ -193,12 +221,20 @@ fn build_list_content_from_visible(state: &SnippetState, area_width: u16) -> Vec
             .map(|(i, s)| {
                 let is_selected = i == selected_index;
                 let prefix = if is_selected { " ► " } else { "   " };
-                let name_style = if is_selected {
-                    Style::default()
-                        .fg(Color::Yellow)
-                        .add_modifier(Modifier::BOLD)
+
+                let (name_style, desc_style) = if is_selected {
+                    (
+                        Style::default()
+                            .fg(Color::Black)
+                            .bg(Color::Cyan)
+                            .add_modifier(Modifier::BOLD),
+                        Style::default().fg(Color::Black).bg(Color::Cyan),
+                    )
                 } else {
-                    Style::default()
+                    (
+                        Style::default().fg(Color::White),
+                        Style::default().fg(Color::DarkGray),
+                    )
                 };
 
                 let mut spans = vec![Span::styled(format!("{}{}", prefix, s.name), name_style)];
@@ -216,7 +252,18 @@ fn build_list_content_from_visible(state: &SnippetState, area_width: u16) -> Vec
                         };
                         spans.push(Span::styled(
                             format!("{}{}", separator, truncated_desc),
-                            Style::default().fg(Color::DarkGray),
+                            desc_style,
+                        ));
+                    }
+                }
+
+                if is_selected {
+                    let current_len: usize = spans.iter().map(|s| s.content.len()).sum();
+                    let padding_len = max_width.saturating_sub(current_len);
+                    if padding_len > 0 {
+                        spans.push(Span::styled(
+                            " ".repeat(padding_len),
+                            Style::default().bg(Color::Cyan),
                         ));
                     }
                 }

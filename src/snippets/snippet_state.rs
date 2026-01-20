@@ -491,10 +491,8 @@ impl SnippetState {
             .enumerate()
             .skip(self.scroll_offset)
             .take(self.visible_count)
-            .filter_map(|(display_idx, &snippet_idx)| {
-                self.snippets
-                    .get(snippet_idx)
-                    .map(|s| (self.scroll_offset + display_idx, s))
+            .filter_map(|(filtered_idx, &snippet_idx)| {
+                self.snippets.get(snippet_idx).map(|s| (filtered_idx, s))
             })
     }
 
