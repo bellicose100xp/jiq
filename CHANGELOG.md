@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.13.2] - 2026-01-19
+
+### Added
+- **Mouse wheel scrolling** for results pane
+  - Scroll up/down using mouse wheel when results pane is focused
+  - Provides intuitive navigation for users who prefer mouse input
+
 ## [3.13.1] - 2026-01-19
 
 ### Fixed

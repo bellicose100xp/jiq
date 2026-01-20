@@ -209,6 +209,7 @@ curl https://api.example.com/data | jiq
 | `Ctrl+u` / `PageUp` | Scroll half page up (also works from input field) |
 | `g` / `Home` | Jump to top |
 | `G` / `End` | Jump to bottom |
+| `Mouse wheel` | Scroll up/down |
 
 </details>
 
