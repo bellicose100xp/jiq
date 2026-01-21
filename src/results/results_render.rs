@@ -99,10 +99,12 @@ pub fn render_pane(app: &mut App, frame: &mut Frame, area: Rect) {
 
     let search_visible = app.search.is_visible();
 
+    // When search is confirmed (navigating results), results pane is active (purple)
+    // When search is not confirmed (editing search), results pane is inactive (gray)
     let search_text_color = if search_visible && app.search.is_confirmed() {
-        Color::DarkGray
-    } else if search_visible {
         Color::LightMagenta
+    } else if search_visible {
+        Color::DarkGray
     } else {
         Color::Reset
     };
@@ -200,11 +202,13 @@ pub fn render_pane(app: &mut App, frame: &mut Frame, area: Rect) {
         None
     };
 
+    // When search is confirmed (navigating), results pane is active (purple)
+    // When search is not confirmed (editing), results pane is inactive (gray)
     let border_color = if search_visible {
         if app.search.is_confirmed() {
-            Color::DarkGray
-        } else {
             Color::LightMagenta
+        } else {
+            Color::DarkGray
         }
     } else if app.focus == crate::app::Focus::ResultsPane {
         Color::Cyan
