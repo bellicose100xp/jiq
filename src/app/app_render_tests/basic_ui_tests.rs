@@ -92,10 +92,10 @@ fn snapshot_ui_operator_mode() {
 
 #[test]
 fn snapshot_ui_with_error() {
-    let json = r#"{"test": true}"#;
+    let json = r#"5"#;
     let mut app = test_app(json);
-    app.input.textarea.insert_str(".invalid[");
-    app.query.as_mut().unwrap().execute(".invalid[");
+    app.input.textarea.insert_str(".foo");
+    app.query.as_mut().unwrap().execute(".foo");
 
     let output = render_to_string(&mut app, TEST_WIDTH, TEST_HEIGHT);
     assert_snapshot!(output);
@@ -103,10 +103,10 @@ fn snapshot_ui_with_error() {
 
 #[test]
 fn snapshot_ui_error_overlay_visible() {
-    let json = r#"{"test": true}"#;
+    let json = r#"5"#;
     let mut app = test_app(json);
-    app.input.textarea.insert_str(".invalid[");
-    app.query.as_mut().unwrap().execute(".invalid[");
+    app.input.textarea.insert_str(".foo");
+    app.query.as_mut().unwrap().execute(".foo");
     app.error_overlay_visible = true;
 
     let output = render_to_string(&mut app, TEST_WIDTH, TEST_HEIGHT);
