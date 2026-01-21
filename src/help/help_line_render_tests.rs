@@ -102,3 +102,51 @@ fn test_help_text_contains_snippets_shortcut_normal_mode() {
     let output = render_help_line_to_string(&app, 120, 1);
     assert!(output.contains("Ctrl+S: Snippets"));
 }
+
+#[test]
+fn snapshot_help_line_search_unconfirmed() {
+    let mut app = test_app("{}");
+    app.search.open();
+
+    let output = render_help_line_to_string(&app, 120, 1);
+    assert_snapshot!(output);
+}
+
+#[test]
+fn snapshot_help_line_search_confirmed() {
+    let mut app = test_app("{}");
+    app.search.open();
+    app.search.confirm();
+
+    let output = render_help_line_to_string(&app, 120, 1);
+    assert_snapshot!(output);
+}
+
+#[test]
+fn snapshot_help_line_snippet_manager() {
+    let mut app = test_app("{}");
+    app.snippets.open();
+
+    let output = render_help_line_to_string(&app, 120, 1);
+    assert_snapshot!(output);
+}
+
+#[test]
+fn test_help_text_excludes_snippets_shortcut_when_search_active() {
+    let mut app = test_app("{}");
+    app.search.open();
+
+    let output = render_help_line_to_string(&app, 120, 1);
+    assert!(!output.contains("Ctrl+S"));
+    assert!(output.contains("Esc: Close"));
+}
+
+#[test]
+fn test_help_text_excludes_snippets_shortcut_when_snippet_manager_active() {
+    let mut app = test_app("{}");
+    app.snippets.open();
+
+    let output = render_help_line_to_string(&app, 120, 1);
+    assert!(!output.contains("Ctrl+S: Snippets"));
+    assert!(output.contains("Esc: Close"));
+}
