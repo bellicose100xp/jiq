@@ -1,6 +1,5 @@
 ---
 source: src/app/app_render_tests/search_tests.rs
-assertion_line: 184
 expression: output
 ---
 "┌ Object ───────────────────────────────────────────────────────── L1-4/4 (0%) ┐"
@@ -26,4 +25,4 @@ expression: output
 "┌ Search (press / to edit): ──────────────────────────────────────────── (1/1) ┐"
 "│match_here                                                                    │"
 "└──────────────────────────────────────────────────────────────────────────────┘"
-" F1/?: Help | Shift+Tab: Switch Pane | Ctrl+S: Snippets | Enter: Output Result |"
+" F1/?: Help | Esc: Close | n/N: Next/Prev | /: Edit Search                      "
