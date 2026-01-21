@@ -3,13 +3,13 @@ use crate::test_utils::test_helpers::test_app;
 use proptest::prelude::*;
 
 #[test]
-fn test_scroll_to_match_centers_vertically() {
+fn test_scroll_to_match_with_margin_when_below_viewport() {
     let mut app = test_app(r#"{"name": "test"}"#);
     app.results_scroll.viewport_height = 20;
     app.results_scroll.max_offset = 100;
     app.results_scroll.offset = 0;
 
-    // Set up a match at line 50
+    // Set up a match at line 50 (below viewport 0-20)
     app.search.open();
     app.search.search_textarea_mut().insert_str("test");
     // Manually set matches to control the test
@@ -25,28 +25,53 @@ fn test_scroll_to_match_centers_vertically() {
 
     scroll::scroll_to_match(&mut app);
 
-    // Should center the match (50 - 10 = 40)
-    assert_eq!(app.results_scroll.offset, 40);
+    // Neovim-style: position match near bottom with margin
+    // new_offset = target_line + margin + 1 - viewport_height = 50 + 5 + 1 - 20 = 36
+    assert_eq!(app.results_scroll.offset, 36);
 }
 
 #[test]
-fn test_scroll_to_match_no_scroll_if_visible() {
+fn test_scroll_to_match_with_margin_when_above_viewport() {
     let mut app = test_app(r#"{"name": "test"}"#);
     app.results_scroll.viewport_height = 20;
     app.results_scroll.max_offset = 100;
-    app.results_scroll.offset = 10;
+    app.results_scroll.offset = 50;
 
-    // Set up a match at line 15 (within viewport 10-30)
+    // Set up a match at line 10 (above viewport 50-70)
     app.search.open();
     app.search.search_textarea_mut().insert_str("test");
     let content = (0..120)
-        .map(|i| if i == 15 { "test\n" } else { "line\n" })
+        .map(|i| if i == 10 { "test\n" } else { "line\n" })
         .collect::<String>();
     app.search.update_matches(&content);
 
     scroll::scroll_to_match(&mut app);
 
-    // Should not change offset since line 15 is visible in range [10, 30)
+    // Neovim-style: position match near top with margin
+    // new_offset = target_line - margin = 10 - 5 = 5
+    assert_eq!(app.results_scroll.offset, 5);
+}
+
+#[test]
+fn test_scroll_to_match_no_scroll_if_visible_with_margin() {
+    let mut app = test_app(r#"{"name": "test"}"#);
+    app.results_scroll.viewport_height = 20;
+    app.results_scroll.max_offset = 100;
+    app.results_scroll.offset = 10;
+
+    // Set up a match at line 20 (within viewport 10-30, and outside margin zones)
+    // Margin zone at top: 10-15, margin zone at bottom: 25-30
+    // Line 20 is safely in the middle
+    app.search.open();
+    app.search.search_textarea_mut().insert_str("test");
+    let content = (0..120)
+        .map(|i| if i == 20 { "test\n" } else { "line\n" })
+        .collect::<String>();
+    app.search.update_matches(&content);
+
+    scroll::scroll_to_match(&mut app);
+
+    // Should not change offset since line 20 is visible and outside margin zones
     assert_eq!(app.results_scroll.offset, 10);
 }
 

@@ -99,10 +99,18 @@ pub fn render_pane(app: &mut App, frame: &mut Frame, area: Rect) {
 
     let search_visible = app.search.is_visible();
 
+    let search_text_color = if search_visible && app.search.is_confirmed() {
+        Color::DarkGray
+    } else if search_visible {
+        Color::LightMagenta
+    } else {
+        Color::Reset
+    };
+
     let (title, unfocused_border_color) = if query_state.result.is_err() {
-        // ERROR: Yellow text, yellow border (unfocused) - or LightMagenta when search visible
+        // ERROR: Yellow text, yellow border (unfocused) - or search color when search visible
         let text_color = if search_visible {
-            Color::LightMagenta
+            search_text_color
         } else {
             Color::Yellow
         };
@@ -126,9 +134,9 @@ pub fn render_pane(app: &mut App, frame: &mut Frame, area: Rect) {
         }
         (Line::from(spans), Color::Yellow)
     } else if query_state.is_empty_result {
-        // EMPTY: Gray text, gray border (unfocused) - or LightMagenta when search visible
+        // EMPTY: Gray text, gray border (unfocused) - or search color when search visible
         let text_color = if search_visible {
-            Color::LightMagenta
+            search_text_color
         } else {
             Color::Gray
         };
@@ -149,9 +157,9 @@ pub fn render_pane(app: &mut App, frame: &mut Frame, area: Rect) {
         ));
         (Line::from(spans), Color::DarkGray)
     } else {
-        // SUCCESS: Green text, green border (unfocused) - or LightMagenta when search visible
+        // SUCCESS: Green text, green border (unfocused) - or search color when search visible
         let text_color = if search_visible {
-            Color::LightMagenta
+            search_text_color
         } else {
             Color::Green
         };
@@ -179,7 +187,7 @@ pub fn render_pane(app: &mut App, frame: &mut Frame, area: Rect) {
     };
 
     let right_title_color = if search_visible {
-        Color::LightMagenta
+        search_text_color
     } else {
         unfocused_border_color
     };
@@ -193,7 +201,11 @@ pub fn render_pane(app: &mut App, frame: &mut Frame, area: Rect) {
     };
 
     let border_color = if search_visible {
-        Color::LightMagenta
+        if app.search.is_confirmed() {
+            Color::DarkGray
+        } else {
+            Color::LightMagenta
+        }
     } else if app.focus == crate::app::Focus::ResultsPane {
         Color::Cyan
     } else {

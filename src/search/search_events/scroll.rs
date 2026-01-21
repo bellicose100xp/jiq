@@ -1,6 +1,9 @@
 use crate::app::App;
 
+const SCROLL_MARGIN: u16 = 5;
+
 /// Scroll results pane to make the current match visible (both vertically and horizontally)
+/// Uses Neovim-style scrolling with margin instead of centering
 pub(super) fn scroll_to_match(app: &mut App) {
     let Some(current_match) = app.search.current_match() else {
         return;
@@ -10,22 +13,27 @@ pub(super) fn scroll_to_match(app: &mut App) {
     let target_col = current_match.col;
     let match_len = current_match.len;
 
-    // Vertical scrolling
+    // Vertical scrolling - Neovim-style with scroll margin
     let viewport_height = app.results_scroll.viewport_height;
     let current_offset = app.results_scroll.offset;
     let max_offset = app.results_scroll.max_offset;
 
     if viewport_height > 0 && max_offset > 0 {
+        let effective_margin = SCROLL_MARGIN.min(viewport_height / 2);
         let visible_start = current_offset;
         let visible_end = current_offset.saturating_add(viewport_height);
 
-        if target_line < visible_start || target_line >= visible_end {
-            // Line not visible, scroll to center it
-            let half_viewport = viewport_height / 2;
-            let new_offset = target_line.saturating_sub(half_viewport);
-            let clamped_offset = new_offset.min(max_offset);
-
-            app.results_scroll.offset = clamped_offset;
+        if target_line < visible_start.saturating_add(effective_margin) {
+            // Match is above viewport (or too close to top) - scroll up with margin at top
+            let new_offset = target_line.saturating_sub(effective_margin);
+            app.results_scroll.offset = new_offset.min(max_offset);
+        } else if target_line >= visible_end.saturating_sub(effective_margin) {
+            // Match is below viewport (or too close to bottom) - scroll down with margin at bottom
+            let new_offset = target_line
+                .saturating_add(effective_margin)
+                .saturating_add(1)
+                .saturating_sub(viewport_height);
+            app.results_scroll.offset = new_offset.min(max_offset);
         }
     } else if viewport_height == 0 {
         // Haven't rendered yet, just set offset directly

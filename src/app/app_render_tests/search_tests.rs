@@ -183,3 +183,55 @@ fn snapshot_search_with_horizontal_scroll() {
     let output = render_to_string(&mut app, TEST_WIDTH, TEST_HEIGHT);
     assert_snapshot!(output);
 }
+
+#[test]
+fn snapshot_search_bar_active_state() {
+    let json = r#"{"name": "Alice", "email": "alice@example.com"}"#;
+    let mut app = test_app(json);
+
+    app.query.as_mut().unwrap().execute(".");
+
+    app.search.open();
+    app.search.search_textarea_mut().insert_str("alice");
+
+    if let Some(content) = &app
+        .query
+        .as_ref()
+        .unwrap()
+        .last_successful_result_unformatted
+    {
+        app.search.update_matches(content);
+    }
+
+    app.focus = Focus::ResultsPane;
+
+    let output = render_to_string(&mut app, TEST_WIDTH, TEST_HEIGHT);
+    assert_snapshot!(output);
+}
+
+#[test]
+fn snapshot_search_bar_inactive_state() {
+    let json = r#"{"name": "Alice", "email": "alice@example.com"}"#;
+    let mut app = test_app(json);
+
+    app.query.as_mut().unwrap().execute(".");
+
+    app.search.open();
+    app.search.search_textarea_mut().insert_str("alice");
+
+    if let Some(content) = &app
+        .query
+        .as_ref()
+        .unwrap()
+        .last_successful_result_unformatted
+    {
+        app.search.update_matches(content);
+    }
+
+    app.search.confirm();
+
+    app.focus = Focus::ResultsPane;
+
+    let output = render_to_string(&mut app, TEST_WIDTH, TEST_HEIGHT);
+    assert_snapshot!(output);
+}

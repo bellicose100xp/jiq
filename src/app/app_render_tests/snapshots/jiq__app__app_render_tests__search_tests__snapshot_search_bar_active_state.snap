@@ -1,13 +1,13 @@
 ---
 source: src/app/app_render_tests/search_tests.rs
-assertion_line: 184
+assertion_line: 209
 expression: output
 ---
 "┌ Object ───────────────────────────────────────────────────────── L1-4/4 (0%) ┐"
-"│                                                                              │"
-"│                                                                              │"
-"│                                                                     match_her│"
-"│                                                                              │"
+"│{                                                                             │"
+"│  "name": "Alice",                                                            │"
+"│  "email": "alice@example.com"                                                │"
+"│}                                                                             │"
 "│                                                                              │"
 "│                                                                              │"
 "│                                                                              │"
@@ -23,7 +23,7 @@ expression: output
 "│                                                                              │"
 "│                                                                              │"
 "└──────────────────────────────────────────────────────────────────────────────┘"
-"┌ Search (press / to edit): ──────────────────────────────────────────── (1/1) ┐"
-"│match_here                                                                    │"
+"┌ Search: ────────────────────────────────────────────────────────────── (1/2) ┐"
+"│alice                                                                         │"
 "└──────────────────────────────────────────────────────────────────────────────┘"
 " F1/?: Help | Shift+Tab: Switch Pane | Ctrl+S: Snippets | Enter: Output Result |"

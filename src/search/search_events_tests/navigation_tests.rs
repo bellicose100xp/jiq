@@ -56,28 +56,31 @@ fn test_navigation_scrolls_to_match() {
     handle_search_key(&mut app, key(KeyCode::Char('n')));
     assert_eq!(app.search.current_index(), 1);
 
-    // Scroll should have been set to center line 10 in viewport
-    // half_viewport = 10/2 = 5, so offset = 10 - 5 = 5
+    // Neovim-style scrolling with margin (5 lines)
+    // Line 10 is at the bottom margin zone (viewport 0-10, margin zone 5-10)
+    // new_offset = target_line + margin + 1 - viewport_height = 10 + 5 + 1 - 10 = 6
     assert_eq!(
-        app.results_scroll.offset, 5,
-        "Scroll should center match at line 10"
+        app.results_scroll.offset, 6,
+        "Scroll should position match at line 10 with bottom margin"
     );
 
     // Navigate to next match (line 20)
     handle_search_key(&mut app, key(KeyCode::Char('n')));
     assert_eq!(app.search.current_index(), 2);
 
-    // Scroll should center line 20: offset = 20 - 5 = 15
+    // Line 20 is below viewport (6-16), needs scroll with margin
+    // new_offset = 20 + 5 + 1 - 10 = 16
     assert_eq!(
-        app.results_scroll.offset, 15,
-        "Scroll should center match at line 20"
+        app.results_scroll.offset, 16,
+        "Scroll should position match at line 20 with bottom margin"
     );
 
     // Navigate to next match (wraps to line 0)
     handle_search_key(&mut app, key(KeyCode::Char('n')));
     assert_eq!(app.search.current_index(), 0);
 
-    // Scroll should center line 0: offset = max(0 - 5, 0) = 0
+    // Line 0 is above viewport (16-26), needs scroll with top margin
+    // new_offset = target_line - margin = 0 - 5 = 0 (saturating)
     assert_eq!(
         app.results_scroll.offset, 0,
         "Scroll should be at top for match at line 0"

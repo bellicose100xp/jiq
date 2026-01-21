@@ -110,6 +110,7 @@ pub fn open_search(app: &mut App) {
     app.ai.visible = false;
     app.saved_tooltip_visibility_for_search = app.tooltip.enabled;
     app.tooltip.enabled = false;
+    app.saved_focus_for_search = app.focus;
     app.search.open();
     app.focus = Focus::ResultsPane;
 }
@@ -118,6 +119,7 @@ pub fn close_search(app: &mut App) {
     app.search.close();
     app.ai.visible = app.saved_ai_visibility_for_search;
     app.tooltip.enabled = app.saved_tooltip_visibility_for_search;
+    app.focus = app.saved_focus_for_search;
 }
 
 #[cfg(test)]

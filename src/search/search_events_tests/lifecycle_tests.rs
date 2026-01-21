@@ -141,3 +141,61 @@ fn test_open_close_search_with_both_ai_and_tooltip_active() {
     assert!(app.ai.visible);
     assert!(app.tooltip.enabled);
 }
+
+#[test]
+fn test_open_search_saves_focus_state() {
+    let mut app = test_app(r#"{"name": "test"}"#);
+    app.focus = Focus::InputField;
+
+    open_search(&mut app);
+
+    assert_eq!(app.saved_focus_for_search, Focus::InputField);
+    assert_eq!(app.focus, Focus::ResultsPane);
+}
+
+#[test]
+fn test_close_search_restores_focus_to_input() {
+    let mut app = test_app(r#"{"name": "test"}"#);
+    app.focus = Focus::InputField;
+
+    open_search(&mut app);
+    assert_eq!(app.focus, Focus::ResultsPane);
+
+    close_search(&mut app);
+    assert_eq!(app.focus, Focus::InputField);
+}
+
+#[test]
+fn test_close_search_restores_focus_to_results() {
+    let mut app = test_app(r#"{"name": "test"}"#);
+    app.focus = Focus::ResultsPane;
+
+    open_search(&mut app);
+    assert_eq!(app.focus, Focus::ResultsPane);
+    assert_eq!(app.saved_focus_for_search, Focus::ResultsPane);
+
+    close_search(&mut app);
+    assert_eq!(app.focus, Focus::ResultsPane);
+}
+
+#[test]
+fn test_open_search_from_results_restores_to_results() {
+    let mut app = test_app(r#"{"name": "test"}"#);
+    app.focus = Focus::ResultsPane;
+
+    open_search(&mut app);
+    close_search(&mut app);
+
+    assert_eq!(app.focus, Focus::ResultsPane);
+}
+
+#[test]
+fn test_open_search_from_input_restores_to_input() {
+    let mut app = test_app(r#"{"name": "test"}"#);
+    app.focus = Focus::InputField;
+
+    open_search(&mut app);
+    close_search(&mut app);
+
+    assert_eq!(app.focus, Focus::InputField);
+}
