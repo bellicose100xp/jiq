@@ -9,8 +9,15 @@ use crate::app::{App, Focus};
 use crate::editor::EditorMode;
 
 pub fn render_line(app: &App, frame: &mut Frame, area: Rect) {
-    let help_text = if app.focus == Focus::InputField && app.input.editor_mode == EditorMode::Insert
-    {
+    let help_text = if app.search.is_visible() {
+        if app.search.is_confirmed() {
+            " F1/?: Help | Esc: Close | n/N: Next/Prev | /: Edit Search"
+        } else {
+            " F1/?: Help | Esc: Close | Enter: Confirm Search"
+        }
+    } else if app.snippets.is_visible() {
+        " F1/?: Help | Esc: Close"
+    } else if app.focus == Focus::InputField && app.input.editor_mode == EditorMode::Insert {
         let query_empty = app.query().is_empty();
         if query_empty {
             " F1: Help | Shift+Tab: Switch Pane | Ctrl+S: Snippets | Ctrl+P/N: Cycle History | ↑/Ctrl+R: History"
