@@ -130,7 +130,9 @@ impl SnippetState {
     }
 
     pub fn open(&mut self) {
-        self.snippets = super::snippet_storage::load_snippets();
+        if self.persist_to_disk {
+            self.snippets = super::snippet_storage::load_snippets();
+        }
         self.search_textarea.select_all();
         self.search_textarea.cut();
         self.update_filter();
