@@ -14,6 +14,125 @@ use crate::snippets;
 
 mod global;
 
+fn handle_truly_global_keys(app: &mut App, key: KeyEvent) -> bool {
+    match key.code {
+        KeyCode::F(1) => {
+            app.help.visible = !app.help.visible;
+            if !app.help.visible {
+                app.help.scroll.reset();
+            }
+            true
+        }
+        KeyCode::Char('c') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+            app.should_quit = true;
+            true
+        }
+        _ => false,
+    }
+}
+
+fn handle_help_keys(app: &mut App, key: KeyEvent) -> bool {
+    match key.code {
+        KeyCode::Esc | KeyCode::F(1) => {
+            app.help.visible = false;
+            app.help.scroll.reset();
+            true
+        }
+        KeyCode::Char('q') if !key.modifiers.contains(KeyModifiers::CONTROL) => {
+            app.help.visible = false;
+            app.help.scroll.reset();
+            true
+        }
+        KeyCode::Char('?') => {
+            app.help.visible = false;
+            app.help.scroll.reset();
+            true
+        }
+        KeyCode::Char('j') | KeyCode::Down => {
+            app.help.scroll.scroll_down(1);
+            true
+        }
+        KeyCode::Char('J') => {
+            app.help.scroll.scroll_down(10);
+            true
+        }
+        KeyCode::Char('d') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+            app.help.scroll.scroll_down(10);
+            true
+        }
+        KeyCode::PageDown => {
+            app.help.scroll.scroll_down(10);
+            true
+        }
+        KeyCode::Char('k') | KeyCode::Up => {
+            app.help.scroll.scroll_up(1);
+            true
+        }
+        KeyCode::Char('K') => {
+            app.help.scroll.scroll_up(10);
+            true
+        }
+        KeyCode::Char('u') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+            app.help.scroll.scroll_up(10);
+            true
+        }
+        KeyCode::PageUp => {
+            app.help.scroll.scroll_up(10);
+            true
+        }
+        KeyCode::Char('g') | KeyCode::Home => {
+            app.help.scroll.jump_to_top();
+            true
+        }
+        KeyCode::Char('G') | KeyCode::End => {
+            app.help.scroll.jump_to_bottom();
+            true
+        }
+        _ => {
+            // Consume all other keys when help is visible
+            true
+        }
+    }
+}
+
+/// Handle keys that should pass through even when snippets/history popups are visible
+fn handle_popup_passthrough_keys(app: &mut App, key: KeyEvent) -> bool {
+    // ? toggles help when snippets is visible (and not editing) or in normal mode/results pane
+    if key.code == KeyCode::Char('?') {
+        let snippets_allows = app.snippets.is_visible() && !app.snippets.is_editing();
+        if snippets_allows
+            || app.input.editor_mode == EditorMode::Normal
+            || app.focus == Focus::ResultsPane
+        {
+            app.help.visible = !app.help.visible;
+            return true;
+        }
+    }
+
+    // BackTab closes history and switches focus
+    if key.code == KeyCode::BackTab && app.history.is_visible() {
+        app.history.close();
+        app.focus = match app.focus {
+            Focus::InputField => Focus::ResultsPane,
+            Focus::ResultsPane => Focus::InputField,
+        };
+        return true;
+    }
+
+    // Ctrl+S opens snippets (closes history)
+    if key.code == KeyCode::Char('s')
+        && key.modifiers.contains(KeyModifiers::CONTROL)
+        && app.history.is_visible()
+    {
+        app.snippets.open();
+        app.autocomplete.hide();
+        app.history.close();
+        return true;
+    }
+
+    false
+}
+
 const EVENT_POLL_TIMEOUT: Duration = Duration::from_millis(100);
 
 impl App {
@@ -90,25 +209,27 @@ impl App {
     }
 
     pub fn handle_key_event(&mut self, key: KeyEvent) {
-        if crate::search::search_events::handle_search_key(self, key) {
+        // STEP 1: Truly global keys - ALWAYS work regardless of any popup
+        if handle_truly_global_keys(self, key) {
             return;
         }
 
-        if global::handle_global_keys(self, key) {
+        // STEP 2: Popup stack (topmost first) - each handles its own Esc
+        if self.help.visible && handle_help_keys(self, key) {
             return;
         }
 
-        if clipboard::clipboard_events::handle_clipboard_key(self, key, self.clipboard_backend) {
+        if self.search.is_visible() && crate::search::search_events::handle_search_key(self, key) {
             return;
         }
 
-        match self.focus {
-            Focus::InputField => self.handle_input_field_key(key),
-            Focus::ResultsPane => results::results_events::handle_results_pane_key(self, key),
+        // STEP 3: Keys that should pass through even when snippets/history are visible
+        if (self.snippets.is_visible() || self.history.is_visible())
+            && handle_popup_passthrough_keys(self, key)
+        {
+            return;
         }
-    }
 
-    fn handle_input_field_key(&mut self, key: KeyEvent) {
         if self.snippets.is_visible() {
             snippets::snippet_events::handle_snippet_popup_key(self, key);
             return;
@@ -119,6 +240,24 @@ impl App {
             return;
         }
 
+        // STEP 3: Other global keys (when no popup is active)
+        if global::handle_global_keys(self, key) {
+            return;
+        }
+
+        // STEP 4: Clipboard
+        if clipboard::clipboard_events::handle_clipboard_key(self, key, self.clipboard_backend) {
+            return;
+        }
+
+        // STEP 5: Focus-based routing
+        match self.focus {
+            Focus::InputField => self.handle_input_field_key(key),
+            Focus::ResultsPane => results::results_events::handle_results_pane_key(self, key),
+        }
+    }
+
+    fn handle_input_field_key(&mut self, key: KeyEvent) {
         if key.code == KeyCode::Esc {
             if self.autocomplete.is_visible() {
                 self.autocomplete.hide();

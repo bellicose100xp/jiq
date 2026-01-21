@@ -15,29 +15,7 @@ fn accept_autocomplete_suggestion(app: &mut App) -> bool {
     false
 }
 
-fn is_ctrl_s(key: &KeyEvent) -> bool {
-    key.code == KeyCode::Char('s') && key.modifiers.contains(KeyModifiers::CONTROL)
-}
-
-fn is_truly_global_key(key: &KeyEvent) -> bool {
-    key.code == KeyCode::F(1)
-        || key.code == KeyCode::Char('?')
-        || (key.code == KeyCode::Char('c') && key.modifiers.contains(KeyModifiers::CONTROL))
-}
-
 pub fn handle_global_keys(app: &mut App, key: KeyEvent) -> bool {
-    if app.snippets.is_visible() && !is_truly_global_key(&key) {
-        return false;
-    }
-
-    if app.history.is_visible()
-        && !is_truly_global_key(&key)
-        && !is_ctrl_s(&key)
-        && key.code != KeyCode::BackTab
-    {
-        return false;
-    }
-
     if let Some(query) = &mut app.query
         && crate::ai::ai_events::handle_suggestion_selection(
             key,
@@ -50,74 +28,7 @@ pub fn handle_global_keys(app: &mut App, key: KeyEvent) -> bool {
         return true;
     }
 
-    if app.help.visible {
-        match key.code {
-            KeyCode::Esc | KeyCode::F(1) => {
-                app.help.visible = false;
-                app.help.scroll.reset();
-                return true;
-            }
-            KeyCode::Char('q') if !key.modifiers.contains(KeyModifiers::CONTROL) => {
-                app.help.visible = false;
-                app.help.scroll.reset();
-                return true;
-            }
-            KeyCode::Char('?') => {
-                app.help.visible = false;
-                app.help.scroll.reset();
-                return true;
-            }
-            KeyCode::Char('j') | KeyCode::Down => {
-                app.help.scroll.scroll_down(1);
-                return true;
-            }
-            KeyCode::Char('J') => {
-                app.help.scroll.scroll_down(10);
-                return true;
-            }
-            KeyCode::Char('d') if key.modifiers.contains(KeyModifiers::CONTROL) => {
-                app.help.scroll.scroll_down(10);
-                return true;
-            }
-            KeyCode::PageDown => {
-                app.help.scroll.scroll_down(10);
-                return true;
-            }
-            KeyCode::Char('k') | KeyCode::Up => {
-                app.help.scroll.scroll_up(1);
-                return true;
-            }
-            KeyCode::Char('K') => {
-                app.help.scroll.scroll_up(10);
-                return true;
-            }
-            KeyCode::Char('u') if key.modifiers.contains(KeyModifiers::CONTROL) => {
-                app.help.scroll.scroll_up(10);
-                return true;
-            }
-            KeyCode::PageUp => {
-                app.help.scroll.scroll_up(10);
-                return true;
-            }
-            KeyCode::Char('g') | KeyCode::Home => {
-                app.help.scroll.jump_to_top();
-                return true;
-            }
-            KeyCode::Char('G') | KeyCode::End => {
-                app.help.scroll.jump_to_bottom();
-                return true;
-            }
-            _ => {
-                return true;
-            }
-        }
-    }
-
     match key.code {
-        KeyCode::Char('c') if key.modifiers.contains(KeyModifiers::CONTROL) => {
-            app.should_quit = true;
-            true
-        }
         KeyCode::Char('q') if !key.modifiers.contains(KeyModifiers::CONTROL) => match app.focus {
             Focus::ResultsPane => {
                 app.should_quit = true;
@@ -218,10 +129,6 @@ pub fn handle_global_keys(app: &mut App, key: KeyEvent) -> bool {
             true
         }
 
-        KeyCode::F(1) => {
-            app.help.visible = !app.help.visible;
-            true
-        }
         KeyCode::Char('?') => {
             let snippets_allows = app.snippets.is_visible() && !app.snippets.is_editing();
             if snippets_allows

@@ -325,3 +325,168 @@ fn test_mouse_other_events_ignored() {
     app.handle_mouse_event(mouse_event(MouseEventKind::Moved));
     assert_eq!(app.results_scroll.offset, 5);
 }
+
+#[test]
+fn test_snippets_receives_keys_when_focus_is_results_pane() {
+    use crate::snippets::Snippet;
+    let mut app = app_with_query(".");
+
+    app.snippets.disable_persistence();
+    app.snippets.set_snippets(vec![Snippet {
+        name: "test".to_string(),
+        query: ".test".to_string(),
+        description: None,
+    }]);
+    app.snippets.open();
+    app.focus = Focus::ResultsPane;
+
+    assert!(app.snippets.is_visible());
+
+    app.handle_key_event(key_with_mods(KeyCode::Esc, KeyModifiers::NONE));
+
+    assert!(
+        !app.snippets.is_visible(),
+        "Esc should close snippets even when focus is ResultsPane"
+    );
+}
+
+#[test]
+fn test_snippets_navigation_works_when_focus_is_results_pane() {
+    use crate::snippets::Snippet;
+    let mut app = app_with_query(".");
+
+    app.snippets.disable_persistence();
+    app.snippets.set_snippets(vec![
+        Snippet {
+            name: "first".to_string(),
+            query: ".first".to_string(),
+            description: None,
+        },
+        Snippet {
+            name: "second".to_string(),
+            query: ".second".to_string(),
+            description: None,
+        },
+    ]);
+    app.snippets.open();
+    app.focus = Focus::ResultsPane;
+
+    assert_eq!(app.snippets.selected_index(), 0);
+
+    app.handle_key_event(key_with_mods(KeyCode::Down, KeyModifiers::NONE));
+
+    assert_eq!(
+        app.snippets.selected_index(),
+        1,
+        "Down arrow should navigate snippets even when focus is ResultsPane"
+    );
+}
+
+#[test]
+fn test_history_receives_keys_when_focus_is_results_pane() {
+    let mut app = app_with_query(".");
+
+    app.history.add_entry(".test1");
+    app.history.add_entry(".test2");
+    app.history.open(None);
+    app.focus = Focus::ResultsPane;
+
+    assert!(app.history.is_visible());
+
+    app.handle_key_event(key_with_mods(KeyCode::Esc, KeyModifiers::NONE));
+
+    assert!(
+        !app.history.is_visible(),
+        "Esc should close history even when focus is ResultsPane"
+    );
+}
+
+#[test]
+fn test_global_keys_work_when_snippets_visible() {
+    use crate::snippets::Snippet;
+    let mut app = app_with_query(".");
+
+    app.snippets.disable_persistence();
+    app.snippets.set_snippets(vec![Snippet {
+        name: "test".to_string(),
+        query: ".test".to_string(),
+        description: None,
+    }]);
+    app.snippets.open();
+
+    assert!(app.snippets.is_visible());
+    assert!(!app.help.visible);
+
+    app.handle_key_event(key_with_mods(KeyCode::F(1), KeyModifiers::NONE));
+
+    assert!(
+        app.help.visible,
+        "F1 should toggle help even when snippets is visible"
+    );
+    assert!(
+        app.snippets.is_visible(),
+        "Snippets should remain visible after F1"
+    );
+}
+
+#[test]
+fn test_ctrl_c_quits_when_snippets_visible() {
+    use crate::snippets::Snippet;
+    let mut app = app_with_query(".");
+
+    app.snippets.disable_persistence();
+    app.snippets.set_snippets(vec![Snippet {
+        name: "test".to_string(),
+        query: ".test".to_string(),
+        description: None,
+    }]);
+    app.snippets.open();
+
+    assert!(app.snippets.is_visible());
+    assert!(!app.should_quit);
+
+    app.handle_key_event(key_with_mods(KeyCode::Char('c'), KeyModifiers::CONTROL));
+
+    assert!(
+        app.should_quit,
+        "Ctrl+C should quit even when snippets is visible"
+    );
+}
+
+#[test]
+fn test_esc_closes_help_before_snippets() {
+    use crate::snippets::Snippet;
+    let mut app = app_with_query(".");
+
+    app.snippets.disable_persistence();
+    app.snippets.set_snippets(vec![Snippet {
+        name: "test".to_string(),
+        query: ".test".to_string(),
+        description: None,
+    }]);
+    app.snippets.open();
+    app.help.visible = true;
+
+    assert!(app.snippets.is_visible());
+    assert!(app.help.visible);
+
+    // First Esc should close help, not snippets
+    app.handle_key_event(key_with_mods(KeyCode::Esc, KeyModifiers::NONE));
+
+    assert!(
+        !app.help.visible,
+        "Esc should close help first when both help and snippets are visible"
+    );
+    assert!(
+        app.snippets.is_visible(),
+        "Snippets should remain visible after closing help"
+    );
+
+    // Second Esc should close snippets
+    app.handle_key_event(key_with_mods(KeyCode::Esc, KeyModifiers::NONE));
+
+    assert!(
+        !app.snippets.is_visible(),
+        "Second Esc should close snippets"
+    );
+}
