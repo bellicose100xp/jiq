@@ -7,7 +7,7 @@ expression: serialize_spans(&result)
   modifiers:
     - bold
 - content: (
-  fg: blue
+  fg: yellow
   modifiers:
     - bold
     - underlined
@@ -16,7 +16,7 @@ expression: serialize_spans(&result)
   modifiers:
     - bold
 - content: )
-  fg: blue
+  fg: yellow
   modifiers:
     - bold
     - underlined

@@ -197,7 +197,7 @@ fn test_highlight_bracket_pairs_preserves_existing_style() {
 
     assert!(result[1].style.add_modifier.contains(Modifier::UNDERLINED));
     assert!(result[1].style.add_modifier.contains(Modifier::BOLD));
-    assert_eq!(result[1].style.fg, Some(Color::Blue));
+    assert_eq!(result[1].style.fg, Some(Color::Yellow));
 }
 
 #[test]

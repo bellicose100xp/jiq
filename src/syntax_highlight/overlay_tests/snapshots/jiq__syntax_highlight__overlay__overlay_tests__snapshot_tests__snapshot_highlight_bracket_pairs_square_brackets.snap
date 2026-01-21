@@ -5,8 +5,9 @@ expression: serialize_spans(&result)
 - content: ".items"
   fg: cyan
 - content: "["
-  fg: magenta
+  fg: yellow
   modifiers:
+    - bold
     - underlined
 - content: "0"
   fg: cyan
@@ -15,8 +16,9 @@ expression: serialize_spans(&result)
 - content: "["
   fg: magenta
 - content: "1"
-  fg: cyan
+  fg: yellow
   modifiers:
+    - bold
     - underlined
 - content: "]"
   fg: magenta

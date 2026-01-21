@@ -5,8 +5,9 @@ expression: serialize_spans(&result)
 - content: map
   fg: blue
 - content: (
-  fg: magenta
+  fg: yellow
   modifiers:
+    - bold
     - underlined
 - content: select
   fg: blue
@@ -16,6 +17,7 @@ expression: serialize_spans(&result)
 - content: )
   fg: magenta
 - content: )
-  fg: magenta
+  fg: yellow
   modifiers:
+    - bold
     - underlined

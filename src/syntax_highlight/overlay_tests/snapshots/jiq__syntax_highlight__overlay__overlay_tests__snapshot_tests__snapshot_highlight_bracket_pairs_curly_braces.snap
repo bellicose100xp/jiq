@@ -3,8 +3,9 @@ source: src/syntax_highlight/overlay_tests/snapshot_tests.rs
 expression: serialize_spans(&result)
 ---
 - content: "{"
-  fg: magenta
+  fg: yellow
   modifiers:
+    - bold
     - underlined
 - content: name
   fg: cyan
@@ -15,8 +16,9 @@ expression: serialize_spans(&result)
 - content: coun
   fg: cyan
 - content: t
-  fg: cyan
+  fg: yellow
   modifiers:
+    - bold
     - underlined
 - content: ": "
 - content: ".y"

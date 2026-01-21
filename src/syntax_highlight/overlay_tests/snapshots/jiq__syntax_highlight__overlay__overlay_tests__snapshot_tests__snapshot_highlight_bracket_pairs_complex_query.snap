@@ -5,12 +5,14 @@ expression: serialize_spans(&result)
 - content: ".items"
   fg: cyan
 - content: "["
-  fg: magenta
+  fg: yellow
   modifiers:
+    - bold
     - underlined
 - content: "]"
-  fg: magenta
+  fg: yellow
   modifiers:
+    - bold
     - underlined
 - content: " | "
 - content: select
