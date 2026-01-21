@@ -14,14 +14,24 @@ pub fn render_bar(app: &mut App, frame: &mut Frame, area: Rect) {
     let match_count = app.search.match_count_display();
     let is_confirmed = app.search.is_confirmed();
 
+    // When confirmed (inactive), search bar is gray; when editing (active), it's purple
     let border_color = if is_confirmed {
         Color::DarkGray
     } else {
         Color::LightMagenta
     };
 
+    // Text color: gray when inactive, white when active
+    let text_color = if is_confirmed {
+        Color::DarkGray
+    } else {
+        Color::White
+    };
+
     let match_count_style = if app.search.matches().is_empty() && !app.search.query().is_empty() {
         Style::default().fg(Color::Red)
+    } else if is_confirmed {
+        Style::default().fg(Color::DarkGray)
     } else {
         Style::default().fg(Color::Gray)
     };
@@ -49,7 +59,7 @@ pub fn render_bar(app: &mut App, frame: &mut Frame, area: Rect) {
     frame.render_widget(block, area);
 
     let search_textarea = app.search.search_textarea_mut();
-    search_textarea.set_style(Style::default().fg(Color::White).bg(Color::Black));
+    search_textarea.set_style(Style::default().fg(text_color).bg(Color::Black));
     search_textarea.set_cursor_line_style(Style::default());
 
     if is_confirmed {
