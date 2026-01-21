@@ -97,7 +97,7 @@ fn render_minimal(
             Block::default()
                 .borders(Borders::ALL)
                 .title(title)
-                .border_style(Style::default().fg(Color::Cyan))
+                .border_style(Style::default().fg(Color::LightGreen))
                 .style(Style::default().bg(Color::Black)),
         );
         frame.render_widget(popup, area);
@@ -126,7 +126,7 @@ fn render_search(state: &mut SnippetState, frame: &mut Frame, area: Rect) {
         Block::default()
             .borders(Borders::ALL)
             .title(" Search ")
-            .border_style(Style::default().fg(Color::Cyan))
+            .border_style(Style::default().fg(Color::LightGreen))
             .style(Style::default().bg(Color::Black)),
     );
     search_textarea.set_style(Style::default().fg(Color::White).bg(Color::Black));
@@ -147,7 +147,7 @@ fn render_list(
         Block::default()
             .borders(Borders::ALL)
             .title(title)
-            .border_style(Style::default().fg(Color::Cyan))
+            .border_style(Style::default().fg(Color::LightGreen))
             .style(Style::default().bg(Color::Black)),
     );
 
@@ -172,7 +172,7 @@ fn render_preview(
         Block::default()
             .borders(Borders::ALL)
             .title(" Snippet Preview ")
-            .border_style(Style::default().fg(Color::Cyan))
+            .border_style(Style::default().fg(Color::LightGreen))
             .style(Style::default().bg(Color::Black)),
     );
 
@@ -392,7 +392,7 @@ fn render_create_name_input(
     let border_color = if is_active {
         Color::Yellow
     } else {
-        Color::Cyan
+        Color::LightGreen
     };
     let name_textarea = state.name_textarea_mut();
     name_textarea.set_block(
@@ -415,7 +415,7 @@ fn render_create_name_input(
             Block::default()
                 .borders(Borders::ALL)
                 .title(" Name ")
-                .border_style(Style::default().fg(Color::Cyan))
+                .border_style(Style::default().fg(Color::LightGreen))
                 .style(Style::default().bg(Color::Black)),
         );
         frame.render_widget(display, area);
@@ -431,7 +431,7 @@ fn render_create_query_input(
     let border_color = if is_active {
         Color::Yellow
     } else {
-        Color::Cyan
+        Color::LightGreen
     };
     let query_textarea = state.query_textarea_mut();
     query_textarea.set_block(
@@ -454,7 +454,7 @@ fn render_create_query_input(
             Block::default()
                 .borders(Borders::ALL)
                 .title(" Query ")
-                .border_style(Style::default().fg(Color::Cyan))
+                .border_style(Style::default().fg(Color::LightGreen))
                 .style(Style::default().bg(Color::Black)),
         );
         frame.render_widget(display, area);
@@ -470,7 +470,7 @@ fn render_create_description_input(
     let border_color = if is_active {
         Color::Yellow
     } else {
-        Color::Cyan
+        Color::LightGreen
     };
     let desc_textarea = state.description_textarea_mut();
     desc_textarea.set_block(
@@ -493,7 +493,7 @@ fn render_create_description_input(
             Block::default()
                 .borders(Borders::ALL)
                 .title(" Description (optional) ")
-                .border_style(Style::default().fg(Color::Cyan))
+                .border_style(Style::default().fg(Color::LightGreen))
                 .style(Style::default().bg(Color::Black)),
         );
         frame.render_widget(display, area);
@@ -520,7 +520,7 @@ fn render_create_hints(mode: &SnippetMode, frame: &mut Frame, area: Rect) {
     let hints_widget = Paragraph::new(vec![hints]).block(
         Block::default()
             .borders(Borders::ALL)
-            .border_style(Style::default().fg(Color::Cyan))
+            .border_style(Style::default().fg(Color::LightGreen))
             .style(Style::default().bg(Color::Black)),
     );
 
@@ -617,7 +617,7 @@ fn render_edit_name_input(
     let border_color = if is_active {
         Color::Yellow
     } else {
-        Color::Cyan
+        Color::LightGreen
     };
     let name_textarea = state.name_textarea_mut();
     name_textarea.set_block(
@@ -640,7 +640,7 @@ fn render_edit_name_input(
             Block::default()
                 .borders(Borders::ALL)
                 .title(" Name ")
-                .border_style(Style::default().fg(Color::Cyan))
+                .border_style(Style::default().fg(Color::LightGreen))
                 .style(Style::default().bg(Color::Black)),
         );
         frame.render_widget(display, area);
@@ -656,7 +656,7 @@ fn render_edit_query_input(
     let border_color = if is_active {
         Color::Yellow
     } else {
-        Color::Cyan
+        Color::LightGreen
     };
     let query_textarea = state.query_textarea_mut();
     query_textarea.set_block(
@@ -679,7 +679,7 @@ fn render_edit_query_input(
             Block::default()
                 .borders(Borders::ALL)
                 .title(" Query ")
-                .border_style(Style::default().fg(Color::Cyan))
+                .border_style(Style::default().fg(Color::LightGreen))
                 .style(Style::default().bg(Color::Black)),
         );
         frame.render_widget(display, area);
@@ -695,7 +695,7 @@ fn render_edit_description_input(
     let border_color = if is_active {
         Color::Yellow
     } else {
-        Color::Cyan
+        Color::LightGreen
     };
     let desc_textarea = state.description_textarea_mut();
     desc_textarea.set_block(
@@ -718,7 +718,7 @@ fn render_edit_description_input(
             Block::default()
                 .borders(Borders::ALL)
                 .title(" Description (optional) ")
-                .border_style(Style::default().fg(Color::Cyan))
+                .border_style(Style::default().fg(Color::LightGreen))
                 .style(Style::default().bg(Color::Black)),
         );
         frame.render_widget(display, area);
@@ -745,7 +745,7 @@ fn render_edit_hints(mode: &SnippetMode, frame: &mut Frame, area: Rect) {
     let hints_widget = Paragraph::new(vec![hints]).block(
         Block::default()
             .borders(Borders::ALL)
-            .border_style(Style::default().fg(Color::Cyan))
+            .border_style(Style::default().fg(Color::LightGreen))
             .style(Style::default().bg(Color::Black)),
     );
 
@@ -878,7 +878,7 @@ fn render_confirm_update_mode(state: &SnippetState, frame: &mut Frame, area: Rec
         Block::default()
             .borders(Borders::ALL)
             .title(" Replace Snippet Query ")
-            .border_style(Style::default().fg(Color::Cyan))
+            .border_style(Style::default().fg(Color::LightGreen))
             .style(Style::default().bg(Color::Black)),
     );
 

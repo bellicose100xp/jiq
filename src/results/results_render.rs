@@ -97,8 +97,15 @@ pub fn render_pane(app: &mut App, frame: &mut Frame, area: Rect) {
     }
     let position_indicator = format_position_indicator(&app.results_scroll, line_count);
 
+    let search_visible = app.search.is_visible();
+
     let (title, unfocused_border_color) = if query_state.result.is_err() {
-        // ERROR: Yellow text, yellow border (unfocused)
+        // ERROR: Yellow text, yellow border (unfocused) - or LightMagenta when search visible
+        let text_color = if search_visible {
+            Color::LightMagenta
+        } else {
+            Color::Yellow
+        };
         let mut spans = Vec::new();
         if is_pending {
             let (spinner_char, spinner_color) = get_spinner(app.frame_count);
@@ -109,17 +116,22 @@ pub fn render_pane(app: &mut App, frame: &mut Frame, area: Rect) {
         }
         spans.push(Span::styled(
             " ⚠ Syntax Error ",
-            Style::default().fg(Color::Yellow),
+            Style::default().fg(text_color),
         ));
         if !stats_info.is_empty() {
             spans.push(Span::styled(
                 format!("| {} | Showing last successful result ", stats_info),
-                Style::default().fg(Color::Yellow),
+                Style::default().fg(text_color),
             ));
         }
         (Line::from(spans), Color::Yellow)
     } else if query_state.is_empty_result {
-        // EMPTY: Gray text, gray border (unfocused)
+        // EMPTY: Gray text, gray border (unfocused) - or LightMagenta when search visible
+        let text_color = if search_visible {
+            Color::LightMagenta
+        } else {
+            Color::Gray
+        };
         let mut spans = Vec::new();
         if is_pending {
             let (spinner_char, spinner_color) = get_spinner(app.frame_count);
@@ -133,11 +145,16 @@ pub fn render_pane(app: &mut App, frame: &mut Frame, area: Rect) {
                 " ∅ No Results | {} | Showing last non-empty result ",
                 stats_info
             ),
-            Style::default().fg(Color::Gray),
+            Style::default().fg(text_color),
         ));
         (Line::from(spans), Color::DarkGray)
     } else {
-        // SUCCESS: Green text, green border (unfocused)
+        // SUCCESS: Green text, green border (unfocused) - or LightMagenta when search visible
+        let text_color = if search_visible {
+            Color::LightMagenta
+        } else {
+            Color::Green
+        };
         if is_pending {
             let (spinner_char, spinner_color) = get_spinner(app.frame_count);
             (
@@ -146,10 +163,7 @@ pub fn render_pane(app: &mut App, frame: &mut Frame, area: Rect) {
                         format!("{} ", spinner_char),
                         Style::default().fg(spinner_color),
                     ),
-                    Span::styled(
-                        format!("{} ", stats_info),
-                        Style::default().fg(Color::Green),
-                    ),
+                    Span::styled(format!("{} ", stats_info), Style::default().fg(text_color)),
                 ]),
                 Color::Green,
             )
@@ -157,23 +171,30 @@ pub fn render_pane(app: &mut App, frame: &mut Frame, area: Rect) {
             (
                 Line::from(Span::styled(
                     format!(" {} ", stats_info),
-                    Style::default().fg(Color::Green),
+                    Style::default().fg(text_color),
                 )),
                 Color::Green,
             )
         }
     };
 
+    let right_title_color = if search_visible {
+        Color::LightMagenta
+    } else {
+        unfocused_border_color
+    };
     let right_title: Option<Line<'_>> = if !position_indicator.is_empty() {
         Some(Line::from(Span::styled(
             format!(" {} ", position_indicator),
-            Style::default().fg(unfocused_border_color),
+            Style::default().fg(right_title_color),
         )))
     } else {
         None
     };
 
-    let border_color = if app.focus == crate::app::Focus::ResultsPane {
+    let border_color = if search_visible {
+        Color::LightMagenta
+    } else if app.focus == crate::app::Focus::ResultsPane {
         Color::Cyan
     } else {
         unfocused_border_color
