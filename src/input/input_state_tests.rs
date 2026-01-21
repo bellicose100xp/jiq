@@ -1,6 +1,7 @@
 //! Tests for input state
 
 use super::*;
+use crate::editor::EditorMode;
 
 #[test]
 fn test_new_input_state() {
