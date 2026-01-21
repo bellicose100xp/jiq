@@ -42,7 +42,7 @@ pub fn render_bar(app: &mut App, frame: &mut Frame, area: Rect) {
         " Search: "
     };
 
-    let block = Block::default()
+    let mut block = Block::default()
         .borders(Borders::ALL)
         .title(title)
         .title_top(
@@ -54,6 +54,14 @@ pub fn render_bar(app: &mut App, frame: &mut Frame, area: Rect) {
         )
         .border_style(Style::default().fg(border_color))
         .style(Style::default().bg(Color::Black));
+
+    if !is_confirmed {
+        let hints = Line::from(vec![Span::styled(
+            " [Enter] Confirm | [Esc] Close ",
+            Style::default().fg(Color::LightMagenta),
+        )]);
+        block = block.title_bottom(hints.alignment(Alignment::Center));
+    }
 
     let inner_area = block.inner(area);
     frame.render_widget(block, area);

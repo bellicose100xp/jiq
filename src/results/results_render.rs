@@ -227,6 +227,13 @@ pub fn render_pane(app: &mut App, frame: &mut Frame, area: Rect) {
         if let Some(rt) = right_title.clone() {
             block = block.title_top(rt.alignment(Alignment::Right));
         }
+        if search_visible && app.search.is_confirmed() {
+            let hints = Line::from(vec![Span::styled(
+                " [n/N] Next/Prev | [Enter] Next | [/] Edit | [Esc] Close ",
+                Style::default().fg(Color::LightMagenta),
+            )]);
+            block = block.title_bottom(hints.alignment(Alignment::Center));
+        }
 
         // Use cached pre-rendered text
         // Optimization: Only clone visible viewport to avoid massive allocations
@@ -278,6 +285,13 @@ pub fn render_pane(app: &mut App, frame: &mut Frame, area: Rect) {
             .border_style(Style::default().fg(border_color));
         if let Some(rt) = right_title {
             block = block.title_top(rt.alignment(Alignment::Right));
+        }
+        if search_visible && app.search.is_confirmed() {
+            let hints = Line::from(vec![Span::styled(
+                " [n/N] Next/Prev | [Enter] Next | [/] Edit | [Esc] Close ",
+                Style::default().fg(Color::LightMagenta),
+            )]);
+            block = block.title_bottom(hints.alignment(Alignment::Center));
         }
 
         let empty_text = Text::from("");
