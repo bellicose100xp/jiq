@@ -14,5 +14,7 @@ mod navigation_tests;
 mod open_close_tests;
 #[path = "snippet_events_tests/rename_tests.rs"]
 mod rename_tests;
+#[path = "snippet_events_tests/replace_tests.rs"]
+mod replace_tests;
 #[path = "snippet_events_tests/search_tests.rs"]
 mod search_tests;

@@ -14,6 +14,7 @@ pub fn handle_snippet_popup_key(app: &mut App, key: KeyEvent) {
         SnippetMode::EditQuery { .. } => handle_edit_query_mode(app, key),
         SnippetMode::EditDescription { .. } => handle_edit_description_mode(app, key),
         SnippetMode::ConfirmDelete { .. } => handle_confirm_delete_mode(app, key),
+        SnippetMode::ConfirmUpdate { .. } => handle_confirm_update_mode(app, key),
     }
 }
 
@@ -47,6 +48,14 @@ fn handle_browse_mode(app: &mut App, key: KeyEvent) {
         KeyCode::Char('d') if key.modifiers.contains(KeyModifiers::CONTROL) => {
             if app.snippets.selected_snippet().is_some() {
                 app.snippets.enter_delete_mode();
+            }
+        }
+        KeyCode::Char('r') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+            if app.snippets.selected_snippet().is_some() {
+                let current_query = app.input.query().to_string();
+                if let Err(e) = app.snippets.enter_update_confirmation(current_query) {
+                    app.notification.show_warning(&e);
+                }
             }
         }
         _ => {
@@ -235,6 +244,20 @@ fn handle_confirm_delete_mode(app: &mut App, key: KeyEvent) {
         }
         KeyCode::Esc => {
             app.snippets.cancel_delete();
+        }
+        _ => {}
+    }
+}
+
+fn handle_confirm_update_mode(app: &mut App, key: KeyEvent) {
+    match key.code {
+        KeyCode::Enter => {
+            if let Err(e) = app.snippets.confirm_update() {
+                app.notification.show_warning(&e);
+            }
+        }
+        KeyCode::Esc => {
+            app.snippets.cancel_update();
         }
         _ => {}
     }

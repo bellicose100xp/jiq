@@ -16,3 +16,5 @@ mod navigation_tests;
 mod rename_tests;
 #[path = "snippet_state_tests/search_tests.rs"]
 mod search_tests;
+#[path = "snippet_state_tests/update_tests.rs"]
+mod update_tests;

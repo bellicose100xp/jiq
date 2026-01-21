@@ -30,6 +30,7 @@ pub fn render_popup(state: &mut SnippetState, frame: &mut Frame, results_area: R
         | SnippetMode::EditQuery { .. }
         | SnippetMode::EditDescription { .. } => render_edit_mode(state, frame, results_area),
         SnippetMode::ConfirmDelete { .. } => render_confirm_delete_mode(state, frame, results_area),
+        SnippetMode::ConfirmUpdate { .. } => render_confirm_update_mode(state, frame, results_area),
     }
 }
 
@@ -188,6 +189,8 @@ fn render_browse_hints(frame: &mut Frame, area: Rect) {
         Span::styled(" New  ", Style::default().fg(Color::DarkGray)),
         Span::styled("[Ctrl+E]", Style::default().fg(Color::Yellow)),
         Span::styled(" Edit  ", Style::default().fg(Color::DarkGray)),
+        Span::styled("[Ctrl+R]", Style::default().fg(Color::Yellow)),
+        Span::styled(" Replace  ", Style::default().fg(Color::DarkGray)),
         Span::styled("[Ctrl+D]", Style::default().fg(Color::Yellow)),
         Span::styled(" Delete  ", Style::default().fg(Color::DarkGray)),
         Span::styled("[Esc]", Style::default().fg(Color::Yellow)),
@@ -788,6 +791,94 @@ fn render_confirm_delete_mode(state: &SnippetState, frame: &mut Frame, area: Rec
             .borders(Borders::ALL)
             .title(" Confirm Delete ")
             .border_style(Style::default().fg(Color::Red))
+            .style(Style::default().bg(Color::Black)),
+    );
+
+    popup::clear_area(frame, dialog_area);
+    frame.render_widget(dialog, dialog_area);
+}
+
+fn render_confirm_update_mode(state: &SnippetState, frame: &mut Frame, area: Rect) {
+    let (snippet_name, old_query, new_query) = match state.mode() {
+        SnippetMode::ConfirmUpdate {
+            snippet_name,
+            old_query,
+            new_query,
+        } => (snippet_name.clone(), old_query.clone(), new_query.clone()),
+        _ => (String::new(), String::new(), String::new()),
+    };
+
+    let inner_width = area.width.saturating_sub(6) as usize;
+    let old_wrapped = wrap_text(&old_query, inner_width);
+    let new_wrapped = wrap_text(&new_query, inner_width);
+
+    let old_lines = old_wrapped.len().max(1) as u16;
+    let new_lines = new_wrapped.len().max(1) as u16;
+    // Content: 4 lines before old query + old_lines + 2 lines between + new_lines + 2 lines after
+    let content_height = 4 + old_lines + 2 + new_lines + 2;
+    let dialog_height = (content_height + 2).min(area.height.saturating_sub(2));
+    let dialog_width = (area.width.saturating_sub(4)).min(70);
+    let dialog_x = area.x + (area.width.saturating_sub(dialog_width)) / 2;
+    let dialog_y = area.y + (area.height.saturating_sub(dialog_height)) / 2;
+
+    let dialog_area = Rect::new(dialog_x, dialog_y, dialog_width, dialog_height);
+
+    let truncated_name = if snippet_name.len() > 40 {
+        format!("{}…", &snippet_name[..39])
+    } else {
+        snippet_name
+    };
+
+    let mut content = vec![
+        Line::from(""),
+        Line::from(Span::styled(
+            format!(" Replace query for \"{}\"?", truncated_name),
+            Style::default().fg(Color::White),
+        )),
+        Line::from(""),
+        Line::from(Span::styled(
+            " Old query:",
+            Style::default()
+                .fg(Color::Yellow)
+                .add_modifier(Modifier::BOLD),
+        )),
+    ];
+
+    for line in old_wrapped {
+        content.push(Line::from(Span::styled(
+            format!("   {}", line),
+            Style::default().fg(Color::DarkGray),
+        )));
+    }
+
+    content.push(Line::from(""));
+    content.push(Line::from(Span::styled(
+        " New query:",
+        Style::default()
+            .fg(Color::Green)
+            .add_modifier(Modifier::BOLD),
+    )));
+
+    for line in new_wrapped {
+        content.push(Line::from(Span::styled(
+            format!("   {}", line),
+            Style::default().fg(Color::White),
+        )));
+    }
+
+    content.push(Line::from(""));
+    content.push(Line::from(vec![
+        Span::styled(" [Enter]", Style::default().fg(Color::Yellow)),
+        Span::styled(" Confirm    ", Style::default().fg(Color::White)),
+        Span::styled("[Esc]", Style::default().fg(Color::Yellow)),
+        Span::styled(" Cancel", Style::default().fg(Color::White)),
+    ]));
+
+    let dialog = Paragraph::new(content).block(
+        Block::default()
+            .borders(Borders::ALL)
+            .title(" Replace Snippet Query ")
+            .border_style(Style::default().fg(Color::Cyan))
             .style(Style::default().bg(Color::Black)),
     );
 

@@ -31,6 +31,11 @@ pub enum SnippetMode {
     ConfirmDelete {
         snippet_name: String,
     },
+    ConfirmUpdate {
+        snippet_name: String,
+        old_query: String,
+        new_query: String,
+    },
 }
 
 fn create_search_textarea() -> TextArea<'static> {
@@ -257,7 +262,9 @@ impl SnippetState {
                     };
                 }
             }
-            SnippetMode::Browse | SnippetMode::ConfirmDelete { .. } => {}
+            SnippetMode::Browse
+            | SnippetMode::ConfirmDelete { .. }
+            | SnippetMode::ConfirmUpdate { .. } => {}
         }
     }
 
@@ -319,7 +326,9 @@ impl SnippetState {
                     };
                 }
             }
-            SnippetMode::Browse | SnippetMode::ConfirmDelete { .. } => {}
+            SnippetMode::Browse
+            | SnippetMode::ConfirmDelete { .. }
+            | SnippetMode::ConfirmUpdate { .. } => {}
         }
     }
 
@@ -574,6 +583,66 @@ impl SnippetState {
             self.selected_index -= 1;
         }
         self.adjust_scroll_to_selection();
+        self.mode = SnippetMode::Browse;
+        Ok(())
+    }
+
+    pub fn enter_update_confirmation(&mut self, new_query: String) -> Result<(), String> {
+        let snippet = self
+            .selected_snippet()
+            .ok_or_else(|| "No snippet selected".to_string())?;
+
+        let old_query = snippet.query.clone();
+        let snippet_name = snippet.name.clone();
+
+        if old_query.trim() == new_query.trim() {
+            return Err("No changes to update".to_string());
+        }
+
+        self.mode = SnippetMode::ConfirmUpdate {
+            snippet_name,
+            old_query,
+            new_query,
+        };
+        Ok(())
+    }
+
+    pub fn cancel_update(&mut self) {
+        self.mode = SnippetMode::Browse;
+    }
+
+    pub fn confirm_update(&mut self) -> Result<(), String> {
+        let SnippetMode::ConfirmUpdate {
+            ref snippet_name,
+            new_query: ref new_query_ref,
+            ..
+        } = self.mode
+        else {
+            return Err("Not in update confirmation mode".to_string());
+        };
+        let snippet_name = snippet_name.clone();
+        let new_query = new_query_ref.clone();
+
+        let snippet_idx = self
+            .filtered_indices
+            .get(self.selected_index)
+            .copied()
+            .ok_or_else(|| "No snippet selected".to_string())?;
+
+        if self.snippets[snippet_idx].name != snippet_name {
+            return Err("Selected snippet does not match".to_string());
+        }
+
+        let original_query = self.snippets[snippet_idx].query.clone();
+        self.snippets[snippet_idx].query = new_query;
+
+        if self.persist_to_disk
+            && let Err(e) = super::snippet_storage::save_snippets(&self.snippets)
+        {
+            self.snippets[snippet_idx].query = original_query;
+            return Err(format!("Failed to save: {}", e));
+        }
+
         self.mode = SnippetMode::Browse;
         Ok(())
     }
