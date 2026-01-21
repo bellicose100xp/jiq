@@ -28,7 +28,7 @@ pub fn render_bar(app: &mut App, frame: &mut Frame, area: Rect) {
             ))
             .alignment(Alignment::Right),
         )
-        .border_style(Style::default().fg(Color::Cyan))
+        .border_style(Style::default().fg(Color::LightMagenta))
         .style(Style::default().bg(Color::Black));
 
     let inner_area = block.inner(area);
