@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.13.7] - 2026-01-20
+
+### Changed
+- **Full-screen search and snippets overlays** - Query input is now hidden when search or snippets manager is open, giving overlays more screen space
+- **Distinct overlay border colors** - Search uses light purple (LightMagenta), snippets manager uses light green (LightGreen)
+- **Cohesive search mode styling** - Results pane border and title text match light purple when search is active
+
 ## [3.13.6] - 2026-01-20
 
 ### Added
