@@ -1,8 +1,8 @@
 ---
-source: src/app/app_render_tests/basic_ui_tests.rs
+source: src/input/input_render_tests.rs
 expression: output
 ---
-"┌ String ───────────────────────────────────────────────────────── L1-1/1 (0%) ┐"
+"┌ Object ───────────────────────────────────────────────────────── L1-1/1 (0%) ┐"
 "│"Alice"                                                                       │"
 "│                                                                              │"
 "│                                                                              │"
@@ -24,5 +24,5 @@ expression: output
 "└──────────────────────────────────────────────────────────────────────────────┘"
 "┌ Query [INSERT] ─────────────────────────────── Press Ctrl+A for AI Assistant ┐"
 "│.name                                                                         │"
-"└────────────────────────── Shift+Tab to edit query ───────────────────────────┘"
-" F1/?: Help | Shift+Tab: Switch Pane | Ctrl+S: Snippets | Enter: Output Result |"
+"└──────────────────────────────────────────────────────────────────────────────┘"
+" F1: Help | Shift+Tab: Switch Pane | Ctrl+S: Snippets | ↑/Ctrl+R: History | Ente"

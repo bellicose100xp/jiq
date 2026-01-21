@@ -33,19 +33,26 @@ pub fn render_field(app: &mut App, frame: &mut Frame, area: Rect) {
         Color::DarkGray
     };
 
+    let is_focused = app.focus == Focus::InputField;
+    let mode_display_color = if is_focused {
+        mode_color
+    } else {
+        Color::DarkGray
+    };
+
     let mode_text = app.input.editor_mode.display();
     let mut title_spans = match app.input.editor_mode {
         EditorMode::Normal => {
             vec![
                 Span::raw(" Query ["),
-                Span::styled(mode_text, Style::default().fg(mode_color)),
+                Span::styled(mode_text, Style::default().fg(mode_display_color)),
                 Span::raw("] (press 'i' to edit) "),
             ]
         }
         _ => {
             vec![
                 Span::raw(" Query ["),
-                Span::styled(mode_text, Style::default().fg(mode_color)),
+                Span::styled(mode_text, Style::default().fg(mode_display_color)),
                 Span::raw("] "),
             ]
         }
@@ -91,13 +98,27 @@ pub fn render_field(app: &mut App, frame: &mut Frame, area: Rect) {
         block = block.title_top(hint.alignment(Alignment::Right));
     }
 
+    if !is_focused {
+        block = block.title_bottom(
+            Line::from(vec![Span::styled(
+                " Shift+Tab to edit query ",
+                Style::default().fg(Color::DarkGray),
+            )])
+            .alignment(Alignment::Center),
+        );
+    }
+
     let query = app.query();
     let cursor_col = app.input.textarea.cursor().1;
     let scroll_offset = app.input.scroll_offset;
 
     if query.is_empty() {
-        let cursor_spans = insert_cursor_into_spans(vec![], 0);
-        let paragraph = Paragraph::new(Line::from(cursor_spans)).block(block);
+        let final_spans = if is_focused {
+            insert_cursor_into_spans(vec![], 0)
+        } else {
+            vec![]
+        };
+        let paragraph = Paragraph::new(Line::from(final_spans)).block(block);
         frame.render_widget(paragraph, area);
     } else {
         let highlighted_spans = JqHighlighter::highlight(query);
@@ -111,10 +132,18 @@ pub fn render_field(app: &mut App, frame: &mut Frame, area: Rect) {
 
         let visible_spans =
             extract_visible_spans(&spans_with_brackets, scroll_offset, viewport_width);
-        let cursor_in_viewport = cursor_col.saturating_sub(scroll_offset);
-        let spans_with_cursor = insert_cursor_into_spans(visible_spans, cursor_in_viewport);
 
-        let paragraph = Paragraph::new(Line::from(spans_with_cursor)).block(block);
+        let final_spans = if is_focused {
+            let cursor_in_viewport = cursor_col.saturating_sub(scroll_offset);
+            insert_cursor_into_spans(visible_spans, cursor_in_viewport)
+        } else {
+            visible_spans
+                .into_iter()
+                .map(|span| Span::styled(span.content, Style::default().fg(Color::DarkGray)))
+                .collect()
+        };
+
+        let paragraph = Paragraph::new(Line::from(final_spans)).block(block);
         frame.render_widget(paragraph, area);
     }
 }
