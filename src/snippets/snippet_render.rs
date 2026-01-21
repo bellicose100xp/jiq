@@ -91,7 +91,7 @@ fn render_minimal(
         let title = build_list_title(filtered_count, total_count);
 
         let hints = Line::from(vec![Span::styled(
-            " ↑/↓ Navigate | Enter Apply | Ctrl+N New | Ctrl+E Edit | Ctrl+R Replace | Ctrl+D Delete | Esc Close ",
+            " [↑/↓] Navigate | [Enter] Apply | [Ctrl+N] New | [Ctrl+E] Edit | [Ctrl+R] Replace | [Ctrl+D] Delete | [Esc] Close ",
             Style::default().fg(Color::LightGreen),
         )]);
 
@@ -147,7 +147,7 @@ fn render_list(
     let title = build_list_title(filtered_count, total_count);
 
     let hints = Line::from(vec![Span::styled(
-        " ↑/↓ Navigate | Enter Apply | Ctrl+N New | Ctrl+E Edit | Ctrl+R Replace | Ctrl+D Delete | Esc Close ",
+        " [↑/↓] Navigate | [Enter] Apply | [Ctrl+N] New | [Ctrl+E] Edit | [Ctrl+R] Replace | [Ctrl+D] Delete | [Esc] Close ",
         Style::default().fg(Color::LightGreen),
     )]);
 
