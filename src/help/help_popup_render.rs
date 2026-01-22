@@ -10,17 +10,20 @@ use crate::app::App;
 use crate::help::{HELP_FOOTER, HelpSection, HelpTab, get_tab_content};
 use crate::widgets::popup;
 
-pub const HELP_POPUP_WIDTH: u16 = 65;
-
 pub fn render_popup(app: &mut App, frame: &mut Frame) {
     let frame_area = frame.area();
 
-    if frame_area.width < 20 || frame_area.height < 10 {
+    if frame_area.width < 40 || frame_area.height < 15 {
         return;
     }
 
-    let popup_width = HELP_POPUP_WIDTH.min(frame_area.width.saturating_sub(4));
-    let popup_height = 22.min(frame_area.height.saturating_sub(2));
+    // Popup dimensions - use 80% of screen (min 70x20, max 90x30)
+    let popup_width = ((frame_area.width as f32 * 0.8) as u16)
+        .clamp(70, 90)
+        .min(frame_area.width.saturating_sub(4));
+    let popup_height = ((frame_area.height as f32 * 0.8) as u16)
+        .clamp(20, 30)
+        .min(frame_area.height.saturating_sub(2));
 
     let popup_area = popup::centered_popup(frame_area, popup_width, popup_height);
     popup::clear_area(frame, popup_area);
@@ -83,23 +86,24 @@ fn render_tab_bar(active_tab: HelpTab) -> Tabs<'static> {
     let titles: Vec<Line> = HelpTab::all()
         .iter()
         .map(|tab| {
+            let number = tab.index() + 1;
+            let label = format!("{}:{}", number, tab.name());
             if *tab == active_tab {
                 Line::styled(
-                    format!("[{}]", tab.name()),
+                    format!("[{}]", label),
                     Style::default()
                         .fg(Color::Cyan)
                         .add_modifier(Modifier::BOLD),
                 )
             } else {
-                Line::styled(
-                    format!(" {} ", tab.name()),
-                    Style::default().fg(Color::DarkGray),
-                )
+                Line::styled(label, Style::default().fg(Color::DarkGray))
             }
         })
         .collect();
 
-    Tabs::new(titles).divider(Span::raw(" "))
+    Tabs::new(titles)
+        .divider(Span::raw(" "))
+        .highlight_style(Style::default())
 }
 
 fn render_help_sections(sections: &[HelpSection]) -> Vec<Line<'static>> {

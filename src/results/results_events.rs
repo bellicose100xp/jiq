@@ -14,7 +14,12 @@ pub fn handle_results_pane_key(app: &mut App, key: KeyEvent) {
             if app.help.visible {
                 app.help.reset();
             } else {
-                app.help.active_tab = HelpTab::Results;
+                // Check if search is active (takes priority over Result tab)
+                app.help.active_tab = if app.search.is_visible() {
+                    HelpTab::Search
+                } else {
+                    HelpTab::Result
+                };
                 app.help.visible = true;
             }
         }

@@ -301,7 +301,7 @@ fn test_help_popup_l_navigates_to_next_tab() {
 fn test_help_popup_left_arrow_navigates_to_previous_tab() {
     let mut app = app_with_query(".");
     app.help.visible = true;
-    app.help.active_tab = HelpTab::Results;
+    app.help.active_tab = HelpTab::Result;
 
     app.handle_key_event(key(KeyCode::Left));
     assert_eq!(app.help.active_tab, HelpTab::Input);
@@ -314,14 +314,34 @@ fn test_help_popup_right_arrow_navigates_to_next_tab() {
     app.help.active_tab = HelpTab::Input;
 
     app.handle_key_event(key(KeyCode::Right));
-    assert_eq!(app.help.active_tab, HelpTab::Results);
+    assert_eq!(app.help.active_tab, HelpTab::Result);
+}
+
+#[test]
+fn test_help_popup_tab_key_navigates_to_next_tab() {
+    let mut app = app_with_query(".");
+    app.help.visible = true;
+    app.help.active_tab = HelpTab::Global;
+
+    app.handle_key_event(key(KeyCode::Tab));
+    assert_eq!(app.help.active_tab, HelpTab::Input);
+}
+
+#[test]
+fn test_help_popup_shift_tab_navigates_to_previous_tab() {
+    let mut app = app_with_query(".");
+    app.help.visible = true;
+    app.help.active_tab = HelpTab::Input;
+
+    app.handle_key_event(key(KeyCode::BackTab));
+    assert_eq!(app.help.active_tab, HelpTab::Global);
 }
 
 #[test]
 fn test_help_popup_tab_wraps_at_end() {
     let mut app = app_with_query(".");
     app.help.visible = true;
-    app.help.active_tab = HelpTab::AI;
+    app.help.active_tab = HelpTab::Snippet;
 
     app.handle_key_event(key(KeyCode::Char('l')));
     assert_eq!(app.help.active_tab, HelpTab::Global);
@@ -334,7 +354,7 @@ fn test_help_popup_tab_wraps_at_beginning() {
     app.help.active_tab = HelpTab::Global;
 
     app.handle_key_event(key(KeyCode::Char('h')));
-    assert_eq!(app.help.active_tab, HelpTab::AI);
+    assert_eq!(app.help.active_tab, HelpTab::Snippet);
 }
 
 #[test]
@@ -349,16 +369,19 @@ fn test_help_popup_number_keys_jump_to_tab() {
     assert_eq!(app.help.active_tab, HelpTab::Input);
 
     app.handle_key_event(key(KeyCode::Char('3')));
-    assert_eq!(app.help.active_tab, HelpTab::Results);
+    assert_eq!(app.help.active_tab, HelpTab::Result);
 
     app.handle_key_event(key(KeyCode::Char('4')));
-    assert_eq!(app.help.active_tab, HelpTab::Search);
+    assert_eq!(app.help.active_tab, HelpTab::History);
 
     app.handle_key_event(key(KeyCode::Char('5')));
-    assert_eq!(app.help.active_tab, HelpTab::Popups);
+    assert_eq!(app.help.active_tab, HelpTab::AI);
 
     app.handle_key_event(key(KeyCode::Char('6')));
-    assert_eq!(app.help.active_tab, HelpTab::AI);
+    assert_eq!(app.help.active_tab, HelpTab::Search);
+
+    app.handle_key_event(key(KeyCode::Char('7')));
+    assert_eq!(app.help.active_tab, HelpTab::Snippet);
 }
 
 // Context-aware tab selection tests
@@ -375,13 +398,13 @@ fn test_help_opens_to_input_tab_when_input_focused() {
 }
 
 #[test]
-fn test_help_opens_to_results_tab_when_results_focused() {
+fn test_help_opens_to_result_tab_when_results_focused() {
     let mut app = app_with_query(".");
     app.focus = Focus::ResultsPane;
 
     app.handle_key_event(key(KeyCode::F(1)));
     assert!(app.help.visible);
-    assert_eq!(app.help.active_tab, HelpTab::Results);
+    assert_eq!(app.help.active_tab, HelpTab::Result);
 }
 
 #[test]
@@ -395,23 +418,39 @@ fn test_help_opens_to_search_tab_when_search_active() {
 }
 
 #[test]
-fn test_help_opens_to_popups_tab_when_history_visible() {
+fn test_help_opens_to_snippet_tab_when_snippets_visible() {
     let mut app = app_with_query(".");
+    app.snippets.open();
+
+    app.handle_key_event(key(KeyCode::F(1)));
+    assert!(app.help.visible);
+    assert_eq!(app.help.active_tab, HelpTab::Snippet);
+}
+
+#[test]
+fn test_help_does_not_auto_focus_history_tab() {
+    // History tab never auto-focuses - should use the underlying context (Input here)
+    let mut app = app_with_query(".");
+    app.focus = Focus::InputField;
     app.history.open(None);
 
     app.handle_key_event(key(KeyCode::F(1)));
     assert!(app.help.visible);
-    assert_eq!(app.help.active_tab, HelpTab::Popups);
+    // Should NOT be History tab - falls back to Input since focus is InputField
+    assert_eq!(app.help.active_tab, HelpTab::Input);
 }
 
 #[test]
-fn test_help_opens_to_ai_tab_when_ai_visible() {
+fn test_help_does_not_auto_focus_ai_tab() {
+    // AI tab never auto-focuses - should use the underlying context (Input here)
     let mut app = app_with_query(".");
+    app.focus = Focus::InputField;
     app.ai.visible = true;
 
     app.handle_key_event(key(KeyCode::F(1)));
     assert!(app.help.visible);
-    assert_eq!(app.help.active_tab, HelpTab::AI);
+    // Should NOT be AI tab - falls back to Input since focus is InputField
+    assert_eq!(app.help.active_tab, HelpTab::Input);
 }
 
 #[test]

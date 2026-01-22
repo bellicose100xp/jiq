@@ -140,18 +140,13 @@ pub fn handle_global_keys(app: &mut App, key: KeyEvent) -> bool {
                     app.help.reset();
                 } else {
                     // Context-aware tab selection
-                    let tab = if app.ai.visible {
-                        HelpTab::AI
+                    // Note: History and AI tabs never auto-focus
+                    let tab = if app.snippets.is_visible() {
+                        HelpTab::Snippet
                     } else if app.search.is_visible() {
                         HelpTab::Search
-                    } else if app.history.is_visible()
-                        || app.autocomplete.is_visible()
-                        || app.snippets.is_visible()
-                        || app.error_overlay_visible
-                    {
-                        HelpTab::Popups
                     } else if app.focus == Focus::ResultsPane {
-                        HelpTab::Results
+                        HelpTab::Result
                     } else {
                         HelpTab::Input
                     };

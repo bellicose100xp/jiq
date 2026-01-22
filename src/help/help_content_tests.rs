@@ -3,9 +3,10 @@
 use super::*;
 
 #[test]
+#[allow(clippy::const_is_empty)]
 fn test_help_categories_not_empty() {
     assert!(!HELP_CATEGORIES.is_empty());
-    assert_eq!(HELP_CATEGORIES.len(), 6);
+    assert_eq!(HELP_CATEGORIES.len(), 7);
 }
 
 #[test]
@@ -55,11 +56,15 @@ fn test_input_tab_has_insert_and_normal_sections() {
         section_titles.iter().any(|t| t.contains("NORMAL")),
         "Input tab should have NORMAL MODE section"
     );
+    assert!(
+        section_titles.iter().any(|t| t.contains("AUTOCOMPLETE")),
+        "Input tab should have AUTOCOMPLETE section"
+    );
 }
 
 #[test]
-fn test_results_tab_contains_navigation() {
-    let results = get_tab_content(HelpTab::Results);
+fn test_result_tab_contains_navigation() {
+    let results = get_tab_content(HelpTab::Result);
 
     let entries: Vec<_> = results
         .sections
@@ -71,13 +76,35 @@ fn test_results_tab_contains_navigation() {
         entries
             .iter()
             .any(|(k, _)| k.contains("j") || k.contains("k")),
-        "Results should have j/k for scrolling"
+        "Result should have j/k for scrolling"
     );
     assert!(
         entries
             .iter()
             .any(|(k, _)| k.contains("g") || k.contains("G")),
-        "Results should have g/G for jump to top/bottom"
+        "Result should have g/G for jump to top/bottom"
+    );
+}
+
+#[test]
+fn test_history_tab_contains_history_shortcuts() {
+    let history = get_tab_content(HelpTab::History);
+
+    let entries: Vec<_> = history
+        .sections
+        .iter()
+        .flat_map(|s| s.entries.iter())
+        .collect();
+
+    assert!(
+        entries.iter().any(|(k, _)| k.contains("Ctrl+R")),
+        "History should have Ctrl+R to open"
+    );
+    assert!(
+        entries
+            .iter()
+            .any(|(_, d)| d.contains("Navigate") || d.contains("entries")),
+        "History should have navigation"
     );
 }
 
@@ -104,22 +131,26 @@ fn test_search_tab_contains_search_shortcuts() {
 }
 
 #[test]
-fn test_popups_tab_has_subsections() {
-    let popups = get_tab_content(HelpTab::Popups);
+fn test_snippet_tab_contains_snippet_shortcuts() {
+    let snippet = get_tab_content(HelpTab::Snippet);
 
-    let section_titles: Vec<_> = popups.sections.iter().filter_map(|s| s.title).collect();
+    let entries: Vec<_> = snippet
+        .sections
+        .iter()
+        .flat_map(|s| s.entries.iter())
+        .collect();
 
     assert!(
-        section_titles.iter().any(|t| t.contains("HISTORY")),
-        "Popups tab should have HISTORY section"
+        entries.iter().any(|(k, _)| k.contains("Ctrl+S")),
+        "Snippet should have Ctrl+S to open"
     );
     assert!(
-        section_titles.iter().any(|t| t.contains("AUTOCOMPLETE")),
-        "Popups tab should have AUTOCOMPLETE section"
+        entries.iter().any(|(_, d)| d.contains("Create")),
+        "Snippet should have create functionality"
     );
     assert!(
-        section_titles.iter().any(|t| t.contains("ERROR")),
-        "Popups tab should have ERROR section"
+        entries.iter().any(|(_, d)| d.contains("Delete")),
+        "Snippet should have delete functionality"
     );
 }
 
@@ -164,7 +195,7 @@ fn test_help_footer_not_empty() {
 #[test]
 fn test_help_footer_contains_navigation_hints() {
     assert!(
-        HELP_FOOTER.contains("tab"),
+        HELP_FOOTER.contains("Tab") || HELP_FOOTER.contains("tab"),
         "Footer should mention tab navigation"
     );
     assert!(

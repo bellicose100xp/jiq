@@ -5,23 +5,25 @@ pub enum HelpTab {
     #[default]
     Global,
     Input,
-    Results,
-    Search,
-    Popups,
+    Result,
+    History,
     AI,
+    Search,
+    Snippet,
 }
 
 impl HelpTab {
-    pub const COUNT: usize = 6;
+    pub const COUNT: usize = 7;
 
     pub fn all() -> &'static [HelpTab] {
         &[
             HelpTab::Global,
             HelpTab::Input,
-            HelpTab::Results,
-            HelpTab::Search,
-            HelpTab::Popups,
+            HelpTab::Result,
+            HelpTab::History,
             HelpTab::AI,
+            HelpTab::Search,
+            HelpTab::Snippet,
         ]
     }
 
@@ -29,10 +31,11 @@ impl HelpTab {
         match self {
             HelpTab::Global => 0,
             HelpTab::Input => 1,
-            HelpTab::Results => 2,
-            HelpTab::Search => 3,
-            HelpTab::Popups => 4,
-            HelpTab::AI => 5,
+            HelpTab::Result => 2,
+            HelpTab::History => 3,
+            HelpTab::AI => 4,
+            HelpTab::Search => 5,
+            HelpTab::Snippet => 6,
         }
     }
 
@@ -40,10 +43,11 @@ impl HelpTab {
         match index {
             0 => HelpTab::Global,
             1 => HelpTab::Input,
-            2 => HelpTab::Results,
-            3 => HelpTab::Search,
-            4 => HelpTab::Popups,
-            5 => HelpTab::AI,
+            2 => HelpTab::Result,
+            3 => HelpTab::History,
+            4 => HelpTab::AI,
+            5 => HelpTab::Search,
+            6 => HelpTab::Snippet,
             _ => HelpTab::Global,
         }
     }
@@ -52,10 +56,11 @@ impl HelpTab {
         match self {
             HelpTab::Global => "Global",
             HelpTab::Input => "Input",
-            HelpTab::Results => "Results",
-            HelpTab::Search => "Search",
-            HelpTab::Popups => "Popups",
+            HelpTab::Result => "Result",
+            HelpTab::History => "History",
             HelpTab::AI => "AI",
+            HelpTab::Search => "Search",
+            HelpTab::Snippet => "Snippet",
         }
     }
 
@@ -80,6 +85,7 @@ impl HelpPopupState {
             visible: false,
             active_tab: HelpTab::Global,
             scroll_per_tab: [
+                ScrollState::new(),
                 ScrollState::new(),
                 ScrollState::new(),
                 ScrollState::new(),

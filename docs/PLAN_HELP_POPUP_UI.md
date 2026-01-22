@@ -22,181 +22,255 @@ The help popup displays **77 keyboard shortcuts** in a single scrollable list ac
 
 ---
 
+## Tab Organization
+
+**7 Tabs with numbered labels for quick access:**
+
+```
+[1:Global] [2:Input] [3:Result] [4:History] [5:AI] [6:Search] [7:Snippet]
+```
+
+### Tab Navigation
+- **Number keys 1-7**: Jump directly to tab
+- **Tab key**: Cycle to next tab
+- **Shift+Tab**: Cycle to previous tab
+- **h/l or ←/→**: Previous/next tab
+
+### Context-Aware Auto-Selection
+
+When help is opened, it automatically selects the relevant tab based on current focus:
+
+| Current Focus | Opens Tab |
+|--------------|-----------|
+| Input box | **[2:Input]** |
+| Results box | **[3:Result]** |
+| Search box | **[6:Search]** |
+| Snippet manager | **[7:Snippet]** |
+| Anywhere else | **[1:Global]** |
+
+**Note:** History and AI tabs never auto-focus - users navigate to them manually.
+
+---
+
 ## UI Mockups
+
+### Popup Dimensions
+
+The help popup should use more screen real estate:
+- **Width:** 80% of terminal width (min 70, max 90 chars)
+- **Height:** 80% of terminal height (min 20, max 30 lines)
 
 ### Global Tab (Default/Fallback)
 
 ```
-┌──────────────────── Keyboard Shortcuts ─────────────────────┐
-│                                                             │
-│  [Global]  Input   Results   Search   Popups   AI           │
-│  ───────────────────────────────────────────────────────    │
-│                                                             │
-│  F1 or ?        Toggle this help                            │
-│  Ctrl+A         Toggle AI assistant                         │
-│  Ctrl+S         Open snippets manager                       │
-│  Ctrl+C         Quit without output                         │
-│  Enter          Output filtered JSON and exit               │
-│  Ctrl+Q         Output query string only and exit           │
-│  Shift+Tab      Switch focus (Input ↔ Results)              │
-│  q              Quit (in Normal mode or Results pane)       │
-│                                                             │
-│  ────────────────────────────────────────────────────────── │
-│  h/l: switch tab | j/k: scroll | g/G: top/bottom | q: close │
-└─────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────── Keyboard Shortcuts ────────────────────────────────────┐
+│                                                                                           │
+│  [1:Global]  2:Input   3:Result   4:History   5:AI   6:Search   7:Snippet                 │
+│  ─────────────────────────────────────────────────────────────────────────────────────    │
+│                                                                                           │
+│  F1 or ?        Toggle this help                                                          │
+│  Ctrl+A         Toggle AI assistant                                                       │
+│  Ctrl+S         Open snippets manager                                                     │
+│  Ctrl+C         Quit without output                                                       │
+│  Enter          Output filtered JSON and exit                                             │
+│  Ctrl+Q         Output query string only and exit                                         │
+│  Shift+Tab      Switch focus (Input ↔ Results)                                            │
+│  q              Quit (in Normal mode or Results pane)                                     │
+│                                                                                           │
+│                                                                                           │
+│                                                                                           │
+│                                                                                           │
+│  ──────────────────────────────────────────────────────────────────────────────────────── │
+│  1-7: jump to tab | Tab: next tab | h/l: switch tab | j/k: scroll | q: close              │
+└───────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
 ### Input Tab (Auto-selected when Input field focused)
 
 ```
-┌──────────────────── Keyboard Shortcuts ─────────────────────┐
-│                                                             │
-│   Global  [Input]  Results   Search   Popups   AI           │
-│  ───────────────────────────────────────────────────────    │
-│                                                             │
-│  ── INSERT MODE ──                                          │
-│  Esc             Switch to Normal mode                      │
-│  ↑ or Ctrl+R     Open history popup                         │
-│  Ctrl+P/N        Cycle history (prev/next)                  │
-│  Ctrl+D/U        Scroll results half page                   │
-│                                                             │
-│  ── NORMAL MODE ──                                          │
-│  i/a/I/A         Enter Insert mode                          │
-│  h/l             Move cursor left/right                     │
-│  0/^/$           Jump to start/first char/end               │
-│  w/b/e           Word motions                               │
-│  f/F/t/T         Find char forward/backward                 │
-│  ;/,             Repeat find motion                         │
-│  x/X             Delete char under/before cursor            │
-│  dd/D            Delete line/to end                         │
-│  ────────────────────────────────────────────────────────── │
-│  h/l: switch tab | j/k: scroll | g/G: top/bottom | q: close │
-└─────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────── Keyboard Shortcuts ────────────────────────────────────┐
+│                                                                                           │
+│   1:Global  [2:Input]  3:Result   4:History   5:AI   6:Search   7:Snippet                 │
+│  ─────────────────────────────────────────────────────────────────────────────────────    │
+│                                                                                           │
+│  ── INSERT MODE ──                                                                        │
+│  Esc             Switch to Normal mode                                                    │
+│  ↑ or Ctrl+R     Open history popup                                                       │
+│  Ctrl+P/N        Cycle history (prev/next)                                                │
+│  Ctrl+D/U        Scroll results half page                                                 │
+│                                                                                           │
+│  ── NORMAL MODE ──                                                                        │
+│  i/a/I/A         Enter Insert mode                                                        │
+│  h/l             Move cursor left/right                                                   │
+│  0/^/$           Jump to start/first char/end                                             │
+│  w/b/e           Word motions                                                             │
+│  f/F/t/T         Find char forward/backward                                               │
+│  ;/,             Repeat find motion                                                       │
+│  x/X             Delete char under/before cursor                                          │
+│  dd/D            Delete line/to end                                                       │
+│  ──────────────────────────────────────────────────────────────────────────────────────── │
+│  1-7: jump to tab | Tab: next tab | h/l: switch tab | j/k: scroll | q: close              │
+└───────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
-### Results Tab (Auto-selected when Results pane focused)
+### Result Tab (Auto-selected when Results pane focused)
 
 ```
-┌──────────────────── Keyboard Shortcuts ─────────────────────┐
-│                                                             │
-│   Global   Input  [Results]  Search   Popups   AI           │
-│  ───────────────────────────────────────────────────────    │
-│                                                             │
-│  j/k/↑/↓        Scroll line by line                         │
-│  J/K            Scroll 10 lines                             │
-│  h/l/←/→        Scroll column by column                     │
-│  H/L            Scroll 10 columns                           │
-│  0/^            Jump to left edge                           │
-│  $              Jump to right edge                          │
-│  g/Home         Jump to top                                 │
-│  G/End          Jump to bottom                              │
-│  Ctrl+D/U       Half page down/up                           │
-│  PageDown/Up    Half page down/up                           │
-│                                                             │
-│  ────────────────────────────────────────────────────────── │
-│  h/l: switch tab | j/k: scroll | g/G: top/bottom | q: close │
-└─────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────── Keyboard Shortcuts ────────────────────────────────────┐
+│                                                                                           │
+│   1:Global   2:Input  [3:Result]  4:History   5:AI   6:Search   7:Snippet                 │
+│  ─────────────────────────────────────────────────────────────────────────────────────    │
+│                                                                                           │
+│  j/k/↑/↓        Scroll line by line                                                       │
+│  J/K            Scroll 10 lines                                                           │
+│  h/l/←/→        Scroll column by column                                                   │
+│  H/L            Scroll 10 columns                                                         │
+│  0/^            Jump to left edge                                                         │
+│  $              Jump to right edge                                                        │
+│  g/Home         Jump to top                                                               │
+│  G/End          Jump to bottom                                                            │
+│  Ctrl+D/U       Half page down/up                                                         │
+│  PageDown/Up    Half page down/up                                                         │
+│                                                                                           │
+│                                                                                           │
+│                                                                                           │
+│  ──────────────────────────────────────────────────────────────────────────────────────── │
+│  1-7: jump to tab | Tab: next tab | h/l: switch tab | j/k: scroll | q: close              │
+└───────────────────────────────────────────────────────────────────────────────────────────┘
+```
+
+### History Tab (Never auto-focused)
+
+```
+┌─────────────────────────────────── Keyboard Shortcuts ────────────────────────────────────┐
+│                                                                                           │
+│   1:Global   2:Input   3:Result  [4:History]  5:AI   6:Search   7:Snippet                 │
+│  ─────────────────────────────────────────────────────────────────────────────────────    │
+│                                                                                           │
+│  ↑ or Ctrl+R    Open history popup                                                        │
+│  ↑/↓            Navigate history entries                                                  │
+│  Type           Filter history                                                            │
+│  Enter/Tab      Select entry                                                              │
+│  Esc            Close popup                                                               │
+│                                                                                           │
+│                                                                                           │
+│                                                                                           │
+│                                                                                           │
+│                                                                                           │
+│                                                                                           │
+│                                                                                           │
+│                                                                                           │
+│  ──────────────────────────────────────────────────────────────────────────────────────── │
+│  1-7: jump to tab | Tab: next tab | h/l: switch tab | j/k: scroll | q: close              │
+└───────────────────────────────────────────────────────────────────────────────────────────┘
+```
+
+### AI Tab (Never auto-focused)
+
+```
+┌─────────────────────────────────── Keyboard Shortcuts ────────────────────────────────────┐
+│                                                                                           │
+│   1:Global   2:Input   3:Result   4:History  [5:AI]  6:Search   7:Snippet                 │
+│  ─────────────────────────────────────────────────────────────────────────────────────    │
+│                                                                                           │
+│  Ctrl+A         Toggle AI assistant                                                       │
+│  Alt+1-5        Apply AI suggestion directly                                              │
+│  Alt+↑↓/j/k     Navigate AI suggestions                                                   │
+│  Enter          Apply selected suggestion                                                 │
+│                                                                                           │
+│                                                                                           │
+│                                                                                           │
+│                                                                                           │
+│                                                                                           │
+│                                                                                           │
+│                                                                                           │
+│                                                                                           │
+│                                                                                           │
+│  ──────────────────────────────────────────────────────────────────────────────────────── │
+│  1-7: jump to tab | Tab: next tab | h/l: switch tab | j/k: scroll | q: close              │
+└───────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
 ### Search Tab (Auto-selected when Search mode active)
 
 ```
-┌──────────────────── Keyboard Shortcuts ─────────────────────┐
-│                                                             │
-│   Global   Input   Results  [Search]  Popups   AI           │
-│  ───────────────────────────────────────────────────────    │
-│                                                             │
-│  Ctrl+F         Open search                                 │
-│  /              Open search (from Results pane)             │
-│  Enter          Confirm search pattern                      │
-│  n              Jump to next match                          │
-│  N              Jump to previous match                      │
-│  /              Edit search (after confirming)              │
-│  Esc            Close search                                │
-│                                                             │
-│                                                             │
-│                                                             │
-│                                                             │
-│  ────────────────────────────────────────────────────────── │
-│  h/l: switch tab | j/k: scroll | g/G: top/bottom | q: close │
-└─────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────── Keyboard Shortcuts ────────────────────────────────────┐
+│                                                                                           │
+│   1:Global   2:Input   3:Result   4:History   5:AI  [6:Search]  7:Snippet                 │
+│  ─────────────────────────────────────────────────────────────────────────────────────    │
+│                                                                                           │
+│  Ctrl+F         Open search                                                               │
+│  /              Open search (from Results pane)                                           │
+│  Enter          Confirm search pattern                                                    │
+│  n              Jump to next match                                                        │
+│  N              Jump to previous match                                                    │
+│  /              Edit search (after confirming)                                            │
+│  Esc            Close search                                                              │
+│                                                                                           │
+│                                                                                           │
+│                                                                                           │
+│                                                                                           │
+│                                                                                           │
+│                                                                                           │
+│  ──────────────────────────────────────────────────────────────────────────────────────── │
+│  1-7: jump to tab | Tab: next tab | h/l: switch tab | j/k: scroll | q: close              │
+└───────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
-### Popups Tab (Auto-selected when History/Autocomplete/Snippets/Error visible)
+### Snippet Tab (Auto-selected when Snippet manager focused)
 
 ```
-┌──────────────────── Keyboard Shortcuts ─────────────────────┐
-│                                                             │
-│   Global   Input   Results   Search  [Popups]  AI           │
-│  ───────────────────────────────────────────────────────    │
-│                                                             │
-│  ── HISTORY POPUP ──                                        │
-│  ↑/↓            Navigate history                            │
-│  Type           Filter history                              │
-│  Enter/Tab      Select entry                                │
-│  Esc            Close popup                                 │
-│                                                             │
-│  ── AUTOCOMPLETE ──                                         │
-│  ↑/↓            Navigate suggestions                        │
-│  Tab            Accept suggestion                           │
-│  Esc            Dismiss                                     │
-│                                                             │
-│  ── ERROR OVERLAY ──                                        │
-│  Ctrl+E         Toggle error overlay                        │
-│                                                             │
-│  ────────────────────────────────────────────────────────── │
-│  h/l: switch tab | j/k: scroll | g/G: top/bottom | q: close │
-└─────────────────────────────────────────────────────────────┘
-```
-
-### AI Tab (Auto-selected when AI assistant visible)
-
-```
-┌──────────────────── Keyboard Shortcuts ─────────────────────┐
-│                                                             │
-│   Global   Input   Results   Search   Popups  [AI]          │
-│  ───────────────────────────────────────────────────────    │
-│                                                             │
-│  Ctrl+A         Toggle AI assistant                         │
-│  Alt+1-5        Apply AI suggestion directly                │
-│  Alt+↑↓/j/k     Navigate AI suggestions                     │
-│  Enter          Apply selected suggestion                   │
-│                                                             │
-│                                                             │
-│                                                             │
-│                                                             │
-│                                                             │
-│                                                             │
-│  ────────────────────────────────────────────────────────── │
-│  h/l: switch tab | j/k: scroll | g/G: top/bottom | q: close │
-└─────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────── Keyboard Shortcuts ────────────────────────────────────┐
+│                                                                                           │
+│   1:Global   2:Input   3:Result   4:History   5:AI   6:Search  [7:Snippet]                │
+│  ─────────────────────────────────────────────────────────────────────────────────────    │
+│                                                                                           │
+│  Ctrl+S         Open snippets manager                                                     │
+│  ↑/↓ or j/k     Navigate snippets                                                         │
+│  Enter          Apply selected snippet                                                    │
+│  a              Add new snippet                                                           │
+│  e              Edit selected snippet                                                     │
+│  d              Delete selected snippet                                                   │
+│  /              Filter snippets                                                           │
+│  Esc            Close snippets manager                                                    │
+│                                                                                           │
+│                                                                                           │
+│                                                                                           │
+│                                                                                           │
+│                                                                                           │
+│  ──────────────────────────────────────────────────────────────────────────────────────── │
+│  1-7: jump to tab | Tab: next tab | h/l: switch tab | j/k: scroll | q: close              │
+└───────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
 ### Tab Styling Detail
 
 ```
+Tab bar format:  [N:Name] for active,  N:Name  for inactive
+
 Inactive tabs:  DarkGray text
-Active tab:     Cyan text, Bold, with [brackets] or reversed background
+Active tab:     Cyan text, Bold, with [brackets]
 
 Example styling:
 
-   Global   Input  [Results]  Search   Popups   AI
-   ~~~~~~   ~~~~~   ~~~~~~~   ~~~~~~   ~~~~~~   ~~
-   gray     gray    CYAN/BG   gray     gray     gray
+  1:Global  [2:Input]  3:Result   4:History   5:AI   6:Search   7:Snippet
+  ~~~~~~~~   ~~~~~~~~   ~~~~~~~~   ~~~~~~~~~   ~~~~   ~~~~~~~~   ~~~~~~~~~
+  gray       CYAN/BG    gray       gray        gray   gray       gray
 ```
 
 ---
 
 ## Tab Structure
 
-| Tab | Auto-Selected When | Contents |
-|-----|-------------------|----------|
-| **Global** | Default fallback | F1, Ctrl+A/S/C/Q, Enter, Shift+Tab, q |
-| **Input** | Input field focused (Insert or Normal mode) | Insert mode + Normal mode shortcuts |
-| **Results** | Results pane focused | Navigation, scrolling shortcuts |
-| **Search** | Search mode active | Ctrl+F, /, Enter, n/N, Esc |
-| **Popups** | History, Autocomplete, Snippets, or Error overlay visible | History nav, Autocomplete, Error toggle |
-| **AI** | AI assistant visible | Ctrl+A, Alt+1-5, Alt+↑↓, Enter |
+| Tab | Number | Auto-Selected When | Contents |
+|-----|--------|-------------------|----------|
+| **Global** | 1 | Default fallback | F1, Ctrl+A/S/C/Q, Enter, Shift+Tab, q |
+| **Input** | 2 | Input field focused | Insert mode + Normal mode shortcuts |
+| **Result** | 3 | Results pane focused | Navigation, scrolling shortcuts |
+| **History** | 4 | Never (manual only) | History popup navigation |
+| **AI** | 5 | Never (manual only) | AI assistant shortcuts |
+| **Search** | 6 | Search mode active | Ctrl+F, /, Enter, n/N, Esc |
+| **Snippet** | 7 | Snippet manager visible | Snippet manager shortcuts |
 
 ### Context-to-Tab Mapping
 
@@ -204,9 +278,9 @@ Example styling:
 fn get_default_tab(app: &App) -> HelpTab {
     // Priority order matters - more specific contexts first
 
-    // AI assistant visible
-    if app.ai_visible() {
-        return HelpTab::AI;
+    // Snippet manager visible
+    if app.snippets.visible {
+        return HelpTab::Snippet;
     }
 
     // Search mode active
@@ -214,17 +288,9 @@ fn get_default_tab(app: &App) -> HelpTab {
         return HelpTab::Search;
     }
 
-    // Popups (History, Autocomplete, Snippets, Error)
-    if app.history_popup.visible
-        || app.autocomplete.visible()
-        || app.snippets.visible
-        || app.error_overlay_visible {
-        return HelpTab::Popups;
-    }
-
     // Results pane focused
     if app.focus == Focus::Results {
-        return HelpTab::Results;
+        return HelpTab::Result;
     }
 
     // Input field focused (covers Insert and Normal modes)
@@ -232,7 +298,8 @@ fn get_default_tab(app: &App) -> HelpTab {
         return HelpTab::Input;
     }
 
-    // Fallback
+    // Fallback - Global tab
+    // Note: History and AI tabs never auto-focus
     HelpTab::Global
 }
 ```
@@ -249,23 +316,25 @@ pub enum HelpTab {
     #[default]
     Global,
     Input,
-    Results,
-    Search,
-    Popups,
+    Result,
+    History,
     AI,
+    Search,
+    Snippet,
 }
 
 impl HelpTab {
-    pub const COUNT: usize = 6;
+    pub const COUNT: usize = 7;
 
     pub fn all() -> &'static [HelpTab] {
         &[
             HelpTab::Global,
             HelpTab::Input,
-            HelpTab::Results,
-            HelpTab::Search,
-            HelpTab::Popups,
+            HelpTab::Result,
+            HelpTab::History,
             HelpTab::AI,
+            HelpTab::Search,
+            HelpTab::Snippet,
         ]
     }
 
@@ -273,10 +342,11 @@ impl HelpTab {
         match self {
             HelpTab::Global => 0,
             HelpTab::Input => 1,
-            HelpTab::Results => 2,
-            HelpTab::Search => 3,
-            HelpTab::Popups => 4,
-            HelpTab::AI => 5,
+            HelpTab::Result => 2,
+            HelpTab::History => 3,
+            HelpTab::AI => 4,
+            HelpTab::Search => 5,
+            HelpTab::Snippet => 6,
         }
     }
 
@@ -284,23 +354,31 @@ impl HelpTab {
         match index {
             0 => HelpTab::Global,
             1 => HelpTab::Input,
-            2 => HelpTab::Results,
-            3 => HelpTab::Search,
-            4 => HelpTab::Popups,
-            5 => HelpTab::AI,
+            2 => HelpTab::Result,
+            3 => HelpTab::History,
+            4 => HelpTab::AI,
+            5 => HelpTab::Search,
+            6 => HelpTab::Snippet,
             _ => HelpTab::Global,
         }
     }
 
+    /// Returns the tab name for display (without number prefix)
     pub fn name(&self) -> &'static str {
         match self {
             HelpTab::Global => "Global",
             HelpTab::Input => "Input",
-            HelpTab::Results => "Results",
-            HelpTab::Search => "Search",
-            HelpTab::Popups => "Popups",
+            HelpTab::Result => "Result",
+            HelpTab::History => "History",
             HelpTab::AI => "AI",
+            HelpTab::Search => "Search",
+            HelpTab::Snippet => "Snippet",
         }
+    }
+
+    /// Returns the display label with number prefix (e.g., "1:Global")
+    pub fn label(&self) -> String {
+        format!("{}:{}", self.index() + 1, self.name())
     }
 
     pub fn next(&self) -> Self {
@@ -319,7 +397,7 @@ impl HelpTab {
 pub struct HelpPopupState {
     pub visible: bool,
     pub active_tab: HelpTab,
-    pub scroll_per_tab: [ScrollState; HelpTab::COUNT],  // Independent scroll per tab
+    pub scroll_per_tab: [ScrollState; HelpTab::COUNT],  // Independent scroll per tab (7 tabs)
 }
 
 impl HelpPopupState {
@@ -367,7 +445,7 @@ pub struct HelpSection {
 }
 
 pub const HELP_CATEGORIES: &[HelpCategory] = &[
-    // Global tab
+    // 1: Global tab
     HelpCategory {
         tab: HelpTab::Global,
         sections: &[
@@ -382,12 +460,13 @@ pub const HELP_CATEGORIES: &[HelpCategory] = &[
                     ("Ctrl+Q", "Output query string only and exit"),
                     ("Shift+Tab", "Switch focus (Input ↔ Results)"),
                     ("q", "Quit (in Normal mode or Results pane)"),
+                    ("Ctrl+E", "Toggle error overlay"),
                 ],
             },
         ],
     },
 
-    // Input tab (combines Insert + Normal modes)
+    // 2: Input tab (combines Insert + Normal modes)
     HelpCategory {
         tab: HelpTab::Input,
         sections: &[
@@ -419,12 +498,20 @@ pub const HELP_CATEGORIES: &[HelpCategory] = &[
                     ("Ctrl+D/U", "Scroll results half page"),
                 ],
             },
+            HelpSection {
+                title: Some("AUTOCOMPLETE"),
+                entries: &[
+                    ("↑/↓", "Navigate suggestions"),
+                    ("Tab", "Accept suggestion"),
+                    ("Esc", "Dismiss"),
+                ],
+            },
         ],
     },
 
-    // Results tab
+    // 3: Result tab
     HelpCategory {
-        tab: HelpTab::Results,
+        tab: HelpTab::Result,
         sections: &[
             HelpSection {
                 title: None,
@@ -444,7 +531,40 @@ pub const HELP_CATEGORIES: &[HelpCategory] = &[
         ],
     },
 
-    // Search tab
+    // 4: History tab
+    HelpCategory {
+        tab: HelpTab::History,
+        sections: &[
+            HelpSection {
+                title: None,
+                entries: &[
+                    ("↑ or Ctrl+R", "Open history popup"),
+                    ("↑/↓", "Navigate history entries"),
+                    ("Type", "Filter history"),
+                    ("Enter/Tab", "Select entry"),
+                    ("Esc", "Close popup"),
+                ],
+            },
+        ],
+    },
+
+    // 5: AI tab
+    HelpCategory {
+        tab: HelpTab::AI,
+        sections: &[
+            HelpSection {
+                title: None,
+                entries: &[
+                    ("Ctrl+A", "Toggle AI assistant"),
+                    ("Alt+1-5", "Apply AI suggestion directly"),
+                    ("Alt+↑↓/j/k", "Navigate AI suggestions"),
+                    ("Enter", "Apply selected suggestion"),
+                ],
+            },
+        ],
+    },
+
+    // 6: Search tab
     HelpCategory {
         tab: HelpTab::Search,
         sections: &[
@@ -463,47 +583,21 @@ pub const HELP_CATEGORIES: &[HelpCategory] = &[
         ],
     },
 
-    // Popups tab (History, Autocomplete, Snippets, Error)
+    // 7: Snippet tab
     HelpCategory {
-        tab: HelpTab::Popups,
-        sections: &[
-            HelpSection {
-                title: Some("HISTORY POPUP"),
-                entries: &[
-                    ("↑/↓", "Navigate history"),
-                    ("Type", "Filter history"),
-                    ("Enter/Tab", "Select entry"),
-                    ("Esc", "Close popup"),
-                ],
-            },
-            HelpSection {
-                title: Some("AUTOCOMPLETE"),
-                entries: &[
-                    ("↑/↓", "Navigate suggestions"),
-                    ("Tab", "Accept suggestion"),
-                    ("Esc", "Dismiss"),
-                ],
-            },
-            HelpSection {
-                title: Some("ERROR OVERLAY"),
-                entries: &[
-                    ("Ctrl+E", "Toggle error overlay"),
-                ],
-            },
-        ],
-    },
-
-    // AI tab
-    HelpCategory {
-        tab: HelpTab::AI,
+        tab: HelpTab::Snippet,
         sections: &[
             HelpSection {
                 title: None,
                 entries: &[
-                    ("Ctrl+A", "Toggle AI assistant"),
-                    ("Alt+1-5", "Apply AI suggestion directly"),
-                    ("Alt+↑↓/j/k", "Navigate AI suggestions"),
-                    ("Enter", "Apply selected suggestion"),
+                    ("Ctrl+S", "Open snippets manager"),
+                    ("↑/↓ or j/k", "Navigate snippets"),
+                    ("Enter", "Apply selected snippet"),
+                    ("a", "Add new snippet"),
+                    ("e", "Edit selected snippet"),
+                    ("d", "Delete selected snippet"),
+                    ("/", "Filter snippets"),
+                    ("Esc", "Close snippets manager"),
                 ],
             },
         ],
@@ -527,9 +621,11 @@ pub fn get_tab_content(tab: HelpTab) -> &'static HelpCategory {
 
 | Key | Action |
 |-----|--------|
+| `Tab` | Next tab |
+| `Shift+Tab` | Previous tab |
 | `h` / `←` | Previous tab |
 | `l` / `→` | Next tab |
-| `1`-`6` | Jump to tab by number |
+| `1`-`7` | Jump to tab by number |
 | `j` / `↓` | Scroll down |
 | `k` / `↑` | Scroll up |
 | `J` | Scroll down 10 lines |
@@ -555,7 +651,21 @@ fn handle_help_keys(app: &mut App, key: KeyEvent) -> bool {
             true
         }
 
-        // Tab navigation
+        // Tab navigation with Tab key
+        KeyCode::Tab if key.modifiers.contains(KeyModifiers::SHIFT) => {
+            app.help.active_tab = app.help.active_tab.prev();
+            true
+        }
+        KeyCode::Tab => {
+            app.help.active_tab = app.help.active_tab.next();
+            true
+        }
+        KeyCode::BackTab => {
+            app.help.active_tab = app.help.active_tab.prev();
+            true
+        }
+
+        // Tab navigation with h/l keys
         KeyCode::Char('h') | KeyCode::Left => {
             app.help.active_tab = app.help.active_tab.prev();
             true
@@ -564,7 +674,9 @@ fn handle_help_keys(app: &mut App, key: KeyEvent) -> bool {
             app.help.active_tab = app.help.active_tab.next();
             true
         }
-        KeyCode::Char(c) if ('1'..='6').contains(&c) => {
+
+        // Jump to tab by number (1-7)
+        KeyCode::Char(c) if ('1'..='7').contains(&c) => {
             let index = (c as usize) - ('1' as usize);
             app.help.active_tab = HelpTab::from_index(index);
             true
@@ -630,16 +742,17 @@ fn render_tab_bar(active_tab: HelpTab) -> Tabs<'static> {
     let titles: Vec<Line> = HelpTab::all()
         .iter()
         .map(|tab| {
+            let label = tab.label();  // e.g., "1:Global"
             if *tab == active_tab {
                 Line::styled(
-                    format!("[{}]", tab.name()),
+                    format!("[{}]", label),
                     Style::default()
                         .fg(Color::Cyan)
                         .add_modifier(Modifier::BOLD),
                 )
             } else {
                 Line::styled(
-                    format!(" {} ", tab.name()),
+                    format!(" {} ", label),
                     Style::default().fg(Color::DarkGray),
                 )
             }
@@ -647,7 +760,7 @@ fn render_tab_bar(active_tab: HelpTab) -> Tabs<'static> {
         .collect();
 
     Tabs::new(titles)
-        .divider(Span::raw("  "))
+        .divider(Span::raw(" "))
 }
 ```
 
@@ -657,11 +770,18 @@ fn render_tab_bar(active_tab: HelpTab) -> Tabs<'static> {
 pub fn render_popup(app: &mut App, frame: &mut Frame) {
     let frame_area = frame.area();
 
-    // Popup dimensions - wider to accommodate tab bar
-    let popup_width = 65.min(frame_area.width);
-    let popup_height = 20.min(frame_area.height);
+    // Popup dimensions - use more screen real estate
+    // Width: 80% of terminal width (min 70, max 90 chars)
+    let popup_width = ((frame_area.width as f32 * 0.8) as u16)
+        .clamp(70, 90)
+        .min(frame_area.width);
 
-    if frame_area.width < 20 || frame_area.height < 10 {
+    // Height: 80% of terminal height (min 20, max 30 lines)
+    let popup_height = ((frame_area.height as f32 * 0.8) as u16)
+        .clamp(20, 30)
+        .min(frame_area.height);
+
+    if frame_area.width < 40 || frame_area.height < 15 {
         return;
     }
 
@@ -707,14 +827,16 @@ pub fn render_popup(app: &mut App, frame: &mut Frame) {
         .scroll((app.help.current_scroll().offset, 0));
     frame.render_widget(paragraph, chunks[1]);
 
-    // Render footer
+    // Render footer - emphasize number keys for tab switching
     let footer = Line::from(vec![
+        Span::styled("1-7", Style::default().fg(Color::Yellow)),
+        Span::raw(": jump to tab | "),
+        Span::styled("Tab", Style::default().fg(Color::Yellow)),
+        Span::raw(": next tab | "),
         Span::styled("h/l", Style::default().fg(Color::Yellow)),
-        Span::raw(": tab | "),
+        Span::raw(": switch tab | "),
         Span::styled("j/k", Style::default().fg(Color::Yellow)),
         Span::raw(": scroll | "),
-        Span::styled("g/G", Style::default().fg(Color::Yellow)),
-        Span::raw(": top/bottom | "),
         Span::styled("q", Style::default().fg(Color::Yellow)),
         Span::raw(": close"),
     ]);
@@ -784,36 +906,37 @@ KeyCode::F(1) => {
 ```
 
 This ensures that when the user presses F1:
-1. If in Results pane → opens to **Results** tab
-2. If in Search mode → opens to **Search** tab
-3. If Snippets manager open → opens to **Popups** tab
-4. If AI assistant visible → opens to **AI** tab
-5. If Input field focused → opens to **Input** tab
-6. Otherwise → opens to **Global** tab
+1. If Snippet manager visible → opens to **[7:Snippet]** tab
+2. If Search mode active → opens to **[6:Search]** tab
+3. If Results pane focused → opens to **[3:Result]** tab
+4. If Input field focused → opens to **[2:Input]** tab
+5. Otherwise → opens to **[1:Global]** tab
+
+**Note:** History and AI tabs never auto-focus - users navigate to them manually with keys 4 or 5.
 
 ---
 
 ## Implementation Order
 
 ### Phase 1: Core Tab Infrastructure
-1. Add `HelpTab` enum to `help_state.rs`
-2. Update `HelpPopupState` with `active_tab` and per-tab scroll array
-3. Refactor `help_content.rs` into `HelpCategory` / `HelpSection` structure
-4. Update key handler with `h/l` and `1-6` tab navigation
+1. Add `HelpTab` enum to `help_state.rs` with 7 variants
+2. Update `HelpPopupState` with `active_tab` and per-tab scroll array (size 7)
+3. Refactor `help_content.rs` into `HelpCategory` / `HelpSection` structure with 7 tabs
+4. Update key handler with `h/l`, `Tab/Shift+Tab`, and `1-7` tab navigation
 
 ### Phase 2: Context-Aware Auto-Selection
-1. Implement `get_default_tab()` function
+1. Implement `get_default_tab()` function (only auto-selects Input, Result, Search, Snippet)
 2. Update help toggle (F1/?) to set initial tab based on context
 3. Test all context → tab mappings
 
 ### Phase 3: Rendering
-1. Add tab bar rendering with `ratatui::widgets::Tabs`
-2. Update layout to accommodate tab bar (3-part vertical split)
+1. Add tab bar rendering with numbered labels (e.g., "1:Global")
+2. Update popup dimensions to use 80% of screen (min 70x20, max 100x30)
 3. Style active tab with brackets and cyan/bold
-4. Update footer with tab navigation hint
+4. Update footer to show "1-7: jump to tab | Tab: next tab | ..."
 
 ### Phase 4: Polish & Testing
-1. Ensure popup width accommodates all tab names (need ~65 chars)
+1. Ensure popup width accommodates all 7 tab names (min 70, max 90 chars)
 2. Verify per-tab scroll state is independent
 3. Update snapshot tests for new layout
 4. Manual testing: open help from each context, verify correct tab selected

@@ -11,7 +11,7 @@ pub struct HelpCategory {
 }
 
 pub const HELP_CATEGORIES: &[HelpCategory] = &[
-    // Global tab
+    // 1: Global tab
     HelpCategory {
         tab: HelpTab::Global,
         sections: &[HelpSection {
@@ -25,10 +25,11 @@ pub const HELP_CATEGORIES: &[HelpCategory] = &[
                 ("Ctrl+Q", "Output query string only and exit"),
                 ("Shift+Tab", "Switch focus (Input / Results)"),
                 ("q", "Quit (in Normal mode or Results pane)"),
+                ("Ctrl+E", "Toggle error overlay"),
             ],
         }],
     },
-    // Input tab (combines Insert + Normal modes)
+    // 2: Input tab (combines Insert + Normal modes + Autocomplete)
     HelpCategory {
         tab: HelpTab::Input,
         sections: &[
@@ -60,11 +61,19 @@ pub const HELP_CATEGORIES: &[HelpCategory] = &[
                     ("Ctrl+D/U", "Scroll results half page down/up"),
                 ],
             },
+            HelpSection {
+                title: Some("AUTOCOMPLETE"),
+                entries: &[
+                    ("↑/↓", "Navigate suggestions"),
+                    ("Tab", "Accept suggestion"),
+                    ("Esc", "Dismiss"),
+                ],
+            },
         ],
     },
-    // Results tab
+    // 3: Result tab
     HelpCategory {
-        tab: HelpTab::Results,
+        tab: HelpTab::Result,
         sections: &[HelpSection {
             title: None,
             entries: &[
@@ -81,50 +90,21 @@ pub const HELP_CATEGORIES: &[HelpCategory] = &[
             ],
         }],
     },
-    // Search tab
+    // 4: History tab
     HelpCategory {
-        tab: HelpTab::Search,
+        tab: HelpTab::History,
         sections: &[HelpSection {
             title: None,
             entries: &[
-                ("Ctrl+F", "Open search (from any pane)"),
-                ("/", "Open search (from Results pane)"),
-                ("Enter", "Confirm search"),
-                ("n/Enter", "Next match"),
-                ("N/Shift+Enter", "Previous match"),
-                ("Ctrl+F or /", "Re-enter edit mode"),
-                ("Esc", "Close search"),
+                ("↑/Ctrl+R", "Open history popup"),
+                ("↑/↓", "Navigate history entries"),
+                ("Type", "Fuzzy search filter"),
+                ("Enter/Tab", "Select entry and close"),
+                ("Esc", "Close without selecting"),
             ],
         }],
     },
-    // Popups tab (History, Autocomplete, Snippets, Error)
-    HelpCategory {
-        tab: HelpTab::Popups,
-        sections: &[
-            HelpSection {
-                title: Some("HISTORY POPUP"),
-                entries: &[
-                    ("↑/↓", "Navigate entries"),
-                    ("Type", "Fuzzy search filter"),
-                    ("Enter/Tab", "Select entry and close"),
-                    ("Esc", "Close without selecting"),
-                ],
-            },
-            HelpSection {
-                title: Some("AUTOCOMPLETE"),
-                entries: &[
-                    ("↑/↓", "Navigate suggestions"),
-                    ("Tab", "Accept suggestion"),
-                    ("Esc", "Dismiss"),
-                ],
-            },
-            HelpSection {
-                title: Some("ERROR OVERLAY"),
-                entries: &[("Ctrl+E", "Toggle error details")],
-            },
-        ],
-    },
-    // AI tab
+    // 5: AI tab
     HelpCategory {
         tab: HelpTab::AI,
         sections: &[HelpSection {
@@ -137,9 +117,62 @@ pub const HELP_CATEGORIES: &[HelpCategory] = &[
             ],
         }],
     },
+    // 6: Search tab
+    HelpCategory {
+        tab: HelpTab::Search,
+        sections: &[
+            HelpSection {
+                title: Some("SEARCH QUERY"),
+                entries: &[
+                    ("Ctrl+F", "Open search (from any pane)"),
+                    ("/", "Open search (from Results pane)"),
+                    ("Enter", "Confirm search"),
+                    ("Esc", "Close search"),
+                ],
+            },
+            HelpSection {
+                title: Some("SEARCH RESULT"),
+                entries: &[
+                    ("n/Enter", "Next match"),
+                    ("N", "Previous match"),
+                    ("Ctrl+F or /", "Re-enter edit mode"),
+                    ("Esc", "Close search"),
+                ],
+            },
+        ],
+    },
+    // 7: Snippet tab
+    HelpCategory {
+        tab: HelpTab::Snippet,
+        sections: &[
+            HelpSection {
+                title: Some("BROWSE MODE"),
+                entries: &[
+                    ("Ctrl+S", "Open snippets manager"),
+                    ("↑/↓", "Navigate snippets"),
+                    ("Type", "Filter snippets"),
+                    ("Enter", "Apply selected snippet"),
+                    ("Ctrl+N", "Create new snippet"),
+                    ("Ctrl+E", "Edit selected snippet"),
+                    ("Ctrl+D", "Delete selected snippet"),
+                    ("Ctrl+R", "Update snippet with current query"),
+                    ("Esc", "Close snippets manager"),
+                ],
+            },
+            HelpSection {
+                title: Some("CREATE/EDIT MODE"),
+                entries: &[
+                    ("Tab", "Next field"),
+                    ("Shift+Tab", "Previous field"),
+                    ("Enter", "Save snippet"),
+                    ("Esc", "Cancel"),
+                ],
+            },
+        ],
+    },
 ];
 
-pub const HELP_FOOTER: &str = "h/l: tab | j/k: scroll | g/G: top/bottom | q: close";
+pub const HELP_FOOTER: &str = "1-7: jump | Tab: next | h/l: switch | j/k: scroll | q: close";
 
 pub fn get_tab_content(tab: HelpTab) -> &'static HelpCategory {
     HELP_CATEGORIES

@@ -4,13 +4,6 @@ use super::*;
 use crate::help::HelpTab;
 
 #[test]
-fn test_help_popup_width_constant() {
-    // Verify the popup width is wide enough to fit all 6 tabs
-    // Using const block to satisfy clippy
-    const _: () = assert!(HELP_POPUP_WIDTH >= 60);
-}
-
-#[test]
 fn test_render_help_sections_global() {
     let content = get_tab_content(HelpTab::Global);
     let lines = render_help_sections(content.sections);

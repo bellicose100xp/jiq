@@ -16,12 +16,21 @@ use crate::snippets;
 mod global;
 
 /// Determine the default help tab based on current app context
+///
+/// Context-aware auto-selection:
+/// - Input box focus -> Input tab
+/// - Results box focus -> Result tab
+/// - Search box focus -> Search tab
+/// - Snippet manager focus -> Snippet tab
+/// - Otherwise -> Global tab
+///
+/// Note: History and AI tabs never auto-focus - users navigate to them manually.
 fn get_default_help_tab(app: &App) -> HelpTab {
     // Priority order: more specific contexts first
 
-    // AI assistant visible
-    if app.ai.visible {
-        return HelpTab::AI;
+    // Snippet manager visible
+    if app.snippets.is_visible() {
+        return HelpTab::Snippet;
     }
 
     // Search mode active
@@ -29,18 +38,9 @@ fn get_default_help_tab(app: &App) -> HelpTab {
         return HelpTab::Search;
     }
 
-    // Popups (History, Autocomplete, Snippets, Error)
-    if app.history.is_visible()
-        || app.autocomplete.is_visible()
-        || app.snippets.is_visible()
-        || app.error_overlay_visible
-    {
-        return HelpTab::Popups;
-    }
-
     // Results pane focused
     if app.focus == Focus::ResultsPane {
-        return HelpTab::Results;
+        return HelpTab::Result;
     }
 
     // Input field focused (covers Insert and Normal modes)
@@ -48,7 +48,8 @@ fn get_default_help_tab(app: &App) -> HelpTab {
         return HelpTab::Input;
     }
 
-    // Fallback
+    // Fallback - Global tab
+    // Note: History and AI tabs never auto-focus
     HelpTab::Global
 }
 
@@ -88,7 +89,21 @@ fn handle_help_keys(app: &mut App, key: KeyEvent) -> bool {
             true
         }
 
-        // Tab navigation
+        // Tab navigation with Tab key
+        KeyCode::Tab if key.modifiers.contains(KeyModifiers::SHIFT) => {
+            app.help.active_tab = app.help.active_tab.prev();
+            true
+        }
+        KeyCode::Tab => {
+            app.help.active_tab = app.help.active_tab.next();
+            true
+        }
+        KeyCode::BackTab => {
+            app.help.active_tab = app.help.active_tab.prev();
+            true
+        }
+
+        // Tab navigation with h/l keys
         KeyCode::Char('h') | KeyCode::Left => {
             app.help.active_tab = app.help.active_tab.prev();
             true
@@ -97,7 +112,9 @@ fn handle_help_keys(app: &mut App, key: KeyEvent) -> bool {
             app.help.active_tab = app.help.active_tab.next();
             true
         }
-        KeyCode::Char(c) if ('1'..='6').contains(&c) => {
+
+        // Jump to tab by number (1-7)
+        KeyCode::Char(c) if ('1'..='7').contains(&c) => {
             let index = (c as usize) - ('1' as usize);
             app.help.active_tab = HelpTab::from_index(index);
             true
