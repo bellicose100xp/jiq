@@ -9,6 +9,7 @@ use crate::editor::char_search::{
 };
 use crate::editor::mode::TextObjectScope;
 use crate::editor::text_objects::{TextObjectTarget, execute_text_object};
+use crate::help::HelpTab;
 
 pub fn handle_insert_mode_key(app: &mut App, key: KeyEvent) {
     let content_changed = app.input.textarea.input(key);
@@ -30,7 +31,12 @@ pub fn handle_insert_mode_key(app: &mut App, key: KeyEvent) {
 pub fn handle_normal_mode_key(app: &mut App, key: KeyEvent) {
     match key.code {
         KeyCode::Char('?') => {
-            app.help.visible = !app.help.visible;
+            if app.help.visible {
+                app.help.reset();
+            } else {
+                app.help.active_tab = HelpTab::Input;
+                app.help.visible = true;
+            }
         }
 
         KeyCode::Char('h') | KeyCode::Left => {

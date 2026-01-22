@@ -1,49 +1,129 @@
 use ratatui::{
     Frame,
+    layout::{Constraint, Direction, Layout},
     style::{Color, Modifier, Style},
     text::{Line, Span, Text},
-    widgets::{Block, Borders, Paragraph},
+    widgets::{Block, Borders, Paragraph, Tabs},
 };
 
 use crate::app::App;
-use crate::help::{HELP_ENTRIES, HELP_FOOTER};
+use crate::help::{HELP_FOOTER, HelpSection, HelpTab, get_tab_content};
 use crate::widgets::popup;
 
-pub const HELP_POPUP_WIDTH: u16 = 70;
-pub const HELP_POPUP_PADDING: u16 = 4;
+pub const HELP_POPUP_WIDTH: u16 = 65;
 
 pub fn render_popup(app: &mut App, frame: &mut Frame) {
-    let content_height = HELP_ENTRIES.len() as u16;
-    let ideal_popup_height = content_height + HELP_POPUP_PADDING;
-    let ideal_popup_width = HELP_POPUP_WIDTH;
-
     let frame_area = frame.area();
-    let popup_width = ideal_popup_width.min(frame_area.width);
-    let popup_height = ideal_popup_height.min(frame_area.height);
 
     if frame_area.width < 20 || frame_area.height < 10 {
         return;
     }
 
+    let popup_width = HELP_POPUP_WIDTH.min(frame_area.width.saturating_sub(4));
+    let popup_height = 22.min(frame_area.height.saturating_sub(2));
+
     let popup_area = popup::centered_popup(frame_area, popup_width, popup_height);
     popup::clear_area(frame, popup_area);
 
-    let mut lines: Vec<Line> = Vec::new();
+    // Outer block with title and border
+    let outer_block = Block::default()
+        .borders(Borders::ALL)
+        .title(" Keyboard Shortcuts ")
+        .border_style(Style::default().fg(Color::Cyan))
+        .style(Style::default().bg(Color::Black));
 
-    for (key, desc) in HELP_ENTRIES {
-        if key.is_empty() && desc.is_empty() {
-            lines.push(Line::from(""));
-        } else if key.is_empty() {
+    let inner_area = outer_block.inner(popup_area);
+    frame.render_widget(outer_block, popup_area);
+
+    // Split inner area: tab bar, content, footer
+    let chunks = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([
+            Constraint::Length(1), // Tab bar
+            Constraint::Length(1), // Separator
+            Constraint::Min(1),    // Content
+            Constraint::Length(1), // Footer
+        ])
+        .split(inner_area);
+
+    // Render tab bar
+    let tabs = render_tab_bar(app.help.active_tab);
+    frame.render_widget(tabs, chunks[0]);
+
+    // Render separator line
+    let separator = Line::from(Span::styled(
+        "─".repeat(chunks[1].width as usize),
+        Style::default().fg(Color::DarkGray),
+    ));
+    frame.render_widget(Paragraph::new(separator), chunks[1]);
+
+    // Render content for active tab
+    let content = get_tab_content(app.help.active_tab);
+    let lines = render_help_sections(content.sections);
+
+    // Update scroll bounds for current tab
+    let content_height = lines.len() as u32;
+    let visible_height = chunks[2].height;
+    app.help
+        .current_scroll_mut()
+        .update_bounds(content_height, visible_height);
+
+    let paragraph = Paragraph::new(Text::from(lines)).scroll((app.help.current_scroll().offset, 0));
+    frame.render_widget(paragraph, chunks[2]);
+
+    // Render footer
+    let footer = Line::from(Span::styled(
+        HELP_FOOTER,
+        Style::default().fg(Color::DarkGray),
+    ));
+    frame.render_widget(Paragraph::new(footer).centered(), chunks[3]);
+}
+
+fn render_tab_bar(active_tab: HelpTab) -> Tabs<'static> {
+    let titles: Vec<Line> = HelpTab::all()
+        .iter()
+        .map(|tab| {
+            if *tab == active_tab {
+                Line::styled(
+                    format!("[{}]", tab.name()),
+                    Style::default()
+                        .fg(Color::Cyan)
+                        .add_modifier(Modifier::BOLD),
+                )
+            } else {
+                Line::styled(
+                    format!(" {} ", tab.name()),
+                    Style::default().fg(Color::DarkGray),
+                )
+            }
+        })
+        .collect();
+
+    Tabs::new(titles).divider(Span::raw(" "))
+}
+
+fn render_help_sections(sections: &[HelpSection]) -> Vec<Line<'static>> {
+    let mut lines = Vec::new();
+
+    for (section_idx, section) in sections.iter().enumerate() {
+        // Add section header if present
+        if let Some(title) = section.title {
+            if section_idx > 0 {
+                lines.push(Line::from(""));
+            }
             lines.push(Line::from(vec![
                 Span::raw("  "),
                 Span::styled(
-                    *desc,
+                    format!("── {} ──", title),
                     Style::default()
                         .fg(Color::Cyan)
                         .add_modifier(Modifier::BOLD),
                 ),
             ]));
-        } else {
+        }
+
+        // Add entries
+        for (key, desc) in section.entries {
             let key_span = Span::styled(
                 format!("  {:<15}", key),
                 Style::default()
@@ -55,29 +135,9 @@ pub fn render_popup(app: &mut App, frame: &mut Frame) {
         }
     }
 
-    lines.push(Line::from(""));
-    lines.push(Line::from(vec![Span::styled(
-        format!("           {}          ", HELP_FOOTER),
-        Style::default().fg(Color::DarkGray),
-    )]));
-
-    let help_text = Text::from(lines.clone());
-
-    let content_height = lines.len() as u32;
-    let visible_height = popup_height.saturating_sub(2);
-    app.help
-        .scroll
-        .update_bounds(content_height, visible_height);
-
-    let popup = Paragraph::new(help_text)
-        .block(
-            Block::default()
-                .borders(Borders::ALL)
-                .title(" Keyboard Shortcuts ")
-                .border_style(Style::default().fg(Color::Cyan))
-                .style(Style::default().bg(Color::Black)),
-        )
-        .scroll((app.help.scroll.offset, 0));
-
-    frame.render_widget(popup, popup_area);
+    lines
 }
+
+#[cfg(test)]
+#[path = "help_popup_render_tests.rs"]
+mod help_popup_render_tests;

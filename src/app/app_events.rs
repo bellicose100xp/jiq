@@ -8,18 +8,59 @@ use super::app_state::{App, Focus};
 use crate::clipboard;
 use crate::editor;
 use crate::editor::EditorMode;
+use crate::help::HelpTab;
 use crate::history;
 use crate::results;
 use crate::snippets;
 
 mod global;
 
+/// Determine the default help tab based on current app context
+fn get_default_help_tab(app: &App) -> HelpTab {
+    // Priority order: more specific contexts first
+
+    // AI assistant visible
+    if app.ai.visible {
+        return HelpTab::AI;
+    }
+
+    // Search mode active
+    if app.search.is_visible() {
+        return HelpTab::Search;
+    }
+
+    // Popups (History, Autocomplete, Snippets, Error)
+    if app.history.is_visible()
+        || app.autocomplete.is_visible()
+        || app.snippets.is_visible()
+        || app.error_overlay_visible
+    {
+        return HelpTab::Popups;
+    }
+
+    // Results pane focused
+    if app.focus == Focus::ResultsPane {
+        return HelpTab::Results;
+    }
+
+    // Input field focused (covers Insert and Normal modes)
+    if app.focus == Focus::InputField {
+        return HelpTab::Input;
+    }
+
+    // Fallback
+    HelpTab::Global
+}
+
 fn handle_truly_global_keys(app: &mut App, key: KeyEvent) -> bool {
     match key.code {
         KeyCode::F(1) => {
-            app.help.visible = !app.help.visible;
-            if !app.help.visible {
-                app.help.scroll.reset();
+            if app.help.visible {
+                app.help.reset();
+            } else {
+                // Auto-select tab based on current context
+                app.help.active_tab = get_default_help_tab(app);
+                app.help.visible = true;
             }
             true
         }
@@ -33,61 +74,77 @@ fn handle_truly_global_keys(app: &mut App, key: KeyEvent) -> bool {
 
 fn handle_help_keys(app: &mut App, key: KeyEvent) -> bool {
     match key.code {
+        // Close help
         KeyCode::Esc | KeyCode::F(1) => {
-            app.help.visible = false;
-            app.help.scroll.reset();
+            app.help.reset();
             true
         }
         KeyCode::Char('q') if !key.modifiers.contains(KeyModifiers::CONTROL) => {
-            app.help.visible = false;
-            app.help.scroll.reset();
+            app.help.reset();
             true
         }
         KeyCode::Char('?') => {
-            app.help.visible = false;
-            app.help.scroll.reset();
+            app.help.reset();
             true
         }
+
+        // Tab navigation
+        KeyCode::Char('h') | KeyCode::Left => {
+            app.help.active_tab = app.help.active_tab.prev();
+            true
+        }
+        KeyCode::Char('l') | KeyCode::Right => {
+            app.help.active_tab = app.help.active_tab.next();
+            true
+        }
+        KeyCode::Char(c) if ('1'..='6').contains(&c) => {
+            let index = (c as usize) - ('1' as usize);
+            app.help.active_tab = HelpTab::from_index(index);
+            true
+        }
+
+        // Scrolling (per-tab scroll state)
         KeyCode::Char('j') | KeyCode::Down => {
-            app.help.scroll.scroll_down(1);
+            app.help.current_scroll_mut().scroll_down(1);
             true
         }
         KeyCode::Char('J') => {
-            app.help.scroll.scroll_down(10);
+            app.help.current_scroll_mut().scroll_down(10);
             true
         }
         KeyCode::Char('d') if key.modifiers.contains(KeyModifiers::CONTROL) => {
-            app.help.scroll.scroll_down(10);
+            app.help.current_scroll_mut().scroll_down(10);
             true
         }
         KeyCode::PageDown => {
-            app.help.scroll.scroll_down(10);
+            app.help.current_scroll_mut().scroll_down(10);
             true
         }
         KeyCode::Char('k') | KeyCode::Up => {
-            app.help.scroll.scroll_up(1);
+            app.help.current_scroll_mut().scroll_up(1);
             true
         }
         KeyCode::Char('K') => {
-            app.help.scroll.scroll_up(10);
+            app.help.current_scroll_mut().scroll_up(10);
             true
         }
         KeyCode::Char('u') if key.modifiers.contains(KeyModifiers::CONTROL) => {
-            app.help.scroll.scroll_up(10);
+            app.help.current_scroll_mut().scroll_up(10);
             true
         }
         KeyCode::PageUp => {
-            app.help.scroll.scroll_up(10);
+            app.help.current_scroll_mut().scroll_up(10);
             true
         }
         KeyCode::Char('g') | KeyCode::Home => {
-            app.help.scroll.jump_to_top();
+            app.help.current_scroll_mut().jump_to_top();
             true
         }
         KeyCode::Char('G') | KeyCode::End => {
-            app.help.scroll.jump_to_bottom();
+            app.help.current_scroll_mut().jump_to_bottom();
             true
         }
+
         _ => {
             // Consume all other keys when help is visible
             true
@@ -104,7 +161,13 @@ fn handle_popup_passthrough_keys(app: &mut App, key: KeyEvent) -> bool {
             || app.input.editor_mode == EditorMode::Normal
             || app.focus == Focus::ResultsPane
         {
-            app.help.visible = !app.help.visible;
+            if app.help.visible {
+                app.help.reset();
+            } else {
+                // Auto-select tab based on current context
+                app.help.active_tab = get_default_help_tab(app);
+                app.help.visible = true;
+            }
             return true;
         }
     }

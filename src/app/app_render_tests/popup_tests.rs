@@ -62,12 +62,13 @@ fn snapshot_help_popup() {
 }
 
 #[test]
-fn snapshot_help_popup_with_ai_keybindings() {
+fn snapshot_help_popup_with_ai_tab() {
+    use crate::help::HelpTab;
+
     let json = r#"{"test": true}"#;
     let mut app = test_app(json);
     app.help.visible = true;
-
-    app.help.scroll.offset = 45;
+    app.help.active_tab = HelpTab::AI;
 
     let output = render_to_string(&mut app, TEST_WIDTH, TEST_HEIGHT);
     assert_snapshot!(output);
