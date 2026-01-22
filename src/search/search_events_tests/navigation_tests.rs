@@ -267,6 +267,96 @@ fn test_can_type_after_reenter_edit_mode() {
     assert_eq!(app.search.query(), "test2");
 }
 
+#[test]
+fn test_tab_confirms_search_when_not_confirmed() {
+    let mut app = test_app(r#"{"name": "test"}"#);
+    let content = "test\ntest\ntest".to_string();
+    app.query.as_mut().unwrap().last_successful_result = Some(Arc::new(content.clone()));
+    app.query
+        .as_mut()
+        .unwrap()
+        .last_successful_result_unformatted = Some(Arc::new(content.clone()));
+    open_search(&mut app);
+
+    app.search.search_textarea_mut().insert_str("test");
+    app.search.update_matches(&content);
+
+    assert!(!app.search.is_confirmed());
+    assert_eq!(app.search.current_index(), 0);
+
+    handle_search_key(&mut app, key(KeyCode::Tab));
+
+    assert!(app.search.is_confirmed());
+    assert_eq!(app.search.current_index(), 0);
+}
+
+#[test]
+fn test_tab_switches_focus_when_confirmed() {
+    use crate::app::Focus;
+
+    let mut app = test_app(r#"{"name": "test"}"#);
+    let content = "test\ntest\ntest".to_string();
+    app.query.as_mut().unwrap().last_successful_result = Some(Arc::new(content.clone()));
+    app.query
+        .as_mut()
+        .unwrap()
+        .last_successful_result_unformatted = Some(Arc::new(content.clone()));
+    open_search(&mut app);
+
+    app.search.search_textarea_mut().insert_str("test");
+    app.search.update_matches(&content);
+    handle_search_key(&mut app, key(KeyCode::Enter));
+
+    assert!(app.search.is_confirmed());
+    assert_eq!(app.focus, Focus::ResultsPane);
+
+    handle_search_key(&mut app, key(KeyCode::Tab));
+
+    assert_eq!(app.focus, Focus::InputField);
+}
+
+#[test]
+fn test_tab_scrolls_to_current_match_when_confirming() {
+    let mut app = test_app(r#"{"name": "test"}"#);
+
+    // Create content with matches on different lines
+    let content: String = (0..30)
+        .map(|i| {
+            if i == 0 || i == 15 {
+                format!("match line {}\n", i)
+            } else {
+                format!("other line {}\n", i)
+            }
+        })
+        .collect();
+
+    app.query.as_mut().unwrap().last_successful_result = Some(Arc::new(content.clone()));
+    app.query
+        .as_mut()
+        .unwrap()
+        .last_successful_result_unformatted = Some(Arc::new(content.clone()));
+
+    app.results_scroll.viewport_height = 10;
+    app.results_scroll.max_offset = 20;
+    app.results_scroll.offset = 0;
+
+    open_search(&mut app);
+
+    app.search.search_textarea_mut().insert_str("match");
+    app.search.update_matches(&content);
+
+    assert_eq!(app.search.matches().len(), 2);
+    assert_eq!(app.search.matches()[0].line, 0);
+
+    handle_search_key(&mut app, key(KeyCode::Tab));
+
+    assert!(app.search.is_confirmed());
+    assert_eq!(
+        app.results_scroll.offset, 0,
+        "Should scroll to first match at line 0"
+    );
+}
+
 fn app_with_confirmed_search() -> crate::app::App {
     let mut app = test_app(r#"{"name": "test"}"#);
 

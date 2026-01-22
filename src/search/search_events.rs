@@ -80,6 +80,17 @@ pub fn handle_search_key(app: &mut App, key: KeyEvent) -> bool {
             true
         }
 
+        KeyCode::Tab
+            if !key.modifiers.contains(KeyModifiers::CONTROL) && !app.search.is_confirmed() =>
+        {
+            app.search.confirm();
+
+            if let Some(current_match) = app.search.current_match() {
+                scroll_to_line(app, current_match.line);
+            }
+            true
+        }
+
         // Delegate navigation keys to results pane when confirmed
         _ if app.search.is_confirmed() => {
             handle_results_pane_key(app, key);
