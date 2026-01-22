@@ -291,7 +291,7 @@ fn test_tab_confirms_search_when_not_confirmed() {
 }
 
 #[test]
-fn test_tab_switches_focus_when_confirmed() {
+fn test_tab_unconfirms_search_when_confirmed() {
     use crate::app::Focus;
 
     let mut app = test_app(r#"{"name": "test"}"#);
@@ -312,7 +312,45 @@ fn test_tab_switches_focus_when_confirmed() {
 
     handle_search_key(&mut app, key(KeyCode::Tab));
 
-    assert_eq!(app.focus, Focus::InputField);
+    // Tab should unconfirm search to allow editing query
+    assert!(!app.search.is_confirmed());
+    assert!(app.search.is_visible());
+    assert_eq!(app.search.query(), "test");
+    // Focus should remain on ResultsPane (search is still open)
+    assert_eq!(app.focus, Focus::ResultsPane);
+}
+
+#[test]
+fn test_tab_cycles_between_edit_and_navigation_mode() {
+    let mut app = test_app(r#"{"name": "test"}"#);
+    let content = "test\ntest\ntest".to_string();
+    app.query.as_mut().unwrap().last_successful_result = Some(Arc::new(content.clone()));
+    app.query
+        .as_mut()
+        .unwrap()
+        .last_successful_result_unformatted = Some(Arc::new(content.clone()));
+    open_search(&mut app);
+
+    app.search.search_textarea_mut().insert_str("test");
+    app.search.update_matches(&content);
+
+    // Initially not confirmed (edit mode)
+    assert!(!app.search.is_confirmed());
+
+    // First Tab: confirm search (enter navigation mode)
+    handle_search_key(&mut app, key(KeyCode::Tab));
+    assert!(app.search.is_confirmed());
+
+    // Second Tab: unconfirm search (back to edit mode)
+    handle_search_key(&mut app, key(KeyCode::Tab));
+    assert!(!app.search.is_confirmed());
+
+    // Third Tab: confirm again
+    handle_search_key(&mut app, key(KeyCode::Tab));
+    assert!(app.search.is_confirmed());
+
+    // Query should be preserved throughout
+    assert_eq!(app.search.query(), "test");
 }
 
 #[test]
