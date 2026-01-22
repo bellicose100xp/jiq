@@ -21,7 +21,7 @@ expression: output
 "│                                                                              │"
 "│                                                                              │"
 "│                                                                              │"
-"└────────── [n/N] Next/Prev | [Enter] Next | [/] Edit | [Esc] Close ───────────┘"
+"└────── [n/N] Next/Prev | [Enter] Next | [Ctrl+F or /] Edit | [Esc] Close──────┘"
 "┌ Search (press / to edit): ──────────────────────────────────────────── (1/1) ┐"
 "│match_here                                                                    │"
 "└──────────────────────────────────────────────────────────────────────────────┘"

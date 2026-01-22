@@ -229,7 +229,7 @@ pub fn render_pane(app: &mut App, frame: &mut Frame, area: Rect) {
         }
         if search_visible && app.search.is_confirmed() {
             let hints = Line::from(vec![Span::styled(
-                " [n/N] Next/Prev | [Enter] Next | [/] Edit | [Esc] Close ",
+                " [n/N] Next/Prev | [Enter] Next | [Ctrl+F or /] Edit | [Esc] Close",
                 Style::default().fg(Color::LightMagenta),
             )]);
             block = block.title_bottom(hints.alignment(Alignment::Center));
@@ -288,7 +288,7 @@ pub fn render_pane(app: &mut App, frame: &mut Frame, area: Rect) {
         }
         if search_visible && app.search.is_confirmed() {
             let hints = Line::from(vec![Span::styled(
-                " [n/N] Next/Prev | [Enter] Next | [/] Edit | [Esc] Close ",
+                " [n/N] Next/Prev | [Enter] Next | [Ctrl+F or /] Edit | [Esc] Close",
                 Style::default().fg(Color::LightMagenta),
             )]);
             block = block.title_bottom(hints.alignment(Alignment::Center));
