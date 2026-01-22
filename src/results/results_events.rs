@@ -1,11 +1,21 @@
 use ratatui::crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 
-use crate::app::App;
+use crate::app::{App, Focus};
 use crate::clipboard;
+use crate::editor::EditorMode;
 use crate::help::HelpTab;
 
 pub fn handle_results_pane_key(app: &mut App, key: KeyEvent) {
     match key.code {
+        KeyCode::Tab if !key.modifiers.contains(KeyModifiers::CONTROL) => {
+            app.focus = Focus::InputField;
+        }
+
+        KeyCode::Char('i') => {
+            app.focus = Focus::InputField;
+            app.input.editor_mode = EditorMode::Insert;
+        }
+
         KeyCode::Char('/') => {
             crate::search::search_events::open_search(app);
         }

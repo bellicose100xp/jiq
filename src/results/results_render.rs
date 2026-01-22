@@ -235,6 +235,15 @@ pub fn render_pane(app: &mut App, frame: &mut Frame, area: Rect) {
             block = block.title_bottom(hints.alignment(Alignment::Center));
         }
 
+        // Add navigation hints when results pane is focused and search is not visible
+        if !search_visible && app.focus == crate::app::Focus::ResultsPane {
+            let hints = Line::from(vec![Span::styled(
+                " [Tab/Shift+Tab] Edit query | [i] Edit query in INSERT mode | [?] Help ",
+                Style::default().fg(Color::Cyan),
+            )]);
+            block = block.title_bottom(hints.alignment(Alignment::Center));
+        }
+
         // Use cached pre-rendered text
         // Optimization: Only clone visible viewport to avoid massive allocations
         let scroll_offset = app.results_scroll.offset as usize;
@@ -290,6 +299,12 @@ pub fn render_pane(app: &mut App, frame: &mut Frame, area: Rect) {
             let hints = Line::from(vec![Span::styled(
                 " [n/N] Next/Prev | [Enter] Next | [Ctrl+F or /] Edit | [Esc] Close",
                 Style::default().fg(Color::LightMagenta),
+            )]);
+            block = block.title_bottom(hints.alignment(Alignment::Center));
+        } else if !search_visible && app.focus == crate::app::Focus::ResultsPane {
+            let hints = Line::from(vec![Span::styled(
+                " [Tab/Shift+Tab] Edit query | [i] Edit query in INSERT mode | [?] Help ",
+                Style::default().fg(Color::Cyan),
             )]);
             block = block.title_bottom(hints.alignment(Alignment::Center));
         }

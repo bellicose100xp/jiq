@@ -101,7 +101,7 @@ pub fn render_field(app: &mut App, frame: &mut Frame, area: Rect) {
     if !is_focused {
         block = block.title_bottom(
             Line::from(vec![Span::styled(
-                " Shift+Tab to edit query ",
+                " Tab to edit query ",
                 Style::default().fg(Color::DarkGray),
             )])
             .alignment(Alignment::Center),

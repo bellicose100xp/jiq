@@ -455,3 +455,49 @@ fn test_end_jumps_to_bottom() {
 
     assert_eq!(app.results_scroll.offset, 10);
 }
+
+#[test]
+fn test_tab_switches_focus_to_input_field() {
+    let mut app = app_with_query(".");
+    app.focus = Focus::ResultsPane;
+
+    app.handle_key_event(key(KeyCode::Tab));
+
+    assert_eq!(app.focus, Focus::InputField);
+}
+
+#[test]
+fn test_tab_with_ctrl_does_not_switch_focus() {
+    let mut app = app_with_query(".");
+    app.focus = Focus::ResultsPane;
+
+    app.handle_key_event(key_with_mods(KeyCode::Tab, KeyModifiers::CONTROL));
+
+    assert_eq!(app.focus, Focus::ResultsPane);
+}
+
+#[test]
+fn test_i_key_switches_to_input_field_in_insert_mode() {
+    use crate::editor::EditorMode;
+    let mut app = app_with_query(".");
+    app.focus = Focus::ResultsPane;
+    app.input.editor_mode = EditorMode::Normal;
+
+    app.handle_key_event(key(KeyCode::Char('i')));
+
+    assert_eq!(app.focus, Focus::InputField);
+    assert_eq!(app.input.editor_mode, EditorMode::Insert);
+}
+
+#[test]
+fn test_i_key_switches_to_insert_mode_even_if_already_in_insert() {
+    use crate::editor::EditorMode;
+    let mut app = app_with_query(".");
+    app.focus = Focus::ResultsPane;
+    app.input.editor_mode = EditorMode::Insert;
+
+    app.handle_key_event(key(KeyCode::Char('i')));
+
+    assert_eq!(app.focus, Focus::InputField);
+    assert_eq!(app.input.editor_mode, EditorMode::Insert);
+}
