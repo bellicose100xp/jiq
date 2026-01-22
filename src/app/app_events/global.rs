@@ -1,6 +1,7 @@
 use ratatui::crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 
 use super::super::app_state::{App, Focus, OutputMode};
+use crate::help::HelpTab;
 
 fn accept_autocomplete_suggestion(app: &mut App) -> bool {
     if app.focus == Focus::InputField && app.autocomplete.is_visible() {
@@ -135,7 +136,28 @@ pub fn handle_global_keys(app: &mut App, key: KeyEvent) -> bool {
                 || app.input.editor_mode == crate::editor::EditorMode::Normal
                 || app.focus == Focus::ResultsPane
             {
-                app.help.visible = !app.help.visible;
+                if app.help.visible {
+                    app.help.reset();
+                } else {
+                    // Context-aware tab selection
+                    let tab = if app.ai.visible {
+                        HelpTab::AI
+                    } else if app.search.is_visible() {
+                        HelpTab::Search
+                    } else if app.history.is_visible()
+                        || app.autocomplete.is_visible()
+                        || app.snippets.is_visible()
+                        || app.error_overlay_visible
+                    {
+                        HelpTab::Popups
+                    } else if app.focus == Focus::ResultsPane {
+                        HelpTab::Results
+                    } else {
+                        HelpTab::Input
+                    };
+                    app.help.active_tab = tab;
+                    app.help.visible = true;
+                }
                 true
             } else {
                 false
