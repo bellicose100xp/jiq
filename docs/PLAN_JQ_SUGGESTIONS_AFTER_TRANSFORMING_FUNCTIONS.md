@@ -209,76 +209,179 @@ fn detect_transformation_context(before_cursor: &str) -> Option<TransformContext
 
 ---
 
-## Recommended Implementation: Hybrid Approach
+## Recommended Implementation: Unified Entry Context Handling
 
-Combine Approach 1 and 3 for accuracy without complexity:
+Rather than having separate handling for `to_entries` and `with_entries`, unify them under a single "entry context" system. Both functions produce `{key, value}` objects where `.value` is opaque.
 
-### Phase 1: Detect `to_entries` + `.value` + Nested Context Pattern
+**Current state (problematic):**
+- `with_entries` has special one-off injection at `context.rs:481-483`
+- `to_entries` has no special handling (the bug we're fixing)
+- These should behave consistently
 
-**Goal:** When inside a NESTED context (pipe, map, select) after `.value` from `to_entries`, recognize context is opaque.
-
-**Key distinction:**
-- `to_entries | .[].value.` → NOT opaque (direct navigation, can trace through original JSON)
-- `to_entries | .[].value | .` → OPAQUE (pipe resets context, we don't know what `.value` contains)
-- `to_entries | map(.value | map(.` → OPAQUE (nested map after `.value`)
+**Unified approach:**
 
 ```rust
-/// Check if cursor is in an opaque context after a transforming function.
-///
-/// Returns true ONLY when ALL conditions are met:
-/// 1. Query contains `to_entries` before cursor
-/// 2. After `to_entries`, there's a `.value` access
-/// 3. After `.value`, there's a NESTED CONTEXT (pipe, map, select, etc.)
-///
-/// Does NOT return true for direct navigation like `to_entries | .[].value.field.`
-fn is_in_opaque_value_context(query: &str, cursor_pos: usize) -> bool {
-    let before_cursor = &query[..cursor_pos];
-
-    // Find the most recent to_entries
-    let to_entries_pos = match before_cursor.rfind("to_entries") {
-        Some(pos) => pos,
-        None => return false,
-    };
-
-    let after_to_entries = &before_cursor[to_entries_pos..];
-
-    // Find .value access (with possible array iteration before it)
-    // Patterns: .[].value, .[0].value, .value (less common)
-    let value_pos = match after_to_entries.find(".value") {
-        Some(pos) => pos,
-        None => return false,
-    };
-
-    let after_value = &after_to_entries[value_pos + 6..]; // ".value".len() == 6
-
-    // ONLY opaque if there's a NESTED CONTEXT after .value
-    // A pipe (|) or element-context function (map, select) indicates nested context
-    // Direct field access (.field.) is NOT opaque - we can navigate
-
-    // Check for pipe - this resets context, making it opaque
-    if after_value.contains('|') {
-        return true;
-    }
-
-    // Check for nested element-context functions after .value
-    let nested_functions = ["map(", "select(", "sort_by(", "group_by(", "unique_by("];
-    for func in nested_functions {
-        if after_value.contains(func) {
-            return true;
-        }
-    }
-
-    // Direct field access like .value.services.web. is NOT opaque
-    // We can trace through original JSON
-    false
+/// Entry context state - applies to both to_entries and with_entries
+enum EntryContext {
+    /// Not in any entry-related context
+    None,
+    /// Directly in entry context - suggest .key/.value
+    /// Examples: to_entries | .[]., to_entries | map(., with_entries(.
+    Direct,
+    /// Inside .value with nested context - opaque, fall back to all fields
+    /// Examples: to_entries | map(.value | ., with_entries(.value | map(.
+    OpaqueValue,
 }
 ```
 
-**Important:** The distinction between direct navigation and nested context is crucial for avoiding regressions. Direct `.value.field.` access should continue to work by navigating through the original JSON.
+**Benefits:**
+1. Single source of truth for entry-related suggestions
+2. Consistent behavior: `with_entries(.value | map(.` and `to_entries | map(.value | map(.` both recognized as opaque
+3. Easier to maintain and extend
+4. Removes the special one-off `with_entries` injection
+
+---
+
+### Phase 1: Unified Entry Context Detection
+
+**Goal:** Detect entry context for both `to_entries` and `with_entries`, handling:
+1. Direct entry context → suggest `.key`/`.value`
+2. Opaque `.value` context → fall back to all fields
+
+**Key distinctions (apply to BOTH functions):**
+- `to_entries | .[].` or `with_entries(.` → DIRECT (suggest `.key`, `.value`)
+- `to_entries | .[].value.` or `with_entries(.value.` → NOT opaque (direct navigation works)
+- `to_entries | .[].value | .` or `with_entries(.value | .` → OPAQUE (fall back to all fields)
+- `to_entries | map(.value | map(.` or `with_entries(.value | map(.` → OPAQUE
+
+```rust
+/// Entry context state for both to_entries and with_entries
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum EntryContext {
+    /// Not in any entry-related context
+    None,
+    /// Directly in entry context - suggest .key/.value
+    Direct,
+    /// Inside .value with nested context - opaque, fall back to all fields
+    OpaqueValue,
+}
+
+/// Detect entry context for unified handling of to_entries and with_entries.
+///
+/// Returns:
+/// - `EntryContext::Direct` when we should suggest .key/.value
+/// - `EntryContext::OpaqueValue` when .value has nested context (opaque)
+/// - `EntryContext::None` when not in entry context
+pub fn detect_entry_context(query: &str, cursor_pos: usize) -> EntryContext {
+    let before_cursor = &query[..cursor_pos];
+
+    // Check for with_entries first (simpler - single function boundary)
+    if let Some(we_pos) = find_unclosed_with_entries(before_cursor) {
+        let inside_we = &before_cursor[we_pos + 13..]; // "with_entries(".len()
+        return classify_entry_path(inside_we);
+    }
+
+    // Check for to_entries
+    if let Some(te_pos) = before_cursor.rfind("to_entries") {
+        let after_te = &before_cursor[te_pos + 10..]; // "to_entries".len()
+
+        // Must be in element context after to_entries (.[]. or map()
+        if !is_in_entry_element_context(after_te) {
+            return EntryContext::None;
+        }
+
+        // Find the element context start to analyze the path
+        if let Some(elem_start) = find_entry_element_start(after_te) {
+            let path_inside = &after_te[elem_start..];
+            return classify_entry_path(path_inside);
+        }
+    }
+
+    EntryContext::None
+}
+
+/// Classify the path inside an entry context.
+/// Returns Direct if no .value access or direct .value navigation.
+/// Returns OpaqueValue if .value followed by nested context.
+fn classify_entry_path(path: &str) -> EntryContext {
+    // Find .value access
+    let value_pos = match path.find(".value") {
+        Some(pos) => pos,
+        None => return EntryContext::Direct, // No .value access, suggest .key/.value
+    };
+
+    let after_value = &path[value_pos + 6..]; // ".value".len() == 6
+
+    // Check for nested context after .value
+    // Pipe resets context → opaque
+    if after_value.contains('|') {
+        return EntryContext::OpaqueValue;
+    }
+
+    // Nested element-context functions → opaque
+    let nested_functions = ["map(", "select(", "sort_by(", "group_by(", "unique_by("];
+    for func in nested_functions {
+        if after_value.contains(func) {
+            return EntryContext::OpaqueValue;
+        }
+    }
+
+    // Direct field access like .value.field. - can navigate, not opaque
+    // But we're past the entry context, so don't suggest .key/.value either
+    EntryContext::None
+}
+
+/// Find unclosed with_entries( - returns position if cursor is inside
+fn find_unclosed_with_entries(before_cursor: &str) -> Option<usize> {
+    // Find last with_entries( and check if it's unclosed
+    let pos = before_cursor.rfind("with_entries(")?;
+    let inside = &before_cursor[pos + 13..];
+
+    // Count parens to check if still inside
+    let mut depth = 1;
+    for ch in inside.chars() {
+        match ch {
+            '(' => depth += 1,
+            ')' => {
+                depth -= 1;
+                if depth == 0 {
+                    return None; // with_entries is closed
+                }
+            }
+            _ => {}
+        }
+    }
+
+    Some(pos) // Still inside with_entries
+}
+
+/// Check if we're in element context after to_entries (.[]. or map()
+fn is_in_entry_element_context(after_to_entries: &str) -> bool {
+    // Look for patterns like: | .[]., | .[0]., | map(.
+    after_to_entries.contains("| .[")
+        || after_to_entries.contains("|.[")
+        || after_to_entries.contains("| map(")
+        || after_to_entries.contains("|map(")
+}
+
+/// Find where the entry element context starts (after .[]( or map()
+fn find_entry_element_start(after_to_entries: &str) -> Option<usize> {
+    // Find .[]. or map( and return position after it
+    if let Some(pos) = after_to_entries.find("].") {
+        return Some(pos + 2);
+    }
+    if let Some(pos) = after_to_entries.find("map(") {
+        return Some(pos + 4);
+    }
+    None
+}
+```
+
+**This replaces the existing `with_entries` special handling** at `context.rs:481-483` with the unified system.
 
 ### Phase 2: Integration with Existing Code Flow
 
-The opaque check should be integrated into `context.rs:get_suggestions()` BEFORE the navigation logic, but AFTER we've determined we're in FieldContext:
+The unified entry context check replaces the existing `with_entries` injection and adds `to_entries` support:
 
 ```rust
 // In get_suggestions(), within FieldContext handling:
@@ -287,25 +390,72 @@ SuggestionContext::FieldContext => {
     let is_at_end = is_cursor_at_logical_end(query, cursor_pos);
     let is_non_executing = brace_tracker.is_in_non_executing_context(cursor_pos);
 
-    // NEW: Check for opaque context FIRST, before any navigation attempts
-    if is_in_opaque_value_context(query, cursor_pos) {
-        let suggestions = get_all_field_suggestions(&all_field_names, needs_dot);
-        return filter_suggestions_by_partial_if_nonempty(suggestions, &partial);
+    // NEW: Unified entry context detection (replaces old with_entries special case)
+    let entry_context = detect_entry_context(query, cursor_pos);
+
+    match entry_context {
+        EntryContext::OpaqueValue => {
+            // Inside .value with nested context - fall back to all fields
+            let suggestions = get_all_field_suggestions(&all_field_names, needs_dot);
+            return filter_suggestions_by_partial_if_nonempty(suggestions, &partial);
+        }
+        EntryContext::Direct => {
+            // Direct entry context - inject .key/.value and continue
+            // (handled below with suggestions injection)
+        }
+        EntryContext::None => {
+            // Not in entry context - normal flow
+        }
     }
 
-    // Existing logic continues unchanged...
+    // Existing navigation logic...
     let mut suggestions = if is_non_executing && is_at_end {
         // ... existing navigation logic
+    } else {
+        // ... existing executing context logic
+    };
+
+    // Inject .key/.value for Direct entry context (replaces old with_entries injection)
+    if entry_context == EntryContext::Direct {
+        inject_entry_field_suggestions(&mut suggestions, needs_dot);
     }
-    // ...
+
+    filter_suggestions_by_partial_if_nonempty(suggestions, &partial)
+}
+
+/// Inject .key and .value suggestions for entry context.
+/// Replaces the old inject_with_entries_suggestions function.
+fn inject_entry_field_suggestions(suggestions: &mut Vec<Suggestion>, needs_leading_dot: bool) {
+    let prefix = if needs_leading_dot { "." } else { "" };
+
+    suggestions.insert(
+        0,
+        Suggestion::new_with_type(format!("{}value", prefix), SuggestionType::Field, None)
+            .with_description("Entry value (original object's value)"),
+    );
+    suggestions.insert(
+        0,
+        Suggestion::new_with_type(
+            format!("{}key", prefix),
+            SuggestionType::Field,
+            Some(JsonFieldType::String),
+        )
+        .with_description("Entry key (original object's key)"),
+    );
 }
 ```
 
-**Why this placement:**
-1. Check opaque context BEFORE navigation - avoids unnecessary navigation attempts
-2. Still respects `with_entries` injection (happens later in the function)
-3. Uses existing `all_field_names` cache - no performance impact
-4. Returns early with all-fields fallback
+**Changes from current implementation:**
+1. **Remove** `is_in_with_entries_context()` check from `brace_tracker`
+2. **Remove** `inject_with_entries_suggestions()` call at line 481-483
+3. **Add** unified `detect_entry_context()` at the start of FieldContext handling
+4. **Add** new `inject_entry_field_suggestions()` that handles both functions
+
+**Why this approach:**
+1. Single detection point for all entry-related contexts
+2. Opaque check happens FIRST, before any navigation attempts
+3. Direct entry context gets `.key`/`.value` injection consistently
+4. Existing navigation logic unchanged for non-entry contexts
 
 ### Phase 3: Special `.key`/`.value` Suggestions After `to_entries`
 
@@ -391,13 +541,20 @@ Each `to_entries` resets the structure. The final `.value` is opaque.
 
 **Expected:** All fields from original JSON.
 
-### 2. `with_entries` (Transforms in Place)
+### 2. `with_entries` (Now Unified with `to_entries`)
 ```jq
 with_entries(.value |= . * 2) | .
 ```
-Result has same structure as input (values transformed).
+After `with_entries()` is closed, the result structure matches input (values transformed).
 
-**Expected:** Same suggestions as original JSON.
+**Expected:** Same suggestions as original JSON (after the closing paren).
+
+**Inside `with_entries`:**
+```jq
+with_entries(.value | map(.          # Opaque - fall back to all fields
+with_entries(.key |= "prefix_" + .   # Direct - .key is a string, suggest string functions
+with_entries(.                        # Direct - suggest .key, .value
+```
 
 ### 3. `from_entries` (Reconstructs Object)
 ```jq
@@ -473,108 +630,242 @@ Here the pipe after `.value` means `.value | map(.services.web.` is opaque.
 ### Unit Tests
 
 ```rust
+// === to_entries tests ===
+
 #[test]
-fn test_opaque_context_to_entries_value_nested() {
-    // to_entries | map({... .value | map(select(.
-    // Inside nested context after .value - should be opaque
-    assert!(is_in_opaque_value_context(
-        "to_entries | map({service: .key, config: .value | map(select(.",
-        64  // cursor at end
-    ));
+fn test_to_entries_direct_context() {
+    // to_entries | .[]. - direct entry context
+    assert_eq!(
+        detect_entry_context("to_entries | .[].", 17),
+        EntryContext::Direct
+    );
 }
 
 #[test]
-fn test_not_opaque_direct_value_access_with_trailing_dot() {
-    // to_entries | .[].value.
-    // Direct .value access with trailing dot - can navigate through original JSON
-    // This should NOT be opaque because we can trace .value back to original structure
-    assert!(!is_in_opaque_value_context(
-        "to_entries | .[].value.",
-        23
-    ));
+fn test_to_entries_map_direct_context() {
+    // to_entries | map(. - direct entry context
+    assert_eq!(
+        detect_entry_context("to_entries | map(.", 18),
+        EntryContext::Direct
+    );
 }
 
 #[test]
-fn test_opaque_value_with_pipe() {
-    // to_entries | .[].value | .
-    // After pipe following .value - context is opaque
-    assert!(is_in_opaque_value_context(
-        "to_entries | .[].value | .",
-        26
-    ));
+fn test_to_entries_value_direct_navigation() {
+    // to_entries | .[].value. - direct .value access, NOT opaque
+    // Should return None (not Direct) because we're past the entry context
+    assert_eq!(
+        detect_entry_context("to_entries | .[].value.", 23),
+        EntryContext::None
+    );
 }
 
 #[test]
-fn test_opaque_value_with_nested_map() {
-    // to_entries | map(.value | map(.
-    // Nested map after .value - inner map's elements are opaque
-    assert!(is_in_opaque_value_context(
-        "to_entries | map(.value | map(.",
-        31
-    ));
+fn test_to_entries_value_with_pipe_opaque() {
+    // to_entries | .[].value | . - pipe after .value = opaque
+    assert_eq!(
+        detect_entry_context("to_entries | .[].value | .", 26),
+        EntryContext::OpaqueValue
+    );
 }
 
 #[test]
-fn test_entry_field_suggestions() {
-    // to_entries | .[].
-    assert!(should_suggest_entry_fields("to_entries | .[].", 17));
+fn test_to_entries_value_with_nested_map_opaque() {
+    // to_entries | map(.value | map(. - nested map after .value = opaque
+    assert_eq!(
+        detect_entry_context("to_entries | map(.value | map(.", 31),
+        EntryContext::OpaqueValue
+    );
 }
 
 #[test]
-fn test_not_entry_field_after_value() {
-    // to_entries | .[].value.
-    // After .value, we should NOT suggest .key/.value - we should navigate original
-    assert!(!should_suggest_entry_fields("to_entries | .[].value.", 23));
+fn test_to_entries_complex_opaque() {
+    // to_entries | map({service: .key, config: .value | map(select(.
+    assert_eq!(
+        detect_entry_context(
+            "to_entries | map({service: .key, config: .value | map(select(.",
+            64
+        ),
+        EntryContext::OpaqueValue
+    );
+}
+
+// === with_entries tests (same behavior as to_entries) ===
+
+#[test]
+fn test_with_entries_direct_context() {
+    // with_entries(. - direct entry context
+    assert_eq!(
+        detect_entry_context("with_entries(.", 14),
+        EntryContext::Direct
+    );
+}
+
+#[test]
+fn test_with_entries_value_direct_navigation() {
+    // with_entries(.value. - direct .value access, NOT opaque
+    assert_eq!(
+        detect_entry_context("with_entries(.value.", 20),
+        EntryContext::None
+    );
+}
+
+#[test]
+fn test_with_entries_value_with_pipe_opaque() {
+    // with_entries(.value | . - pipe after .value = opaque
+    assert_eq!(
+        detect_entry_context("with_entries(.value | .", 23),
+        EntryContext::OpaqueValue
+    );
+}
+
+#[test]
+fn test_with_entries_value_with_nested_map_opaque() {
+    // with_entries(.value | map(. - nested map after .value = opaque
+    assert_eq!(
+        detect_entry_context("with_entries(.value | map(.", 27),
+        EntryContext::OpaqueValue
+    );
+}
+
+#[test]
+fn test_with_entries_closed_not_in_context() {
+    // with_entries(.key) | . - with_entries is closed, not in entry context
+    assert_eq!(
+        detect_entry_context("with_entries(.key) | .", 22),
+        EntryContext::None
+    );
+}
+
+// === Edge cases ===
+
+#[test]
+fn test_no_entry_context() {
+    // Regular query without to_entries or with_entries
+    assert_eq!(
+        detect_entry_context(".users | map(.", 14),
+        EntryContext::None
+    );
+}
+
+#[test]
+fn test_to_entries_without_element_context() {
+    // to_entries | . - not in element context yet
+    assert_eq!(
+        detect_entry_context("to_entries | .", 14),
+        EntryContext::None
+    );
 }
 ```
 
 ### Integration Tests
 
 ```rust
+// === to_entries integration tests ===
+
 #[test]
-fn test_suggestions_after_to_entries_value_nested() {
+fn test_to_entries_direct_suggests_key_value() {
     let json = r#"{"services": {"web": {"name": "api"}}}"#;
     let app = app_with_json(json);
 
-    // Type the problematic query - cursor is at the dot after select(
+    simulate_typing(&mut app, "to_entries | .[].");
+
+    let suggestions = app.autocomplete.suggestions();
+
+    // Should suggest .key and .value
+    assert!(suggestions.iter().any(|s| s.text.contains("key")));
+    assert!(suggestions.iter().any(|s| s.text.contains("value")));
+}
+
+#[test]
+fn test_to_entries_value_nested_is_opaque() {
+    let json = r#"{"services": {"web": {"name": "api"}}}"#;
+    let app = app_with_json(json);
+
     simulate_typing(&mut app, "to_entries | map({service: .key, config: .value | map(select(.");
 
     let suggestions = app.autocomplete.suggestions();
 
-    // Should suggest all fields from original JSON, not .key/.value from to_entries
-    assert!(suggestions.iter().any(|s| s.text.contains("services") || s.text.contains("name") || s.text.contains("web")));
-    // Must NOT suggest the to_entries structure fields
+    // Should suggest all fields from original JSON
+    assert!(suggestions.iter().any(|s|
+        s.text.contains("services") || s.text.contains("name") || s.text.contains("web")
+    ));
+    // Must NOT suggest entry structure fields
     assert!(!suggestions.iter().any(|s| s.text == ".key" || s.text == "key"));
     assert!(!suggestions.iter().any(|s| s.text == ".value" || s.text == "value"));
 }
 
 #[test]
-fn test_direct_value_navigation_still_works() {
+fn test_to_entries_direct_value_navigation_works() {
     let json = r#"{"services": {"web": {"name": "api"}}}"#;
     let app = app_with_json(json);
 
-    // Direct .value access WITHOUT pipe/nested function - should navigate
     simulate_typing(&mut app, "to_entries | .[].value.");
 
     let suggestions = app.autocomplete.suggestions();
 
     // Should navigate through original JSON and suggest "services"
     assert!(suggestions.iter().any(|s| s.text.contains("services")));
-    // Should NOT fall back to all fields (would include "name", "web" at wrong level)
 }
 
 #[test]
-fn test_value_with_pipe_is_opaque() {
+fn test_to_entries_value_with_pipe_is_opaque() {
     let json = r#"{"services": {"web": {"name": "api"}}}"#;
     let app = app_with_json(json);
 
-    // .value followed by pipe - context is opaque
     simulate_typing(&mut app, "to_entries | .[].value | .");
 
     let suggestions = app.autocomplete.suggestions();
 
-    // Should fall back to all fields from original JSON
+    // Should fall back to all fields
     assert!(suggestions.iter().any(|s| s.text.contains("services") || s.text.contains("name")));
+}
+
+// === with_entries integration tests (same behavior) ===
+
+#[test]
+fn test_with_entries_direct_suggests_key_value() {
+    let json = r#"{"a": 1, "b": 2}"#;
+    let app = app_with_json(json);
+
+    simulate_typing(&mut app, "with_entries(.");
+
+    let suggestions = app.autocomplete.suggestions();
+
+    // Should suggest .key and .value (same as current behavior)
+    assert!(suggestions.iter().any(|s| s.text.contains("key")));
+    assert!(suggestions.iter().any(|s| s.text.contains("value")));
+}
+
+#[test]
+fn test_with_entries_value_nested_is_opaque() {
+    let json = r#"{"services": {"web": {"name": "api"}}}"#;
+    let app = app_with_json(json);
+
+    simulate_typing(&mut app, "with_entries(.value | map(.");
+
+    let suggestions = app.autocomplete.suggestions();
+
+    // Should fall back to all fields from original JSON
+    assert!(suggestions.iter().any(|s|
+        s.text.contains("services") || s.text.contains("name") || s.text.contains("web")
+    ));
+    // Must NOT suggest entry structure fields
+    assert!(!suggestions.iter().any(|s| s.text == ".key" || s.text == "key"));
+}
+
+#[test]
+fn test_with_entries_closed_normal_context() {
+    let json = r#"{"a": 1, "b": 2}"#;
+    let app = app_with_json(json);
+
+    simulate_typing(&mut app, "with_entries(.key |= \"prefix_\" + .) | .");
+
+    let suggestions = app.autocomplete.suggestions();
+
+    // After with_entries is closed, normal suggestions
+    // (from_entries output structure is unknown, so all fields)
+    assert!(suggestions.iter().any(|s| s.text.contains("a") || s.text.contains("b")));
 }
 ```
 
@@ -597,11 +888,13 @@ Test with `tests/fixtures/ecs.json`:
 
 ## Success Criteria
 
-1. After `to_entries | map({... .value | map(select(.`, suggests all original JSON fields
-2. After `to_entries | .[].`, suggests `.key` and `.value`
-3. After `to_entries | .[].value.`, navigates original JSON correctly
-4. Existing suggestions unchanged
-5. No performance regression
+1. **Unified entry context**: Both `to_entries` and `with_entries` handled by single `detect_entry_context()` function
+2. **Direct entry context**: After `to_entries | .[].` and `with_entries(.`, suggests `.key` and `.value`
+3. **Opaque detection**: After `to_entries | map(.value | .` and `with_entries(.value | .`, falls back to all fields
+4. **Direct navigation works**: After `to_entries | .[].value.`, navigates through original JSON correctly
+5. **Existing behavior preserved**: All current suggestions unchanged except for the unified handling
+6. **Code cleanup**: Remove `inject_with_entries_suggestions()`, `is_in_with_entries_context()`, and `FunctionContext::WithEntries` in favor of unified system
+7. No performance regression
 
 ---
 
@@ -631,11 +924,23 @@ fn regression_top_level_field_suggestions() {
 }
 
 #[test]
-fn regression_with_entries_still_injects_key_value() {
+fn regression_with_entries_still_suggests_key_value() {
     // with_entries() should still suggest .key and .value
+    // (now via unified entry context, not special injection)
     let json = r#"{"a": 1}"#;
     simulate_query(json, "with_entries(.");
-    assert_suggests(&["key", "value"]);  // Special injection
+    assert_suggests(&["key", "value"]);
+}
+
+#[test]
+fn regression_with_entries_value_nested_now_opaque() {
+    // NEW BEHAVIOR: with_entries(.value | map(.) should be opaque
+    // (Previously this case wasn't handled)
+    let json = r#"{"a": {"name": "test"}}"#;
+    simulate_query(json, "with_entries(.value | map(.");
+    // Should fall back to all fields, not suggest .key/.value
+    assert_suggests(&["a", "name"]);
+    assert_not_suggests(&["key", "value"]);
 }
 
 #[test]
@@ -683,5 +988,6 @@ fn regression_nested_autosuggestion_in_map() {
 ## Related Work
 
 - **PLAN_NESTED_AUTOSUGGESTION.md**: Phase 4 Notes mention transforming function detection was removed for executing context. This plan addresses non-executing context after transforming functions.
-- **context.rs:481-483**: Existing `with_entries` special handling provides a pattern to follow.
-- **all_field_names cache**: Already implemented in `JqExecutor` for fallback suggestions.
+- **context.rs:481-483**: Existing `with_entries` special handling **will be replaced** by the unified entry context system. The current `inject_with_entries_suggestions()` and `is_in_with_entries_context()` calls will be removed in favor of the new `detect_entry_context()` approach.
+- **brace_tracker.rs**: The `is_in_with_entries_context()` method can be removed after this change, as entry context detection moves to the new unified function.
+- **all_field_names cache**: Already implemented in `JqExecutor` for fallback suggestions - will be used for opaque context.
