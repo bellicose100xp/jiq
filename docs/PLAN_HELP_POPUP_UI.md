@@ -1,333 +1,252 @@
 # Help Popup UI Improvements Plan
 
-## Current State Analysis
+## Decision Summary
 
-The help popup currently displays **77 keyboard shortcuts** in a single scrollable list organized into 9 sections:
-- GLOBAL (8 shortcuts)
-- INPUT: INSERT MODE (4 shortcuts)
-- INPUT: NORMAL MODE (16 shortcuts)
-- AUTOCOMPLETE (3 shortcuts)
-- RESULTS PANE (10 shortcuts)
-- SEARCH IN RESULTS (7 shortcuts)
-- HISTORY POPUP (4 shortcuts)
-- ERROR OVERLAY (1 shortcut)
-- AI ASSISTANT (4 shortcuts)
+**Chosen Approach:** Tabbed Navigation with Context-Aware Auto-Selection
 
-**Current Issues:**
-- Long vertical scroll required to find shortcuts
-- No way to jump directly to a section
-- No search functionality
-- All sections shown regardless of current context
-- No visual hierarchy beyond section headers
+**Core UX Principle:** When users launch help from a specific context (e.g., search mode, snippet manager, results pane), they're looking for help with *that* context. The help popup should automatically open to the relevant tab while still allowing navigation to other tabs.
 
 ---
 
-## Research: Highly Praised TUI Help UI Patterns
+## Current State
 
-### 1. Lazygit - Context-Sensitive Panel Help
-[GitHub - jesseduffield/lazygit](https://github.com/jesseduffield/lazygit)
+The help popup displays **77 keyboard shortcuts** in a single scrollable list across 9 sections:
+- GLOBAL (8), INPUT: INSERT MODE (4), INPUT: NORMAL MODE (16), AUTOCOMPLETE (3)
+- RESULTS PANE (10), SEARCH IN RESULTS (7), HISTORY POPUP (4), ERROR OVERLAY (1), AI ASSISTANT (4)
 
-**Key Features:**
-- Press `?` to show keybindings **relevant to the currently focused panel**
-- Footer shows most common actions at all times
-- Keybindings organized by panel context (Files, Branches, Commits, etc.)
-- Intuitive: users only see shortcuts they can actually use
-
-**Praise:** "Besides navigating through sections and tabs, the only keyboard shortcut you need to remember is `?`, which shows you contextually available operations based on an active panel/tab."
-
-### 2. Which-Key (Neovim/Vim) - Progressive Disclosure
-[GitHub - folke/which-key.nvim](https://github.com/folke/which-key.nvim)
-
-**Key Features:**
-- Shows available keybindings **as you type a prefix** (e.g., press `g` and see all `g` commands)
-- Categorized by action type (motions, text-objects, operators)
-- **Hydra mode**: keeps popup open until you press Escape
-- Searchable with built-in fuzzy finder
-- Works across all modes (normal, insert, visual, etc.)
-
-**Praise:** "WhichKey helps you remember your Neovim keymaps, by showing available keybindings in a popup as you type."
-
-### 3. Helix Editor - Hierarchical Menus
-[Julia Evans - Notes on switching to Helix from vim](https://jvns.ca/blog/2025/10/10/notes-on-switching-to-helix-from-vim/)
-
-**Key Features:**
-- Pressing prefix keys (like `g`, `<space>`) opens a **mini help popup**
-- Nested menus for related commands (e.g., `<space>` -> `w` for Window Management)
-- Shows only the next level of available commands
-- Extremely intuitive for discoverability
-
-**Praise:** "When you press `g`, you get a little help popup telling you places you can go. This is appreciated because you don't often use features like 'go to definition' and forget the shortcuts."
-
-### 4. btop - Menu-Based Help
-[Linux Blog - btop the htop alternative](https://linuxblog.io/btop-the-htop-alternative/)
-
-**Key Features:**
-- Press `ESC` to open main menu, then select HELP
-- Press `F1` or `h` for direct help access
-- **Categorized by function** with clear visual grouping
-- Mouse-clickable buttons for key actions
-
-**Praise:** "One of the most striking features of btop is its ease of use. The UI is controlled using a shortlist of keyboard shortcuts."
+**Problems:**
+- Long vertical scroll to find relevant shortcuts
+- No way to jump to sections
+- Shows everything regardless of what user is doing
+- Cognitive overload from too many options at once
 
 ---
 
-## Proposed Ideas
+## UI Mockups
 
-### Option A: Tabbed Category Navigation (Recommended)
-
-```
-┌─────────────────── Keyboard Shortcuts ───────────────────┐
-│                                                          │
-│  [Global] [Input] [Results] [Search] [Popups] [AI]       │
-│  ────────────────────────────────────────────────────    │
-│                                                          │
-│  ── GLOBAL ──                                            │
-│                                                          │
-│  F1 or ?        Toggle this help                         │
-│  Ctrl+A         Toggle AI assistant                      │
-│  Ctrl+S         Open snippets manager                    │
-│  Ctrl+C         Quit without output                      │
-│  Enter          Output filtered JSON and exit            │
-│  Ctrl+Q         Output query string only and exit        │
-│  Shift+Tab      Switch focus (Input / Results)           │
-│  q              Quit (in Normal mode or Results pane)    │
-│                                                          │
-│  ─────────────────────────────────────────────────────── │
-│  ←/→: switch tab | j/k: scroll | /: search | q: close    │
-└──────────────────────────────────────────────────────────┘
-```
-
-**Features:**
-- Horizontal tabs for each category (6 tabs)
-- `h/l` or `←/→` to switch between tabs
-- Each tab shows only its relevant shortcuts
-- Optional: highlight current tab based on app state
-
-**Pros:**
-- Familiar pattern (browser tabs, lazygit panels)
-- Reduces cognitive load by showing fewer items at once
-- Easy to find what you need
-
-**Cons:**
-- Requires multiple keypresses to see all shortcuts
-- Implementation complexity for tab state management
-
----
-
-### Option B: Searchable Help with Fuzzy Filter
+### Global Tab (Default/Fallback)
 
 ```
-┌─────────────────── Keyboard Shortcuts ───────────────────┐
-│                                                          │
-│  Search: scro█                                           │
-│  ────────────────────────────────────────────────────    │
-│                                                          │
-│  Found 8 matches:                                        │
-│                                                          │
-│  j/k/↑/↓        Scroll line by line         [Results]    │
-│  J/K            Scroll 10 lines             [Results]    │
-│  Ctrl+D/U       Scroll results half page    [Input]      │
-│  Ctrl+D/U       Half page down/up           [Results]    │
-│  PageDown/Up    Half page down/up           [Results]    │
-│  g/Home         Jump to top                 [Results]    │
-│  G/End          Jump to bottom              [Results]    │
-│  j/k            scroll                      [Help]       │
-│                                                          │
-│  ─────────────────────────────────────────────────────── │
-│  Type to search | Esc: clear | q: close                  │
-└──────────────────────────────────────────────────────────┘
+┌──────────────────── Keyboard Shortcuts ─────────────────────┐
+│                                                             │
+│  [Global]  Input   Results   Search   Popups   AI           │
+│  ───────────────────────────────────────────────────────    │
+│                                                             │
+│  F1 or ?        Toggle this help                            │
+│  Ctrl+A         Toggle AI assistant                         │
+│  Ctrl+S         Open snippets manager                       │
+│  Ctrl+C         Quit without output                         │
+│  Enter          Output filtered JSON and exit               │
+│  Ctrl+Q         Output query string only and exit           │
+│  Shift+Tab      Switch focus (Input ↔ Results)              │
+│  q              Quit (in Normal mode or Results pane)       │
+│                                                             │
+│  ────────────────────────────────────────────────────────── │
+│  h/l: switch tab | j/k: scroll | g/G: top/bottom | q: close │
+└─────────────────────────────────────────────────────────────┘
 ```
 
-**Features:**
-- Search box at top (activated by `/` or typing immediately)
-- Fuzzy matching on both key and description
-- Shows category tag on the right `[Results]`
-- Highlights matching text
-- Falls back to full list when search is empty
-
-**Pros:**
-- Fastest way to find a specific shortcut
-- Power-user friendly
-- Reuses existing fuzzy search logic from history popup
-
-**Cons:**
-- Users need to know what they're looking for
-- Less useful for browsing/discovery
-
----
-
-### Option C: Context-Aware Help (Lazygit-Style)
+### Input Tab (Auto-selected when Input field focused)
 
 ```
-┌─────────────── Help: Results Pane ───────────────┐
-│                                                  │
-│  j/k/↑/↓        Scroll line by line              │
-│  J/K            Scroll 10 lines                  │
-│  h/l/←/→        Scroll column by column          │
-│  H/L            Scroll 10 columns                │
-│  0/^            Jump to left edge                │
-│  $              Jump to right edge               │
-│  g/Home         Jump to top                      │
-│  G/End          Jump to bottom                   │
-│  Ctrl+D/U       Half page down/up                │
-│  PageDown/Up    Half page down/up                │
-│                                                  │
-│  ── ALSO AVAILABLE ──                            │
-│  Ctrl+F         Open search                      │
-│  /              Open search                      │
-│  Shift+Tab      Switch to Input                  │
-│                                                  │
-│  ──────────────────────────────────────────────  │
-│  Tab: show all | j/k: scroll | q: close          │
-└──────────────────────────────────────────────────┘
+┌──────────────────── Keyboard Shortcuts ─────────────────────┐
+│                                                             │
+│   Global  [Input]  Results   Search   Popups   AI           │
+│  ───────────────────────────────────────────────────────    │
+│                                                             │
+│  ── INSERT MODE ──                                          │
+│  Esc             Switch to Normal mode                      │
+│  ↑ or Ctrl+R     Open history popup                         │
+│  Ctrl+P/N        Cycle history (prev/next)                  │
+│  Ctrl+D/U        Scroll results half page                   │
+│                                                             │
+│  ── NORMAL MODE ──                                          │
+│  i/a/I/A         Enter Insert mode                          │
+│  h/l             Move cursor left/right                     │
+│  0/^/$           Jump to start/first char/end               │
+│  w/b/e           Word motions                               │
+│  f/F/t/T         Find char forward/backward                 │
+│  ;/,             Repeat find motion                         │
+│  x/X             Delete char under/before cursor            │
+│  dd/D            Delete line/to end                         │
+│  ────────────────────────────────────────────────────────── │
+│  h/l: switch tab | j/k: scroll | g/G: top/bottom | q: close │
+└─────────────────────────────────────────────────────────────┘
 ```
 
-**Features:**
-- Shows shortcuts **relevant to current focus/mode** by default
-- "ALSO AVAILABLE" section for cross-cutting shortcuts
-- `Tab` to toggle between context-specific and full help
-- Title dynamically shows current context
-
-**Context mappings:**
-| Focus/Mode | Primary Shortcuts |
-|------------|-------------------|
-| Input (Insert) | Insert mode shortcuts + Global |
-| Input (Normal) | Normal mode shortcuts + Global |
-| Results Pane | Results navigation + Search + Global |
-| Search Mode | Search shortcuts |
-| AI Assistant | AI shortcuts |
-| Snippets | Snippet navigation |
-| History Popup | History navigation |
-
-**Pros:**
-- Shows exactly what you need when you need it
-- Reduces information overload significantly
-- Matches mental model (what can I do right now?)
-
-**Cons:**
-- Users might not realize other shortcuts exist
-- Need to maintain context -> shortcuts mapping
-
----
-
-### Option D: Which-Key Style Progressive Disclosure
+### Results Tab (Auto-selected when Results pane focused)
 
 ```
-Normal mode, after pressing 'd':
-┌─────────────────────────────────┐
-│  d → delete...                  │
-│                                 │
-│  d    delete line               │
-│  w    delete word               │
-│  iw   delete inner word         │
-│  i"   delete inside quotes      │
-│  i(   delete inside parens      │
-│  f    delete to char            │
-│  t    delete till char          │
-│                                 │
-│  Esc: cancel                    │
-└─────────────────────────────────┘
+┌──────────────────── Keyboard Shortcuts ─────────────────────┐
+│                                                             │
+│   Global   Input  [Results]  Search   Popups   AI           │
+│  ───────────────────────────────────────────────────────    │
+│                                                             │
+│  j/k/↑/↓        Scroll line by line                         │
+│  J/K            Scroll 10 lines                             │
+│  h/l/←/→        Scroll column by column                     │
+│  H/L            Scroll 10 columns                           │
+│  0/^            Jump to left edge                           │
+│  $              Jump to right edge                          │
+│  g/Home         Jump to top                                 │
+│  G/End          Jump to bottom                              │
+│  Ctrl+D/U       Half page down/up                           │
+│  PageDown/Up    Half page down/up                           │
+│                                                             │
+│  ────────────────────────────────────────────────────────── │
+│  h/l: switch tab | j/k: scroll | g/G: top/bottom | q: close │
+└─────────────────────────────────────────────────────────────┘
 ```
 
-**Features:**
-- Small popup appears when you start a command sequence
-- Shows available completions for the current prefix
-- Disappears after command is executed or cancelled
-- Only shown for multi-key sequences (d, c, f, t, etc.)
+### Search Tab (Auto-selected when Search mode active)
 
-**Pros:**
-- Just-in-time help exactly when needed
-- Very intuitive for vim motions
-- Non-intrusive
-
-**Cons:**
-- Doesn't help with single-key shortcuts
-- Requires significant implementation effort
-- Only useful for Normal mode operations
-
----
-
-### Option E: Hybrid Approach (Recommended Combination)
-
-Combine the best of multiple patterns:
-
-1. **Default View: Tabbed Categories** (Option A)
-   - Quick navigation between logical groupings
-   - Reduces scroll fatigue
-
-2. **Search Overlay** (Option B)
-   - Press `/` to activate search within help
-   - Fuzzy filter across all categories
-
-3. **Context Indicator** (Option C, partial)
-   - Highlight the tab relevant to current mode
-   - Show current mode in title: `Keyboard Shortcuts (Results Pane)`
-
-**Implementation Priority:**
-1. Tabbed navigation (highest impact)
-2. Search functionality
-3. Context-aware tab highlighting
-
----
-
-## Visual Enhancements
-
-### Color Coding by Category
 ```
-Global shortcuts:     Yellow keys
-Navigation:           Cyan keys
-Editing:              Green keys
-Mode switching:       Magenta keys
+┌──────────────────── Keyboard Shortcuts ─────────────────────┐
+│                                                             │
+│   Global   Input   Results  [Search]  Popups   AI           │
+│  ───────────────────────────────────────────────────────    │
+│                                                             │
+│  Ctrl+F         Open search                                 │
+│  /              Open search (from Results pane)             │
+│  Enter          Confirm search pattern                      │
+│  n              Jump to next match                          │
+│  N              Jump to previous match                      │
+│  /              Edit search (after confirming)              │
+│  Esc            Close search                                │
+│                                                             │
+│                                                             │
+│                                                             │
+│                                                             │
+│  ────────────────────────────────────────────────────────── │
+│  h/l: switch tab | j/k: scroll | g/G: top/bottom | q: close │
+└─────────────────────────────────────────────────────────────┘
 ```
 
-### Key Grouping with Icons (if supported)
+### Popups Tab (Auto-selected when History/Autocomplete/Snippets/Error visible)
+
 ```
-  ── NAVIGATION ──
-  ↕  j/k          Scroll up/down
-  ⇅  J/K          Scroll 10 lines
-  ⇤  0/^          Jump to start
-  ⇥  $            Jump to end
+┌──────────────────── Keyboard Shortcuts ─────────────────────┐
+│                                                             │
+│   Global   Input   Results   Search  [Popups]  AI           │
+│  ───────────────────────────────────────────────────────    │
+│                                                             │
+│  ── HISTORY POPUP ──                                        │
+│  ↑/↓            Navigate history                            │
+│  Type           Filter history                              │
+│  Enter/Tab      Select entry                                │
+│  Esc            Close popup                                 │
+│                                                             │
+│  ── AUTOCOMPLETE ──                                         │
+│  ↑/↓            Navigate suggestions                        │
+│  Tab            Accept suggestion                           │
+│  Esc            Dismiss                                     │
+│                                                             │
+│  ── ERROR OVERLAY ──                                        │
+│  Ctrl+E         Toggle error overlay                        │
+│                                                             │
+│  ────────────────────────────────────────────────────────── │
+│  h/l: switch tab | j/k: scroll | g/G: top/bottom | q: close │
+└─────────────────────────────────────────────────────────────┘
 ```
 
-### Highlight Frequently Used
-Mark the most common shortcuts with a subtle indicator:
+### AI Tab (Auto-selected when AI assistant visible)
+
 ```
-  F1 or ?        Toggle this help
-★ Ctrl+S         Open snippets manager
-★ Enter          Output filtered JSON and exit
-  Ctrl+Q         Output query string only
+┌──────────────────── Keyboard Shortcuts ─────────────────────┐
+│                                                             │
+│   Global   Input   Results   Search   Popups  [AI]          │
+│  ───────────────────────────────────────────────────────    │
+│                                                             │
+│  Ctrl+A         Toggle AI assistant                         │
+│  Alt+1-5        Apply AI suggestion directly                │
+│  Alt+↑↓/j/k     Navigate AI suggestions                     │
+│  Enter          Apply selected suggestion                   │
+│                                                             │
+│                                                             │
+│                                                             │
+│                                                             │
+│                                                             │
+│                                                             │
+│  ────────────────────────────────────────────────────────── │
+│  h/l: switch tab | j/k: scroll | g/G: top/bottom | q: close │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### Tab Styling Detail
+
+```
+Inactive tabs:  DarkGray text
+Active tab:     Cyan text, Bold, with [brackets] or reversed background
+
+Example styling:
+
+   Global   Input  [Results]  Search   Popups   AI
+   ~~~~~~   ~~~~~   ~~~~~~~   ~~~~~~   ~~~~~~   ~~
+   gray     gray    CYAN/BG   gray     gray     gray
 ```
 
 ---
 
-## Proposed Tab Structure
+## Tab Structure
 
-| Tab | Contents | Shortcut Count |
-|-----|----------|----------------|
-| **Global** | F1, Ctrl+A/S/C/Q, Enter, Shift+Tab, q | 8 |
-| **Input** | Insert mode + Normal mode (combined) | 20 |
-| **Results** | Results pane navigation | 10 |
-| **Search** | Search in results | 7 |
-| **Popups** | History + Autocomplete + Error | 8 |
-| **AI** | AI assistant shortcuts | 4 |
+| Tab | Auto-Selected When | Contents |
+|-----|-------------------|----------|
+| **Global** | Default fallback | F1, Ctrl+A/S/C/Q, Enter, Shift+Tab, q |
+| **Input** | Input field focused (Insert or Normal mode) | Insert mode + Normal mode shortcuts |
+| **Results** | Results pane focused | Navigation, scrolling shortcuts |
+| **Search** | Search mode active | Ctrl+F, /, Enter, n/N, Esc |
+| **Popups** | History, Autocomplete, Snippets, or Error overlay visible | History nav, Autocomplete, Error toggle |
+| **AI** | AI assistant visible | Ctrl+A, Alt+1-5, Alt+↑↓, Enter |
 
-Total: 6 tabs, ~57 unique shortcuts (some overlap)
+### Context-to-Tab Mapping
 
----
-
-## Implementation Considerations
-
-### State Management
 ```rust
-pub struct HelpPopupState {
-    pub visible: bool,
-    pub scroll: ScrollState,
-    pub active_tab: HelpTab,      // NEW
-    pub search_query: String,      // NEW (if search implemented)
-    pub search_active: bool,       // NEW
-}
+fn get_default_tab(app: &App) -> HelpTab {
+    // Priority order matters - more specific contexts first
 
+    // AI assistant visible
+    if app.ai_visible() {
+        return HelpTab::AI;
+    }
+
+    // Search mode active
+    if app.search.visible {
+        return HelpTab::Search;
+    }
+
+    // Popups (History, Autocomplete, Snippets, Error)
+    if app.history_popup.visible
+        || app.autocomplete.visible()
+        || app.snippets.visible
+        || app.error_overlay_visible {
+        return HelpTab::Popups;
+    }
+
+    // Results pane focused
+    if app.focus == Focus::Results {
+        return HelpTab::Results;
+    }
+
+    // Input field focused (covers Insert and Normal modes)
+    if app.focus == Focus::Input {
+        return HelpTab::Input;
+    }
+
+    // Fallback
+    HelpTab::Global
+}
+```
+
+---
+
+## State Management
+
+### New Types
+
+```rust
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum HelpTab {
+    #[default]
     Global,
     Input,
     Results,
@@ -335,84 +254,576 @@ pub enum HelpTab {
     Popups,
     AI,
 }
+
+impl HelpTab {
+    pub const COUNT: usize = 6;
+
+    pub fn all() -> &'static [HelpTab] {
+        &[
+            HelpTab::Global,
+            HelpTab::Input,
+            HelpTab::Results,
+            HelpTab::Search,
+            HelpTab::Popups,
+            HelpTab::AI,
+        ]
+    }
+
+    pub fn index(&self) -> usize {
+        match self {
+            HelpTab::Global => 0,
+            HelpTab::Input => 1,
+            HelpTab::Results => 2,
+            HelpTab::Search => 3,
+            HelpTab::Popups => 4,
+            HelpTab::AI => 5,
+        }
+    }
+
+    pub fn from_index(index: usize) -> Self {
+        match index {
+            0 => HelpTab::Global,
+            1 => HelpTab::Input,
+            2 => HelpTab::Results,
+            3 => HelpTab::Search,
+            4 => HelpTab::Popups,
+            5 => HelpTab::AI,
+            _ => HelpTab::Global,
+        }
+    }
+
+    pub fn name(&self) -> &'static str {
+        match self {
+            HelpTab::Global => "Global",
+            HelpTab::Input => "Input",
+            HelpTab::Results => "Results",
+            HelpTab::Search => "Search",
+            HelpTab::Popups => "Popups",
+            HelpTab::AI => "AI",
+        }
+    }
+
+    pub fn next(&self) -> Self {
+        Self::from_index((self.index() + 1) % Self::COUNT)
+    }
+
+    pub fn prev(&self) -> Self {
+        Self::from_index((self.index() + Self::COUNT - 1) % Self::COUNT)
+    }
+}
 ```
 
-### Key Bindings for Help Popup
-| Key | Action |
-|-----|--------|
-| `h/←` | Previous tab |
-| `l/→` | Next tab |
-| `1-6` | Jump to tab by number |
-| `/` | Activate search |
-| `Esc` | Clear search / close popup |
-| `j/k` | Scroll within tab |
-| `q/?/F1` | Close popup |
+### Updated HelpPopupState
 
-### Content Organization
-Refactor `help_content.rs`:
+```rust
+pub struct HelpPopupState {
+    pub visible: bool,
+    pub active_tab: HelpTab,
+    pub scroll_per_tab: [ScrollState; HelpTab::COUNT],  // Independent scroll per tab
+}
+
+impl HelpPopupState {
+    pub fn new() -> Self {
+        Self {
+            visible: false,
+            active_tab: HelpTab::Global,
+            scroll_per_tab: Default::default(),
+        }
+    }
+
+    pub fn current_scroll(&self) -> &ScrollState {
+        &self.scroll_per_tab[self.active_tab.index()]
+    }
+
+    pub fn current_scroll_mut(&mut self) -> &mut ScrollState {
+        &mut self.scroll_per_tab[self.active_tab.index()]
+    }
+
+    pub fn reset(&mut self) {
+        self.visible = false;
+        self.active_tab = HelpTab::Global;
+        for scroll in &mut self.scroll_per_tab {
+            scroll.reset();
+        }
+    }
+}
+```
+
+---
+
+## Content Organization
+
+### Refactored help_content.rs
+
 ```rust
 pub struct HelpCategory {
-    pub name: &'static str,
+    pub tab: HelpTab,
+    pub sections: &'static [HelpSection],
+}
+
+pub struct HelpSection {
+    pub title: Option<&'static str>,  // None for no header
     pub entries: &'static [(&'static str, &'static str)],
 }
 
 pub const HELP_CATEGORIES: &[HelpCategory] = &[
+    // Global tab
     HelpCategory {
-        name: "Global",
-        entries: &[
-            ("F1 or ?", "Toggle this help"),
-            // ...
+        tab: HelpTab::Global,
+        sections: &[
+            HelpSection {
+                title: None,
+                entries: &[
+                    ("F1 or ?", "Toggle this help"),
+                    ("Ctrl+A", "Toggle AI assistant"),
+                    ("Ctrl+S", "Open snippets manager"),
+                    ("Ctrl+C", "Quit without output"),
+                    ("Enter", "Output filtered JSON and exit"),
+                    ("Ctrl+Q", "Output query string only and exit"),
+                    ("Shift+Tab", "Switch focus (Input ↔ Results)"),
+                    ("q", "Quit (in Normal mode or Results pane)"),
+                ],
+            },
         ],
     },
-    // ...
+
+    // Input tab (combines Insert + Normal modes)
+    HelpCategory {
+        tab: HelpTab::Input,
+        sections: &[
+            HelpSection {
+                title: Some("INSERT MODE"),
+                entries: &[
+                    ("Esc", "Switch to Normal mode"),
+                    ("↑ or Ctrl+R", "Open history popup"),
+                    ("Ctrl+P/N", "Cycle history (prev/next)"),
+                    ("Ctrl+D/U", "Scroll results half page"),
+                ],
+            },
+            HelpSection {
+                title: Some("NORMAL MODE"),
+                entries: &[
+                    ("i/a/I/A", "Enter Insert mode"),
+                    ("h/l", "Move cursor left/right"),
+                    ("0/^/$", "Jump to start/first char/end"),
+                    ("w/b/e", "Word motions"),
+                    ("f/F/t/T", "Find char forward/backward"),
+                    (";/,", "Repeat find motion"),
+                    ("x/X", "Delete char under/before cursor"),
+                    ("dd/D", "Delete line/to end"),
+                    ("dw/cw/ciw", "Delete/change word/inner word"),
+                    ("df/dt/cf/ct", "Delete/change to char"),
+                    ("di\"/ci\"/etc", "Delete/change inside quotes/parens"),
+                    ("u", "Undo"),
+                    ("Ctrl+R", "Redo"),
+                    ("Ctrl+D/U", "Scroll results half page"),
+                ],
+            },
+        ],
+    },
+
+    // Results tab
+    HelpCategory {
+        tab: HelpTab::Results,
+        sections: &[
+            HelpSection {
+                title: None,
+                entries: &[
+                    ("j/k/↑/↓", "Scroll line by line"),
+                    ("J/K", "Scroll 10 lines"),
+                    ("h/l/←/→", "Scroll column by column"),
+                    ("H/L", "Scroll 10 columns"),
+                    ("0/^", "Jump to left edge"),
+                    ("$", "Jump to right edge"),
+                    ("g/Home", "Jump to top"),
+                    ("G/End", "Jump to bottom"),
+                    ("Ctrl+D/U", "Half page down/up"),
+                    ("PageDown/Up", "Half page down/up"),
+                ],
+            },
+        ],
+    },
+
+    // Search tab
+    HelpCategory {
+        tab: HelpTab::Search,
+        sections: &[
+            HelpSection {
+                title: None,
+                entries: &[
+                    ("Ctrl+F", "Open search"),
+                    ("/", "Open search (from Results pane)"),
+                    ("Enter", "Confirm search pattern"),
+                    ("n", "Jump to next match"),
+                    ("N", "Jump to previous match"),
+                    ("/", "Edit search (after confirming)"),
+                    ("Esc", "Close search"),
+                ],
+            },
+        ],
+    },
+
+    // Popups tab (History, Autocomplete, Snippets, Error)
+    HelpCategory {
+        tab: HelpTab::Popups,
+        sections: &[
+            HelpSection {
+                title: Some("HISTORY POPUP"),
+                entries: &[
+                    ("↑/↓", "Navigate history"),
+                    ("Type", "Filter history"),
+                    ("Enter/Tab", "Select entry"),
+                    ("Esc", "Close popup"),
+                ],
+            },
+            HelpSection {
+                title: Some("AUTOCOMPLETE"),
+                entries: &[
+                    ("↑/↓", "Navigate suggestions"),
+                    ("Tab", "Accept suggestion"),
+                    ("Esc", "Dismiss"),
+                ],
+            },
+            HelpSection {
+                title: Some("ERROR OVERLAY"),
+                entries: &[
+                    ("Ctrl+E", "Toggle error overlay"),
+                ],
+            },
+        ],
+    },
+
+    // AI tab
+    HelpCategory {
+        tab: HelpTab::AI,
+        sections: &[
+            HelpSection {
+                title: None,
+                entries: &[
+                    ("Ctrl+A", "Toggle AI assistant"),
+                    ("Alt+1-5", "Apply AI suggestion directly"),
+                    ("Alt+↑↓/j/k", "Navigate AI suggestions"),
+                    ("Enter", "Apply selected suggestion"),
+                ],
+            },
+        ],
+    },
 ];
+
+/// Get entries for a specific tab
+pub fn get_tab_content(tab: HelpTab) -> &'static HelpCategory {
+    HELP_CATEGORIES
+        .iter()
+        .find(|c| c.tab == tab)
+        .expect("All tabs should have content")
+}
 ```
 
 ---
 
-## Recommended Implementation Order
+## Key Bindings
 
-### Phase 1: Tabbed Navigation
-1. Add `HelpTab` enum and state
-2. Refactor content into categories
-3. Render tab bar with ratatui `Tabs` widget
-4. Handle `h/l` navigation between tabs
-5. Update scroll state per-tab
+### Help Popup Navigation
 
-### Phase 2: Visual Polish
-1. Highlight active tab
-2. Show context indicator in title
-3. Add subtle dividers between sections
-4. Consistent key/description alignment
+| Key | Action |
+|-----|--------|
+| `h` / `←` | Previous tab |
+| `l` / `→` | Next tab |
+| `1`-`6` | Jump to tab by number |
+| `j` / `↓` | Scroll down |
+| `k` / `↑` | Scroll up |
+| `J` | Scroll down 10 lines |
+| `K` | Scroll up 10 lines |
+| `Ctrl+D` | Half page down |
+| `Ctrl+U` | Half page up |
+| `g` / `Home` | Jump to top |
+| `G` / `End` | Jump to bottom |
+| `q` / `?` / `F1` / `Esc` | Close help |
 
-### Phase 3: Search (Optional)
-1. Add search input field
-2. Implement fuzzy matching
-3. Highlight search results
-4. Category tags in search results
+### Event Handler Update
 
-### Phase 4: Context Awareness (Optional)
-1. Map app state to default tab
-2. Auto-select relevant tab on open
-3. Visual indicator for current context
+```rust
+fn handle_help_keys(app: &mut App, key: KeyEvent) -> bool {
+    if !app.help.visible {
+        return false;
+    }
+
+    match key.code {
+        // Close help
+        KeyCode::F(1) | KeyCode::Esc | KeyCode::Char('q') | KeyCode::Char('?') => {
+            app.help.reset();
+            true
+        }
+
+        // Tab navigation
+        KeyCode::Char('h') | KeyCode::Left => {
+            app.help.active_tab = app.help.active_tab.prev();
+            true
+        }
+        KeyCode::Char('l') | KeyCode::Right => {
+            app.help.active_tab = app.help.active_tab.next();
+            true
+        }
+        KeyCode::Char(c) if ('1'..='6').contains(&c) => {
+            let index = (c as usize) - ('1' as usize);
+            app.help.active_tab = HelpTab::from_index(index);
+            true
+        }
+
+        // Scrolling (using current_scroll_mut() for per-tab scroll)
+        KeyCode::Char('j') | KeyCode::Down => {
+            app.help.current_scroll_mut().down(1);
+            true
+        }
+        KeyCode::Char('k') | KeyCode::Up => {
+            app.help.current_scroll_mut().up(1);
+            true
+        }
+        KeyCode::Char('J') => {
+            app.help.current_scroll_mut().down(10);
+            true
+        }
+        KeyCode::Char('K') => {
+            app.help.current_scroll_mut().up(10);
+            true
+        }
+        KeyCode::Char('g') | KeyCode::Home => {
+            app.help.current_scroll_mut().to_top();
+            true
+        }
+        KeyCode::Char('G') | KeyCode::End => {
+            app.help.current_scroll_mut().to_bottom();
+            true
+        }
+        KeyCode::Char('d') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+            app.help.current_scroll_mut().down(10);
+            true
+        }
+        KeyCode::Char('u') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+            app.help.current_scroll_mut().up(10);
+            true
+        }
+        KeyCode::PageDown => {
+            app.help.current_scroll_mut().down(10);
+            true
+        }
+        KeyCode::PageUp => {
+            app.help.current_scroll_mut().up(10);
+            true
+        }
+
+        _ => true  // Consume all keys when help is visible
+    }
+}
+```
 
 ---
 
-## References
+## Rendering
+
+### Tab Bar Rendering
+
+```rust
+use ratatui::widgets::Tabs;
+
+fn render_tab_bar(active_tab: HelpTab) -> Tabs<'static> {
+    let titles: Vec<Line> = HelpTab::all()
+        .iter()
+        .map(|tab| {
+            if *tab == active_tab {
+                Line::styled(
+                    format!("[{}]", tab.name()),
+                    Style::default()
+                        .fg(Color::Cyan)
+                        .add_modifier(Modifier::BOLD),
+                )
+            } else {
+                Line::styled(
+                    format!(" {} ", tab.name()),
+                    Style::default().fg(Color::DarkGray),
+                )
+            }
+        })
+        .collect();
+
+    Tabs::new(titles)
+        .divider(Span::raw("  "))
+}
+```
+
+### Full Popup Render
+
+```rust
+pub fn render_popup(app: &mut App, frame: &mut Frame) {
+    let frame_area = frame.area();
+
+    // Popup dimensions - wider to accommodate tab bar
+    let popup_width = 65.min(frame_area.width);
+    let popup_height = 20.min(frame_area.height);
+
+    if frame_area.width < 20 || frame_area.height < 10 {
+        return;
+    }
+
+    let popup_area = popup::centered_popup(frame_area, popup_width, popup_height);
+    popup::clear_area(frame, popup_area);
+
+    // Outer block with title and border
+    let outer_block = Block::default()
+        .borders(Borders::ALL)
+        .title(" Keyboard Shortcuts ")
+        .border_style(Style::default().fg(Color::Cyan))
+        .style(Style::default().bg(Color::Black));
+
+    let inner_area = outer_block.inner(popup_area);
+    frame.render_widget(outer_block, popup_area);
+
+    // Split inner area: tab bar, content, footer
+    let chunks = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([
+            Constraint::Length(2),  // Tab bar + separator
+            Constraint::Min(1),     // Content
+            Constraint::Length(1),  // Footer
+        ])
+        .split(inner_area);
+
+    // Render tab bar
+    let tabs = render_tab_bar(app.help.active_tab);
+    frame.render_widget(tabs, chunks[0]);
+
+    // Render content for active tab
+    let content = get_tab_content(app.help.active_tab);
+    let lines = render_help_sections(content.sections);
+
+    // Update scroll bounds for current tab
+    let content_height = lines.len() as u32;
+    let visible_height = chunks[1].height as u32;
+    app.help
+        .current_scroll_mut()
+        .update_bounds(content_height, visible_height);
+
+    let paragraph = Paragraph::new(Text::from(lines))
+        .scroll((app.help.current_scroll().offset, 0));
+    frame.render_widget(paragraph, chunks[1]);
+
+    // Render footer
+    let footer = Line::from(vec![
+        Span::styled("h/l", Style::default().fg(Color::Yellow)),
+        Span::raw(": tab | "),
+        Span::styled("j/k", Style::default().fg(Color::Yellow)),
+        Span::raw(": scroll | "),
+        Span::styled("g/G", Style::default().fg(Color::Yellow)),
+        Span::raw(": top/bottom | "),
+        Span::styled("q", Style::default().fg(Color::Yellow)),
+        Span::raw(": close"),
+    ]);
+    frame.render_widget(
+        Paragraph::new(footer)
+            .style(Style::default().fg(Color::DarkGray))
+            .centered(),
+        chunks[2],
+    );
+}
+
+fn render_help_sections(sections: &[HelpSection]) -> Vec<Line<'static>> {
+    let mut lines = Vec::new();
+
+    for section in sections {
+        // Add section header if present
+        if let Some(title) = section.title {
+            if !lines.is_empty() {
+                lines.push(Line::from(""));
+            }
+            lines.push(Line::from(vec![
+                Span::raw("  "),
+                Span::styled(
+                    format!("── {} ──", title),
+                    Style::default()
+                        .fg(Color::Cyan)
+                        .add_modifier(Modifier::BOLD),
+                ),
+            ]));
+        }
+
+        // Add entries
+        for (key, desc) in section.entries {
+            let key_span = Span::styled(
+                format!("  {:<15}", key),
+                Style::default()
+                    .fg(Color::Yellow)
+                    .add_modifier(Modifier::BOLD),
+            );
+            let desc_span = Span::styled(*desc, Style::default().fg(Color::White));
+            lines.push(Line::from(vec![key_span, desc_span]));
+        }
+    }
+
+    lines
+}
+```
+
+---
+
+## Opening Help with Context
+
+### Toggle Help Handler
+
+```rust
+// In handle_truly_global_keys or wherever F1/? is handled
+KeyCode::F(1) => {
+    if app.help.visible {
+        app.help.reset();
+    } else {
+        // Auto-select tab based on current context
+        app.help.active_tab = get_default_tab(app);
+        app.help.visible = true;
+    }
+    true
+}
+```
+
+This ensures that when the user presses F1:
+1. If in Results pane → opens to **Results** tab
+2. If in Search mode → opens to **Search** tab
+3. If Snippets manager open → opens to **Popups** tab
+4. If AI assistant visible → opens to **AI** tab
+5. If Input field focused → opens to **Input** tab
+6. Otherwise → opens to **Global** tab
+
+---
+
+## Implementation Order
+
+### Phase 1: Core Tab Infrastructure
+1. Add `HelpTab` enum to `help_state.rs`
+2. Update `HelpPopupState` with `active_tab` and per-tab scroll array
+3. Refactor `help_content.rs` into `HelpCategory` / `HelpSection` structure
+4. Update key handler with `h/l` and `1-6` tab navigation
+
+### Phase 2: Context-Aware Auto-Selection
+1. Implement `get_default_tab()` function
+2. Update help toggle (F1/?) to set initial tab based on context
+3. Test all context → tab mappings
+
+### Phase 3: Rendering
+1. Add tab bar rendering with `ratatui::widgets::Tabs`
+2. Update layout to accommodate tab bar (3-part vertical split)
+3. Style active tab with brackets and cyan/bold
+4. Update footer with tab navigation hint
+
+### Phase 4: Polish & Testing
+1. Ensure popup width accommodates all tab names (need ~65 chars)
+2. Verify per-tab scroll state is independent
+3. Update snapshot tests for new layout
+4. Manual testing: open help from each context, verify correct tab selected
+
+---
+
+## Research References
 
 - [Lazygit](https://github.com/jesseduffield/lazygit) - Context-sensitive keybinding help
 - [which-key.nvim](https://github.com/folke/which-key.nvim) - Progressive disclosure popup
 - [Helix Editor](https://helix-editor.com/) - Hierarchical command menus
 - [btop](https://github.com/aristocratos/btop) - Menu-based help system
 - [Ratatui Tabs Widget](https://docs.rs/ratatui/latest/ratatui/widgets/struct.Tabs.html) - Tab bar implementation
-- [Ratatui Popup Example](https://ratatui.rs/examples/apps/popup/) - Overlay widget pattern
-
----
-
-## Decision Points for User
-
-1. **Primary Pattern:** Tabs (A), Search (B), Context-aware (C), Which-key (D), or Hybrid (E)?
-2. **Tab Count:** 6 tabs as proposed, or consolidate to fewer (e.g., combine Input modes)?
-3. **Search Feature:** Include searchable help or defer to future?
-4. **Context Awareness:** Auto-select tab based on current mode?
-5. **Visual Enhancements:** Color coding, icons, or keep minimal?
