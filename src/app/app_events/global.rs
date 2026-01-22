@@ -124,8 +124,18 @@ pub fn handle_global_keys(app: &mut App, key: KeyEvent) -> bool {
             }
 
             app.focus = match app.focus {
-                Focus::InputField => Focus::ResultsPane,
-                Focus::ResultsPane => Focus::InputField,
+                Focus::InputField => {
+                    app.saved_ai_visibility_for_results = app.ai.visible;
+                    app.saved_tooltip_visibility_for_results = app.tooltip.enabled;
+                    app.ai.visible = false;
+                    app.tooltip.enabled = false;
+                    Focus::ResultsPane
+                }
+                Focus::ResultsPane => {
+                    app.ai.visible = app.saved_ai_visibility_for_results;
+                    app.tooltip.enabled = app.saved_tooltip_visibility_for_results;
+                    Focus::InputField
+                }
             };
             true
         }

@@ -9,11 +9,15 @@ pub fn handle_results_pane_key(app: &mut App, key: KeyEvent) {
     match key.code {
         KeyCode::Tab if !key.modifiers.contains(KeyModifiers::CONTROL) => {
             app.focus = Focus::InputField;
+            app.ai.visible = app.saved_ai_visibility_for_results;
+            app.tooltip.enabled = app.saved_tooltip_visibility_for_results;
         }
 
         KeyCode::Char('i') => {
             app.focus = Focus::InputField;
             app.input.editor_mode = EditorMode::Insert;
+            app.ai.visible = app.saved_ai_visibility_for_results;
+            app.tooltip.enabled = app.saved_tooltip_visibility_for_results;
         }
 
         KeyCode::Char('/') => {

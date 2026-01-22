@@ -501,3 +501,60 @@ fn test_i_key_switches_to_insert_mode_even_if_already_in_insert() {
     assert_eq!(app.focus, Focus::InputField);
     assert_eq!(app.input.editor_mode, EditorMode::Insert);
 }
+
+#[test]
+fn test_tab_restores_ai_popup_state() {
+    let mut app = app_with_query(".");
+    app.focus = Focus::ResultsPane;
+    app.saved_ai_visibility_for_results = true;
+    app.ai.visible = false;
+
+    app.handle_key_event(key(KeyCode::Tab));
+
+    assert_eq!(app.focus, Focus::InputField);
+    assert!(app.ai.visible);
+}
+
+#[test]
+fn test_tab_restores_tooltip_state() {
+    let mut app = app_with_query(".");
+    app.focus = Focus::ResultsPane;
+    app.saved_tooltip_visibility_for_results = true;
+    app.tooltip.enabled = false;
+
+    app.handle_key_event(key(KeyCode::Tab));
+
+    assert_eq!(app.focus, Focus::InputField);
+    assert!(app.tooltip.enabled);
+}
+
+#[test]
+fn test_i_key_restores_ai_popup_state() {
+    use crate::editor::EditorMode;
+    let mut app = app_with_query(".");
+    app.focus = Focus::ResultsPane;
+    app.input.editor_mode = EditorMode::Normal;
+    app.saved_ai_visibility_for_results = true;
+    app.ai.visible = false;
+
+    app.handle_key_event(key(KeyCode::Char('i')));
+
+    assert_eq!(app.focus, Focus::InputField);
+    assert_eq!(app.input.editor_mode, EditorMode::Insert);
+    assert!(app.ai.visible);
+}
+
+#[test]
+fn test_i_key_restores_tooltip_state() {
+    use crate::editor::EditorMode;
+    let mut app = app_with_query(".");
+    app.focus = Focus::ResultsPane;
+    app.input.editor_mode = EditorMode::Normal;
+    app.saved_tooltip_visibility_for_results = true;
+    app.tooltip.enabled = false;
+
+    app.handle_key_event(key(KeyCode::Char('i')));
+
+    assert_eq!(app.focus, Focus::InputField);
+    assert!(app.tooltip.enabled);
+}

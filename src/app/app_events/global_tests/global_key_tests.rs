@@ -460,6 +460,82 @@ fn test_focus_switch_preserves_editor_mode() {
     assert!(app.should_quit);
 }
 
+#[test]
+fn test_backtab_hides_ai_popup_when_switching_to_results() {
+    let mut app = app_with_query(".");
+    app.focus = Focus::InputField;
+    app.ai.visible = true;
+
+    // Switch to ResultsPane
+    app.handle_key_event(key(KeyCode::BackTab));
+
+    assert_eq!(app.focus, Focus::ResultsPane);
+    assert!(!app.ai.visible);
+    assert!(app.saved_ai_visibility_for_results);
+}
+
+#[test]
+fn test_backtab_hides_tooltip_when_switching_to_results() {
+    let mut app = app_with_query(".");
+    app.focus = Focus::InputField;
+    app.tooltip.enabled = true;
+
+    // Switch to ResultsPane
+    app.handle_key_event(key(KeyCode::BackTab));
+
+    assert_eq!(app.focus, Focus::ResultsPane);
+    assert!(!app.tooltip.enabled);
+    assert!(app.saved_tooltip_visibility_for_results);
+}
+
+#[test]
+fn test_backtab_restores_ai_popup_when_switching_to_input() {
+    let mut app = app_with_query(".");
+    app.focus = Focus::ResultsPane;
+    app.saved_ai_visibility_for_results = true;
+    app.ai.visible = false;
+
+    // Switch to InputField
+    app.handle_key_event(key(KeyCode::BackTab));
+
+    assert_eq!(app.focus, Focus::InputField);
+    assert!(app.ai.visible);
+}
+
+#[test]
+fn test_backtab_restores_tooltip_when_switching_to_input() {
+    let mut app = app_with_query(".");
+    app.focus = Focus::ResultsPane;
+    app.saved_tooltip_visibility_for_results = true;
+    app.tooltip.enabled = false;
+
+    // Switch to InputField
+    app.handle_key_event(key(KeyCode::BackTab));
+
+    assert_eq!(app.focus, Focus::InputField);
+    assert!(app.tooltip.enabled);
+}
+
+#[test]
+fn test_backtab_round_trip_preserves_popup_state() {
+    let mut app = app_with_query(".");
+    app.focus = Focus::InputField;
+    app.ai.visible = true;
+    app.tooltip.enabled = true;
+
+    // Switch to ResultsPane
+    app.handle_key_event(key(KeyCode::BackTab));
+    assert_eq!(app.focus, Focus::ResultsPane);
+    assert!(!app.ai.visible);
+    assert!(!app.tooltip.enabled);
+
+    // Switch back to InputField
+    app.handle_key_event(key(KeyCode::BackTab));
+    assert_eq!(app.focus, Focus::InputField);
+    assert!(app.ai.visible);
+    assert!(app.tooltip.enabled);
+}
+
 // ========== Tooltip Toggle Tests (Ctrl+T) ==========
 
 #[test]
