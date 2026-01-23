@@ -13,8 +13,10 @@ use crate::layout::Region;
 pub fn handle_hover(app: &mut App, region: Option<Region>, mouse: MouseEvent) {
     match region {
         Some(Region::AiWindow) => hover_ai_window(app, mouse),
+        Some(Region::SnippetList) => hover_snippet_list(app, mouse),
         _ => {
             clear_ai_hover(app);
+            clear_snippet_hover(app);
         }
     }
 }
@@ -59,6 +61,42 @@ fn hover_ai_window(app: &mut App, mouse: MouseEvent) {
 fn clear_ai_hover(app: &mut App) {
     if app.ai.selection.get_hovered().is_some() {
         app.ai.selection.clear_hover();
+    }
+}
+
+/// Handle hover within the snippet list
+fn hover_snippet_list(app: &mut App, mouse: MouseEvent) {
+    if !app.snippets.is_visible() {
+        return;
+    }
+
+    let Some(list_rect) = app.layout_regions.snippet_list else {
+        return;
+    };
+
+    let inner_x = list_rect.x.saturating_add(1);
+    let inner_y = list_rect.y.saturating_add(1);
+    let inner_width = list_rect.width.saturating_sub(2);
+    let inner_height = list_rect.height.saturating_sub(2);
+
+    if mouse.column < inner_x
+        || mouse.column >= inner_x.saturating_add(inner_width)
+        || mouse.row < inner_y
+        || mouse.row >= inner_y.saturating_add(inner_height)
+    {
+        app.snippets.clear_hover();
+        return;
+    }
+
+    let relative_y = mouse.row.saturating_sub(inner_y);
+    let snippet_index = app.snippets.snippet_at_y(relative_y);
+    app.snippets.set_hovered(snippet_index);
+}
+
+/// Clear snippet hover state when cursor leaves snippet list
+fn clear_snippet_hover(app: &mut App) {
+    if app.snippets.get_hovered().is_some() {
+        app.snippets.clear_hover();
     }
 }
 

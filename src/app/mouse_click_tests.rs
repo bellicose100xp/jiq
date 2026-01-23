@@ -157,16 +157,102 @@ fn test_click_help_popup_does_nothing_for_focus() {
 }
 
 #[test]
-fn test_click_snippet_list_does_nothing_for_focus() {
+fn test_click_snippet_list_selects_snippet() {
     let mut app = setup_app();
-    app.focus = Focus::InputField;
-    let original_focus = app.focus;
-    let mouse = create_mouse_event(10, 10);
+    app.snippets.open();
+    app.snippets.set_snippets(vec![
+        crate::snippets::Snippet {
+            name: "test1".to_string(),
+            query: ".test1".to_string(),
+            description: None,
+        },
+        crate::snippets::Snippet {
+            name: "test2".to_string(),
+            query: ".test2".to_string(),
+            description: None,
+        },
+    ]);
+    app.layout_regions.snippet_list = Some(ratatui::layout::Rect::new(0, 0, 50, 10));
 
+    assert_eq!(app.snippets.selected_index(), 0);
+
+    let mouse = create_mouse_event(5, 2);
     handle_click(&mut app, Some(Region::SnippetList), mouse);
 
-    assert_eq!(
-        app.focus, original_focus,
-        "Snippet list click should not change focus (handled in Phase 6)"
-    );
+    assert_eq!(app.snippets.selected_index(), 1);
+}
+
+#[test]
+fn test_click_snippet_list_on_border_is_ignored() {
+    let mut app = setup_app();
+    app.snippets.open();
+    app.snippets.set_snippets(vec![crate::snippets::Snippet {
+        name: "test1".to_string(),
+        query: ".test1".to_string(),
+        description: None,
+    }]);
+    app.layout_regions.snippet_list = Some(ratatui::layout::Rect::new(10, 5, 30, 10));
+
+    assert_eq!(app.snippets.selected_index(), 0);
+
+    let mouse = create_mouse_event(10, 5);
+    handle_click(&mut app, Some(Region::SnippetList), mouse);
+
+    assert_eq!(app.snippets.selected_index(), 0);
+}
+
+#[test]
+fn test_click_snippet_list_with_empty_list() {
+    let mut app = setup_app();
+    app.snippets.disable_persistence();
+    app.snippets.open();
+    app.layout_regions.snippet_list = Some(ratatui::layout::Rect::new(0, 0, 50, 10));
+
+    let mouse = create_mouse_event(5, 2);
+    handle_click(&mut app, Some(Region::SnippetList), mouse);
+
+    assert_eq!(app.snippets.selected_index(), 0);
+}
+
+#[test]
+fn test_click_snippet_list_in_non_browse_mode() {
+    let mut app = setup_app();
+    app.snippets.open();
+    app.snippets.set_snippets(vec![
+        crate::snippets::Snippet {
+            name: "test1".to_string(),
+            query: ".test1".to_string(),
+            description: None,
+        },
+        crate::snippets::Snippet {
+            name: "test2".to_string(),
+            query: ".test2".to_string(),
+            description: None,
+        },
+    ]);
+    app.snippets.enter_create_mode(".test");
+    app.layout_regions.snippet_list = Some(ratatui::layout::Rect::new(0, 0, 50, 10));
+
+    assert_eq!(app.snippets.selected_index(), 0);
+
+    let mouse = create_mouse_event(5, 2);
+    handle_click(&mut app, Some(Region::SnippetList), mouse);
+
+    assert_eq!(app.snippets.selected_index(), 0);
+}
+
+#[test]
+fn test_click_snippet_list_when_not_visible() {
+    let mut app = setup_app();
+    app.snippets.set_snippets(vec![crate::snippets::Snippet {
+        name: "test1".to_string(),
+        query: ".test1".to_string(),
+        description: None,
+    }]);
+    app.layout_regions.snippet_list = Some(ratatui::layout::Rect::new(0, 0, 50, 10));
+
+    let mouse = create_mouse_event(5, 2);
+    handle_click(&mut app, Some(Region::SnippetList), mouse);
+
+    assert_eq!(app.snippets.selected_index(), 0);
 }

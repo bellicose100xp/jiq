@@ -82,6 +82,7 @@ pub struct SnippetState {
     visible_count: usize,
     matcher: SnippetMatcher,
     persist_to_disk: bool,
+    hovered_index: Option<usize>,
 }
 
 impl Default for SnippetState {
@@ -107,6 +108,7 @@ impl SnippetState {
             visible_count: 10,
             matcher: SnippetMatcher::new(),
             persist_to_disk: true,
+            hovered_index: None,
         }
     }
 
@@ -127,6 +129,7 @@ impl SnippetState {
             visible_count: 10,
             matcher: SnippetMatcher::new(),
             persist_to_disk: false,
+            hovered_index: None,
         }
     }
 
@@ -157,6 +160,7 @@ impl SnippetState {
         self.selected_index = 0;
         self.scroll_offset = 0;
         self.filtered_indices = (0..self.snippets.len()).collect();
+        self.hovered_index = None;
     }
 
     pub fn is_visible(&self) -> bool {
@@ -816,6 +820,42 @@ impl SnippetState {
     #[allow(dead_code)]
     pub fn visible_count(&self) -> usize {
         self.visible_count
+    }
+
+    /// Get the currently hovered snippet index
+    pub fn get_hovered(&self) -> Option<usize> {
+        self.hovered_index
+    }
+
+    /// Set the hovered snippet index
+    pub fn set_hovered(&mut self, index: Option<usize>) {
+        self.hovered_index = index;
+    }
+
+    /// Clear the hover state
+    pub fn clear_hover(&mut self) {
+        self.hovered_index = None;
+    }
+
+    /// Find the snippet at a given Y coordinate within the list
+    ///
+    /// `inner_y` is the row relative to the inner content area (excluding border).
+    /// Returns the filtered index if a snippet exists at that position.
+    pub fn snippet_at_y(&self, inner_y: u16) -> Option<usize> {
+        let index = self.scroll_offset + inner_y as usize;
+        if index < self.filtered_indices.len() {
+            Some(index)
+        } else {
+            None
+        }
+    }
+
+    /// Select the snippet at the given filtered index
+    pub fn select_at(&mut self, index: usize) {
+        if index < self.filtered_indices.len() {
+            self.selected_index = index;
+            self.adjust_scroll_to_selection();
+        }
     }
 }
 

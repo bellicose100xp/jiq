@@ -110,7 +110,7 @@ fn render_minimal(
     area: Rect,
 ) -> (Option<Rect>, Option<Rect>) {
     if area.height < SEARCH_HEIGHT + MIN_LIST_HEIGHT {
-        let content = build_list_content_from_visible(state, area.width);
+        let content = build_list_content_from_visible(state, area.width, state.get_hovered());
         let title = build_list_title(filtered_count, total_count);
 
         let hints = Line::from(vec![Span::styled(
@@ -168,7 +168,7 @@ fn render_list(
     frame: &mut Frame,
     area: Rect,
 ) {
-    let content = build_list_content_from_visible(state, area.width);
+    let content = build_list_content_from_visible(state, area.width, state.get_hovered());
     let title = build_list_title(filtered_count, total_count);
 
     let hints = Line::from(vec![Span::styled(
@@ -232,7 +232,11 @@ fn render_preview(
     frame.render_widget(preview, area);
 }
 
-fn build_list_content_from_visible(state: &SnippetState, area_width: u16) -> Vec<Line<'static>> {
+fn build_list_content_from_visible(
+    state: &SnippetState,
+    area_width: u16,
+    hovered_index: Option<usize>,
+) -> Vec<Line<'static>> {
     if state.filtered_count() == 0 {
         let message = if state.snippets().is_empty() {
             "   No snippets yet. Press Ctrl+N to create one."
@@ -251,20 +255,29 @@ fn build_list_content_from_visible(state: &SnippetState, area_width: u16) -> Vec
             .visible_snippets()
             .map(|(i, s)| {
                 let is_selected = i == selected_index;
+                let is_hovered = hovered_index == Some(i) && !is_selected;
                 let prefix = if is_selected { " ► " } else { "   " };
 
-                let (name_style, desc_style) = if is_selected {
+                let (name_style, desc_style, bg_color) = if is_selected {
                     (
                         Style::default()
                             .fg(Color::Black)
                             .bg(Color::Cyan)
                             .add_modifier(Modifier::BOLD),
                         Style::default().fg(Color::Black).bg(Color::Cyan),
+                        Some(Color::Cyan),
+                    )
+                } else if is_hovered {
+                    (
+                        Style::default().fg(Color::White).bg(Color::Indexed(236)),
+                        Style::default().fg(Color::DarkGray).bg(Color::Indexed(236)),
+                        Some(Color::Indexed(236)),
                     )
                 } else {
                     (
                         Style::default().fg(Color::White),
                         Style::default().fg(Color::DarkGray),
+                        None,
                     )
                 };
 
@@ -288,13 +301,13 @@ fn build_list_content_from_visible(state: &SnippetState, area_width: u16) -> Vec
                     }
                 }
 
-                if is_selected {
+                if let Some(bg) = bg_color {
                     let current_len: usize = spans.iter().map(|s| s.content.len()).sum();
                     let padding_len = max_width.saturating_sub(current_len);
                     if padding_len > 0 {
                         spans.push(Span::styled(
                             " ".repeat(padding_len),
-                            Style::default().bg(Color::Cyan),
+                            Style::default().bg(bg),
                         ));
                     }
                 }

@@ -113,3 +113,95 @@ fn test_hover_results_pane_clears_ai_hover() {
 
     assert!(app.ai.selection.get_hovered().is_none());
 }
+
+#[test]
+fn test_hover_snippet_list_updates_hovered_index() {
+    let mut app = create_test_app();
+    app.snippets.open();
+    app.snippets.set_snippets(vec![
+        crate::snippets::Snippet {
+            name: "test1".to_string(),
+            query: ".test1".to_string(),
+            description: None,
+        },
+        crate::snippets::Snippet {
+            name: "test2".to_string(),
+            query: ".test2".to_string(),
+            description: None,
+        },
+    ]);
+    app.layout_regions.snippet_list = Some(Rect::new(0, 0, 50, 10));
+
+    let mouse = create_mouse_event(5, 2);
+    handle_hover(&mut app, Some(Region::SnippetList), mouse);
+
+    assert_eq!(app.snippets.get_hovered(), Some(1));
+}
+
+#[test]
+fn test_hover_snippet_list_on_border_clears_hover() {
+    let mut app = create_test_app();
+    app.snippets.open();
+    app.snippets.set_snippets(vec![crate::snippets::Snippet {
+        name: "test1".to_string(),
+        query: ".test1".to_string(),
+        description: None,
+    }]);
+    app.snippets.set_hovered(Some(0));
+    app.layout_regions.snippet_list = Some(Rect::new(10, 5, 30, 10));
+
+    let mouse = create_mouse_event(10, 5);
+    handle_hover(&mut app, Some(Region::SnippetList), mouse);
+
+    assert!(app.snippets.get_hovered().is_none());
+}
+
+#[test]
+fn test_leaving_snippet_list_clears_hover() {
+    let mut app = create_test_app();
+    app.snippets.open();
+    app.snippets.set_snippets(vec![crate::snippets::Snippet {
+        name: "test1".to_string(),
+        query: ".test1".to_string(),
+        description: None,
+    }]);
+    app.snippets.set_hovered(Some(0));
+
+    let mouse = create_mouse_event(5, 5);
+    handle_hover(&mut app, Some(Region::ResultsPane), mouse);
+
+    assert!(app.snippets.get_hovered().is_none());
+}
+
+#[test]
+fn test_hover_snippet_list_when_not_visible() {
+    let mut app = create_test_app();
+    app.snippets.set_snippets(vec![crate::snippets::Snippet {
+        name: "test1".to_string(),
+        query: ".test1".to_string(),
+        description: None,
+    }]);
+    app.layout_regions.snippet_list = Some(Rect::new(0, 0, 50, 10));
+
+    let mouse = create_mouse_event(5, 2);
+    handle_hover(&mut app, Some(Region::SnippetList), mouse);
+
+    assert!(app.snippets.get_hovered().is_none());
+}
+
+#[test]
+fn test_hover_snippet_list_no_region() {
+    let mut app = create_test_app();
+    app.snippets.open();
+    app.snippets.set_snippets(vec![crate::snippets::Snippet {
+        name: "test1".to_string(),
+        query: ".test1".to_string(),
+        description: None,
+    }]);
+    app.layout_regions.snippet_list = None;
+
+    let mouse = create_mouse_event(5, 2);
+    handle_hover(&mut app, Some(Region::SnippetList), mouse);
+
+    assert!(app.snippets.get_hovered().is_none());
+}

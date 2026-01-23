@@ -8,6 +8,7 @@ use super::app_state::{App, Focus};
 use crate::ai::ai_events;
 use crate::editor::EditorMode;
 use crate::layout::Region;
+use crate::snippets::SnippetMode;
 
 /// Handle left mouse button click for the given region
 ///
@@ -18,6 +19,7 @@ pub fn handle_click(app: &mut App, region: Option<Region>, mouse: MouseEvent) {
         Some(Region::InputField) => click_input_field(app),
         Some(Region::SearchBar) => click_search_bar(app),
         Some(Region::AiWindow) => click_ai_window(app, mouse),
+        Some(Region::SnippetList) => click_snippet_list(app, mouse),
         _ => {}
     }
 }
@@ -81,6 +83,34 @@ fn click_ai_window(app: &mut App, mouse: MouseEvent) {
             &mut app.autocomplete,
         );
         app.ai.selection.clear_selection();
+    }
+}
+
+fn click_snippet_list(app: &mut App, mouse: MouseEvent) {
+    if !app.snippets.is_visible() || *app.snippets.mode() != SnippetMode::Browse {
+        return;
+    }
+
+    let Some(list_rect) = app.layout_regions.snippet_list else {
+        return;
+    };
+
+    let inner_x = list_rect.x.saturating_add(1);
+    let inner_y = list_rect.y.saturating_add(1);
+    let inner_width = list_rect.width.saturating_sub(2);
+    let inner_height = list_rect.height.saturating_sub(2);
+
+    if mouse.column < inner_x
+        || mouse.column >= inner_x.saturating_add(inner_width)
+        || mouse.row < inner_y
+        || mouse.row >= inner_y.saturating_add(inner_height)
+    {
+        return;
+    }
+
+    let relative_y = mouse.row.saturating_sub(inner_y);
+    if let Some(index) = app.snippets.snippet_at_y(relative_y) {
+        app.snippets.select_at(index);
     }
 }
 
