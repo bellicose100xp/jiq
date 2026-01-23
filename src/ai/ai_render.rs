@@ -97,7 +97,7 @@ fn render_suggestions_as_widgets(
         ai_state.selection.ensure_selected_visible();
     }
 
-    let scroll_offset = ai_state.selection.scroll_offset();
+    let scroll_offset = ai_state.selection.scroll_offset_u16();
     let viewport_end = scroll_offset.saturating_add(inner_area.height);
     let selected_index = ai_state.selection.get_selected();
 
@@ -257,35 +257,17 @@ pub fn render_popup(ai_state: &mut AiState, frame: &mut Frame, input_area: Rect)
             .saturating_sub(AUTOCOMPLETE_RESERVED_WIDTH)
             .saturating_sub(4); // Account for borders
         let content_height = calculate_suggestions_height(ai_state, max_content_width);
-        let area = match calculate_popup_area_with_height(frame_area, input_area, content_height) {
-            Some(area) => area,
-            None => return None,
-        };
+        let area = calculate_popup_area_with_height(frame_area, input_area, content_height)?;
         // Store the height for use during loading transitions
         ai_state.previous_popup_height = Some(area.height);
         area
     } else if let Some(prev_height) = ai_state.previous_popup_height {
         // Use previous height to maintain size during loading/transitions
-        match calculate_popup_area_with_height(
-            frame_area,
-            input_area,
-            prev_height.saturating_sub(4),
-        ) {
-            Some(area) => area,
-            None => {
-                // Fallback to default sizing if previous height doesn't fit
-                match calculate_popup_area(frame_area, input_area) {
-                    Some(area) => area,
-                    None => return None,
-                }
-            }
-        }
+        calculate_popup_area_with_height(frame_area, input_area, prev_height.saturating_sub(4))
+            .or_else(|| calculate_popup_area(frame_area, input_area))?
     } else {
         // No previous height - use default sizing
-        match calculate_popup_area(frame_area, input_area) {
-            Some(area) => area,
-            None => return None,
-        }
+        calculate_popup_area(frame_area, input_area)?
     };
 
     popup::clear_area(frame, popup_area);

@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 use tui_textarea::TextArea;
 
 use super::snippet_matcher::SnippetMatcher;
+use crate::scroll::Scrollable;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct Snippet {
@@ -798,6 +799,43 @@ impl SnippetState {
     #[cfg(test)]
     pub fn disable_persistence(&mut self) {
         self.persist_to_disk = false;
+    }
+
+    /// Get the current scroll offset
+    #[allow(dead_code)]
+    pub fn scroll_offset(&self) -> usize {
+        self.scroll_offset
+    }
+
+    /// Get the visible count (viewport size)
+    #[allow(dead_code)]
+    pub fn visible_count(&self) -> usize {
+        self.visible_count
+    }
+}
+
+impl Scrollable for SnippetState {
+    fn scroll_view_up(&mut self, lines: usize) {
+        self.scroll_offset = self.scroll_offset.saturating_sub(lines);
+    }
+
+    fn scroll_view_down(&mut self, lines: usize) {
+        let max = self.max_scroll();
+        self.scroll_offset = (self.scroll_offset + lines).min(max);
+    }
+
+    fn scroll_offset(&self) -> usize {
+        self.scroll_offset
+    }
+
+    fn max_scroll(&self) -> usize {
+        self.filtered_indices
+            .len()
+            .saturating_sub(self.visible_count)
+    }
+
+    fn viewport_size(&self) -> usize {
+        self.visible_count
     }
 }
 

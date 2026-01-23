@@ -14,6 +14,8 @@ mod edit_query_tests;
 mod navigation_tests;
 #[path = "snippet_state_tests/rename_tests.rs"]
 mod rename_tests;
+#[path = "snippet_state_tests/scrollable_tests.rs"]
+mod scrollable_tests;
 #[path = "snippet_state_tests/search_tests.rs"]
 mod search_tests;
 #[path = "snippet_state_tests/update_tests.rs"]

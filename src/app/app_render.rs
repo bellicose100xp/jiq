@@ -42,34 +42,31 @@ impl App {
         crate::help::help_line_render::render_line(self, frame, help_area);
 
         if let Some(input_area) = input_area {
-            if self.ai.visible && self.query.is_some() {
-                if let Some(ai_rect) =
+            if self.ai.visible
+                && self.query.is_some()
+                && let Some(ai_rect) =
                     crate::ai::ai_render::render_popup(&mut self.ai, frame, input_area)
-                {
-                    self.layout_regions.ai_window = Some(ai_rect);
-                }
-            } else if self.tooltip.should_show() {
-                if let Some(tooltip_rect) =
+            {
+                self.layout_regions.ai_window = Some(ai_rect);
+            } else if self.tooltip.should_show()
+                && let Some(tooltip_rect) =
                     crate::tooltip::tooltip_render::render_popup(self, frame, input_area)
-                {
-                    self.layout_regions.tooltip = Some(tooltip_rect);
-                }
+            {
+                self.layout_regions.tooltip = Some(tooltip_rect);
             }
 
-            if self.autocomplete.is_visible() {
-                if let Some(autocomplete_rect) =
+            if self.autocomplete.is_visible()
+                && let Some(autocomplete_rect) =
                     crate::autocomplete::autocomplete_render::render_popup(self, frame, input_area)
-                {
-                    self.layout_regions.autocomplete = Some(autocomplete_rect);
-                }
+            {
+                self.layout_regions.autocomplete = Some(autocomplete_rect);
             }
 
-            if self.history.is_visible() {
-                if let Some(history_rect) =
+            if self.history.is_visible()
+                && let Some(history_rect) =
                     crate::history::history_render::render_popup(self, frame, input_area)
-                {
-                    self.layout_regions.history_popup = Some(history_rect);
-                }
+            {
+                self.layout_regions.history_popup = Some(history_rect);
             }
         }
 
@@ -90,18 +87,16 @@ impl App {
         if self.error_overlay_visible
             && let Some(query) = &self.query
             && query.result.is_err()
-        {
-            if let Some(error_rect) =
+            && let Some(error_rect) =
                 crate::results::results_render::render_error_overlay(self, frame, results_area)
-            {
-                self.layout_regions.error_overlay = Some(error_rect);
-            }
+        {
+            self.layout_regions.error_overlay = Some(error_rect);
         }
 
-        if self.help.visible {
-            if let Some(help_rect) = crate::help::help_popup_render::render_popup(self, frame) {
-                self.layout_regions.help_popup = Some(help_rect);
-            }
+        if self.help.visible
+            && let Some(help_rect) = crate::help::help_popup_render::render_popup(self, frame)
+        {
+            self.layout_regions.help_popup = Some(help_rect);
         }
 
         render_notification(frame, &mut self.notification);

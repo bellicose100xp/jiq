@@ -2,6 +2,8 @@
 //!
 //! Tracks the currently selected suggestion index and navigation state.
 
+use crate::scroll::Scrollable;
+
 /// Selection state for AI suggestion navigation
 ///
 /// Tracks which suggestion is currently selected (if any) and whether
@@ -183,8 +185,8 @@ impl SelectionState {
         }
     }
 
-    /// Get the current scroll offset in lines
-    pub fn scroll_offset(&self) -> u16 {
+    /// Get the current scroll offset in lines (raw u16 value for rendering)
+    pub fn scroll_offset_u16(&self) -> u16 {
         self.scroll_offset
     }
 
@@ -194,6 +196,36 @@ impl SelectionState {
         self.viewport_height = 0;
         self.suggestion_y_positions.clear();
         self.suggestion_heights.clear();
+    }
+
+    /// Get the total content height in lines (used by Scrollable impl)
+    #[allow(dead_code)]
+    fn total_content_height(&self) -> u16 {
+        self.suggestion_heights.iter().copied().sum()
+    }
+}
+
+impl Scrollable for SelectionState {
+    fn scroll_view_up(&mut self, lines: usize) {
+        self.scroll_offset = self.scroll_offset.saturating_sub(lines as u16);
+    }
+
+    fn scroll_view_down(&mut self, lines: usize) {
+        let max = self.max_scroll();
+        self.scroll_offset = (self.scroll_offset as usize + lines).min(max) as u16;
+    }
+
+    fn scroll_offset(&self) -> usize {
+        self.scroll_offset as usize
+    }
+
+    fn max_scroll(&self) -> usize {
+        let total = self.total_content_height() as usize;
+        total.saturating_sub(self.viewport_height as usize)
+    }
+
+    fn viewport_size(&self) -> usize {
+        self.viewport_height as usize
     }
 }
 

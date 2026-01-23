@@ -195,3 +195,91 @@ fn test_visible_suggestions_with_fewer_than_max() {
     let visible: Vec<(usize, &Suggestion)> = state.visible_suggestions().collect();
     assert_eq!(visible.len(), 5);
 }
+
+// Tests for Scrollable trait implementation
+
+use crate::scroll::Scrollable;
+
+fn create_suggestions(count: usize) -> Vec<Suggestion> {
+    (0..count)
+        .map(|i| Suggestion::new(format!("item{}", i), SuggestionType::Field))
+        .collect()
+}
+
+#[test]
+fn test_scrollable_scroll_view_down() {
+    let mut state = AutocompleteState::new();
+    state.update_suggestions(create_suggestions(20));
+
+    state.scroll_view_down(3);
+    assert_eq!(Scrollable::scroll_offset(&state), 3);
+
+    state.scroll_view_down(4);
+    assert_eq!(Scrollable::scroll_offset(&state), 7);
+}
+
+#[test]
+fn test_scrollable_scroll_view_down_clamped() {
+    let mut state = AutocompleteState::new();
+    state.update_suggestions(create_suggestions(20));
+
+    // max_scroll = 20 - 10 = 10
+    state.scroll_view_down(100);
+    assert_eq!(Scrollable::scroll_offset(&state), 10);
+}
+
+#[test]
+fn test_scrollable_scroll_view_up() {
+    let mut state = AutocompleteState::new();
+    state.update_suggestions(create_suggestions(20));
+    state.scroll_offset = 8;
+
+    state.scroll_view_up(3);
+    assert_eq!(Scrollable::scroll_offset(&state), 5);
+
+    state.scroll_view_up(2);
+    assert_eq!(Scrollable::scroll_offset(&state), 3);
+}
+
+#[test]
+fn test_scrollable_scroll_view_up_clamped() {
+    let mut state = AutocompleteState::new();
+    state.update_suggestions(create_suggestions(20));
+    state.scroll_offset = 5;
+
+    state.scroll_view_up(10);
+    assert_eq!(Scrollable::scroll_offset(&state), 0);
+}
+
+#[test]
+fn test_scrollable_max_scroll() {
+    let mut state = AutocompleteState::new();
+    state.update_suggestions(create_suggestions(20));
+    // max_scroll = 20 - 10 = 10
+    assert_eq!(state.max_scroll(), 10);
+}
+
+#[test]
+fn test_scrollable_max_scroll_content_fits() {
+    let mut state = AutocompleteState::new();
+    state.update_suggestions(create_suggestions(5));
+    // max_scroll = 5 - 10 = 0 (saturating)
+    assert_eq!(state.max_scroll(), 0);
+}
+
+#[test]
+fn test_scrollable_viewport_size() {
+    let state = AutocompleteState::new();
+    assert_eq!(state.viewport_size(), MAX_VISIBLE_SUGGESTIONS);
+    assert_eq!(state.viewport_size(), 10);
+}
+
+#[test]
+fn test_scrollable_content_fits_in_viewport() {
+    let mut state = AutocompleteState::new();
+    state.update_suggestions(create_suggestions(5));
+    assert_eq!(state.max_scroll(), 0);
+
+    state.scroll_view_down(5);
+    assert_eq!(Scrollable::scroll_offset(&state), 0); // Can't scroll when content fits
+}

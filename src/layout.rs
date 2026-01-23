@@ -7,8 +7,11 @@
 mod layout_hit_test;
 mod layout_regions;
 
+#[allow(unused_imports)]
 pub use layout_hit_test::region_at;
-pub use layout_regions::{LayoutRegions, Region};
+pub use layout_regions::LayoutRegions;
+#[allow(unused_imports)]
+pub use layout_regions::Region;
 
 #[cfg(test)]
 #[path = "layout/layout_regions_tests.rs"]

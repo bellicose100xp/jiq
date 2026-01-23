@@ -2,6 +2,7 @@ use std::fmt;
 
 use crate::app::App;
 use crate::autocomplete::update_suggestions;
+use crate::scroll::Scrollable;
 
 pub const MAX_VISIBLE_SUGGESTIONS: usize = 10;
 
@@ -224,6 +225,31 @@ impl AutocompleteState {
             .enumerate()
             .skip(self.scroll_offset)
             .take(MAX_VISIBLE_SUGGESTIONS)
+    }
+}
+
+impl Scrollable for AutocompleteState {
+    fn scroll_view_up(&mut self, lines: usize) {
+        self.scroll_offset = self.scroll_offset.saturating_sub(lines);
+    }
+
+    fn scroll_view_down(&mut self, lines: usize) {
+        let max = self.max_scroll();
+        self.scroll_offset = (self.scroll_offset + lines).min(max);
+    }
+
+    fn scroll_offset(&self) -> usize {
+        self.scroll_offset
+    }
+
+    fn max_scroll(&self) -> usize {
+        self.suggestions
+            .len()
+            .saturating_sub(MAX_VISIBLE_SUGGESTIONS)
+    }
+
+    fn viewport_size(&self) -> usize {
+        MAX_VISIBLE_SUGGESTIONS
     }
 }
 

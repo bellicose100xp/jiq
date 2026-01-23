@@ -345,3 +345,92 @@ fn test_scroll_stops_at_top() {
     assert_eq!(state.selected_index(), 0);
     assert_eq!(state.scroll_offset, 0);
 }
+
+// Tests for Scrollable trait implementation
+
+use crate::scroll::Scrollable;
+
+fn create_scrollable_test_state(entry_count: usize) -> HistoryState {
+    HistoryState {
+        entries: (0..entry_count).map(|i| format!(".test{}", i)).collect(),
+        filtered_indices: (0..entry_count).collect(),
+        search_textarea: create_search_textarea(),
+        selected_index: 0,
+        scroll_offset: 0,
+        visible: false,
+        matcher: HistoryMatcher::new(),
+        persist_to_disk: false,
+        cycling_index: None,
+    }
+}
+
+#[test]
+fn test_scrollable_scroll_view_down() {
+    let mut state = create_scrollable_test_state(30);
+
+    state.scroll_view_down(3);
+    assert_eq!(Scrollable::scroll_offset(&state), 3);
+
+    state.scroll_view_down(5);
+    assert_eq!(Scrollable::scroll_offset(&state), 8);
+}
+
+#[test]
+fn test_scrollable_scroll_view_down_clamped() {
+    let mut state = create_scrollable_test_state(30);
+
+    // max_scroll = 30 - 15 = 15
+    state.scroll_view_down(100);
+    assert_eq!(Scrollable::scroll_offset(&state), 15);
+}
+
+#[test]
+fn test_scrollable_scroll_view_up() {
+    let mut state = create_scrollable_test_state(30);
+    state.scroll_offset = 10;
+
+    state.scroll_view_up(3);
+    assert_eq!(Scrollable::scroll_offset(&state), 7);
+
+    state.scroll_view_up(4);
+    assert_eq!(Scrollable::scroll_offset(&state), 3);
+}
+
+#[test]
+fn test_scrollable_scroll_view_up_clamped() {
+    let mut state = create_scrollable_test_state(30);
+    state.scroll_offset = 5;
+
+    state.scroll_view_up(10);
+    assert_eq!(Scrollable::scroll_offset(&state), 0);
+}
+
+#[test]
+fn test_scrollable_max_scroll() {
+    let state = create_scrollable_test_state(30);
+    // max_scroll = 30 - 15 = 15
+    assert_eq!(state.max_scroll(), 15);
+}
+
+#[test]
+fn test_scrollable_max_scroll_content_fits() {
+    let state = create_scrollable_test_state(10);
+    // max_scroll = 10 - 15 = 0 (saturating)
+    assert_eq!(state.max_scroll(), 0);
+}
+
+#[test]
+fn test_scrollable_viewport_size() {
+    let state = create_scrollable_test_state(30);
+    assert_eq!(state.viewport_size(), MAX_VISIBLE_HISTORY);
+    assert_eq!(state.viewport_size(), 15);
+}
+
+#[test]
+fn test_scrollable_content_fits_in_viewport() {
+    let mut state = create_scrollable_test_state(10);
+    assert_eq!(state.max_scroll(), 0);
+
+    state.scroll_view_down(5);
+    assert_eq!(Scrollable::scroll_offset(&state), 0); // Can't scroll when content fits
+}

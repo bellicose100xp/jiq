@@ -1,4 +1,4 @@
-//! Tests for scroll
+//! Tests for ScrollState
 
 use super::*;
 

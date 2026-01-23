@@ -97,10 +97,10 @@ fn test_update_layout_calculates_positions() {
 #[test]
 fn test_scroll_offset_getter() {
     let mut state = SelectionState::new();
-    assert_eq!(state.scroll_offset(), 0);
+    assert_eq!(state.scroll_offset_u16(), 0);
 
     state.scroll_offset = 5;
-    assert_eq!(state.scroll_offset(), 5);
+    assert_eq!(state.scroll_offset_u16(), 5);
 }
 
 #[test]
@@ -230,6 +230,85 @@ fn test_navigate_previous_at_first_stays_in_place() {
     assert_eq!(state.selected_index, Some(0));
     // Scroll offset unchanged since we stayed at same position
     assert_eq!(state.scroll_offset, 0);
+}
+
+// Tests for Scrollable trait implementation
+
+use crate::scroll::Scrollable;
+
+#[test]
+fn test_scrollable_scroll_view_down() {
+    let mut state = SelectionState::new();
+    state.update_layout(vec![5, 5, 5, 5, 5], 10);
+
+    state.scroll_view_down(3);
+    assert_eq!(Scrollable::scroll_offset(&state), 3);
+
+    state.scroll_view_down(5);
+    assert_eq!(Scrollable::scroll_offset(&state), 8);
+}
+
+#[test]
+fn test_scrollable_scroll_view_down_clamped() {
+    let mut state = SelectionState::new();
+    // Total height: 25, viewport: 10, max_scroll: 15
+    state.update_layout(vec![5, 5, 5, 5, 5], 10);
+
+    state.scroll_view_down(100);
+    assert_eq!(Scrollable::scroll_offset(&state), 15);
+}
+
+#[test]
+fn test_scrollable_scroll_view_up() {
+    let mut state = SelectionState::new();
+    state.update_layout(vec![5, 5, 5, 5, 5], 10);
+    state.scroll_offset = 10;
+
+    state.scroll_view_up(3);
+    assert_eq!(Scrollable::scroll_offset(&state), 7);
+
+    state.scroll_view_up(4);
+    assert_eq!(Scrollable::scroll_offset(&state), 3);
+}
+
+#[test]
+fn test_scrollable_scroll_view_up_clamped() {
+    let mut state = SelectionState::new();
+    state.update_layout(vec![5, 5, 5, 5, 5], 10);
+    state.scroll_offset = 5;
+
+    state.scroll_view_up(10);
+    assert_eq!(Scrollable::scroll_offset(&state), 0);
+}
+
+#[test]
+fn test_scrollable_max_scroll() {
+    let mut state = SelectionState::new();
+    // Total height: 25, viewport: 10, max_scroll: 15
+    state.update_layout(vec![5, 5, 5, 5, 5], 10);
+    assert_eq!(state.max_scroll(), 15);
+
+    // Content fits in viewport: total height: 8, viewport: 10, max_scroll: 0
+    state.update_layout(vec![3, 5], 10);
+    assert_eq!(state.max_scroll(), 0);
+}
+
+#[test]
+fn test_scrollable_viewport_size() {
+    let mut state = SelectionState::new();
+    state.update_layout(vec![5, 5, 5], 15);
+    assert_eq!(state.viewport_size(), 15);
+}
+
+#[test]
+fn test_scrollable_content_fits_in_viewport() {
+    let mut state = SelectionState::new();
+    // Total height: 6, viewport: 10, max_scroll: 0
+    state.update_layout(vec![3, 3], 10);
+    assert_eq!(state.max_scroll(), 0);
+
+    state.scroll_view_down(5);
+    assert_eq!(Scrollable::scroll_offset(&state), 0); // Can't scroll when content fits
 }
 
 #[test]
