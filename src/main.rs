@@ -22,6 +22,7 @@ mod help;
 mod history;
 mod input;
 mod json;
+mod layout;
 mod notification;
 mod query;
 mod results;

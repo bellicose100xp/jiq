@@ -14,7 +14,10 @@ use crate::syntax_highlight::overlay::{
     extract_visible_spans, highlight_bracket_pairs, insert_cursor_into_spans,
 };
 
-pub fn render_field(app: &mut App, frame: &mut Frame, area: Rect) {
+/// Render the input field
+///
+/// Returns the input field area for region tracking.
+pub fn render_field(app: &mut App, frame: &mut Frame, area: Rect) -> Rect {
     let viewport_width = area.width.saturating_sub(2) as usize;
     app.input.calculate_scroll_offset(viewport_width);
 
@@ -146,4 +149,5 @@ pub fn render_field(app: &mut App, frame: &mut Frame, area: Rect) {
         let paragraph = Paragraph::new(Line::from(final_spans)).block(block);
         frame.render_widget(paragraph, area);
     }
+    area
 }

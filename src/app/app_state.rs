@@ -4,6 +4,7 @@ use crate::config::{ClipboardBackend, Config};
 use crate::help::HelpPopupState;
 use crate::history::HistoryState;
 use crate::input::{FileLoader, InputState};
+use crate::layout::LayoutRegions;
 use crate::notification::NotificationState;
 use crate::query::{Debouncer, QueryState};
 use crate::scroll::ScrollState;
@@ -53,6 +54,7 @@ pub struct App {
     pub input_json_schema: Option<String>,
     pub frame_count: u64,
     pub needs_render: bool,
+    pub layout_regions: LayoutRegions,
 }
 
 impl App {
@@ -155,6 +157,7 @@ impl App {
             input_json_schema: None,
             frame_count: 0,
             needs_render: true,
+            layout_regions: LayoutRegions::new(),
         }
     }
 

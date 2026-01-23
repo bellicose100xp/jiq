@@ -12,7 +12,10 @@ use crate::widgets::popup;
 
 pub const HISTORY_SEARCH_HEIGHT: u16 = 3;
 
-pub fn render_popup(app: &mut App, frame: &mut Frame, input_area: Rect) {
+/// Render the history popup
+///
+/// Returns the popup area for region tracking.
+pub fn render_popup(app: &mut App, frame: &mut Frame, input_area: Rect) -> Option<Rect> {
     let visible_count = app.history.filtered_count().min(MAX_VISIBLE_HISTORY);
     let list_height = (visible_count as u16).max(1) + 2; // +2 for borders, min 1 row
     let total_height = list_height + HISTORY_SEARCH_HEIGHT;
@@ -101,4 +104,6 @@ pub fn render_popup(app: &mut App, frame: &mut Frame, input_area: Rect) {
     );
     search_textarea.set_style(Style::default().fg(Color::White).bg(Color::Black));
     frame.render_widget(&*search_textarea, search_area);
+
+    Some(popup_area)
 }

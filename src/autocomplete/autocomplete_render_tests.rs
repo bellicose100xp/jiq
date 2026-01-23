@@ -20,7 +20,9 @@ fn render_autocomplete_with_suggestions(suggestions: Vec<Suggestion>) -> String 
     let input_area = Rect::new(0, 0, 80, 3);
 
     terminal
-        .draw(|f| render_popup(&app, f, input_area))
+        .draw(|f| {
+            let _ = render_popup(&app, f, input_area);
+        })
         .unwrap();
 
     terminal.backend().to_string()
@@ -39,7 +41,9 @@ fn render_autocomplete_with_scroll(suggestions: Vec<Suggestion>, navigate_down: 
     let input_area = Rect::new(0, 0, 80, 3);
 
     terminal
-        .draw(|f| render_popup(&app, f, input_area))
+        .draw(|f| {
+            let _ = render_popup(&app, f, input_area);
+        })
         .unwrap();
 
     terminal.backend().to_string()
@@ -122,7 +126,9 @@ fn snapshot_selection_after_scroll_then_back_up() {
     let input_area = Rect::new(0, 0, 80, 3);
 
     terminal
-        .draw(|f| render_popup(&app, f, input_area))
+        .draw(|f| {
+            let _ = render_popup(&app, f, input_area);
+        })
         .unwrap();
 
     assert_snapshot!(terminal.backend().to_string());
@@ -159,7 +165,9 @@ fn snapshot_fixed_width_type_labels_with_varying_field_lengths() {
     let input_area = Rect::new(0, 12, 80, 3);
 
     terminal
-        .draw(|f| render_popup(&app, f, input_area))
+        .draw(|f| {
+            let _ = render_popup(&app, f, input_area);
+        })
         .unwrap();
 
     assert_snapshot!(terminal.backend().to_string());
@@ -190,7 +198,9 @@ fn snapshot_truncated_field_names_with_fixed_type_labels() {
     let input_area = Rect::new(0, 12, 80, 3);
 
     terminal
-        .draw(|f| render_popup(&app, f, input_area))
+        .draw(|f| {
+            let _ = render_popup(&app, f, input_area);
+        })
         .unwrap();
 
     assert_snapshot!(terminal.backend().to_string());

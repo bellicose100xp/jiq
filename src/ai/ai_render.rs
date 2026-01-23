@@ -231,13 +231,15 @@ fn render_suggestions_as_widgets(
 
 /// Render the AI assistant popup
 ///
+/// Returns the popup area for region tracking.
+///
 /// # Arguments
 /// * `ai_state` - The current AI state
 /// * `frame` - The frame to render to
 /// * `input_area` - The input bar area (popup renders above this)
-pub fn render_popup(ai_state: &mut AiState, frame: &mut Frame, input_area: Rect) {
+pub fn render_popup(ai_state: &mut AiState, frame: &mut Frame, input_area: Rect) -> Option<Rect> {
     if !ai_state.visible {
-        return;
+        return None;
     }
 
     let frame_area = frame.area();
@@ -257,7 +259,7 @@ pub fn render_popup(ai_state: &mut AiState, frame: &mut Frame, input_area: Rect)
         let content_height = calculate_suggestions_height(ai_state, max_content_width);
         let area = match calculate_popup_area_with_height(frame_area, input_area, content_height) {
             Some(area) => area,
-            None => return,
+            None => return None,
         };
         // Store the height for use during loading transitions
         ai_state.previous_popup_height = Some(area.height);
@@ -274,7 +276,7 @@ pub fn render_popup(ai_state: &mut AiState, frame: &mut Frame, input_area: Rect)
                 // Fallback to default sizing if previous height doesn't fit
                 match calculate_popup_area(frame_area, input_area) {
                     Some(area) => area,
-                    None => return,
+                    None => return None,
                 }
             }
         }
@@ -282,7 +284,7 @@ pub fn render_popup(ai_state: &mut AiState, frame: &mut Frame, input_area: Rect)
         // No previous height - use default sizing
         match calculate_popup_area(frame_area, input_area) {
             Some(area) => area,
-            None => return,
+            None => return None,
         }
     };
 
@@ -382,4 +384,6 @@ pub fn render_popup(ai_state: &mut AiState, frame: &mut Frame, input_area: Rect)
             .block(block);
         frame.render_widget(popup_widget, popup_area);
     }
+
+    Some(popup_area)
 }

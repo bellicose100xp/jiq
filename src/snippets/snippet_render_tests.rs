@@ -18,7 +18,9 @@ fn render_snippet_popup_to_string(
 ) -> String {
     let mut terminal = create_test_terminal(width, height);
     terminal
-        .draw(|f| render_popup(state, f, results_area))
+        .draw(|f| {
+            let _ = render_popup(state, f, results_area);
+        })
         .unwrap();
     terminal.backend().to_string()
 }

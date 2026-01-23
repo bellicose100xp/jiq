@@ -1,6 +1,6 @@
 use ratatui::{
     Frame,
-    layout::{Constraint, Direction, Layout},
+    layout::{Constraint, Direction, Layout, Rect},
     style::{Color, Modifier, Style},
     text::{Line, Span, Text},
     widgets::{Block, Borders, Paragraph, Tabs},
@@ -10,11 +10,14 @@ use crate::app::App;
 use crate::help::{HELP_FOOTER, HelpSection, HelpTab, get_tab_content};
 use crate::widgets::popup;
 
-pub fn render_popup(app: &mut App, frame: &mut Frame) {
+/// Render the help popup
+///
+/// Returns the popup area for region tracking.
+pub fn render_popup(app: &mut App, frame: &mut Frame) -> Option<Rect> {
     let frame_area = frame.area();
 
     if frame_area.width < 40 || frame_area.height < 15 {
-        return;
+        return None;
     }
 
     // Popup dimensions - use 80% of screen (min 70x20, max 90x30)
@@ -80,6 +83,8 @@ pub fn render_popup(app: &mut App, frame: &mut Frame) {
         Style::default().fg(Color::DarkGray),
     ));
     frame.render_widget(Paragraph::new(footer).centered(), chunks[3]);
+
+    Some(popup_area)
 }
 
 fn render_tab_bar(active_tab: HelpTab) -> Tabs<'static> {

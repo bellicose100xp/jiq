@@ -17,23 +17,45 @@ const DESCRIPTION_INPUT_HEIGHT: u16 = 3;
 const QUERY_INPUT_HEIGHT: u16 = 3;
 const HINTS_HEIGHT: u16 = 3;
 
-pub fn render_popup(state: &mut SnippetState, frame: &mut Frame, results_area: Rect) {
+/// Render the snippet manager popup
+///
+/// Returns (list_area, preview_area) for region tracking.
+/// Only returns areas when in browse mode.
+pub fn render_popup(
+    state: &mut SnippetState,
+    frame: &mut Frame,
+    results_area: Rect,
+) -> (Option<Rect>, Option<Rect>) {
     popup::clear_area(frame, results_area);
 
     match state.mode() {
         SnippetMode::Browse => render_browse_mode(state, frame, results_area),
         SnippetMode::CreateName | SnippetMode::CreateQuery | SnippetMode::CreateDescription => {
-            render_create_mode(state, frame, results_area)
+            render_create_mode(state, frame, results_area);
+            (None, None)
         }
         SnippetMode::EditName { .. }
         | SnippetMode::EditQuery { .. }
-        | SnippetMode::EditDescription { .. } => render_edit_mode(state, frame, results_area),
-        SnippetMode::ConfirmDelete { .. } => render_confirm_delete_mode(state, frame, results_area),
-        SnippetMode::ConfirmUpdate { .. } => render_confirm_update_mode(state, frame, results_area),
+        | SnippetMode::EditDescription { .. } => {
+            render_edit_mode(state, frame, results_area);
+            (None, None)
+        }
+        SnippetMode::ConfirmDelete { .. } => {
+            render_confirm_delete_mode(state, frame, results_area);
+            (None, None)
+        }
+        SnippetMode::ConfirmUpdate { .. } => {
+            render_confirm_update_mode(state, frame, results_area);
+            (None, None)
+        }
     }
 }
 
-fn render_browse_mode(state: &mut SnippetState, frame: &mut Frame, results_area: Rect) {
+fn render_browse_mode(
+    state: &mut SnippetState,
+    frame: &mut Frame,
+    results_area: Rect,
+) -> (Option<Rect>, Option<Rect>) {
     let selected_snippet = state.selected_snippet().cloned();
     let total_count = state.snippets().len();
     let filtered_count = state.filtered_count();
@@ -46,8 +68,7 @@ fn render_browse_mode(state: &mut SnippetState, frame: &mut Frame, results_area:
     if results_area.height < min_required {
         let visible_count = results_area.height.saturating_sub(SEARCH_HEIGHT + 2) as usize;
         state.set_visible_count(visible_count.max(1));
-        render_minimal(state, filtered_count, total_count, frame, results_area);
-        return;
+        return render_minimal(state, filtered_count, total_count, frame, results_area);
     }
 
     let layout = Layout::vertical([
@@ -67,6 +88,8 @@ fn render_browse_mode(state: &mut SnippetState, frame: &mut Frame, results_area:
     render_search(state, frame, search_area);
     render_list(state, filtered_count, total_count, frame, list_area);
     render_preview(selected_snippet.as_ref(), inner_width, frame, preview_area);
+
+    (Some(list_area), Some(preview_area))
 }
 
 fn calculate_preview_height(
@@ -85,7 +108,7 @@ fn render_minimal(
     total_count: usize,
     frame: &mut Frame,
     area: Rect,
-) {
+) -> (Option<Rect>, Option<Rect>) {
     if area.height < SEARCH_HEIGHT + MIN_LIST_HEIGHT {
         let content = build_list_content_from_visible(state, area.width);
         let title = build_list_title(filtered_count, total_count);
@@ -104,7 +127,7 @@ fn render_minimal(
                 .style(Style::default().bg(Color::Black)),
         );
         frame.render_widget(popup, area);
-        return;
+        return (Some(area), None);
     }
 
     let layout = Layout::vertical([
@@ -121,6 +144,8 @@ fn render_minimal(
 
     render_search(state, frame, search_area);
     render_list(state, filtered_count, total_count, frame, list_area);
+
+    (Some(list_area), None)
 }
 
 fn render_search(state: &mut SnippetState, frame: &mut Frame, area: Rect) {

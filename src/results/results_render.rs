@@ -69,7 +69,10 @@ fn render_scrollbar(frame: &mut Frame, area: Rect, scroll: &ScrollState, line_co
     frame.render_stateful_widget(scrollbar, area, &mut scrollbar_state);
 }
 
-pub fn render_pane(app: &mut App, frame: &mut Frame, area: Rect) {
+/// Render the results pane
+///
+/// Returns the (results_area, search_bar_area) tuple for region tracking.
+pub fn render_pane(app: &mut App, frame: &mut Frame, area: Rect) -> (Rect, Option<Rect>) {
     let (results_area, search_area) = if app.search.is_visible() {
         let layout = Layout::vertical([Constraint::Min(3), Constraint::Length(SEARCH_BAR_HEIGHT)])
             .split(area);
@@ -94,7 +97,7 @@ pub fn render_pane(app: &mut App, frame: &mut Frame, area: Rect) {
                     );
                 }
             }
-            return;
+            return (results_area, search_area);
         }
     };
 
@@ -334,6 +337,8 @@ pub fn render_pane(app: &mut App, frame: &mut Frame, area: Rect) {
     if let Some(search_rect) = search_area {
         crate::search::search_render::render_bar(app, frame, search_rect);
     }
+
+    (results_area, search_area)
 }
 
 fn render_loading_indicator(frame: &mut Frame, area: Rect) {
@@ -363,11 +368,14 @@ fn render_error_message(frame: &mut Frame, area: Rect, message: &str) {
     frame.render_widget(paragraph, area);
 }
 
-pub fn render_error_overlay(app: &App, frame: &mut Frame, results_area: Rect) {
+/// Render the error overlay
+///
+/// Returns the error overlay area for region tracking.
+pub fn render_error_overlay(app: &App, frame: &mut Frame, results_area: Rect) -> Option<Rect> {
     // Only render if query state is available
     let query_state = match &app.query {
         Some(q) => q,
-        None => return,
+        None => return None,
     };
 
     if let Err(error) = &query_state.result {
@@ -411,8 +419,11 @@ pub fn render_error_overlay(app: &App, frame: &mut Frame, results_area: Rect) {
             .style(Style::default().fg(Color::Red));
 
         frame.render_widget(error_widget, overlay_area);
+        return Some(overlay_area);
     }
+    None
 }
+
 fn apply_dim_to_text(text: Text<'_>) -> Text<'static> {
     Text::from(
         text.lines

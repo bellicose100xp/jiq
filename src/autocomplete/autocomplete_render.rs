@@ -38,10 +38,13 @@ fn get_display_text(suggestion: &crate::autocomplete::Suggestion) -> &str {
     }
 }
 
-pub fn render_popup(app: &App, frame: &mut Frame, input_area: Rect) {
+/// Render the autocomplete popup
+///
+/// Returns the popup area for region tracking.
+pub fn render_popup(app: &App, frame: &mut Frame, input_area: Rect) -> Option<Rect> {
     let suggestions = app.autocomplete.suggestions();
     if suggestions.is_empty() {
-        return;
+        return None;
     }
 
     let visible_count = suggestions.len().min(MAX_VISIBLE_SUGGESTIONS);
@@ -139,6 +142,8 @@ pub fn render_popup(app: &App, frame: &mut Frame, input_area: Rect) {
     );
 
     frame.render_widget(list, popup_area);
+
+    Some(popup_area)
 }
 
 #[cfg(test)]
