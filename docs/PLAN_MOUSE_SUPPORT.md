@@ -32,6 +32,7 @@ After each phase:
 - [ ] Phase 4: Click-to-Focus
 - [ ] Phase 5: AI Window Mouse Interactions
 - [ ] Phase 6: Snippet Manager Mouse Interactions
+- [ ] Phase 7: Dismiss Popups on Outside Click
 
 ---
 
@@ -622,6 +623,28 @@ pub fn render_vertical_scrollbar(
 
 ---
 
+### Phase 7: Dismiss Popups on Outside Click
+
+**Goal:** Clicking outside an open popup dismisses it.
+**Dependency:** Phase 4 (click handling infrastructure)
+
+**Behavior:**
+- When Help popup is open and user clicks outside its boundary → close the popup
+- When Error overlay is open and user clicks outside → close the overlay
+- Other popups (AI, Autocomplete, History, Tooltip) are contextual and may have different dismiss behaviors
+
+**Tasks:**
+1. In `handle_click()`, check if Help popup is visible:
+   - If click is NOT on `Region::HelpPopup` → close help popup
+2. Similarly for Error overlay:
+   - If click is NOT on `Region::ErrorOverlay` → close error overlay
+3. Add tests for dismiss behavior
+
+**Files to modify:**
+- `src/app/mouse_click.rs` - Add dismiss logic in click handler
+
+---
+
 ## Testing Strategy
 
 ### Unit Tests
@@ -665,6 +688,8 @@ Each phase should include unit tests:
 - [ ] Click snippet to select
 - [ ] Scrollbars visible when content overflows
 - [ ] Scrollbars hidden when content fits
+- [ ] Click outside help popup to dismiss
+- [ ] Click outside error overlay to dismiss
 
 ---
 
@@ -710,6 +735,7 @@ Each phase should include unit tests:
 | 4. Click-to-Focus | Medium | 1 | 2 | 1, 2 |
 | 5. AI Window Mouse | Medium | 3 | 2 | 1, 2, 4 |
 | 6. Snippet Manager Mouse | Low | 2 | 0 | 1, 2, 4 |
+| 7. Dismiss on Outside Click | Low | 1 | 0 | 4 |
 
 **File size targets (per CLAUDE.md):**
 - No file over 1000 lines
@@ -729,7 +755,7 @@ Week 1 (Parallel tracks):
 └── Track B: Phase 3 (Scrollbars) ← Can be done independently!
 
 Week 2 (Sequential, needs Phase 1+2):
-└── Phase 4 (Click-to-Focus) → Phase 5 (AI Mouse) → Phase 6 (Snippet Mouse)
+└── Phase 4 (Click-to-Focus) → Phase 5 (AI Mouse) → Phase 6 (Snippet Mouse) → Phase 7 (Dismiss)
 ```
 
 **Minimum Viable Mouse Support:** Phase 1 + 1A + 2 + 3 delivers:
