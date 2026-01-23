@@ -25,6 +25,29 @@ All checks must pass before staging files.
 - Place tests in `{module_name}_tests.rs` files
 - Never co-locate tests with implementation
 - Split large test files into `{module_name}_tests/` directory with focused test modules
-- Refactor files exceeding 1000 lines into multiple focused modules
-- Extract repeated logic into reusable functions/modules (DRY principle)
+
+## Code Quality Principles
+
+### File Organization
+- **Max 1000 lines per file** - Refactor larger files into multiple focused modules
+- **Single responsibility** - Each file should have one clear purpose
+- **Logical grouping** - Related functionality stays together, unrelated code gets its own file
+
+### DRY (Don't Repeat Yourself)
+- Extract repeated logic into reusable functions or modules
+- Use traits for shared behavior across types
+- Create utility modules for common operations
+- If you copy-paste code, consider abstracting it
+
+### Functions & Methods
+- **Keep functions focused** - Each function does one thing well
+- **Easy to read** - Code should be self-explanatory; avoid clever tricks
+- **Easy to reason about** - Reader should understand behavior without tracing through many files
+- **Limit function length** - If a function exceeds ~50 lines, consider splitting it
+- **Clear naming** - Function names describe what they do, not how
+
+### Complexity Management
 - Split complex business logic into separate files for clarity
+- Prefer composition over deep nesting
+- Extract helper functions for complex conditionals
+- Use early returns to reduce indentation levels
