@@ -8,7 +8,7 @@ use ratatui::{
 
 use crate::app::App;
 use crate::help::{HELP_FOOTER, HelpSection, HelpTab, get_tab_content};
-use crate::widgets::popup;
+use crate::widgets::{popup, scrollbar};
 
 /// Render the help popup
 ///
@@ -83,6 +83,21 @@ pub fn render_popup(app: &mut App, frame: &mut Frame) -> Option<Rect> {
         Style::default().fg(Color::DarkGray),
     ));
     frame.render_widget(Paragraph::new(footer).centered(), chunks[3]);
+
+    // Render scrollbar on outer border, matching border color
+    // Pass full popup area like results pane does - scrollbar renders on right border
+    let scroll = app.help.current_scroll();
+    let viewport = scroll.viewport_height as usize;
+    let max_scroll = scroll.max_offset as usize;
+    let clamped_offset = (scroll.offset as usize).min(max_scroll);
+    scrollbar::render_vertical_scrollbar_styled(
+        frame,
+        popup_area,
+        content_height as usize,
+        viewport,
+        clamped_offset,
+        Color::Cyan,
+    );
 
     Some(popup_area)
 }

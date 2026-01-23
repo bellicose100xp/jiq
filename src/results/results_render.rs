@@ -3,13 +3,13 @@ use ratatui::{
     layout::{Alignment, Constraint, Layout, Rect},
     style::{Color, Modifier, Style},
     text::{Line, Span, Text},
-    widgets::{Block, Borders, Paragraph, Scrollbar, ScrollbarOrientation, ScrollbarState},
+    widgets::{Block, Borders, Paragraph},
 };
 
 use crate::app::App;
 use crate::search::Match;
 use crate::search::search_render::SEARCH_BAR_HEIGHT;
-use crate::widgets::popup;
+use crate::widgets::{popup, scrollbar};
 
 use crate::scroll::ScrollState;
 
@@ -54,19 +54,13 @@ fn format_position_indicator(scroll: &ScrollState, line_count: u32) -> String {
 }
 
 fn render_scrollbar(frame: &mut Frame, area: Rect, scroll: &ScrollState, line_count: u32) {
-    if line_count <= scroll.viewport_height as u32 {
-        return;
-    }
-
-    let scrollbar = Scrollbar::new(ScrollbarOrientation::VerticalRight)
-        .begin_symbol(None)
-        .end_symbol(None);
-
-    let mut scrollbar_state = ScrollbarState::new(line_count as usize)
-        .position(scroll.offset as usize)
-        .viewport_content_length(scroll.viewport_height as usize);
-
-    frame.render_stateful_widget(scrollbar, area, &mut scrollbar_state);
+    scrollbar::render_vertical_scrollbar(
+        frame,
+        area,
+        line_count as usize,
+        scroll.viewport_height as usize,
+        scroll.offset as usize,
+    );
 }
 
 /// Render the results pane

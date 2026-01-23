@@ -8,7 +8,7 @@ use ratatui::{
 
 use super::snippet_state::{SnippetMode, SnippetState};
 use crate::ai::render::text::wrap_text;
-use crate::widgets::popup;
+use crate::widgets::{popup, scrollbar};
 
 const MIN_LIST_HEIGHT: u16 = 3;
 const SEARCH_HEIGHT: u16 = 3;
@@ -176,16 +176,35 @@ fn render_list(
         Style::default().fg(Color::LightGreen),
     )]);
 
-    let list = Paragraph::new(content).block(
-        Block::default()
-            .borders(Borders::ALL)
-            .title(title)
-            .title_bottom(hints.alignment(ratatui::layout::Alignment::Center))
-            .border_style(Style::default().fg(Color::LightGreen))
-            .style(Style::default().bg(Color::Black)),
-    );
+    let block = Block::default()
+        .borders(Borders::ALL)
+        .title(title)
+        .title_bottom(hints.alignment(ratatui::layout::Alignment::Center))
+        .border_style(Style::default().fg(Color::LightGreen))
+        .style(Style::default().bg(Color::Black));
 
+    let list = Paragraph::new(content).block(block);
     frame.render_widget(list, area);
+
+    // Render scrollbar on border (excluding corners), matching border color
+    let scrollbar_area = Rect {
+        x: area.x,
+        y: area.y.saturating_add(1),
+        width: area.width,
+        height: area.height.saturating_sub(2),
+    };
+    // Use scrollbar_area height as both track and viewport for correct ratio
+    let track_height = scrollbar_area.height as usize;
+    let max_scroll = filtered_count.saturating_sub(track_height);
+    let clamped_offset = state.scroll_offset().min(max_scroll);
+    scrollbar::render_vertical_scrollbar_styled(
+        frame,
+        scrollbar_area,
+        filtered_count,
+        track_height,
+        clamped_offset,
+        Color::LightGreen,
+    );
 }
 
 fn render_preview(

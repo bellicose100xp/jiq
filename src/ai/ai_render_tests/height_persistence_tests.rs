@@ -28,6 +28,7 @@ fn render_and_get_popup_height(ai_state: &mut AiState, width: u16, height: u16) 
     let buffer = terminal.backend().buffer();
 
     // Find the popup borders to calculate height
+    // Only check left border corners since scrollbar may replace right border
     let mut top_border = None;
     let mut bottom_border = None;
 
@@ -40,10 +41,10 @@ fn render_and_get_popup_height(ai_state: &mut AiState, width: u16, height: u16) 
             }
         }
 
-        if row_text.contains("┌") && row_text.contains("┐") && top_border.is_none() {
+        if row_text.contains("┌") && top_border.is_none() {
             top_border = Some(y);
         }
-        if row_text.contains("└") && row_text.contains("┘") {
+        if row_text.contains("└") {
             bottom_border = Some(y);
         }
     }

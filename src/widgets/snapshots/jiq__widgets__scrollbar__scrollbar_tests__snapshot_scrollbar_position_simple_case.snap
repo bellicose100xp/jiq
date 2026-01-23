@@ -1,0 +1,14 @@
+---
+source: src/widgets/scrollbar_tests.rs
+expression: output
+---
+"    ║"
+"    ║"
+"    ║"
+"    █"
+"    █"
+"    █"
+"    █"
+"    ║"
+"    ║"
+"    ║"

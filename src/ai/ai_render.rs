@@ -12,7 +12,8 @@ use ratatui::{
 };
 
 use super::ai_state::AiState;
-use crate::widgets::popup;
+use crate::scroll::Scrollable;
+use crate::widgets::{popup, scrollbar};
 
 // Use modules from render submodule instead of loading them directly
 use super::render::layout;
@@ -358,6 +359,24 @@ pub fn render_popup(ai_state: &mut AiState, frame: &mut Frame, input_area: Rect)
         let inner_area = block.inner(popup_area);
         let max_width = inner_area.width;
         render_suggestions_as_widgets(ai_state, frame, inner_area, max_width);
+
+        // Render scrollbar on border, matching border color
+        // Pass full area like results pane does - scrollbar renders on right border
+        let total_content_height: usize = ai_state
+            .selection
+            .viewport_size()
+            .saturating_add(ai_state.selection.max_scroll());
+        let viewport = ai_state.selection.viewport_size();
+        let max_scroll = ai_state.selection.max_scroll();
+        let clamped_offset = ai_state.selection.scroll_offset().min(max_scroll);
+        scrollbar::render_vertical_scrollbar_styled(
+            frame,
+            popup_area,
+            total_content_height,
+            viewport,
+            clamped_offset,
+            Color::Cyan,
+        );
     } else {
         // Use traditional content-based rendering for non-suggestion content
         let content = build_content(ai_state, popup_area.width.saturating_sub(4));

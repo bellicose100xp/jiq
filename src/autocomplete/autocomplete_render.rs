@@ -9,7 +9,8 @@ use ratatui::{
 use crate::app::App;
 use crate::autocomplete::SuggestionType;
 use crate::autocomplete::autocomplete_state::MAX_VISIBLE_SUGGESTIONS;
-use crate::widgets::popup;
+use crate::scroll::Scrollable;
+use crate::widgets::{popup, scrollbar};
 
 const MAX_POPUP_WIDTH: usize = 60;
 const POPUP_BORDER_HEIGHT: u16 = 2;
@@ -133,15 +134,29 @@ pub fn render_popup(app: &App, frame: &mut Frame, input_area: Rect) -> Option<Re
 
     popup::clear_area(frame, popup_area);
 
-    let list = List::new(items).block(
-        Block::default()
-            .borders(Borders::ALL)
-            .title(" Suggestions ")
-            .border_style(Style::default().fg(Color::Cyan))
-            .style(Style::default().bg(Color::Black)),
-    );
+    let block = Block::default()
+        .borders(Borders::ALL)
+        .title(" Suggestions ")
+        .border_style(Style::default().fg(Color::Cyan))
+        .style(Style::default().bg(Color::Black));
 
+    let list = List::new(items).block(block);
     frame.render_widget(list, popup_area);
+
+    // Render scrollbar on border, matching border color
+    // Pass full area like results pane does - scrollbar renders on right border
+    let total = app.autocomplete.suggestions().len();
+    let viewport = app.autocomplete.viewport_size();
+    let max_scroll = app.autocomplete.max_scroll();
+    let clamped_offset = app.autocomplete.scroll_offset().min(max_scroll);
+    scrollbar::render_vertical_scrollbar_styled(
+        frame,
+        popup_area,
+        total,
+        viewport,
+        clamped_offset,
+        Color::Cyan,
+    );
 
     Some(popup_area)
 }

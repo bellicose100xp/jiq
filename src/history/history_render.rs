@@ -8,7 +8,8 @@ use ratatui::{
 
 use crate::app::App;
 use crate::history::MAX_VISIBLE_HISTORY;
-use crate::widgets::popup;
+use crate::scroll::Scrollable;
+use crate::widgets::{popup, scrollbar};
 
 pub const HISTORY_SEARCH_HEIGHT: u16 = 3;
 
@@ -85,14 +86,30 @@ pub fn render_popup(app: &mut App, frame: &mut Frame, input_area: Rect) -> Optio
             .collect()
     };
 
-    let list = List::new(items).block(
-        Block::default()
-            .borders(Borders::ALL)
-            .title(title)
-            .border_style(Style::default().fg(Color::Cyan))
-            .style(Style::default().bg(Color::Black)),
-    );
+    let block = Block::default()
+        .borders(Borders::ALL)
+        .title(title)
+        .border_style(Style::default().fg(Color::Cyan))
+        .style(Style::default().bg(Color::Black));
+
+    let list = List::new(items).block(block);
     frame.render_widget(list, list_area);
+
+    // Render scrollbar on border, matching border color
+    // History list is displayed reversed (newest at bottom), so invert scroll position
+    // Pass full area like results pane does - scrollbar renders on right border
+    let viewport = app.history.viewport_size();
+    let max_scroll = app.history.max_scroll();
+    let clamped_offset = app.history.scroll_offset().min(max_scroll);
+    let inverted_scroll = max_scroll.saturating_sub(clamped_offset);
+    scrollbar::render_vertical_scrollbar_styled(
+        frame,
+        list_area,
+        app.history.filtered_count(),
+        viewport,
+        inverted_scroll,
+        Color::Cyan,
+    );
 
     let search_textarea = app.history.search_textarea_mut();
     search_textarea.set_block(

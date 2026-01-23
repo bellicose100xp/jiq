@@ -764,3 +764,71 @@ fn snapshot_confirm_delete_mode_small_area() {
     let output = render_snippet_popup_to_string(&mut state, results_area, 50, 15);
     assert_snapshot!(output);
 }
+
+// Scrollbar position tests
+fn create_many_snippets(count: usize) -> Vec<Snippet> {
+    (0..count)
+        .map(|i| Snippet {
+            name: format!("Snippet {:02}", i),
+            query: format!(".query{:02}", i),
+            description: None,
+        })
+        .collect()
+}
+
+#[test]
+fn snapshot_scrollbar_at_top() {
+    let snippets = create_many_snippets(30);
+    let mut state = create_state_with_snippets(snippets);
+    state.set_visible_count(10);
+    // scroll_offset defaults to 0, so scrollbar should be at top
+
+    let results_area = Rect {
+        x: 0,
+        y: 0,
+        width: 80,
+        height: 20,
+    };
+    let output = render_snippet_popup_to_string(&mut state, results_area, 80, 24);
+    assert_snapshot!(output);
+}
+
+#[test]
+fn snapshot_scrollbar_at_middle() {
+    let snippets = create_many_snippets(30);
+    let mut state = create_state_with_snippets(snippets);
+    state.set_visible_count(10);
+    // Select item in the middle to scroll
+    for _ in 0..15 {
+        state.select_next();
+    }
+
+    let results_area = Rect {
+        x: 0,
+        y: 0,
+        width: 80,
+        height: 20,
+    };
+    let output = render_snippet_popup_to_string(&mut state, results_area, 80, 24);
+    assert_snapshot!(output);
+}
+
+#[test]
+fn snapshot_scrollbar_at_bottom() {
+    let snippets = create_many_snippets(30);
+    let mut state = create_state_with_snippets(snippets);
+    state.set_visible_count(10);
+    // Select last item to scroll to bottom
+    for _ in 0..29 {
+        state.select_next();
+    }
+
+    let results_area = Rect {
+        x: 0,
+        y: 0,
+        width: 80,
+        height: 20,
+    };
+    let output = render_snippet_popup_to_string(&mut state, results_area, 80, 24);
+    assert_snapshot!(output);
+}
