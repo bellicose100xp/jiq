@@ -24,19 +24,22 @@ This document outlines a phased implementation plan to enhance mouse support in 
 ```
 Terminal Area
 ├── Results Pane (Constraint::Min(3))
-│   └── Search Bar (3 lines, when visible)
+│   └── Search Bar (3 lines, at BOTTOM of results area via Layout split)
 ├── Input Field (3 lines, hidden in overlay mode)
 └── Help Line (1 line)
 
-Overlays (rendered on top of base layout):
-├── AI Window (right side popup)*
-├── Autocomplete Popup (above input, limited width)*
+Popups (rendered on top of base layout):
+├── AI Window (right side, above input, reserves space for autocomplete on left)*
+├── Autocomplete Popup (above input, limited width, LEFT side)*
 ├── History Popup (above input, full width)*
-├── Tooltip Popup*
-├── Snippet Manager (full overlay, replaces input field)
-└── Search Overlay (inside results pane, replaces input field)
+├── Tooltip Popup (right side, above input)*
+├── Error Overlay (centered in results area, when error visible)
+├── Snippet Manager (full overlay over results area)
+└── Help Popup (full screen overlay)
 
 * Only rendered when input field is visible (not in search/snippet overlay mode)
+
+Note: Search bar is NOT an overlay - it splits the results area vertically when visible.
 ```
 
 ### Focus System
@@ -127,16 +130,23 @@ To support position-aware interactions, we need to track where UI components are
 ```rust
 #[derive(Default, Clone)]
 pub struct LayoutRegions {
+    // Base layout
     pub results_pane: Option<Rect>,
     pub input_field: Option<Rect>,
+    pub search_bar: Option<Rect>,         // At bottom of results when visible
+
+    // Popups (only populated when visible)
     pub ai_window: Option<Rect>,
     pub autocomplete: Option<Rect>,
     pub history_popup: Option<Rect>,
+    pub tooltip: Option<Rect>,
+    pub error_overlay: Option<Rect>,
+    pub help_popup: Option<Rect>,
+
+    // Snippet manager sub-regions
     pub snippet_manager: Option<Rect>,
     pub snippet_list: Option<Rect>,       // List area within snippet manager
     pub snippet_preview: Option<Rect>,    // Preview area within snippet manager
-    pub search_bar: Option<Rect>,
-    pub help_popup: Option<Rect>,
 }
 
 impl LayoutRegions {
@@ -149,15 +159,22 @@ impl LayoutRegions {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Region {
+    // Base layout
     ResultsPane,
     InputField,
+    SearchBar,
+
+    // Popups
     AiWindow,
     Autocomplete,
     HistoryPopup,
+    Tooltip,
+    ErrorOverlay,
+    HelpPopup,
+
+    // Snippet manager sub-regions
     SnippetList,
     SnippetPreview,
-    SearchBar,
-    HelpPopup,
 }
 ```
 
@@ -187,9 +204,26 @@ pub fn handle_mouse_event(app: &mut App, mouse: MouseEvent) {
 
 ## Implementation Phases
 
+### Phase Dependencies
+
+```
+Phase 1: Region Tracking ─────────┬──> Phase 2: Mouse Event Router ──> Phase 4: Click-to-Focus
+                                  │                                ──> Phase 5: AI Window Mouse
+                                  │                                ──> Phase 6: Snippet Mouse
+                                  │
+Phase 1A: Scroll Methods ─────────┘
+
+Phase 3: Visual Scrollbars (INDEPENDENT - can run in parallel with Phase 1)
+```
+
+**Critical insight:** Phase 3 (Scrollbars) does NOT depend on region tracking. It's purely visual and can be implemented in parallel with Phase 1 to deliver value faster.
+
+---
+
 ### Phase 1: Region Tracking Infrastructure
 
 **Goal:** Establish the foundation for position-aware mouse interactions.
+**Dependency:** None (foundation)
 
 **Tasks:**
 1. Create `src/layout/` module with `regions.rs`
@@ -201,6 +235,8 @@ pub fn handle_mouse_event(app: &mut App, mouse: MouseEvent) {
    - `ai_render::render_popup()` → record `ai_window`
    - `autocomplete_render::render_popup()` → record `autocomplete`
    - `history_render::render_popup()` → record `history_popup`
+   - `tooltip_render::render_popup()` → record `tooltip`
+   - `results_render::render_error_overlay()` → record `error_overlay`
    - `snippet_render::render_popup()` → record `snippet_manager`, `snippet_list`, `snippet_preview`
    - `help_popup_render::render_popup()` → record `help_popup`
 5. Implement `region_at()` with proper overlay priority
@@ -208,11 +244,12 @@ pub fn handle_mouse_event(app: &mut App, mouse: MouseEvent) {
 **Files to modify:**
 - `src/app/app_state.rs` - Add `layout_regions` field
 - `src/app/app_render.rs` - Pass regions to render functions
-- `src/results/results_render.rs` - Record results_pane, search_bar
+- `src/results/results_render.rs` - Record results_pane, search_bar, error_overlay
 - `src/input/input_render.rs` - Record input_field
 - `src/ai/ai_render.rs` - Record ai_window
 - `src/autocomplete/autocomplete_render.rs` - Record autocomplete
 - `src/history/history_render.rs` - Record history_popup
+- `src/tooltip/tooltip_render.rs` - Record tooltip
 - `src/snippets/snippet_render.rs` - Record snippet areas
 - `src/help/help_popup_render.rs` - Record help_popup
 
@@ -223,33 +260,49 @@ pub fn handle_mouse_event(app: &mut App, mouse: MouseEvent) {
 
 ---
 
-### Phase 2: Position-Aware Scrolling
+### Phase 1A: Component Scroll Methods (Foundation)
 
-**Goal:** Scroll the component under the mouse cursor.
+**Goal:** Add view-only scroll methods to all scrollable components.
+**Dependency:** None (foundation, can run in parallel with Phase 1)
+
+**Rationale:** These methods are needed by Phase 2 (mouse scrolling) and are independent of region tracking. Adding them first allows Phase 2 to focus purely on event routing.
 
 **Tasks:**
-1. Create `src/app/mouse_events.rs` module
-2. Implement `handle_scroll()` that routes based on region:
-   - `ResultsPane` → `app.results_scroll.scroll_up/down(3)`
-   - `AiWindow` → `app.ai.selection.scroll_up/down()`
-   - `SnippetList` → `app.snippets.scroll_up/down()`
-   - `HelpPopup` → `app.help.scroll_up/down()`
-   - `Autocomplete` → `app.autocomplete.scroll_up/down()`
-   - `HistoryPopup` → `app.history.scroll_up/down()`
-3. Update `app_events.rs` to use new handler
-4. Add **view-only** scroll methods to components (scroll without changing selection):
+1. Add **view-only** scroll methods (scroll without changing selection):
    - `SelectionState` (AI) - add `scroll_view_up(lines)`, `scroll_view_down(lines)`
    - `SnippetState` - add `scroll_view_up()`, `scroll_view_down()`
    - `HistoryState` - add `scroll_view_up()`, `scroll_view_down()`
    - `AutocompleteState` - add `scroll_view_up()`, `scroll_view_down()`
    - `HelpPopupState` - already has scroll via `current_scroll_mut().scroll_up/down()` ✓
+2. Add unit tests for each new scroll method
+
+**Files to modify:**
+- `src/ai/selection/state.rs` - Add `scroll_view_up/down`
+- `src/snippets/snippet_state.rs` - Add `scroll_view_up/down`
+- `src/history/history_state.rs` - Add `scroll_view_up/down`
+- `src/autocomplete/autocomplete_state.rs` - Add `scroll_view_up/down`
+
+---
+
+### Phase 2: Mouse Event Router
+
+**Goal:** Create position-aware mouse event routing.
+**Dependency:** Phase 1 (region tracking) + Phase 1A (scroll methods)
+
+**Tasks:**
+1. Create `src/app/mouse_events.rs` module
+2. Implement `handle_scroll()` that routes based on region:
+   - `ResultsPane` → `app.results_scroll.scroll_up/down(3)`
+   - `AiWindow` → `app.ai.selection.scroll_view_up/down()`
+   - `SnippetList` → `app.snippets.scroll_view_up/down()`
+   - `HelpPopup` → `app.help.current_scroll_mut().scroll_up/down()`
+   - `Autocomplete` → `app.autocomplete.scroll_view_up/down()`
+   - `HistoryPopup` → `app.history.scroll_view_up/down()`
+3. Update `app_events.rs` to use new handler
+4. Handle fallback when cursor is outside all regions (use current behavior: scroll results)
 
 **Files to modify:**
 - `src/app/app_events.rs` - Replace inline mouse handler with module call
-- `src/snippets/snippet_state.rs` - Add scroll methods
-- `src/help/help_popup_state.rs` - Add scroll methods
-- `src/history/history_state.rs` - Add scroll methods
-- `src/autocomplete/autocomplete_state.rs` - Add scroll methods
 
 **New files:**
 - `src/app/mouse_events.rs`
@@ -257,9 +310,12 @@ pub fn handle_mouse_event(app: &mut App, mouse: MouseEvent) {
 
 ---
 
-### Phase 3: Visual Scrollbars
+### Phase 3: Visual Scrollbars (INDEPENDENT)
 
 **Goal:** Add scrollbar indicators to all scrollable components.
+**Dependency:** None (can run in parallel with Phase 1/1A/2)
+
+**Why independent:** Scrollbars are purely visual widgets that read existing scroll state. They don't need region tracking or new scroll methods.
 
 **Scrollbar utility function:**
 ```rust
@@ -318,6 +374,7 @@ pub fn render_vertical_scrollbar(
 ### Phase 4: Click-to-Focus
 
 **Goal:** Clicking in result or input box moves focus to that box.
+**Dependency:** Phase 1 (region tracking) + Phase 2 (mouse event router)
 
 **Tasks:**
 1. Implement `handle_click()` in `mouse_events.rs`:
@@ -354,6 +411,7 @@ pub fn render_vertical_scrollbar(
 ### Phase 5: AI Window Mouse Interactions
 
 **Goal:** Hover to highlight, click to apply suggestions.
+**Dependency:** Phase 1 (region tracking) + Phase 2 (mouse event router)
 
 **Tasks:**
 1. Track hovered suggestion index in AI state:
@@ -387,6 +445,7 @@ pub fn render_vertical_scrollbar(
 ### Phase 6: Snippet Manager Mouse Interactions
 
 **Goal:** Click to select snippet, scroll to navigate.
+**Dependency:** Phase 1 (region tracking) + Phase 2 (mouse event router)
 
 **Tasks:**
 1. Implement click-to-select in snippet list:
@@ -485,18 +544,36 @@ Each phase should include unit tests:
 
 ## Estimated Scope
 
-| Phase | Complexity | Files Modified | New Files |
-|-------|-----------|----------------|-----------|
-| 1. Region Tracking | Medium | 8 | 3 |
-| 2. Position-Aware Scroll | Low-Medium | 7 | 2 |
-| 3. Visual Scrollbars | Low | 6 | 2 |
-| 4. Click-to-Focus | Medium | 2 | 0 |
-| 5. AI Window Mouse | Medium | 4 | 0 |
-| 6. Snippet Manager Mouse | Low | 3 | 0 |
+| Phase | Complexity | Files Modified | New Files | Depends On |
+|-------|-----------|----------------|-----------|------------|
+| 1. Region Tracking | Medium | 8 | 3 | None |
+| 1A. Scroll Methods | Low | 4 | 0 | None |
+| 2. Mouse Event Router | Low | 1 | 2 | 1, 1A |
+| 3. Visual Scrollbars | Low | 6 | 2 | **None** |
+| 4. Click-to-Focus | Medium | 1 | 0 | 1, 2 |
+| 5. AI Window Mouse | Medium | 4 | 0 | 1, 2 |
+| 6. Snippet Manager Mouse | Low | 3 | 0 | 1, 2 |
 
-**Note:** Phase 5 complexity reduced from Medium-High to Medium because position tracking infrastructure already exists in `SelectionState`. Phase 6 is Low because snippet items have fixed height (1 line each).
+**Notes:**
+- Phase 5 complexity reduced from Medium-High to Medium because position tracking already exists in `SelectionState`
+- Phase 6 is Low because snippet items have fixed height (1 line each)
+- Phase 3 can run **in parallel** with Phases 1/1A/2
 
-**Recommended order:** Phases 1-3 provide the most value with least risk. Phases 4-6 can be implemented incrementally based on user feedback.
+**Recommended implementation order:**
+
+```
+Week 1 (Parallel tracks):
+├── Track A: Phase 1 (Region Tracking) → Phase 1A (Scroll Methods) → Phase 2 (Router)
+└── Track B: Phase 3 (Scrollbars) ← Can be done independently!
+
+Week 2 (Sequential, needs Phase 1+2):
+└── Phase 4 (Click-to-Focus) → Phase 5 (AI Mouse) → Phase 6 (Snippet Mouse)
+```
+
+**Minimum Viable Mouse Support:** Phase 1 + 1A + 2 + 3 delivers:
+- Position-aware scrolling in all components
+- Visual scrollbar indicators everywhere
+- No breaking changes to existing keyboard workflow
 
 ---
 
