@@ -41,8 +41,12 @@ pub fn render_vertical_scrollbar_styled(
         .thumb_style(Style::default().fg(color))
         .track_style(Style::default().fg(color));
 
-    let mut state = ScrollbarState::new(total_items)
-        .position(scroll_offset)
+    // Ratatui uses max_position = content_length - 1 for thumb positioning.
+    // To make the thumb reach the bottom when at max scroll, we pass
+    // content_length = max_scroll + 1, so max_position equals our max_scroll.
+    let max_scroll = total_items.saturating_sub(viewport_size);
+    let mut state = ScrollbarState::new(max_scroll + 1)
+        .position(scroll_offset.min(max_scroll))
         .viewport_content_length(viewport_size);
 
     frame.render_stateful_widget(scrollbar, area, &mut state);
@@ -64,8 +68,12 @@ pub fn render_vertical_scrollbar(
         .begin_symbol(None)
         .end_symbol(None);
 
-    let mut state = ScrollbarState::new(total_items)
-        .position(scroll_offset)
+    // Ratatui uses max_position = content_length - 1 for thumb positioning.
+    // To make the thumb reach the bottom when at max scroll, we pass
+    // content_length = max_scroll + 1, so max_position equals our max_scroll.
+    let max_scroll = total_items.saturating_sub(viewport_size);
+    let mut state = ScrollbarState::new(max_scroll + 1)
+        .position(scroll_offset.min(max_scroll))
         .viewport_content_length(viewport_size);
 
     frame.render_stateful_widget(scrollbar, area, &mut state);

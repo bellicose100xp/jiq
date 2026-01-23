@@ -395,6 +395,95 @@ fn snapshot_ai_popup_more_than_five_suggestions() {
     assert_snapshot!(output);
 }
 
+// =========================================================================
+// Scrollbar Position Tests - verify scrollbar reaches correct positions
+// =========================================================================
+
+fn create_ai_state_with_many_suggestions() -> AiState {
+    use crate::ai::ai_state::{Suggestion, SuggestionType};
+
+    let mut state = AiState::new_with_config(
+        true,
+        true,
+        "Anthropic".to_string(),
+        "claude-3-5-sonnet-20241022".to_string(),
+        TEST_MAX_CONTEXT_LENGTH,
+    );
+    state.visible = true;
+    state.response = "AI response with many suggestions".to_string();
+    state.suggestions = vec![
+        Suggestion {
+            query: ".users[0]".to_string(),
+            description: "First user".to_string(),
+            suggestion_type: SuggestionType::Fix,
+        },
+        Suggestion {
+            query: ".users[1]".to_string(),
+            description: "Second user".to_string(),
+            suggestion_type: SuggestionType::Next,
+        },
+        Suggestion {
+            query: ".users[2]".to_string(),
+            description: "Third user".to_string(),
+            suggestion_type: SuggestionType::Optimize,
+        },
+        Suggestion {
+            query: ".users[3]".to_string(),
+            description: "Fourth user".to_string(),
+            suggestion_type: SuggestionType::Fix,
+        },
+        Suggestion {
+            query: ".users[4]".to_string(),
+            description: "Fifth user".to_string(),
+            suggestion_type: SuggestionType::Next,
+        },
+        Suggestion {
+            query: ".users[5]".to_string(),
+            description: "Sixth user".to_string(),
+            suggestion_type: SuggestionType::Optimize,
+        },
+        Suggestion {
+            query: ".users[6]".to_string(),
+            description: "Seventh user".to_string(),
+            suggestion_type: SuggestionType::Fix,
+        },
+    ];
+    state
+}
+
+#[test]
+fn snapshot_ai_scrollbar_at_top() {
+    let mut state = create_ai_state_with_many_suggestions();
+    // Default scroll position is at the top
+    let output = render_ai_popup_to_string(&mut state, 100, 30);
+    assert_snapshot!(output);
+}
+
+#[test]
+fn snapshot_ai_scrollbar_at_middle() {
+    let mut state = create_ai_state_with_many_suggestions();
+    // Navigate to the middle suggestion
+    for _ in 0..3 {
+        state.selection.navigate_next(state.suggestions.len());
+    }
+    let output = render_ai_popup_to_string(&mut state, 100, 30);
+    assert_snapshot!(output);
+}
+
+#[test]
+fn snapshot_ai_scrollbar_at_bottom() {
+    let mut state = create_ai_state_with_many_suggestions();
+    // Navigate to the last suggestion to scroll to the bottom
+    // Selection starts at None, first navigate_next goes to index 0,
+    // so we need total_items navigations to reach the last item
+    let total = state.suggestions.len();
+    for _ in 0..total {
+        state.selection.navigate_next(total);
+    }
+    let output = render_ai_popup_to_string(&mut state, 100, 30);
+    assert_snapshot!(output);
+}
+
 // Test for provider name display
 #[test]
 fn snapshot_ai_popup_bedrock_provider() {

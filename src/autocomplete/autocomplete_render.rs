@@ -143,15 +143,20 @@ pub fn render_popup(app: &App, frame: &mut Frame, input_area: Rect) -> Option<Re
     let list = List::new(items).block(block);
     frame.render_widget(list, popup_area);
 
-    // Render scrollbar on border, matching border color
-    // Pass full area like results pane does - scrollbar renders on right border
+    // Render scrollbar on border (excluding corners), matching border color
+    let scrollbar_area = Rect {
+        x: popup_area.x,
+        y: popup_area.y.saturating_add(1),
+        width: popup_area.width,
+        height: popup_area.height.saturating_sub(2),
+    };
     let total = app.autocomplete.suggestions().len();
     let viewport = app.autocomplete.viewport_size();
     let max_scroll = app.autocomplete.max_scroll();
     let clamped_offset = app.autocomplete.scroll_offset().min(max_scroll);
     scrollbar::render_vertical_scrollbar_styled(
         frame,
-        popup_area,
+        scrollbar_area,
         total,
         viewport,
         clamped_offset,

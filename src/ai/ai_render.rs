@@ -360,8 +360,13 @@ pub fn render_popup(ai_state: &mut AiState, frame: &mut Frame, input_area: Rect)
         let max_width = inner_area.width;
         render_suggestions_as_widgets(ai_state, frame, inner_area, max_width);
 
-        // Render scrollbar on border, matching border color
-        // Pass full area like results pane does - scrollbar renders on right border
+        // Render scrollbar on border (excluding corners), matching border color
+        let scrollbar_area = Rect {
+            x: popup_area.x,
+            y: popup_area.y.saturating_add(1),
+            width: popup_area.width,
+            height: popup_area.height.saturating_sub(2),
+        };
         let total_content_height: usize = ai_state
             .selection
             .viewport_size()
@@ -371,7 +376,7 @@ pub fn render_popup(ai_state: &mut AiState, frame: &mut Frame, input_area: Rect)
         let clamped_offset = ai_state.selection.scroll_offset().min(max_scroll);
         scrollbar::render_vertical_scrollbar_styled(
             frame,
-            popup_area,
+            scrollbar_area,
             total_content_height,
             viewport,
             clamped_offset,

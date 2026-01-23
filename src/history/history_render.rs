@@ -95,16 +95,21 @@ pub fn render_popup(app: &mut App, frame: &mut Frame, input_area: Rect) -> Optio
     let list = List::new(items).block(block);
     frame.render_widget(list, list_area);
 
-    // Render scrollbar on border, matching border color
+    // Render scrollbar on border (excluding corners), matching border color
     // History list is displayed reversed (newest at bottom), so invert scroll position
-    // Pass full area like results pane does - scrollbar renders on right border
+    let scrollbar_area = Rect {
+        x: list_area.x,
+        y: list_area.y.saturating_add(1),
+        width: list_area.width,
+        height: list_area.height.saturating_sub(2),
+    };
     let viewport = app.history.viewport_size();
     let max_scroll = app.history.max_scroll();
     let clamped_offset = app.history.scroll_offset().min(max_scroll);
     let inverted_scroll = max_scroll.saturating_sub(clamped_offset);
     scrollbar::render_vertical_scrollbar_styled(
         frame,
-        list_area,
+        scrollbar_area,
         app.history.filtered_count(),
         viewport,
         inverted_scroll,
