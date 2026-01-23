@@ -83,6 +83,17 @@ cargo build              # Zero warnings required
 cargo clippy -D warnings # Must pass
 ```
 
+**DRY Principles:**
+- Extract repeated logic into reusable functions or modules
+- Use traits for shared behavior across types
+- Create utility modules for common operations
+
+**Focused Code:**
+- Functions do one thing well (~50 lines max)
+- Clear, self-explanatory naming
+- Prefer early returns over deep nesting
+- Extract helpers for complex conditionals
+
 ### Rust 2024 Edition
 
 - Use `#[derive(Default)]` with `#[default]` for enums
