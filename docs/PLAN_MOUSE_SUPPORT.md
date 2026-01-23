@@ -29,7 +29,7 @@ After each phase:
 - [x] Phase 1A: Scrollable Trait & Implementations
 - [x] Phase 2: Mouse Event Router
 - [x] Phase 3: Visual Scrollbars (INDEPENDENT)
-- [ ] Phase 4: Click-to-Focus
+- [x] Phase 4: Click-to-Focus
 - [ ] Phase 5: AI Window Mouse Interactions
 - [ ] Phase 6: Snippet Manager Mouse Interactions
 - [ ] Phase 7: Dismiss Popups on Outside Click
