@@ -28,13 +28,15 @@ Terminal Area
 ├── Input Field (3 lines, hidden in overlay mode)
 └── Help Line (1 line)
 
-Overlays (rendered on top):
-├── AI Window (right side popup)
-├── Autocomplete Popup (below input)
-├── History Popup
-├── Tooltip Popup
-├── Snippet Manager (full overlay)
-└── Search Overlay (inside results pane)
+Overlays (rendered on top of base layout):
+├── AI Window (right side popup)*
+├── Autocomplete Popup (above input)*
+├── History Popup*
+├── Tooltip Popup*
+├── Snippet Manager (full overlay, replaces input field)
+└── Search Overlay (inside results pane, replaces input field)
+
+* Only rendered when input field is visible (not in search/snippet overlay mode)
 ```
 
 ### Focus System
@@ -160,6 +162,8 @@ pub enum Region {
 ```
 
 **Integration:** Store `LayoutRegions` in `App` state, populate during render.
+
+**Important visibility rule:** AI, Autocomplete, History, and Tooltip popups are only rendered when the input field is visible (i.e., not in search or snippet overlay mode). The `LayoutRegions` will naturally reflect this since regions are only populated when components are rendered.
 
 ### 2. Enhanced Mouse Event Handler
 
