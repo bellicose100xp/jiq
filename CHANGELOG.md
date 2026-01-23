@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.14.0] - 2026-01-22
+
+### Added
+- **Visual scrollbar in results pane** - Results pane now displays a scrollbar for easier navigation
+  - Shows scroll position within large result sets
+  - Provides visual feedback for vertical navigation
+
 ## [3.13.13] - 2026-01-22
 
 ### Added
