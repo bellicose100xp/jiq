@@ -3,7 +3,7 @@ use ratatui::{
     layout::{Alignment, Constraint, Layout, Rect},
     style::{Color, Modifier, Style},
     text::{Line, Span, Text},
-    widgets::{Block, Borders, Paragraph},
+    widgets::{Block, Borders, Paragraph, Scrollbar, ScrollbarOrientation, ScrollbarState},
 };
 
 use crate::app::App;
@@ -51,6 +51,22 @@ fn format_position_indicator(scroll: &ScrollState, line_count: u32) -> String {
         0
     };
     format!("L{}-{}/{} ({}%)", start, end, line_count, percentage)
+}
+
+fn render_scrollbar(frame: &mut Frame, area: Rect, scroll: &ScrollState, line_count: u32) {
+    if line_count <= scroll.viewport_height as u32 {
+        return;
+    }
+
+    let scrollbar = Scrollbar::new(ScrollbarOrientation::VerticalRight)
+        .begin_symbol(None)
+        .end_symbol(None);
+
+    let mut scrollbar_state = ScrollbarState::new(line_count as usize)
+        .position(scroll.offset as usize)
+        .viewport_content_length(scroll.viewport_height as usize);
+
+    frame.render_stateful_widget(scrollbar, area, &mut scrollbar_state);
 }
 
 pub fn render_pane(app: &mut App, frame: &mut Frame, area: Rect) {
@@ -286,6 +302,7 @@ pub fn render_pane(app: &mut App, frame: &mut Frame, area: Rect) {
             .scroll((0, app.results_scroll.h_offset));
 
         frame.render_widget(content, results_area);
+        render_scrollbar(frame, results_area, &app.results_scroll, line_count);
     } else {
         // No successful result yet - show empty
         let mut block = Block::default()

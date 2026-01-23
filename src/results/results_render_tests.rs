@@ -264,3 +264,165 @@ mod position_indicator_tests {
         assert_eq!(format_position_indicator(&scroll, 100), "L96-100/100 (95%)");
     }
 }
+
+#[cfg(test)]
+mod scrollbar_tests {
+    use super::super::render_scrollbar;
+    use crate::scroll::ScrollState;
+    use ratatui::Terminal;
+    use ratatui::backend::TestBackend;
+    use ratatui::layout::Rect;
+
+    fn create_scroll_state(offset: u16, viewport_height: u16, max_offset: u16) -> ScrollState {
+        ScrollState {
+            offset,
+            max_offset,
+            viewport_height,
+            h_offset: 0,
+            max_h_offset: 0,
+            viewport_width: 80,
+        }
+    }
+
+    fn render_scrollbar_to_string(
+        scroll: &ScrollState,
+        line_count: u32,
+        width: u16,
+        height: u16,
+    ) -> String {
+        let backend = TestBackend::new(width, height);
+        let mut terminal = Terminal::new(backend).unwrap();
+        terminal
+            .draw(|frame| {
+                let area = Rect::new(0, 0, width, height);
+                render_scrollbar(frame, area, scroll, line_count);
+            })
+            .unwrap();
+        terminal.backend().to_string()
+    }
+
+    #[test]
+    fn test_scrollbar_hidden_when_content_fits() {
+        let scroll = create_scroll_state(0, 20, 0);
+        let output = render_scrollbar_to_string(&scroll, 10, 80, 22);
+        // When content fits, no scrollbar characters should appear
+        assert!(
+            !output.contains('█') && !output.contains('│') && !output.contains('▐'),
+            "Scrollbar should not render when content fits viewport"
+        );
+    }
+
+    #[test]
+    fn test_scrollbar_visible_when_content_exceeds_viewport() {
+        let scroll = create_scroll_state(0, 20, 80);
+        let output = render_scrollbar_to_string(&scroll, 100, 80, 22);
+        // When content exceeds viewport, scrollbar should appear
+        // ratatui uses '█' for the thumb
+        assert!(
+            output.contains('█'),
+            "Scrollbar thumb should render when content exceeds viewport. Output:\n{}",
+            output
+        );
+    }
+
+    #[test]
+    fn test_scrollbar_position_at_top() {
+        let scroll = create_scroll_state(0, 20, 80);
+        let backend = TestBackend::new(80, 22);
+        let mut terminal = Terminal::new(backend).unwrap();
+        terminal
+            .draw(|frame| {
+                let area = Rect::new(0, 0, 80, 22);
+                render_scrollbar(frame, area, &scroll, 100);
+            })
+            .unwrap();
+        let buffer = terminal.backend().buffer();
+        // Check that thumb ('█') appears near the top of the scrollbar column (rightmost)
+        let col = 79;
+        let mut thumb_positions: Vec<u16> = Vec::new();
+        for row in 0..22 {
+            if buffer[(col, row)].symbol() == "█" {
+                thumb_positions.push(row);
+            }
+        }
+        assert!(
+            !thumb_positions.is_empty(),
+            "Scrollbar thumb should be visible"
+        );
+        // At offset 0, thumb should be at the top
+        let avg_position: f32 =
+            thumb_positions.iter().map(|&r| r as f32).sum::<f32>() / thumb_positions.len() as f32;
+        assert!(
+            avg_position < 11.0,
+            "Scrollbar thumb should be near top when offset=0. Avg position: {}",
+            avg_position
+        );
+    }
+
+    #[test]
+    fn test_scrollbar_position_at_bottom() {
+        let scroll = create_scroll_state(80, 20, 80);
+        let backend = TestBackend::new(80, 22);
+        let mut terminal = Terminal::new(backend).unwrap();
+        terminal
+            .draw(|frame| {
+                let area = Rect::new(0, 0, 80, 22);
+                render_scrollbar(frame, area, &scroll, 100);
+            })
+            .unwrap();
+        let buffer = terminal.backend().buffer();
+        let col = 79;
+        let mut thumb_positions: Vec<u16> = Vec::new();
+        for row in 0..22 {
+            if buffer[(col, row)].symbol() == "█" {
+                thumb_positions.push(row);
+            }
+        }
+        assert!(
+            !thumb_positions.is_empty(),
+            "Scrollbar thumb should be visible"
+        );
+        // At max offset, thumb should be at the bottom
+        let avg_position: f32 =
+            thumb_positions.iter().map(|&r| r as f32).sum::<f32>() / thumb_positions.len() as f32;
+        assert!(
+            avg_position > 11.0,
+            "Scrollbar thumb should be near bottom when offset=max. Avg position: {}",
+            avg_position
+        );
+    }
+
+    #[test]
+    fn test_scrollbar_position_middle() {
+        let scroll = create_scroll_state(40, 20, 80);
+        let backend = TestBackend::new(80, 22);
+        let mut terminal = Terminal::new(backend).unwrap();
+        terminal
+            .draw(|frame| {
+                let area = Rect::new(0, 0, 80, 22);
+                render_scrollbar(frame, area, &scroll, 100);
+            })
+            .unwrap();
+        let buffer = terminal.backend().buffer();
+        let col = 79;
+        let mut thumb_positions: Vec<u16> = Vec::new();
+        for row in 0..22 {
+            if buffer[(col, row)].symbol() == "█" {
+                thumb_positions.push(row);
+            }
+        }
+        assert!(
+            !thumb_positions.is_empty(),
+            "Scrollbar thumb should be visible"
+        );
+        // At middle offset, thumb should be roughly in the middle
+        let avg_position: f32 =
+            thumb_positions.iter().map(|&r| r as f32).sum::<f32>() / thumb_positions.len() as f32;
+        // Middle would be around row 11 for a 22-row area
+        assert!(
+            avg_position > 5.0 && avg_position < 17.0,
+            "Scrollbar thumb should be near middle when offset=40. Avg position: {}",
+            avg_position
+        );
+    }
+}
