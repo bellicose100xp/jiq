@@ -157,26 +157,29 @@ if let Some(area) = ai_render::render_popup(...) {
 
 ### Focused Files: Split Large Modules
 
-**Mouse events module structure:**
+**Mouse events module structure** (follows existing `app_events.rs` pattern):
 ```
-src/app/mouse/
-├── mod.rs              # Re-exports, handle_mouse_event() dispatcher
-├── scroll.rs           # handle_scroll() - ~50 lines
-├── click.rs            # handle_click() - ~80 lines
-├── hover.rs            # handle_hover() - ~60 lines
-├── scroll_tests.rs     # Tests for scroll routing
-├── click_tests.rs      # Tests for click handling
-└── hover_tests.rs      # Tests for hover detection
+src/app/
+├── app_events.rs           # Existing - calls mouse_events
+├── mouse_events.rs         # Dispatcher: handle_mouse_event() (~30 lines)
+├── mouse_scroll.rs         # handle_scroll() (~50 lines)
+├── mouse_click.rs          # handle_click() (~80 lines)
+├── mouse_hover.rs          # handle_hover() (~60 lines)
+├── mouse_events_tests.rs   # Dispatcher tests
+├── mouse_scroll_tests.rs   # Scroll routing tests
+├── mouse_click_tests.rs    # Click handling tests
+└── mouse_hover_tests.rs    # Hover detection tests
 ```
 
-**Layout module structure:**
+**Layout module structure** (new top-level module like `scroll.rs`):
 ```
-src/layout/
-├── mod.rs              # Re-exports
-├── regions.rs          # LayoutRegions struct, Region enum - ~100 lines
-├── hit_test.rs         # region_at() logic with priority handling - ~80 lines
-├── regions_tests.rs    # Region struct tests
-└── hit_test_tests.rs   # Hit testing tests with mock regions
+src/
+├── layout.rs               # Main module with re-exports
+└── layout/
+    ├── layout_regions.rs       # LayoutRegions struct, Region enum (~60 lines)
+    ├── layout_hit_test.rs      # region_at() with priority logic (~80 lines)
+    ├── layout_regions_tests.rs # Region struct tests
+    └── layout_hit_test_tests.rs # Hit testing tests
 ```
 
 ### Test Coverage Requirements
@@ -327,11 +330,11 @@ Phase 3: Visual Scrollbars (INDEPENDENT - can run in parallel with Phase 1)
 - `src/help/help_popup_render.rs` - Record help_popup
 
 **New files:**
-- `src/layout/mod.rs` - Re-exports
-- `src/layout/regions.rs` - LayoutRegions struct, Region enum (~60 lines)
-- `src/layout/hit_test.rs` - `region_at()` with priority logic (~80 lines)
-- `src/layout/regions_tests.rs` - Region struct tests
-- `src/layout/hit_test_tests.rs` - Hit testing with mock regions
+- `src/layout.rs` - Main module with re-exports
+- `src/layout/layout_regions.rs` - LayoutRegions struct, Region enum (~60 lines)
+- `src/layout/layout_hit_test.rs` - `region_at()` with priority logic (~80 lines)
+- `src/layout/layout_regions_tests.rs` - Region struct tests
+- `src/layout/layout_hit_test_tests.rs` - Hit testing with mock regions
 
 **Design decision:** Render functions return their rendered `Rect` instead of mutating global state. The caller (`app_render.rs`) collects all regions. This keeps render functions focused and testable.
 
@@ -345,7 +348,7 @@ Phase 3: Visual Scrollbars (INDEPENDENT - can run in parallel with Phase 1)
 **Rationale:** Using a trait ensures consistent scroll behavior and enables generic scroll handling in Phase 2. Avoids duplicating scroll logic in each component.
 
 **Tasks:**
-1. Create `Scrollable` trait in `src/scroll/scrollable.rs`:
+1. Create `Scrollable` trait in `src/scroll/scroll_trait.rs`:
    ```rust
    pub trait Scrollable {
        fn scroll_view_up(&mut self, lines: usize);
@@ -366,11 +369,11 @@ Phase 3: Visual Scrollbars (INDEPENDENT - can run in parallel with Phase 1)
 3. Add unit tests for trait implementations
 
 **New files:**
-- `src/scroll/scrollable.rs` - Trait definition (~30 lines)
-- `src/scroll/scrollable_tests.rs` - Trait behavior tests
+- `src/scroll/scroll_trait.rs` - Trait definition (~30 lines)
+- `src/scroll/scroll_trait_tests.rs` - Trait behavior tests
 
 **Files to modify:**
-- `src/scroll/mod.rs` - Export new trait
+- `src/scroll.rs` - Export new trait (add `pub mod scroll_trait;`)
 - `src/ai/selection/state.rs` - `impl Scrollable for SelectionState`
 - `src/snippets/snippet_state.rs` - `impl Scrollable for SnippetState`
 - `src/history/history_state.rs` - `impl Scrollable for HistoryState`
@@ -384,15 +387,15 @@ Phase 3: Visual Scrollbars (INDEPENDENT - can run in parallel with Phase 1)
 **Dependency:** Phase 1 (region tracking) + Phase 1A (Scrollable trait)
 
 **Tasks:**
-1. Create `src/app/mouse/` module directory with focused files:
+1. Create mouse event files in `src/app/`:
    ```
-   src/app/mouse/
-   ├── mod.rs              # Dispatcher: handle_mouse_event()
-   ├── scroll.rs           # Scroll routing logic
-   └── scroll_tests.rs     # Scroll routing tests
+   src/app/
+   ├── mouse_events.rs         # Dispatcher: handle_mouse_event()
+   ├── mouse_scroll.rs         # Scroll routing logic
+   └── mouse_scroll_tests.rs   # Scroll routing tests
    ```
 
-2. Implement `handle_mouse_event()` dispatcher in `mod.rs` (~30 lines):
+2. Implement `handle_mouse_event()` dispatcher in `mouse_events.rs` (~30 lines):
    ```rust
    pub fn handle_mouse_event(app: &mut App, mouse: MouseEvent) {
        let region = app.layout_regions.region_at(mouse.column, mouse.row);
@@ -404,20 +407,20 @@ Phase 3: Visual Scrollbars (INDEPENDENT - can run in parallel with Phase 1)
    }
    ```
 
-3. Implement `scroll.rs` with region-to-component routing (~50 lines):
+3. Implement `mouse_scroll.rs` with region-to-component routing (~50 lines):
    - Use `Scrollable` trait for uniform handling where possible
    - Handle fallback (outside regions → scroll results pane)
 
 4. Update `app_events.rs` to call new handler
 
 **Files to modify:**
-- `src/app/app_events.rs` - Replace inline handler with `mouse::handle_mouse_event()`
-- `src/app/mod.rs` - Add `pub mod mouse;`
+- `src/app/app_events.rs` - Replace inline handler with `mouse_events::handle_mouse_event()`
+- `src/app.rs` - Add `pub mod mouse_events; pub mod mouse_scroll;`
 
 **New files:**
-- `src/app/mouse/mod.rs` - Dispatcher (~30 lines)
-- `src/app/mouse/scroll.rs` - Scroll handling (~50 lines)
-- `src/app/mouse/scroll_tests.rs` - Scroll tests
+- `src/app/mouse_events.rs` - Dispatcher (~30 lines)
+- `src/app/mouse_scroll.rs` - Scroll handling (~50 lines)
+- `src/app/mouse_scroll_tests.rs` - Scroll tests
 
 ---
 
@@ -488,15 +491,14 @@ pub fn render_vertical_scrollbar(
 **Dependency:** Phase 1 (region tracking) + Phase 2 (mouse event router)
 
 **Tasks:**
-1. Add `click.rs` to `src/app/mouse/` module:
+1. Add click handling files to `src/app/`:
    ```
-   src/app/mouse/
-   ├── ...
-   ├── click.rs            # Click handling (~80 lines)
-   └── click_tests.rs      # Click tests
+   src/app/
+   ├── mouse_click.rs          # Click handling (~80 lines)
+   └── mouse_click_tests.rs    # Click tests
    ```
 
-2. Implement `handle_click()` in `click.rs`:
+2. Implement `handle_click()` in `mouse_click.rs`:
    ```rust
    fn handle_click(app: &mut App, region: Option<Region>, mouse: MouseEvent) {
        match region {
@@ -533,12 +535,11 @@ pub fn render_vertical_scrollbar(
 **Dependency:** Phase 1 (region tracking) + Phase 2 (mouse event router) + Phase 4 (click module)
 
 **Tasks:**
-1. Add `hover.rs` to `src/app/mouse/` module:
+1. Add hover handling files to `src/app/`:
    ```
-   src/app/mouse/
-   ├── ...
-   ├── hover.rs            # Hover handling (~60 lines)
-   └── hover_tests.rs      # Hover tests
+   src/app/
+   ├── mouse_hover.rs          # Hover handling (~60 lines)
+   └── mouse_hover_tests.rs    # Hover tests
    ```
 
 2. Track hovered suggestion index in AI state:
