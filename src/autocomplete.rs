@@ -29,6 +29,8 @@ pub use autocomplete_state::{
     AutocompleteState, JsonFieldType, MAX_VISIBLE_SUGGESTIONS, Suggestion, SuggestionType,
     update_suggestions_from_app,
 };
+#[cfg(test)]
+pub use context::{EntryContext, detect_entry_context};
 pub use context::{SuggestionContext, analyze_context, get_suggestions};
 pub use insertion::insert_suggestion_from_app;
 
