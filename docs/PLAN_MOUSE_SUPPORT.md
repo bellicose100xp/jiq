@@ -30,8 +30,8 @@ Terminal Area
 
 Overlays (rendered on top of base layout):
 ├── AI Window (right side popup)*
-├── Autocomplete Popup (above input)*
-├── History Popup*
+├── Autocomplete Popup (above input, limited width)*
+├── History Popup (above input, full width)*
 ├── Tooltip Popup*
 ├── Snippet Manager (full overlay, replaces input field)
 └── Search Overlay (inside results pane, replaces input field)
