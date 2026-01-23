@@ -29,7 +29,7 @@ All checks must pass before staging files.
 ## Code Quality Principles
 
 ### File Organization
-- **Max 1000 lines per file** - Refactor larger files into multiple focused modules
+- **Max 1000 lines per file** - Applies to all files including tests; refactor into focused modules
 - **Single responsibility** - Each file should have one clear purpose
 - **Logical grouping** - Related functionality stays together, unrelated code gets its own file
 

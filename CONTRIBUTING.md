@@ -32,7 +32,7 @@ src/
 3. **Separate test files** - Tests go in `{module}_tests.rs`, not co-located with implementation
 4. **Self-contained modules** - Features define their state and event logic in their own module
 5. **Integration pattern** - `App` holds feature state, main dispatcher calls feature event handlers
-6. **Small files** - Under 1000 lines, single responsibility
+6. **Small files** - Under 1000 lines (including tests), single responsibility
 
 Example:
 ```rust
