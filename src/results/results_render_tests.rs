@@ -269,9 +269,12 @@ mod position_indicator_tests {
 mod scrollbar_tests {
     use super::super::render_scrollbar;
     use crate::scroll::ScrollState;
+    use insta::assert_snapshot;
     use ratatui::Terminal;
     use ratatui::backend::TestBackend;
     use ratatui::layout::Rect;
+    use ratatui::style::Style;
+    use ratatui::widgets::{Block, Borders};
 
     fn create_scroll_state(offset: u16, viewport_height: u16, max_offset: u16) -> ScrollState {
         ScrollState {
@@ -295,6 +298,27 @@ mod scrollbar_tests {
         terminal
             .draw(|frame| {
                 let area = Rect::new(0, 0, width, height);
+                render_scrollbar(frame, area, scroll, line_count);
+            })
+            .unwrap();
+        terminal.backend().to_string()
+    }
+
+    fn render_scrollbar_with_border_to_string(
+        scroll: &ScrollState,
+        line_count: u32,
+        width: u16,
+        height: u16,
+    ) -> String {
+        let backend = TestBackend::new(width, height);
+        let mut terminal = Terminal::new(backend).unwrap();
+        terminal
+            .draw(|frame| {
+                let area = Rect::new(0, 0, width, height);
+                let block = Block::default()
+                    .borders(Borders::ALL)
+                    .border_style(Style::default());
+                frame.render_widget(block, area);
                 render_scrollbar(frame, area, scroll, line_count);
             })
             .unwrap();
@@ -423,6 +447,73 @@ mod scrollbar_tests {
             avg_position > 5.0 && avg_position < 17.0,
             "Scrollbar thumb should be near middle when offset=40. Avg position: {}",
             avg_position
+        );
+    }
+
+    #[test]
+    fn snapshot_scrollbar_with_border_at_top() {
+        let scroll = create_scroll_state(0, 10, 90);
+        let output = render_scrollbar_with_border_to_string(&scroll, 100, 20, 12);
+        assert_snapshot!(output);
+    }
+
+    #[test]
+    fn snapshot_scrollbar_with_border_at_middle() {
+        let scroll = create_scroll_state(45, 10, 90);
+        let output = render_scrollbar_with_border_to_string(&scroll, 100, 20, 12);
+        assert_snapshot!(output);
+    }
+
+    #[test]
+    fn snapshot_scrollbar_with_border_at_bottom() {
+        let scroll = create_scroll_state(90, 10, 90);
+        let output = render_scrollbar_with_border_to_string(&scroll, 100, 20, 12);
+        assert_snapshot!(output);
+    }
+
+    #[test]
+    fn test_scrollbar_respects_border_corners() {
+        let scroll = create_scroll_state(0, 10, 90);
+        let backend = TestBackend::new(20, 12);
+        let mut terminal = Terminal::new(backend).unwrap();
+        terminal
+            .draw(|frame| {
+                let area = Rect::new(0, 0, 20, 12);
+                let block = Block::default()
+                    .borders(Borders::ALL)
+                    .border_style(Style::default());
+                frame.render_widget(block, area);
+                render_scrollbar(frame, area, &scroll, 100);
+            })
+            .unwrap();
+        let buffer = terminal.backend().buffer();
+
+        let col = 19;
+        let top_row_symbol = buffer[(col, 0)].symbol();
+        let bottom_row_symbol = buffer[(col, 11)].symbol();
+
+        assert_eq!(
+            top_row_symbol, "┐",
+            "Top-right corner should be preserved (got: {})",
+            top_row_symbol
+        );
+        assert_eq!(
+            bottom_row_symbol, "┘",
+            "Bottom-right corner should be preserved (got: {})",
+            bottom_row_symbol
+        );
+
+        let mut has_scrollbar_in_middle = false;
+        for row in 1..11 {
+            let symbol = buffer[(col, row)].symbol();
+            if symbol == "█" || symbol == "│" {
+                has_scrollbar_in_middle = true;
+                break;
+            }
+        }
+        assert!(
+            has_scrollbar_in_middle,
+            "Scrollbar should render between the corners"
         );
     }
 }

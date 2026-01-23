@@ -54,9 +54,15 @@ fn format_position_indicator(scroll: &ScrollState, line_count: u32) -> String {
 }
 
 fn render_scrollbar(frame: &mut Frame, area: Rect, scroll: &ScrollState, line_count: u32) {
+    let scrollbar_area = Rect {
+        x: area.x,
+        y: area.y.saturating_add(1),
+        width: area.width,
+        height: area.height.saturating_sub(2),
+    };
     scrollbar::render_vertical_scrollbar(
         frame,
-        area,
+        scrollbar_area,
         line_count as usize,
         scroll.viewport_height as usize,
         scroll.offset as usize,

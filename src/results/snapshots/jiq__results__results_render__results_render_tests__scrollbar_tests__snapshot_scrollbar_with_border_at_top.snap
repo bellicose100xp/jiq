@@ -1,0 +1,17 @@
+---
+source: src/results/results_render_tests.rs
+assertion_line: 457
+expression: output
+---
+"┌──────────────────┐"
+"│                  █"
+"│                  ║"
+"│                  ║"
+"│                  ║"
+"│                  ║"
+"│                  ║"
+"│                  ║"
+"│                  ║"
+"│                  ║"
+"│                  ║"
+"└──────────────────┘"
