@@ -256,3 +256,85 @@ fn test_click_snippet_list_when_not_visible() {
 
     assert_eq!(app.snippets.selected_index(), 0);
 }
+
+#[test]
+fn test_click_outside_help_popup_dismisses_it() {
+    let mut app = setup_app();
+    app.help.visible = true;
+    let mouse = create_mouse_event(10, 10);
+
+    handle_click(&mut app, Some(Region::ResultsPane), mouse);
+
+    assert!(!app.help.visible, "Help popup should be dismissed");
+}
+
+#[test]
+fn test_click_inside_help_popup_does_not_dismiss() {
+    let mut app = setup_app();
+    app.help.visible = true;
+    let mouse = create_mouse_event(10, 10);
+
+    handle_click(&mut app, Some(Region::HelpPopup), mouse);
+
+    assert!(app.help.visible, "Help popup should remain visible");
+}
+
+#[test]
+fn test_click_outside_error_overlay_dismisses_it() {
+    let mut app = setup_app();
+    app.error_overlay_visible = true;
+    let mouse = create_mouse_event(10, 10);
+
+    handle_click(&mut app, Some(Region::ResultsPane), mouse);
+
+    assert!(
+        !app.error_overlay_visible,
+        "Error overlay should be dismissed"
+    );
+}
+
+#[test]
+fn test_click_inside_error_overlay_does_not_dismiss() {
+    let mut app = setup_app();
+    app.error_overlay_visible = true;
+    let mouse = create_mouse_event(10, 10);
+
+    handle_click(&mut app, Some(Region::ErrorOverlay), mouse);
+
+    assert!(
+        app.error_overlay_visible,
+        "Error overlay should remain visible"
+    );
+}
+
+#[test]
+fn test_dismiss_help_consumes_click() {
+    let mut app = setup_app();
+    app.focus = Focus::InputField;
+    app.help.visible = true;
+    let mouse = create_mouse_event(10, 10);
+
+    handle_click(&mut app, Some(Region::ResultsPane), mouse);
+
+    assert_eq!(
+        app.focus,
+        Focus::InputField,
+        "Focus should not change when dismissing help popup"
+    );
+}
+
+#[test]
+fn test_dismiss_error_overlay_consumes_click() {
+    let mut app = setup_app();
+    app.focus = Focus::InputField;
+    app.error_overlay_visible = true;
+    let mouse = create_mouse_event(10, 10);
+
+    handle_click(&mut app, Some(Region::ResultsPane), mouse);
+
+    assert_eq!(
+        app.focus,
+        Focus::InputField,
+        "Focus should not change when dismissing error overlay"
+    );
+}

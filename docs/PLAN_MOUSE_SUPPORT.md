@@ -31,8 +31,8 @@ After each phase:
 - [x] Phase 3: Visual Scrollbars (INDEPENDENT)
 - [x] Phase 4: Click-to-Focus
 - [x] Phase 5: AI Window Mouse Interactions
-- [ ] Phase 6: Snippet Manager Mouse Interactions
-- [ ] Phase 7: Dismiss Popups on Outside Click
+- [x] Phase 6: Snippet Manager Mouse Interactions
+- [x] Phase 7: Dismiss Popups on Outside Click
 
 ---
 

@@ -14,6 +14,18 @@ use crate::snippets::SnippetMode;
 ///
 /// Routes click to change focus or activate components.
 pub fn handle_click(app: &mut App, region: Option<Region>, mouse: MouseEvent) {
+    // Dismiss help popup if clicking outside it
+    if app.help.visible && region != Some(Region::HelpPopup) {
+        app.help.visible = false;
+        return;
+    }
+
+    // Dismiss error overlay if clicking outside it
+    if app.error_overlay_visible && region != Some(Region::ErrorOverlay) {
+        app.error_overlay_visible = false;
+        return;
+    }
+
     match region {
         Some(Region::ResultsPane) => click_results_pane(app),
         Some(Region::InputField) => click_input_field(app),
