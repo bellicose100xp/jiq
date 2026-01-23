@@ -1,5 +1,5 @@
 use ratatui::crossterm::event::{
-    self, Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers, MouseEvent, MouseEventKind,
+    self, Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers, MouseEvent,
 };
 use std::io;
 use std::time::Duration;
@@ -277,15 +277,7 @@ impl App {
     }
 
     fn handle_mouse_event(&mut self, mouse: MouseEvent) {
-        match mouse.kind {
-            MouseEventKind::ScrollDown => {
-                self.results_scroll.scroll_down(3);
-            }
-            MouseEventKind::ScrollUp => {
-                self.results_scroll.scroll_up(3);
-            }
-            _ => {}
-        }
+        super::mouse_events::handle_mouse_event(self, mouse);
     }
 
     pub fn handle_key_event(&mut self, key: KeyEvent) {

@@ -1,6 +1,8 @@
 mod app_events;
 mod app_render;
 mod app_state;
+mod mouse_events;
+mod mouse_scroll;
 
 #[cfg(test)]
 mod app_render_tests;

@@ -27,7 +27,7 @@ After each phase:
 
 - [x] Phase 1: Region Tracking Infrastructure
 - [x] Phase 1A: Scrollable Trait & Implementations
-- [ ] Phase 2: Mouse Event Router
+- [x] Phase 2: Mouse Event Router
 - [ ] Phase 3: Visual Scrollbars (INDEPENDENT)
 - [ ] Phase 4: Click-to-Focus
 - [ ] Phase 5: AI Window Mouse Interactions

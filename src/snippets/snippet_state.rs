@@ -685,8 +685,13 @@ impl SnippetState {
     }
 
     pub fn set_visible_count(&mut self, count: usize) {
+        let old_count = self.visible_count;
         self.visible_count = count.max(1);
-        self.adjust_scroll_to_selection();
+
+        // Only adjust scroll if viewport shrunk and selection might be off-screen
+        if self.visible_count < old_count {
+            self.adjust_scroll_to_selection();
+        }
     }
 
     pub fn visible_snippets(&self) -> impl Iterator<Item = (usize, &Snippet)> {

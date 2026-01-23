@@ -35,6 +35,8 @@ pub mod test_helpers {
         let mut app = App::new_with_loader(loader, &Config::default());
         // Poll the loader to complete loading
         app.poll_file_loader();
+        // Disable history persistence to avoid polluting real history file
+        app.history = HistoryState::empty();
         app
     }
 
