@@ -1,5 +1,5 @@
 ---
-source: src/ai/ai_render_tests/spacing_tests.rs
+source: src/ai/ai_render_tests/snapshot_tests.rs
 expression: output
 ---
 "                                                                                                    "
@@ -18,15 +18,15 @@ expression: output
 "                                                                                                    "
 "                                                                                                    "
 "                                                                                                    "
-"                                                       ┌ Anthropic ────── (1/5) claude-3-5-son... ┐ "
-"                                                       │1. [Fix] .suggestion1                     █ "
-"                                                       │   Description 1                          █ "
+"                                                       ┌ Anthropic ────── (3/7) claude-3-5-son... ┐ "
+"                                                       │   First user                             █ "
 "                                                       │                                          █ "
-"                                                       │2. [Next] .suggestion2                    █ "
-"                                                       │   Description 2                          █ "
+"                                                       │2. [Next] .users[1]                       █ "
+"                                                       │   Second user                            █ "
 "                                                       │                                          ║ "
-"                                                       │3. [Optimize] .suggestion3                ║ "
-"                                                       │   Description 3                          ║ "
+"                                                       │3. [Optimize] .users[2]                   ║ "
+"                                                       │   Third user                             ║ "
+"                                                       │                                          ║ "
 "                                                       └1-5 or Alt+↑↓+Enter to apply | Ctrl+A to c┘ "
 "                                                                                                    "
 "                                                                                                    "

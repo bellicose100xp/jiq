@@ -84,15 +84,20 @@ pub fn render_popup(app: &mut App, frame: &mut Frame) -> Option<Rect> {
     ));
     frame.render_widget(Paragraph::new(footer).centered(), chunks[3]);
 
-    // Render scrollbar on outer border, matching border color
-    // Pass full popup area like results pane does - scrollbar renders on right border
+    // Render scrollbar on outer border (excluding corners), matching border color
+    let scrollbar_area = Rect {
+        x: popup_area.x,
+        y: popup_area.y.saturating_add(1),
+        width: popup_area.width,
+        height: popup_area.height.saturating_sub(2),
+    };
     let scroll = app.help.current_scroll();
     let viewport = scroll.viewport_height as usize;
     let max_scroll = scroll.max_offset as usize;
     let clamped_offset = (scroll.offset as usize).min(max_scroll);
     scrollbar::render_vertical_scrollbar_styled(
         frame,
-        popup_area,
+        scrollbar_area,
         content_height as usize,
         viewport,
         clamped_offset,

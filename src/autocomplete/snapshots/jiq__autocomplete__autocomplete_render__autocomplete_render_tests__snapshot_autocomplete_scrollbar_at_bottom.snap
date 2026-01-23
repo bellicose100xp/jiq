@@ -1,0 +1,24 @@
+---
+source: src/autocomplete/autocomplete_render_tests.rs
+expression: output
+---
+"                                                                                "
+"                                                                                "
+"                                                                                "
+"  ┌ Suggestions ───────┐                                                        "
+"  │  .field10 [field]  ║                                                        "
+"  │  .field11 [field]  ║                                                        "
+"  │  .field12 [field]  ║                                                        "
+"  │  .field13 [field]  ║                                                        "
+"  │  .field14 [field]  ║                                                        "
+"  │  .field15 [field]  █                                                        "
+"  │  .field16 [field]  █                                                        "
+"  │  .field17 [field]  █                                                        "
+"  │  .field18 [field]  █                                                        "
+"  │► .field19 [field]  █                                                        "
+"  └────────────────────┘                                                        "
+"                                                                                "
+"                                                                                "
+"                                                                                "
+"                                                                                "
+"                                                                                "

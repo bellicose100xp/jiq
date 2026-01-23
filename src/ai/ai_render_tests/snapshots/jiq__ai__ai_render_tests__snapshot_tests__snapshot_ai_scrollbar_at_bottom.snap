@@ -1,5 +1,5 @@
 ---
-source: src/ai/ai_render_tests/spacing_tests.rs
+source: src/ai/ai_render_tests/snapshot_tests.rs
 expression: output
 ---
 "                                                                                                    "
@@ -18,15 +18,15 @@ expression: output
 "                                                                                                    "
 "                                                                                                    "
 "                                                                                                    "
-"                                                       ┌ Anthropic ────── (1/5) claude-3-5-son... ┐ "
-"                                                       │1. [Fix] .suggestion1                     █ "
-"                                                       │   Description 1                          █ "
-"                                                       │                                          █ "
-"                                                       │2. [Next] .suggestion2                    █ "
-"                                                       │   Description 2                          █ "
+"                                                       ┌ Anthropic ────── (7/7) claude-3-5-son... ┐ "
+"                                                       │5. [Next] .users[4]                       ║ "
+"                                                       │   Fifth user                             ║ "
 "                                                       │                                          ║ "
-"                                                       │3. [Optimize] .suggestion3                ║ "
-"                                                       │   Description 3                          ║ "
+"                                                       │[Optimize] .users[5]                      ║ "
+"                                                       │   Sixth user                             ║ "
+"                                                       │                                          █ "
+"                                                       │[Fix] .users[6]                           █ "
+"                                                       │   Seventh user                           █ "
 "                                                       └1-5 or Alt+↑↓+Enter to apply | Ctrl+A to c┘ "
 "                                                                                                    "
 "                                                                                                    "
