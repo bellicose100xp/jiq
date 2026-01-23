@@ -43,7 +43,6 @@ All checks must pass before staging files.
 - **Keep functions focused** - Each function does one thing well
 - **Easy to read** - Code should be self-explanatory; avoid clever tricks
 - **Easy to reason about** - Reader should understand behavior without tracing through many files
-- **Limit function length** - If a function exceeds ~50 lines, consider splitting it
 - **Clear naming** - Function names describe what they do, not how
 
 ### Complexity Management

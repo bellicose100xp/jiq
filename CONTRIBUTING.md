@@ -89,7 +89,7 @@ cargo clippy -D warnings # Must pass
 - Create utility modules for common operations
 
 **Focused Code:**
-- Functions do one thing well (~50 lines max)
+- Functions do one thing well
 - Clear, self-explanatory naming
 - Prefer early returns over deep nesting
 - Extract helpers for complex conditionals
