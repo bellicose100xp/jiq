@@ -6,6 +6,34 @@ This document outlines a phased implementation plan to enhance mouse support in 
 
 ---
 
+## Implementation Guidelines
+
+1. **Commit after each phase** - Each phase should be committed separately with a descriptive commit message
+2. **Test coverage** - All new logic must have test coverage before committing
+3. **Manual TUI testing** - Verify functionality manually before marking phase complete
+4. **Update docs for deviations** - Any changes made during implementation that differ from the original plan must be documented
+
+After each phase:
+1. Run `cargo build --release` - must pass
+2. Run `cargo clippy --all-targets --all-features` - zero errors
+3. Run `cargo fmt --all --check` - zero formatting issues
+4. Run `cargo test` - all tests pass
+5. Manual TUI testing with explicit test steps
+6. Verify test coverage for new code logic
+
+---
+
+## Phase Checklist
+
+- [x] Phase 1: Region Tracking Infrastructure
+- [ ] Phase 2: Mouse Event Router
+- [ ] Phase 3: Visual Scrollbars (INDEPENDENT)
+- [ ] Phase 4: Click-to-Focus
+- [ ] Phase 5: AI Window Mouse Interactions
+- [ ] Phase 6: Snippet Manager Mouse Interactions
+
+---
+
 ## Current State
 
 ### Existing Mouse Functionality
