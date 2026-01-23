@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.13.13] - 2026-01-22
+
+### Added
+- **Unified entry context detection for `to_entries`/`with_entries`** - Autocomplete now suggests `.key` and `.value` fields inside both `to_entries` and `with_entries` functions
+  - Consistent behavior across both entry-manipulation functions
+  - Context-aware suggestions appear when cursor is inside these functions
+
 ## [3.13.12] - 2026-01-22
 
 ### Added
