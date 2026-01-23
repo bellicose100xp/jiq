@@ -21,6 +21,9 @@ mod element_context_tests;
 #[path = "context_tests/with_entries_context_tests.rs"]
 mod with_entries_context_tests;
 
+#[path = "context_tests/entry_context_tests.rs"]
+mod entry_context_tests;
+
 #[path = "context_tests/helper_tests.rs"]
 mod helper_tests;
 

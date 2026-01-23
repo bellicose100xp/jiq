@@ -4,6 +4,7 @@ use super::jq_functions::filter_builtins;
 use super::json_navigator::navigate;
 use super::path_parser::{PathSegment, parse_path};
 use super::result_analyzer::ResultAnalyzer;
+use super::scan_state::ScanState;
 use super::variable_extractor::extract_variables;
 use crate::query::ResultType;
 use serde_json::Value;
@@ -232,33 +233,6 @@ fn get_all_field_suggestions(
         .collect()
 }
 
-/// Injects .key and .value suggestions for with_entries() context.
-///
-/// # Parameters
-/// - `suggestions`: Mutable list to inject special suggestions into
-/// - `needs_leading_dot`: Whether suggestions should include leading dot
-///
-/// # Notes
-/// Inserts .value first so .key ends up at position 0 (top of suggestion list).
-fn inject_with_entries_suggestions(suggestions: &mut Vec<Suggestion>, needs_leading_dot: bool) {
-    let prefix = if needs_leading_dot { "." } else { "" };
-
-    suggestions.insert(
-        0,
-        Suggestion::new_with_type(format!("{}value", prefix), SuggestionType::Field, None)
-            .with_description("Entry value from with_entries()"),
-    );
-    suggestions.insert(
-        0,
-        Suggestion::new_with_type(
-            format!("{}key", prefix),
-            SuggestionType::Field,
-            Some(JsonFieldType::String),
-        )
-        .with_description("Entry key from with_entries()"),
-    );
-}
-
 /// Filters suggestions by partial text only if partial is non-empty.
 ///
 /// # Parameters
@@ -380,6 +354,263 @@ pub enum SuggestionContext {
     VariableContext,
 }
 
+/// Context when inside entry-transforming functions (to_entries, with_entries).
+/// Determines whether to suggest .key/.value or fall back to all fields.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum EntryContext {
+    /// Not in an entry context
+    None,
+    /// Direct entry access - suggest .key and .value
+    Direct,
+    /// Navigated into .value with additional transformations - fall back to all fields
+    OpaqueValue,
+}
+
+/// Detects entry context from transforming functions (to_entries, with_entries).
+///
+/// Returns:
+/// - `EntryContext::Direct` - cursor is at direct entry access (suggest .key/.value)
+/// - `EntryContext::OpaqueValue` - cursor is after `.value | nested(` (show all fields)
+/// - `EntryContext::None` - not in entry context
+pub fn detect_entry_context(query: &str, cursor_pos: usize) -> EntryContext {
+    let before_cursor = &query[..cursor_pos.min(query.len())];
+
+    // Check with_entries first (cursor inside function parentheses)
+    if let Some(we_pos) = find_unclosed_with_entries(before_cursor) {
+        // Find the actual opening paren position (may have whitespace after name)
+        let after_name = &before_cursor[we_pos + "with_entries".len()..];
+        let whitespace_len = after_name.len() - after_name.trim_start().len();
+        let paren_pos = we_pos + "with_entries".len() + whitespace_len + 1; // +1 for '('
+        let inside_we = &before_cursor[paren_pos..];
+        return classify_entry_path(inside_we);
+    }
+
+    // Check to_entries
+    if let Some(te_pos) = find_to_entries_outside_strings(before_cursor) {
+        let after_te = &before_cursor[te_pos + "to_entries".len()..];
+        if is_in_entry_element_context(after_te)
+            && let Some(path_start) = find_entry_element_start(after_te)
+        {
+            return classify_entry_path(&after_te[path_start..]);
+        }
+    }
+
+    EntryContext::None
+}
+
+/// Find the last occurrence of `to_entries` outside of string literals.
+fn find_to_entries_outside_strings(query: &str) -> Option<usize> {
+    let mut state = ScanState::default();
+    let mut last_pos = None;
+
+    for (pos, ch) in query.char_indices() {
+        if !state.is_in_string() && query[pos..].starts_with("to_entries") {
+            last_pos = Some(pos);
+        }
+        state = state.advance(ch);
+    }
+    last_pos
+}
+
+/// Find the innermost unclosed `with_entries(` position.
+/// Handles optional whitespace between function name and opening paren.
+fn find_unclosed_with_entries(before_cursor: &str) -> Option<usize> {
+    let mut state = ScanState::default();
+    let mut we_positions = Vec::new();
+
+    for (pos, ch) in before_cursor.char_indices() {
+        if !state.is_in_string() {
+            // Check for with_entries followed by optional whitespace and (
+            if before_cursor[pos..].starts_with("with_entries") {
+                let after_name = &before_cursor[pos + "with_entries".len()..];
+                let trimmed = after_name.trim_start();
+                if trimmed.starts_with('(') {
+                    we_positions.push(pos);
+                }
+            }
+            if ch == ')' && !we_positions.is_empty() {
+                we_positions.pop();
+            }
+        }
+        state = state.advance(ch);
+    }
+
+    we_positions.last().copied()
+}
+
+/// Check if we're in an entry element context after to_entries.
+/// This detects patterns like:
+/// - `| .[]` (array iteration)
+/// - `| map(` (mapping function)
+fn is_in_entry_element_context(after_to_entries: &str) -> bool {
+    let trimmed = after_to_entries.trim_start();
+
+    // Check for pipe followed by iteration or map
+    if let Some(pipe_pos) = trimmed.find('|') {
+        let after_pipe = trimmed[pipe_pos + 1..].trim_start();
+
+        // Array iteration: .[  or .[]
+        if after_pipe.starts_with(".[") {
+            return true;
+        }
+
+        // Map function
+        if after_pipe.starts_with("map(") {
+            return true;
+        }
+    }
+
+    // Direct iteration without pipe: .[]
+    trimmed.starts_with(".[")
+}
+
+/// Find the start position of entry element access in the after_to_entries string.
+/// Returns the position where we start accessing individual entries.
+fn find_entry_element_start(after_to_entries: &str) -> Option<usize> {
+    let trimmed = after_to_entries.trim_start();
+    let offset = after_to_entries.len() - trimmed.len();
+
+    // Look for patterns that start element access
+    if let Some(pipe_pos) = trimmed.find('|') {
+        let after_pipe = trimmed[pipe_pos + 1..].trim_start();
+        let pipe_offset = pipe_pos + 1 + (trimmed[pipe_pos + 1..].len() - after_pipe.len());
+
+        // .[] pattern - find the closing ]
+        if after_pipe.starts_with(".[]") {
+            // Find position after .[]
+            if let Some(bracket_end) = after_pipe[1..].find(']') {
+                let pos_after_iteration = offset + pipe_offset + 1 + bracket_end + 1;
+                // Skip any pipe after .[].
+                let remainder = &after_to_entries[pos_after_iteration..];
+                if let Some(dot_pos) = remainder.find('.') {
+                    return Some(pos_after_iteration + dot_pos);
+                }
+            }
+        }
+
+        // map( pattern - find the opening paren
+        if after_pipe.starts_with("map(") {
+            let paren_pos = offset + pipe_offset + 4; // length of "map("
+            return Some(paren_pos);
+        }
+    }
+
+    // Direct .[] without pipe
+    if trimmed.starts_with(".[]")
+        && let Some(bracket_end) = trimmed[1..].find(']')
+    {
+        let pos_after_iteration = offset + 1 + bracket_end + 1;
+        let remainder = &after_to_entries[pos_after_iteration..];
+        if let Some(dot_pos) = remainder.find('.') {
+            return Some(pos_after_iteration + dot_pos);
+        }
+    }
+
+    None
+}
+
+/// Classify entry path to determine if we're at direct entry access or navigated into .value.
+fn classify_entry_path(path: &str) -> EntryContext {
+    // Find .value access outside strings
+    let value_pos = match find_value_access_outside_strings(path) {
+        Some(pos) => pos,
+        None => return EntryContext::Direct,
+    };
+
+    let after_value = &path[value_pos + ".value".len()..];
+
+    // Pipe after .value = opaque (can't determine structure)
+    if contains_char_outside_strings(after_value, '|') {
+        return EntryContext::OpaqueValue;
+    }
+
+    // Nested functions after .value = opaque
+    let nested_functions = ["map(", "select(", "sort_by(", "group_by(", "unique_by("];
+    for func in nested_functions {
+        if contains_pattern_outside_strings(after_value, func) {
+            return EntryContext::OpaqueValue;
+        }
+    }
+
+    // Check if there's a dot immediately after .value (navigating into value)
+    let trimmed_after = after_value.trim_start();
+    if trimmed_after.starts_with('.') {
+        // Direct .value.field navigation - not in entry context anymore
+        return EntryContext::None;
+    }
+
+    // Just .value without further navigation - still in direct context
+    EntryContext::Direct
+}
+
+/// Find the last `.value` access outside of string literals.
+fn find_value_access_outside_strings(query: &str) -> Option<usize> {
+    let mut state = ScanState::default();
+    let mut last_pos = None;
+
+    for (pos, ch) in query.char_indices() {
+        if !state.is_in_string() && query[pos..].starts_with(".value") {
+            // Verify it's not followed by more identifier chars (e.g., .values)
+            let after_value = &query[pos + ".value".len()..];
+            let next_char = after_value.chars().next();
+            if !matches!(next_char, Some(c) if c.is_alphanumeric() || c == '_') {
+                last_pos = Some(pos);
+            }
+        }
+        state = state.advance(ch);
+    }
+    last_pos
+}
+
+/// Check if a character appears outside of string literals.
+fn contains_char_outside_strings(query: &str, target: char) -> bool {
+    let mut state = ScanState::default();
+
+    for (_pos, ch) in query.char_indices() {
+        if !state.is_in_string() && ch == target {
+            return true;
+        }
+        state = state.advance(ch);
+    }
+    false
+}
+
+/// Check if a pattern appears outside of string literals.
+fn contains_pattern_outside_strings(query: &str, pattern: &str) -> bool {
+    let mut state = ScanState::default();
+
+    for (pos, ch) in query.char_indices() {
+        if !state.is_in_string() && query[pos..].starts_with(pattern) {
+            return true;
+        }
+        state = state.advance(ch);
+    }
+    false
+}
+
+/// Injects .key and .value suggestions for entry context (to_entries, with_entries).
+/// Removes any existing key/value suggestions first to avoid duplicates.
+fn inject_entry_field_suggestions(suggestions: &mut Vec<Suggestion>, needs_leading_dot: bool) {
+    let prefix = if needs_leading_dot { "." } else { "" };
+    let key_text = format!("{}key", prefix);
+    let value_text = format!("{}value", prefix);
+
+    // Remove any existing key/value suggestions to avoid duplicates
+    // (the result analyzer may have already found them from the entry structure)
+    suggestions.retain(|s| s.text != key_text && s.text != value_text);
+
+    suggestions.insert(
+        0,
+        Suggestion::new_with_type(value_text, SuggestionType::Field, None)
+            .with_description("Entry value from to_entries/with_entries"),
+    );
+    suggestions.insert(
+        0,
+        Suggestion::new_with_type(key_text, SuggestionType::Field, Some(JsonFieldType::String))
+            .with_description("Entry key from to_entries/with_entries"),
+    );
+}
+
 pub fn get_suggestions(
     query: &str,
     cursor_pos: usize,
@@ -395,13 +626,21 @@ pub fn get_suggestions(
     // Suppress .[].field suggestions inside element-context functions (map, select, etc.)
     // where iteration is already provided by the function
     let suppress_array_brackets = brace_tracker.is_in_element_context(cursor_pos);
-    let in_with_entries = brace_tracker.is_in_with_entries_context(cursor_pos);
 
     match context {
         SuggestionContext::FieldContext => {
             let needs_dot = needs_leading_dot(before_cursor, &partial);
             let is_at_end = is_cursor_at_logical_end(query, cursor_pos);
             let is_non_executing = brace_tracker.is_in_non_executing_context(cursor_pos);
+
+            // Unified entry context detection for to_entries/with_entries
+            let entry_context = detect_entry_context(query, cursor_pos);
+
+            // If inside .value with nested transformations, fall back to all fields
+            if entry_context == EntryContext::OpaqueValue {
+                let suggestions = get_all_field_suggestions(&all_field_names, needs_dot);
+                return filter_suggestions_by_partial_if_nonempty(suggestions, &partial);
+            }
 
             // Phase 3: Path-aware suggestion logic
             let mut suggestions = if is_non_executing && is_at_end {
@@ -478,8 +717,9 @@ pub fn get_suggestions(
                 )
             };
 
-            if in_with_entries {
-                inject_with_entries_suggestions(&mut suggestions, needs_dot);
+            // Inject .key/.value for direct entry context (to_entries/with_entries)
+            if entry_context == EntryContext::Direct {
+                inject_entry_field_suggestions(&mut suggestions, needs_dot);
             }
 
             filter_suggestions_by_partial_if_nonempty(suggestions, &partial)

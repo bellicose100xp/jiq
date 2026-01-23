@@ -270,9 +270,9 @@ fn test_with_entries_key_has_description() {
             .unwrap()
             .description
             .as_ref()
-            .map(|d| d.contains("with_entries"))
+            .map(|d| d.contains("to_entries") || d.contains("with_entries"))
             .unwrap_or(false),
-        ".key suggestion should have description mentioning with_entries()"
+        ".key suggestion should have description mentioning entry context"
     );
 }
 
@@ -299,9 +299,9 @@ fn test_with_entries_value_has_description() {
             .unwrap()
             .description
             .as_ref()
-            .map(|d| d.contains("with_entries"))
+            .map(|d| d.contains("to_entries") || d.contains("with_entries"))
             .unwrap_or(false),
-        ".value suggestion should have description mentioning with_entries()"
+        ".value suggestion should have description mentioning entry context"
     );
 }
 
@@ -333,23 +333,16 @@ fn test_with_entries_array_input() {
 
 #[test]
 fn test_with_entries_no_leading_dot_after_pipe() {
-    let (parsed, result_type) = create_object_json();
     let query = "with_entries(.key | ";
-    let tracker = tracker_for(query);
-
-    let _suggestions = get_suggestions(
-        query,
-        query.len(),
-        Some(parsed),
-        Some(result_type),
-        None,
-        empty_field_names(),
-        &tracker,
-    );
 
     // After pipe with no dot, we're in function context
-    // But with_entries context should still be maintained
-    assert!(tracker.is_in_with_entries_context(query.len()));
+    // But entry context should still be maintained
+    let entry_context = detect_entry_context(query, query.len());
+    assert_eq!(
+        entry_context,
+        EntryContext::Direct,
+        "Should detect direct entry context after pipe inside with_entries()"
+    );
 }
 
 #[test]
