@@ -57,6 +57,64 @@ From the feature request:
 
 ---
 
+## Existing Infrastructure Analysis
+
+### What Already Exists
+
+| Component | Scroll State | Position Tracking | Scroll Methods |
+|-----------|-------------|-------------------|----------------|
+| **Results Pane** | `ScrollState` in `app.results_scroll` | N/A | ✓ `scroll_up(n)`, `scroll_down(n)` |
+| **AI Window** | `SelectionState` in `app.ai.selection` | ✓ `suggestion_y_positions`, `suggestion_heights` | ✗ Only `navigate_next/prev` |
+| **Snippets** | `scroll_offset: usize` | ✗ Fixed-height items (1 line) | ✗ Only `select_next/prev` |
+| **Autocomplete** | `scroll_offset: usize` | ✗ Fixed-height items (1 line) | ✗ Only `select_next/prev` |
+| **History** | `scroll_offset: usize` | ✗ Fixed-height items (1 line) | ✗ Only `select_next/prev` |
+| **Help Popup** | `ScrollState` per tab | N/A | ✓ via `current_scroll_mut()` |
+
+### Key Insight: AI Position Tracking Already Exists
+
+The `SelectionState` struct (`src/ai/selection/state.rs`) already tracks:
+```rust
+pub struct SelectionState {
+    suggestion_y_positions: Vec<u16>,  // Y position of each suggestion
+    suggestion_heights: Vec<u16>,      // Height of each suggestion
+    scroll_offset: u16,
+    viewport_height: u16,
+    // ...
+}
+```
+
+This means finding which suggestion is under the cursor is straightforward:
+```rust
+fn suggestion_at_y(&self, y: u16) -> Option<usize> {
+    let content_y = y.saturating_add(self.scroll_offset);
+    for (i, &pos) in self.suggestion_y_positions.iter().enumerate() {
+        let height = self.suggestion_heights.get(i).copied().unwrap_or(1);
+        if content_y >= pos && content_y < pos + height {
+            return Some(i);
+        }
+    }
+    None
+}
+```
+
+### Design Decision: Scroll vs Selection
+
+**Question**: When user scrolls with mouse wheel in AI/Snippet/History, should it:
+- A) Scroll the view (selection may scroll off-screen)
+- B) Change the selection (like keyboard up/down)
+
+**Recommendation: Option A (Scroll view only)**
+
+Rationale:
+- Mouse users expect scroll to move the view, not change selection
+- Allows browsing without accidentally changing selection
+- Click can be used to select specific item
+- Matches behavior of most desktop applications
+
+**Implementation**: Add `scroll_view_up/down` methods separate from `select_next/prev`.
+
+---
+
 ## Architecture Changes
 
 ### 1. Region Tracking System
@@ -175,11 +233,12 @@ pub fn handle_mouse_event(app: &mut App, mouse: MouseEvent) {
    - `Autocomplete` → `app.autocomplete.scroll_up/down()`
    - `HistoryPopup` → `app.history.scroll_up/down()`
 3. Update `app_events.rs` to use new handler
-4. Add scroll methods to components that lack them:
-   - `SnippetState` - add `scroll_up()`, `scroll_down()`
-   - `HelpPopupState` - add scroll methods if missing
-   - `HistoryState` - add scroll methods if missing
-   - `AutocompleteState` - add scroll methods if missing
+4. Add **view-only** scroll methods to components (scroll without changing selection):
+   - `SelectionState` (AI) - add `scroll_view_up(lines)`, `scroll_view_down(lines)`
+   - `SnippetState` - add `scroll_view_up()`, `scroll_view_down()`
+   - `HistoryState` - add `scroll_view_up()`, `scroll_view_down()`
+   - `AutocompleteState` - add `scroll_view_up()`, `scroll_view_down()`
+   - `HelpPopupState` - already has scroll via `current_scroll_mut().scroll_up/down()` ✓
 
 **Files to modify:**
 - `src/app/app_events.rs` - Replace inline mouse handler with module call
@@ -400,9 +459,9 @@ Each phase should include unit tests:
 - Click-to-focus (changes focus behavior, may conflict with keyboard flow)
 - Search bar click-to-edit (needs careful state transition handling)
 
-### Higher Complexity
-- AI hover interactions (requires coordinate-to-suggestion mapping)
-- Snippet click-to-select (requires coordinate-to-item mapping)
+### Lower Than Expected Complexity
+- AI hover interactions - position tracking already exists in `SelectionState` (`suggestion_y_positions`, `suggestion_heights`)
+- Snippet click-to-select - fixed-height items make index calculation trivial
 
 ### Mitigation
 - Implement phases incrementally
@@ -425,11 +484,13 @@ Each phase should include unit tests:
 | Phase | Complexity | Files Modified | New Files |
 |-------|-----------|----------------|-----------|
 | 1. Region Tracking | Medium | 8 | 3 |
-| 2. Position-Aware Scroll | Low | 6 | 2 |
+| 2. Position-Aware Scroll | Low-Medium | 7 | 2 |
 | 3. Visual Scrollbars | Low | 6 | 2 |
 | 4. Click-to-Focus | Medium | 2 | 0 |
-| 5. AI Window Mouse | Medium-High | 4 | 0 |
-| 6. Snippet Manager Mouse | Medium | 3 | 0 |
+| 5. AI Window Mouse | Medium | 4 | 0 |
+| 6. Snippet Manager Mouse | Low | 3 | 0 |
+
+**Note:** Phase 5 complexity reduced from Medium-High to Medium because position tracking infrastructure already exists in `SelectionState`. Phase 6 is Low because snippet items have fixed height (1 line each).
 
 **Recommended order:** Phases 1-3 provide the most value with least risk. Phases 4-6 can be implemented incrementally based on user feedback.
 
@@ -450,8 +511,12 @@ Each phase should include unit tests:
    - Should borders highlight on hover?
 
 4. **Scroll speed?**
-   - Currently 3 lines per scroll event
-   - Should this vary by component? (e.g., 1 suggestion at a time in AI window)
+   - Currently 3 lines per scroll event for results pane
+   - Recommended per component:
+     - Results pane: 3 lines (current behavior)
+     - AI window: 1 suggestion at a time (variable height)
+     - Snippet/History/Autocomplete: 1 item (fixed height)
+     - Help popup: 3 lines (content-heavy)
 
 ---
 
