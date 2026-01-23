@@ -120,6 +120,79 @@ Rationale:
 
 ---
 
+## Code Organization Principles
+
+### DRY: Avoid Duplicated Logic
+
+**Problem:** Without abstractions, we'd duplicate region-recording and scroll logic across many files.
+
+**Solutions:**
+
+1. **Scrollable Trait** - Common interface for scrollable components:
+```rust
+// src/scroll/scrollable.rs
+pub trait Scrollable {
+    fn scroll_view_up(&mut self, lines: usize);
+    fn scroll_view_down(&mut self, lines: usize);
+    fn scroll_offset(&self) -> usize;
+    fn max_scroll(&self) -> usize;
+    fn viewport_size(&self) -> usize;
+}
+```
+
+2. **Region Recording via Return Value** - Render functions return their area instead of mutating global state:
+```rust
+// Instead of: app.layout_regions.ai_window = Some(area);
+// Return the area from render:
+pub fn render_popup(...) -> Option<Rect> {
+    // ... render logic ...
+    Some(popup_area)
+}
+
+// Caller collects regions:
+if let Some(area) = ai_render::render_popup(...) {
+    regions.ai_window = Some(area);
+}
+```
+
+### Focused Files: Split Large Modules
+
+**Mouse events module structure:**
+```
+src/app/mouse/
+├── mod.rs              # Re-exports, handle_mouse_event() dispatcher
+├── scroll.rs           # handle_scroll() - ~50 lines
+├── click.rs            # handle_click() - ~80 lines
+├── hover.rs            # handle_hover() - ~60 lines
+├── scroll_tests.rs     # Tests for scroll routing
+├── click_tests.rs      # Tests for click handling
+└── hover_tests.rs      # Tests for hover detection
+```
+
+**Layout module structure:**
+```
+src/layout/
+├── mod.rs              # Re-exports
+├── regions.rs          # LayoutRegions struct, Region enum - ~100 lines
+├── hit_test.rs         # region_at() logic with priority handling - ~80 lines
+├── regions_tests.rs    # Region struct tests
+└── hit_test_tests.rs   # Hit testing tests with mock regions
+```
+
+### Test Coverage Requirements
+
+Each new module must have corresponding test file:
+- `regions.rs` → `regions_tests.rs`
+- `scroll.rs` → `scroll_tests.rs`
+- `click.rs` → `click_tests.rs`
+
+**Test categories:**
+1. **Unit tests** - Individual function behavior
+2. **Edge case tests** - Boundaries, empty states, overlapping regions
+3. **Integration tests** - Full event flow from mouse event to state change
+
+---
+
 ## Architecture Changes
 
 ### 1. Region Tracking System
@@ -254,59 +327,97 @@ Phase 3: Visual Scrollbars (INDEPENDENT - can run in parallel with Phase 1)
 - `src/help/help_popup_render.rs` - Record help_popup
 
 **New files:**
-- `src/layout/mod.rs`
-- `src/layout/regions.rs`
-- `src/layout/regions_tests.rs`
+- `src/layout/mod.rs` - Re-exports
+- `src/layout/regions.rs` - LayoutRegions struct, Region enum (~60 lines)
+- `src/layout/hit_test.rs` - `region_at()` with priority logic (~80 lines)
+- `src/layout/regions_tests.rs` - Region struct tests
+- `src/layout/hit_test_tests.rs` - Hit testing with mock regions
+
+**Design decision:** Render functions return their rendered `Rect` instead of mutating global state. The caller (`app_render.rs`) collects all regions. This keeps render functions focused and testable.
 
 ---
 
-### Phase 1A: Component Scroll Methods (Foundation)
+### Phase 1A: Scrollable Trait & Implementations (Foundation)
 
-**Goal:** Add view-only scroll methods to all scrollable components.
+**Goal:** Create a common `Scrollable` trait and implement it for all scrollable components.
 **Dependency:** None (foundation, can run in parallel with Phase 1)
 
-**Rationale:** These methods are needed by Phase 2 (mouse scrolling) and are independent of region tracking. Adding them first allows Phase 2 to focus purely on event routing.
+**Rationale:** Using a trait ensures consistent scroll behavior and enables generic scroll handling in Phase 2. Avoids duplicating scroll logic in each component.
 
 **Tasks:**
-1. Add **view-only** scroll methods (scroll without changing selection):
-   - `SelectionState` (AI) - add `scroll_view_up(lines)`, `scroll_view_down(lines)`
-   - `SnippetState` - add `scroll_view_up()`, `scroll_view_down()`
-   - `HistoryState` - add `scroll_view_up()`, `scroll_view_down()`
-   - `AutocompleteState` - add `scroll_view_up()`, `scroll_view_down()`
-   - `HelpPopupState` - already has scroll via `current_scroll_mut().scroll_up/down()` ✓
-2. Add unit tests for each new scroll method
+1. Create `Scrollable` trait in `src/scroll/scrollable.rs`:
+   ```rust
+   pub trait Scrollable {
+       fn scroll_view_up(&mut self, lines: usize);
+       fn scroll_view_down(&mut self, lines: usize);
+       fn scroll_offset(&self) -> usize;
+       fn max_scroll(&self) -> usize;
+       fn viewport_size(&self) -> usize;
+   }
+   ```
+
+2. Implement `Scrollable` for each component:
+   - `SelectionState` (AI) - scroll suggestions view
+   - `SnippetState` - scroll snippet list view
+   - `HistoryState` - scroll history list view
+   - `AutocompleteState` - scroll autocomplete list view
+   - Note: `HelpPopupState` uses `ScrollState` which already has scroll methods
+
+3. Add unit tests for trait implementations
+
+**New files:**
+- `src/scroll/scrollable.rs` - Trait definition (~30 lines)
+- `src/scroll/scrollable_tests.rs` - Trait behavior tests
 
 **Files to modify:**
-- `src/ai/selection/state.rs` - Add `scroll_view_up/down`
-- `src/snippets/snippet_state.rs` - Add `scroll_view_up/down`
-- `src/history/history_state.rs` - Add `scroll_view_up/down`
-- `src/autocomplete/autocomplete_state.rs` - Add `scroll_view_up/down`
+- `src/scroll/mod.rs` - Export new trait
+- `src/ai/selection/state.rs` - `impl Scrollable for SelectionState`
+- `src/snippets/snippet_state.rs` - `impl Scrollable for SnippetState`
+- `src/history/history_state.rs` - `impl Scrollable for HistoryState`
+- `src/autocomplete/autocomplete_state.rs` - `impl Scrollable for AutocompleteState`
 
 ---
 
 ### Phase 2: Mouse Event Router
 
-**Goal:** Create position-aware mouse event routing.
-**Dependency:** Phase 1 (region tracking) + Phase 1A (scroll methods)
+**Goal:** Create position-aware mouse event routing with focused, testable modules.
+**Dependency:** Phase 1 (region tracking) + Phase 1A (Scrollable trait)
 
 **Tasks:**
-1. Create `src/app/mouse_events.rs` module
-2. Implement `handle_scroll()` that routes based on region:
-   - `ResultsPane` → `app.results_scroll.scroll_up/down(3)`
-   - `AiWindow` → `app.ai.selection.scroll_view_up/down()`
-   - `SnippetList` → `app.snippets.scroll_view_up/down()`
-   - `HelpPopup` → `app.help.current_scroll_mut().scroll_up/down()`
-   - `Autocomplete` → `app.autocomplete.scroll_view_up/down()`
-   - `HistoryPopup` → `app.history.scroll_view_up/down()`
-3. Update `app_events.rs` to use new handler
-4. Handle fallback when cursor is outside all regions (use current behavior: scroll results)
+1. Create `src/app/mouse/` module directory with focused files:
+   ```
+   src/app/mouse/
+   ├── mod.rs              # Dispatcher: handle_mouse_event()
+   ├── scroll.rs           # Scroll routing logic
+   └── scroll_tests.rs     # Scroll routing tests
+   ```
+
+2. Implement `handle_mouse_event()` dispatcher in `mod.rs` (~30 lines):
+   ```rust
+   pub fn handle_mouse_event(app: &mut App, mouse: MouseEvent) {
+       let region = app.layout_regions.region_at(mouse.column, mouse.row);
+       match mouse.kind {
+           MouseEventKind::ScrollDown => scroll::handle_scroll(app, region, Direction::Down),
+           MouseEventKind::ScrollUp => scroll::handle_scroll(app, region, Direction::Up),
+           _ => {} // Click/hover added in later phases
+       }
+   }
+   ```
+
+3. Implement `scroll.rs` with region-to-component routing (~50 lines):
+   - Use `Scrollable` trait for uniform handling where possible
+   - Handle fallback (outside regions → scroll results pane)
+
+4. Update `app_events.rs` to call new handler
 
 **Files to modify:**
-- `src/app/app_events.rs` - Replace inline mouse handler with module call
+- `src/app/app_events.rs` - Replace inline handler with `mouse::handle_mouse_event()`
+- `src/app/mod.rs` - Add `pub mod mouse;`
 
 **New files:**
-- `src/app/mouse_events.rs`
-- `src/app/mouse_events_tests.rs`
+- `src/app/mouse/mod.rs` - Dispatcher (~30 lines)
+- `src/app/mouse/scroll.rs` - Scroll handling (~50 lines)
+- `src/app/mouse/scroll_tests.rs` - Scroll tests
 
 ---
 
@@ -377,7 +488,15 @@ pub fn render_vertical_scrollbar(
 **Dependency:** Phase 1 (region tracking) + Phase 2 (mouse event router)
 
 **Tasks:**
-1. Implement `handle_click()` in `mouse_events.rs`:
+1. Add `click.rs` to `src/app/mouse/` module:
+   ```
+   src/app/mouse/
+   ├── ...
+   ├── click.rs            # Click handling (~80 lines)
+   └── click_tests.rs      # Click tests
+   ```
+
+2. Implement `handle_click()` in `click.rs`:
    ```rust
    fn handle_click(app: &mut App, region: Option<Region>, mouse: MouseEvent) {
        match region {
@@ -411,10 +530,18 @@ pub fn render_vertical_scrollbar(
 ### Phase 5: AI Window Mouse Interactions
 
 **Goal:** Hover to highlight, click to apply suggestions.
-**Dependency:** Phase 1 (region tracking) + Phase 2 (mouse event router)
+**Dependency:** Phase 1 (region tracking) + Phase 2 (mouse event router) + Phase 4 (click module)
 
 **Tasks:**
-1. Track hovered suggestion index in AI state:
+1. Add `hover.rs` to `src/app/mouse/` module:
+   ```
+   src/app/mouse/
+   ├── ...
+   ├── hover.rs            # Hover handling (~60 lines)
+   └── hover_tests.rs      # Hover tests
+   ```
+
+2. Track hovered suggestion index in AI state:
    ```rust
    // In AiState or SelectionState
    pub hovered_index: Option<usize>,
@@ -546,13 +673,18 @@ Each phase should include unit tests:
 
 | Phase | Complexity | Files Modified | New Files | Depends On |
 |-------|-----------|----------------|-----------|------------|
-| 1. Region Tracking | Medium | 8 | 3 | None |
-| 1A. Scroll Methods | Low | 4 | 0 | None |
-| 2. Mouse Event Router | Low | 1 | 2 | 1, 1A |
+| 1. Region Tracking | Medium | 10 | 5 | None |
+| 1A. Scrollable Trait | Low | 5 | 2 | None |
+| 2. Mouse Event Router | Low | 2 | 3 | 1, 1A |
 | 3. Visual Scrollbars | Low | 6 | 2 | **None** |
-| 4. Click-to-Focus | Medium | 1 | 0 | 1, 2 |
-| 5. AI Window Mouse | Medium | 4 | 0 | 1, 2 |
-| 6. Snippet Manager Mouse | Low | 3 | 0 | 1, 2 |
+| 4. Click-to-Focus | Medium | 1 | 2 | 1, 2 |
+| 5. AI Window Mouse | Medium | 3 | 2 | 1, 2, 4 |
+| 6. Snippet Manager Mouse | Low | 2 | 0 | 1, 2, 4 |
+
+**File size targets (per CLAUDE.md):**
+- No file over 1000 lines
+- Each module focused on single responsibility
+- Tests in separate `*_tests.rs` files
 
 **Notes:**
 - Phase 5 complexity reduced from Medium-High to Medium because position tracking already exists in `SelectionState`
