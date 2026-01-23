@@ -10,39 +10,58 @@
 
 ### Module Structure
 
-Features are self-contained modules:
+**Never use `mod.rs`** - Use `{module_name}.rs` for the main module file (Rust 2018+ style).
+
+Features are self-contained modules with prefixed filenames:
 
 ```
-src/feature_name/
-├── mod.rs      # Exports
-├── state.rs    # State struct
-├── events.rs   # Event handlers (optional)
+src/
+├── feature_name.rs                    # Main module - re-exports public API
+└── feature_name/
+    ├── feature_name_state.rs          # State struct
+    ├── feature_name_events.rs         # Event handlers (optional)
+    ├── feature_name_render.rs         # Rendering (optional)
+    ├── feature_name_state_tests.rs    # Tests for state
+    └── feature_name_events_tests.rs   # Tests for events
 ```
 
 ### Key Rules
 
-1. **Self-contained modules** - Features define their state and event logic in their own module
-2. **Integration pattern** - `App` holds feature state, main dispatcher calls feature event handlers
-3. **Small files** - Easy to reason about, single responsibility
+1. **No mod.rs** - Use `{module_name}.rs` as main module file, never `mod.rs`
+2. **Prefix filenames** - Files in a module directory are prefixed with module name (e.g., `history_state.rs` not `state.rs`)
+3. **Separate test files** - Tests go in `{module}_tests.rs`, not co-located with implementation
+4. **Self-contained modules** - Features define their state and event logic in their own module
+5. **Integration pattern** - `App` holds feature state, main dispatcher calls feature event handlers
+6. **Small files** - Under 1000 lines, single responsibility
 
 Example:
 ```rust
-// Feature owns its state and events
-// src/clipboard/state.rs
+// src/clipboard.rs - Main module file (NOT mod.rs)
+pub mod clipboard_state;
+pub mod clipboard_events;
+
+pub use clipboard_state::ClipboardState;
+pub use clipboard_events::handle_clipboard_key;
+
+// src/clipboard/clipboard_state.rs - State struct
 pub struct ClipboardState { ... }
 
-// src/clipboard/events.rs
+#[cfg(test)]
+#[path = "clipboard_state_tests.rs"]
+mod clipboard_state_tests;
+
+// src/clipboard/clipboard_events.rs - Event handlers
 pub fn handle_clipboard_key(app: &mut App, key: KeyEvent) -> bool { ... }
 
 // Main app integrates the feature
-// src/app/state.rs
+// src/app/app_state.rs
 pub struct App {
     pub clipboard: ClipboardState,
     ...
 }
 
-// src/app/events.rs - Dispatcher calls feature handler
-if clipboard::events::handle_clipboard_key(self, key) {
+// src/app/app_events.rs - Dispatcher calls feature handler
+if clipboard::handle_clipboard_key(self, key) {
     return;
 }
 ```
