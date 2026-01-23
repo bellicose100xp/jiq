@@ -1,0 +1,464 @@
+# Mouse Support Enhancement Plan
+
+## Overview
+
+This document outlines a phased implementation plan to enhance mouse support in JIQ. The goal is to provide intuitive mouse interactions that complement the existing keyboard-driven interface.
+
+---
+
+## Current State
+
+### Existing Mouse Functionality
+- **Location:** `src/app/app_events.rs:279-289`
+- Mouse capture is enabled in terminal initialization
+- Only handles `ScrollDown` and `ScrollUp` events (scrolls results pane by 3 lines)
+- All other mouse events (`Down`, `Up`, `Moved`) are ignored
+- No position awareness - scrolling always affects results pane regardless of cursor location
+
+### Existing Scrollbar
+- Results pane has a visual scrollbar (commit `074784c`)
+- Uses ratatui's `Scrollbar` widget with `ScrollbarState`
+- Located in `src/results/results_render.rs:56-70`
+
+### Layout Structure
+```
+Terminal Area
+├── Results Pane (Constraint::Min(3))
+│   └── Search Bar (3 lines, when visible)
+├── Input Field (3 lines, hidden in overlay mode)
+└── Help Line (1 line)
+
+Overlays (rendered on top):
+├── AI Window (right side popup)
+├── Autocomplete Popup (below input)
+├── History Popup
+├── Tooltip Popup
+├── Snippet Manager (full overlay)
+└── Search Overlay (inside results pane)
+```
+
+### Focus System
+- Two focus states: `InputField` and `ResultsPane`
+- Keyboard-only switching (Tab, i key)
+- No mouse-based focus changes
+
+---
+
+## Requirements Summary
+
+From the feature request:
+
+1. **AI Window**: Focus entry on hover, scroll suggestions, click to apply
+2. **Click-to-focus**: Clicking in result or input box moves focus to that box
+3. **Search input click**: Clicking on search input allows editing (same as pressing `/`)
+4. **Snippet manager**: Scroll snippet list, highlight/focus snippet by clicking
+5. **Position-aware scrolling**: Scroll the component under the mouse cursor
+6. **Visual scrollbars**: Add scrollbars to all scrollable areas for discoverability
+
+---
+
+## Architecture Changes
+
+### 1. Region Tracking System
+
+To support position-aware interactions, we need to track where UI components are rendered.
+
+**New struct:** `src/layout/regions.rs`
+```rust
+#[derive(Default, Clone)]
+pub struct LayoutRegions {
+    pub results_pane: Option<Rect>,
+    pub input_field: Option<Rect>,
+    pub ai_window: Option<Rect>,
+    pub autocomplete: Option<Rect>,
+    pub history_popup: Option<Rect>,
+    pub snippet_manager: Option<Rect>,
+    pub snippet_list: Option<Rect>,       // List area within snippet manager
+    pub snippet_preview: Option<Rect>,    // Preview area within snippet manager
+    pub search_bar: Option<Rect>,
+    pub help_popup: Option<Rect>,
+}
+
+impl LayoutRegions {
+    pub fn region_at(&self, x: u16, y: u16) -> Option<Region> {
+        // Returns the topmost region containing the point
+        // Check overlays first (help > snippet > history > ai > autocomplete)
+        // Then check base regions (results > input)
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Region {
+    ResultsPane,
+    InputField,
+    AiWindow,
+    Autocomplete,
+    HistoryPopup,
+    SnippetList,
+    SnippetPreview,
+    SearchBar,
+    HelpPopup,
+}
+```
+
+**Integration:** Store `LayoutRegions` in `App` state, populate during render.
+
+### 2. Enhanced Mouse Event Handler
+
+**New module:** `src/app/mouse_events.rs`
+
+```rust
+pub fn handle_mouse_event(app: &mut App, mouse: MouseEvent) {
+    let region = app.layout_regions.region_at(mouse.column, mouse.row);
+
+    match mouse.kind {
+        MouseEventKind::ScrollDown => handle_scroll(app, region, ScrollDirection::Down),
+        MouseEventKind::ScrollUp => handle_scroll(app, region, ScrollDirection::Up),
+        MouseEventKind::Down(MouseButton::Left) => handle_click(app, region, mouse),
+        MouseEventKind::Moved => handle_hover(app, region, mouse),
+        _ => {}
+    }
+}
+```
+
+---
+
+## Implementation Phases
+
+### Phase 1: Region Tracking Infrastructure
+
+**Goal:** Establish the foundation for position-aware mouse interactions.
+
+**Tasks:**
+1. Create `src/layout/` module with `regions.rs`
+2. Add `LayoutRegions` struct to track rendered areas
+3. Add `layout_regions: LayoutRegions` field to `App` struct
+4. Update render functions to record their areas:
+   - `results_render::render_pane()` → record `results_pane`, `search_bar`
+   - `input_render::render_field()` → record `input_field`
+   - `ai_render::render_popup()` → record `ai_window`
+   - `autocomplete_render::render_popup()` → record `autocomplete`
+   - `history_render::render_popup()` → record `history_popup`
+   - `snippet_render::render_popup()` → record `snippet_manager`, `snippet_list`, `snippet_preview`
+   - `help_popup_render::render_popup()` → record `help_popup`
+5. Implement `region_at()` with proper overlay priority
+
+**Files to modify:**
+- `src/app/app_state.rs` - Add `layout_regions` field
+- `src/app/app_render.rs` - Pass regions to render functions
+- `src/results/results_render.rs` - Record results_pane, search_bar
+- `src/input/input_render.rs` - Record input_field
+- `src/ai/ai_render.rs` - Record ai_window
+- `src/autocomplete/autocomplete_render.rs` - Record autocomplete
+- `src/history/history_render.rs` - Record history_popup
+- `src/snippets/snippet_render.rs` - Record snippet areas
+- `src/help/help_popup_render.rs` - Record help_popup
+
+**New files:**
+- `src/layout/mod.rs`
+- `src/layout/regions.rs`
+- `src/layout/regions_tests.rs`
+
+---
+
+### Phase 2: Position-Aware Scrolling
+
+**Goal:** Scroll the component under the mouse cursor.
+
+**Tasks:**
+1. Create `src/app/mouse_events.rs` module
+2. Implement `handle_scroll()` that routes based on region:
+   - `ResultsPane` → `app.results_scroll.scroll_up/down(3)`
+   - `AiWindow` → `app.ai.selection.scroll_up/down()`
+   - `SnippetList` → `app.snippets.scroll_up/down()`
+   - `HelpPopup` → `app.help.scroll_up/down()`
+   - `Autocomplete` → `app.autocomplete.scroll_up/down()`
+   - `HistoryPopup` → `app.history.scroll_up/down()`
+3. Update `app_events.rs` to use new handler
+4. Add scroll methods to components that lack them:
+   - `SnippetState` - add `scroll_up()`, `scroll_down()`
+   - `HelpPopupState` - add scroll methods if missing
+   - `HistoryState` - add scroll methods if missing
+   - `AutocompleteState` - add scroll methods if missing
+
+**Files to modify:**
+- `src/app/app_events.rs` - Replace inline mouse handler with module call
+- `src/snippets/snippet_state.rs` - Add scroll methods
+- `src/help/help_popup_state.rs` - Add scroll methods
+- `src/history/history_state.rs` - Add scroll methods
+- `src/autocomplete/autocomplete_state.rs` - Add scroll methods
+
+**New files:**
+- `src/app/mouse_events.rs`
+- `src/app/mouse_events_tests.rs`
+
+---
+
+### Phase 3: Visual Scrollbars
+
+**Goal:** Add scrollbar indicators to all scrollable components.
+
+**Scrollbar utility function:**
+```rust
+// src/widgets/scrollbar.rs
+pub fn render_vertical_scrollbar(
+    frame: &mut Frame,
+    area: Rect,
+    total_items: usize,
+    viewport_size: usize,
+    scroll_offset: usize,
+) {
+    if total_items <= viewport_size {
+        return; // No scrollbar needed
+    }
+
+    let scrollbar = Scrollbar::new(ScrollbarOrientation::VerticalRight)
+        .begin_symbol(None)
+        .end_symbol(None);
+
+    let mut state = ScrollbarState::new(total_items)
+        .position(scroll_offset)
+        .viewport_content_length(viewport_size);
+
+    frame.render_stateful_widget(scrollbar, area, &mut state);
+}
+```
+
+**Tasks:**
+1. Create reusable scrollbar utility in `src/widgets/scrollbar.rs`
+2. Add scrollbar to AI Window suggestions:
+   - Render after suggestions content
+   - Use `ai_state.selection.scroll_offset()` and suggestion count
+3. Add scrollbar to Snippet Manager list:
+   - In `render_list()` function
+   - Use `state.scroll_offset()` and `state.filtered_count()`
+4. Add scrollbar to Help Popup:
+   - Use existing scroll state
+5. Add scrollbar to History Popup:
+   - Use history entry count and scroll offset
+6. Add scrollbar to Autocomplete:
+   - Use suggestion count and selected index
+
+**Files to modify:**
+- `src/ai/ai_render.rs` - Add scrollbar after suggestions
+- `src/snippets/snippet_render.rs` - Add scrollbar to list
+- `src/help/help_popup_render.rs` - Add scrollbar
+- `src/history/history_render.rs` - Add scrollbar
+- `src/autocomplete/autocomplete_render.rs` - Add scrollbar
+
+**New files:**
+- `src/widgets/scrollbar.rs`
+- `src/widgets/scrollbar_tests.rs`
+
+---
+
+### Phase 4: Click-to-Focus
+
+**Goal:** Clicking in result or input box moves focus to that box.
+
+**Tasks:**
+1. Implement `handle_click()` in `mouse_events.rs`:
+   ```rust
+   fn handle_click(app: &mut App, region: Option<Region>, mouse: MouseEvent) {
+       match region {
+           Some(Region::ResultsPane) => {
+               if app.focus != Focus::ResultsPane {
+                   app.focus = Focus::ResultsPane;
+               }
+           }
+           Some(Region::InputField) => {
+               if app.focus != Focus::InputField {
+                   app.focus = Focus::InputField;
+                   app.input.editor_mode = EditorMode::Insert;
+               }
+           }
+           // ... other regions
+           _ => {}
+       }
+   }
+   ```
+2. Handle click in Search Bar:
+   - If search is visible and confirmed (navigating results), click makes it editable
+   - Equivalent to pressing `/` to edit search query
+3. Test focus transitions with mouse
+
+**Files to modify:**
+- `src/app/mouse_events.rs` - Add click handler
+- `src/search/search_state.rs` - May need method to switch to edit mode
+
+---
+
+### Phase 5: AI Window Mouse Interactions
+
+**Goal:** Hover to highlight, click to apply suggestions.
+
+**Tasks:**
+1. Track hovered suggestion index in AI state:
+   ```rust
+   // In AiState or SelectionState
+   pub hovered_index: Option<usize>,
+   ```
+2. Implement hover detection in `handle_hover()`:
+   - Calculate which suggestion is under cursor using `suggestion_y_positions`
+   - Update `hovered_index`
+   - If navigation not active, also update `selected_index` on hover
+3. Implement click-to-apply:
+   - On click in AI window, apply the clicked suggestion
+   - Use existing `apply_suggestion()` logic
+4. Update AI render to show hover highlighting:
+   - Highlight hovered suggestion differently from selected
+   - Consider: subtle highlight for hover, stronger for selected
+
+**Hover vs Selection behavior:**
+- If user has used Alt+Up/Down (navigation_active=true): hover only shows visual feedback, doesn't change selection
+- If user hasn't navigated: hover changes selection (for quick mouse-only usage)
+
+**Files to modify:**
+- `src/ai/selection/state.rs` - Add `hovered_index`
+- `src/ai/ai_render.rs` - Render hover state
+- `src/app/mouse_events.rs` - Handle AI window hover and click
+- `src/ai/ai_events.rs` - May need click-to-apply method
+
+---
+
+### Phase 6: Snippet Manager Mouse Interactions
+
+**Goal:** Click to select snippet, scroll to navigate.
+
+**Tasks:**
+1. Implement click-to-select in snippet list:
+   - Calculate which snippet is under cursor
+   - Update `selected_index`
+2. Double-click to apply (optional enhancement):
+   - Track last click time and position
+   - Apply snippet on double-click
+3. Scroll support (from Phase 2)
+4. Visual feedback:
+   - Hover highlighting for snippet entries (optional)
+
+**Files to modify:**
+- `src/snippets/snippet_state.rs` - Add method to select by index
+- `src/snippets/snippet_render.rs` - Track item positions
+- `src/app/mouse_events.rs` - Handle snippet interactions
+
+---
+
+## Testing Strategy
+
+### Unit Tests
+Each phase should include unit tests:
+
+1. **Region tracking tests:**
+   - Test `region_at()` with various coordinates
+   - Test overlay priority (popup over base regions)
+   - Test edge cases (borders, empty areas)
+
+2. **Scroll routing tests:**
+   - Test scroll events route to correct component
+   - Test scroll bounds are respected
+   - Test scroll when component is not visible (should no-op)
+
+3. **Click handling tests:**
+   - Test focus changes on click
+   - Test click outside all regions (should no-op)
+   - Test click in overlapping regions (topmost wins)
+
+4. **AI interaction tests:**
+   - Test hover index calculation
+   - Test click-to-apply
+   - Test hover behavior with/without navigation active
+
+### Integration Tests
+- Full mouse event flow from terminal to component
+- Verify visual feedback renders correctly
+- Test interaction sequences (hover then click, scroll then click)
+
+### Manual Testing Checklist
+- [ ] Scroll in results pane
+- [ ] Scroll in AI window
+- [ ] Scroll in snippet list
+- [ ] Scroll in help popup
+- [ ] Click to focus results pane
+- [ ] Click to focus input field
+- [ ] Click search bar to edit
+- [ ] Hover AI suggestions
+- [ ] Click AI suggestion to apply
+- [ ] Click snippet to select
+- [ ] Scrollbars visible when content overflows
+- [ ] Scrollbars hidden when content fits
+
+---
+
+## Risk Assessment
+
+### Low Risk
+- Adding scrollbars (purely visual, no state changes)
+- Position-aware scrolling (extends existing functionality)
+- Region tracking (new infrastructure, isolated)
+
+### Medium Risk
+- Click-to-focus (changes focus behavior, may conflict with keyboard flow)
+- Search bar click-to-edit (needs careful state transition handling)
+
+### Higher Complexity
+- AI hover interactions (requires coordinate-to-suggestion mapping)
+- Snippet click-to-select (requires coordinate-to-item mapping)
+
+### Mitigation
+- Implement phases incrementally
+- Each phase is independently useful
+- Can stop after Phase 3 (scrolling + scrollbars) and have significant value
+- Extensive testing for focus-related changes
+
+---
+
+## Dependencies
+
+- ratatui `Scrollbar` and `ScrollbarState` widgets (already in use)
+- crossterm `MouseEvent`, `MouseEventKind`, `MouseButton` (already enabled)
+- No external dependencies needed
+
+---
+
+## Estimated Scope
+
+| Phase | Complexity | Files Modified | New Files |
+|-------|-----------|----------------|-----------|
+| 1. Region Tracking | Medium | 8 | 3 |
+| 2. Position-Aware Scroll | Low | 6 | 2 |
+| 3. Visual Scrollbars | Low | 6 | 2 |
+| 4. Click-to-Focus | Medium | 2 | 0 |
+| 5. AI Window Mouse | Medium-High | 4 | 0 |
+| 6. Snippet Manager Mouse | Medium | 3 | 0 |
+
+**Recommended order:** Phases 1-3 provide the most value with least risk. Phases 4-6 can be implemented incrementally based on user feedback.
+
+---
+
+## Open Questions
+
+1. **Hover delay for AI suggestions?**
+   - Should hover immediately highlight, or wait ~100ms to avoid flickering?
+
+2. **Click vs double-click for apply?**
+   - Single click could accidentally apply when user just wants to scroll
+   - Double-click is safer but less discoverable
+   - Alternative: click to select, Enter to apply (current keyboard behavior)
+
+3. **Visual feedback for clickable areas?**
+   - Should cursor change when hovering clickable regions? (Terminal may not support)
+   - Should borders highlight on hover?
+
+4. **Scroll speed?**
+   - Currently 3 lines per scroll event
+   - Should this vary by component? (e.g., 1 suggestion at a time in AI window)
+
+---
+
+## References
+
+- Current mouse handler: `src/app/app_events.rs:279-289`
+- Scrollbar implementation: `src/results/results_render.rs:56-70`
+- AI selection state: `src/ai/selection/state.rs`
+- Snippet state: `src/snippets/snippet_state.rs`
+- ratatui Scrollbar docs: https://docs.rs/ratatui/latest/ratatui/widgets/struct.Scrollbar.html
