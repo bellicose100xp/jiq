@@ -17,6 +17,25 @@ use crate::autocomplete::AutocompleteState;
 use crate::input::InputState;
 use crate::query::QueryState;
 
+/// Apply a suggestion when clicked with the mouse
+///
+/// This function is called when the user clicks on a suggestion in the AI window.
+/// It applies the clicked suggestion to the query input.
+///
+/// # Arguments
+/// * `suggestion` - The suggestion to apply
+/// * `input_state` - The input state to modify
+/// * `query_state` - The query state for execution
+/// * `autocomplete_state` - The autocomplete state to hide
+pub fn apply_clicked_suggestion(
+    suggestion: &super::suggestion::Suggestion,
+    input_state: &mut InputState,
+    query_state: &mut QueryState,
+    autocomplete_state: &mut AutocompleteState,
+) {
+    apply_suggestion(suggestion, input_state, query_state, autocomplete_state);
+}
+
 /// Handle suggestion selection events (Alt+1-5, Alt+Up/Down/j/k, Enter)
 ///
 /// This function handles all suggestion selection keybindings:

@@ -22,6 +22,8 @@ pub struct SelectionState {
     suggestion_y_positions: Vec<u16>,
     /// Height (in lines) of each suggestion
     suggestion_heights: Vec<u16>,
+    /// Currently hovered suggestion index (from mouse hover)
+    hovered_index: Option<usize>,
 }
 
 impl SelectionState {
@@ -34,6 +36,7 @@ impl SelectionState {
             viewport_height: 0,
             suggestion_y_positions: Vec::new(),
             suggestion_heights: Vec::new(),
+            hovered_index: None,
         }
     }
 
@@ -202,6 +205,39 @@ impl SelectionState {
     #[allow(dead_code)]
     fn total_content_height(&self) -> u16 {
         self.suggestion_heights.iter().copied().sum()
+    }
+
+    /// Find which suggestion is at a given Y coordinate within the inner area
+    ///
+    /// # Arguments
+    /// * `inner_y` - Y coordinate relative to the inner area top (0-based)
+    ///
+    /// # Returns
+    /// The suggestion index if one is found at that position, None otherwise
+    pub fn suggestion_at_y(&self, inner_y: u16) -> Option<usize> {
+        let content_y = inner_y.saturating_add(self.scroll_offset);
+        for (i, &pos) in self.suggestion_y_positions.iter().enumerate() {
+            let height = self.suggestion_heights.get(i).copied().unwrap_or(1);
+            if content_y >= pos && content_y < pos.saturating_add(height) {
+                return Some(i);
+            }
+        }
+        None
+    }
+
+    /// Get the currently hovered suggestion index
+    pub fn get_hovered(&self) -> Option<usize> {
+        self.hovered_index
+    }
+
+    /// Set the hovered suggestion index
+    pub fn set_hovered(&mut self, index: Option<usize>) {
+        self.hovered_index = index;
+    }
+
+    /// Clear the hovered state
+    pub fn clear_hover(&mut self) {
+        self.hovered_index = None;
     }
 }
 

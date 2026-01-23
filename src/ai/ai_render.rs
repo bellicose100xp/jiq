@@ -101,6 +101,7 @@ fn render_suggestions_as_widgets(
     let scroll_offset = ai_state.selection.scroll_offset_u16();
     let viewport_end = scroll_offset.saturating_add(inner_area.height);
     let selected_index = ai_state.selection.get_selected();
+    let hovered_index = ai_state.selection.get_hovered();
 
     // Track current Y position (in content space, not screen space)
     let mut current_y = 0u16;
@@ -140,6 +141,7 @@ fn render_suggestions_as_widgets(
         // Build suggestion lines
         let mut lines: Vec<Line> = Vec::new();
         let is_selected = selected_index == Some(i);
+        let is_hovered = hovered_index == Some(i) && !is_selected;
 
         let type_color = suggestion.suggestion_type.color();
         let type_label = suggestion.suggestion_type.label();
@@ -207,8 +209,12 @@ fn render_suggestions_as_widgets(
         }
 
         // Render the suggestion
+        // Selected: strong highlight (DarkGray background)
+        // Hovered: subtle highlight (Indexed(236) - slightly lighter than black)
         let style = if is_selected {
             Style::default().bg(Color::DarkGray)
+        } else if is_hovered {
+            Style::default().bg(Color::Indexed(236))
         } else {
             Style::default()
         };

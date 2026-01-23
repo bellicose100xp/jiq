@@ -459,3 +459,85 @@ proptest! {
         );
     }
 }
+
+// =========================================================================
+// Hover State Tests
+// =========================================================================
+
+#[test]
+fn test_hover_initial_state() {
+    let state = SelectionState::new();
+    assert!(state.get_hovered().is_none());
+}
+
+#[test]
+fn test_set_hovered() {
+    let mut state = SelectionState::new();
+    state.set_hovered(Some(2));
+    assert_eq!(state.get_hovered(), Some(2));
+}
+
+#[test]
+fn test_clear_hover() {
+    let mut state = SelectionState::new();
+    state.set_hovered(Some(2));
+    state.clear_hover();
+    assert!(state.get_hovered().is_none());
+}
+
+#[test]
+fn test_suggestion_at_y_first_suggestion() {
+    let mut state = SelectionState::new();
+    state.update_layout(vec![3, 3, 3], 10);
+
+    assert_eq!(state.suggestion_at_y(0), Some(0));
+    assert_eq!(state.suggestion_at_y(1), Some(0));
+    assert_eq!(state.suggestion_at_y(2), Some(0));
+}
+
+#[test]
+fn test_suggestion_at_y_second_suggestion() {
+    let mut state = SelectionState::new();
+    state.update_layout(vec![3, 3, 3], 10);
+
+    assert_eq!(state.suggestion_at_y(3), Some(1));
+    assert_eq!(state.suggestion_at_y(4), Some(1));
+    assert_eq!(state.suggestion_at_y(5), Some(1));
+}
+
+#[test]
+fn test_suggestion_at_y_third_suggestion() {
+    let mut state = SelectionState::new();
+    state.update_layout(vec![3, 3, 3], 10);
+
+    assert_eq!(state.suggestion_at_y(6), Some(2));
+    assert_eq!(state.suggestion_at_y(7), Some(2));
+    assert_eq!(state.suggestion_at_y(8), Some(2));
+}
+
+#[test]
+fn test_suggestion_at_y_beyond_content() {
+    let mut state = SelectionState::new();
+    state.update_layout(vec![3, 3, 3], 10);
+
+    assert!(state.suggestion_at_y(9).is_none());
+    assert!(state.suggestion_at_y(100).is_none());
+}
+
+#[test]
+fn test_suggestion_at_y_with_scroll_offset() {
+    let mut state = SelectionState::new();
+    state.update_layout(vec![5, 5, 5, 5], 10);
+    state.scroll_offset = 5;
+
+    assert_eq!(state.suggestion_at_y(0), Some(1));
+    assert_eq!(state.suggestion_at_y(5), Some(2));
+    assert_eq!(state.suggestion_at_y(10), Some(3));
+}
+
+#[test]
+fn test_suggestion_at_y_empty_layout() {
+    let state = SelectionState::new();
+    assert!(state.suggestion_at_y(0).is_none());
+    assert!(state.suggestion_at_y(5).is_none());
+}
