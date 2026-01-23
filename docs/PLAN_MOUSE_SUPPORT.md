@@ -26,6 +26,7 @@ After each phase:
 ## Phase Checklist
 
 - [x] Phase 1: Region Tracking Infrastructure
+- [x] Phase 1A: Scrollable Trait & Implementations
 - [ ] Phase 2: Mouse Event Router
 - [ ] Phase 3: Visual Scrollbars (INDEPENDENT)
 - [ ] Phase 4: Click-to-Focus
