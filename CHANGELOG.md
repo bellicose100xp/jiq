@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.15.0] - 2026-01-23
+
+### Added
+- **Comprehensive mouse interaction support** - Full mouse support for intuitive TUI navigation
+  - Click to focus panes (query input, results pane)
+  - Click on autocomplete suggestions to select them
+  - Click on AI suggestions to select them
+  - Click on history popup entries to select them
+  - Click on snippet manager entries to select them
+  - Double-click to apply selected items
+  - Mouse wheel scrolling in results pane and popups
+  - Click on help popup tabs to switch between them
+  - Scrollbar click and drag support in results pane
+
+### Fixed
+- **Results pane scrollbar positioning** - Scrollbar now respects border corners for cleaner visual appearance
+
 ## [3.14.0] - 2026-01-22
 
 ### Added
