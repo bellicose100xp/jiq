@@ -173,6 +173,96 @@ fn test_load_stdin_sync_detects_terminal() {
     // where stdin can be properly mocked with actual piped data
 }
 
+// ============================================================================
+// JSONL Validation Tests
+// ============================================================================
+
+#[test]
+fn test_validate_json_single_object() {
+    let json = r#"{"name": "test", "value": 42}"#;
+    let result = validate_json_or_jsonl(json);
+    assert!(result.is_ok(), "Single JSON object should be valid");
+}
+
+#[test]
+fn test_validate_json_array() {
+    let json = r#"[1, 2, 3]"#;
+    let result = validate_json_or_jsonl(json);
+    assert!(result.is_ok(), "JSON array should be valid");
+}
+
+#[test]
+fn test_validate_jsonl_multiple_objects() {
+    let jsonl = r#"{"id": 1, "name": "Alice"}
+{"id": 2, "name": "Bob"}
+{"id": 3, "name": "Charlie"}"#;
+    let result = validate_json_or_jsonl(jsonl);
+    assert!(
+        result.is_ok(),
+        "JSONL with multiple objects should be valid"
+    );
+}
+
+#[test]
+fn test_validate_jsonl_with_empty_lines() {
+    let jsonl = r#"{"id": 1}
+
+{"id": 2}
+
+{"id": 3}"#;
+    let result = validate_json_or_jsonl(jsonl);
+    assert!(
+        result.is_ok(),
+        "JSONL with blank lines between values should be valid"
+    );
+}
+
+#[test]
+fn test_validate_invalid_json() {
+    let invalid = r#"{"name": invalid}"#;
+    let result = validate_json_or_jsonl(invalid);
+    assert!(result.is_err(), "Invalid JSON should fail validation");
+    assert!(matches!(result.unwrap_err(), JiqError::InvalidJson(_)));
+}
+
+#[test]
+fn test_validate_empty_input() {
+    let empty = "";
+    let result = validate_json_or_jsonl(empty);
+    assert!(result.is_err(), "Empty input should fail validation");
+    match result.unwrap_err() {
+        JiqError::InvalidJson(msg) => {
+            assert!(msg.contains("Empty input"));
+        }
+        _ => panic!("Expected JiqError::InvalidJson with 'Empty input' message"),
+    }
+}
+
+#[test]
+fn test_validate_whitespace_only_input() {
+    let whitespace = "   \n\t\n   ";
+    let result = validate_json_or_jsonl(whitespace);
+    assert!(
+        result.is_err(),
+        "Whitespace-only input should fail validation"
+    );
+}
+
+#[test]
+fn test_file_loader_loads_jsonl() {
+    let jsonl_content = r#"{"id": 1, "name": "Alice"}
+{"id": 2, "name": "Bob"}"#;
+    let (_temp_dir, file_path) = create_temp_json_file(jsonl_content);
+
+    let mut loader = FileLoader::spawn_load(file_path);
+    let result = wait_for_completion(&mut loader, 100);
+
+    assert!(result.is_some(), "Loader should complete");
+    let result = result.unwrap();
+    assert!(result.is_ok(), "Loading JSONL should succeed");
+    assert_eq!(result.unwrap(), jsonl_content);
+}
+
 #[cfg(test)]
 mod property_tests {
     use super::*;

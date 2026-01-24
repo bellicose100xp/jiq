@@ -171,8 +171,11 @@ impl App {
                 Ok(json_input) => {
                     self.query = Some(QueryState::new(json_input.clone()));
 
-                    self.input_json_schema = crate::json::extract_json_schema_dynamic(&json_input)
-                        .map(|s| {
+                    let schema_input = crate::json::extract_first_json_value(&json_input)
+                        .unwrap_or_else(|| json_input.clone());
+
+                    self.input_json_schema =
+                        crate::json::extract_json_schema_dynamic(&schema_input).map(|s| {
                             crate::ai::context::prepare_schema_for_context(
                                 &s,
                                 self.ai.max_context_length,

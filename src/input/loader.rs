@@ -101,9 +101,25 @@ impl FileLoader {
     }
 }
 
+/// Validate that content is valid JSON or JSONL
+///
+/// Uses StreamDeserializer to handle both single JSON values and JSONL (multiple values).
+fn validate_json_or_jsonl(content: &str) -> Result<(), JiqError> {
+    let deserializer = serde_json::Deserializer::from_str(content).into_iter::<serde_json::Value>();
+    let mut count = 0;
+    for result in deserializer {
+        result.map_err(|e| JiqError::InvalidJson(e.to_string()))?;
+        count += 1;
+    }
+    if count == 0 {
+        return Err(JiqError::InvalidJson("Empty input".to_string()));
+    }
+    Ok(())
+}
+
 /// Synchronous file loading (runs in background thread)
 ///
-/// Reads the file from disk and validates that it contains valid JSON.
+/// Reads the file from disk and validates that it contains valid JSON or JSONL.
 fn load_file_sync(path: &Path) -> Result<String, JiqError> {
     use std::fs::File;
     use std::io::Read;
@@ -112,16 +128,14 @@ fn load_file_sync(path: &Path) -> Result<String, JiqError> {
     let mut contents = String::new();
     file.read_to_string(&mut contents)?;
 
-    // Validate JSON
-    serde_json::from_str::<serde_json::Value>(&contents)
-        .map_err(|e| JiqError::InvalidJson(e.to_string()))?;
+    validate_json_or_jsonl(&contents)?;
 
     Ok(contents)
 }
 
 /// Synchronous stdin loading (runs in background thread)
 ///
-/// Reads from stdin and validates that it contains valid JSON.
+/// Reads from stdin and validates that it contains valid JSON or JSONL.
 fn load_stdin_sync() -> Result<String, JiqError> {
     use std::io::{self, IsTerminal, Read};
 
@@ -134,9 +148,7 @@ fn load_stdin_sync() -> Result<String, JiqError> {
     let mut buffer = String::new();
     io::stdin().read_to_string(&mut buffer)?;
 
-    // Validate JSON
-    serde_json::from_str::<serde_json::Value>(&buffer)
-        .map_err(|e| JiqError::InvalidJson(e.to_string()))?;
+    validate_json_or_jsonl(&buffer)?;
 
     Ok(buffer)
 }
