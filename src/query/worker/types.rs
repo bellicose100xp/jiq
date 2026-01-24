@@ -44,6 +44,7 @@ pub struct ProcessedResult {
     pub max_width: u16,
     pub result_type: ResultType,
     pub query: String,
+    pub execution_time_ms: Option<u64>,
 }
 
 /// Response from query execution

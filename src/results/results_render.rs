@@ -53,6 +53,24 @@ fn format_position_indicator(scroll: &ScrollState, line_count: u32) -> String {
     format!("L{}-{}/{} ({}%)", start, end, line_count, percentage)
 }
 
+fn format_execution_time(ms: u64) -> String {
+    if ms < 1000 {
+        format!("{}ms", ms)
+    } else {
+        format!("{:.1}s", ms as f64 / 1000.0)
+    }
+}
+
+fn get_timing_color(ms: u64, border_color: Color) -> Color {
+    if ms < 200 {
+        border_color
+    } else if ms < 1000 {
+        Color::Yellow
+    } else {
+        Color::Red
+    }
+}
+
 fn render_scrollbar(frame: &mut Frame, area: Rect, scroll: &ScrollState, line_count: u32) {
     let scrollbar_area = Rect {
         x: area.x,
@@ -263,6 +281,17 @@ pub fn render_pane(app: &mut App, frame: &mut Frame, area: Rect) -> (Rect, Optio
             block = block.title_bottom(hints.alignment(Alignment::Center));
         }
 
+        // Add execution time display in bottom-left corner
+        if let Some(execution_time_ms) = query_state.cached_execution_time_ms {
+            let timing_text = format!(" {} ", format_execution_time(execution_time_ms));
+            let timing_color = get_timing_color(execution_time_ms, border_color);
+            let timing_title = Line::from(vec![Span::styled(
+                timing_text,
+                Style::default().fg(timing_color),
+            )]);
+            block = block.title_bottom(timing_title.alignment(Alignment::Left));
+        }
+
         // Use cached pre-rendered text
         // Optimization: Only clone visible viewport to avoid massive allocations
         let scroll_offset = app.results_scroll.offset as usize;
@@ -327,6 +356,17 @@ pub fn render_pane(app: &mut App, frame: &mut Frame, area: Rect) -> (Rect, Optio
                 Style::default().fg(Color::Cyan),
             )]);
             block = block.title_bottom(hints.alignment(Alignment::Center));
+        }
+
+        // Add execution time display in bottom-left corner
+        if let Some(execution_time_ms) = query_state.cached_execution_time_ms {
+            let timing_text = format!(" {} ", format_execution_time(execution_time_ms));
+            let timing_color = get_timing_color(execution_time_ms, border_color);
+            let timing_title = Line::from(vec![Span::styled(
+                timing_text,
+                Style::default().fg(timing_color),
+            )]);
+            block = block.title_bottom(timing_title.alignment(Alignment::Left));
         }
 
         let empty_text = Text::from("");

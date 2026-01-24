@@ -60,6 +60,8 @@ pub struct QueryState {
     pub(crate) cached_line_count: u32,
     /// Cached max line width (computed once per result, not per render)
     pub(crate) cached_max_line_width: u16,
+    /// Cached execution time in milliseconds
+    pub(crate) cached_execution_time_ms: Option<u64>,
     /// Whether current result is null/empty (valid query but no results)
     pub is_empty_result: bool,
 
@@ -151,6 +153,7 @@ impl QueryState {
             base_type_for_suggestions,
             cached_line_count,
             cached_max_line_width,
+            cached_execution_time_ms: None,
             is_empty_result: false,
             request_tx: Some(request_tx),
             response_rx: Some(response_rx),
@@ -375,6 +378,7 @@ impl QueryState {
                         )));
                     self.cached_line_count = processed.line_count;
                     self.cached_max_line_width = processed.max_width;
+                    self.cached_execution_time_ms = processed.execution_time_ms;
                     self.base_query_for_suggestions = Some(processed.query.clone());
                     self.base_type_for_suggestions = Some(processed.result_type);
                 } else {
