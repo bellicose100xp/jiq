@@ -15,6 +15,7 @@
 - **Function tooltip** - Quick reference help for jq functions with examples
 - **Search in results** - Find and navigate text in JSON output with highlighting
 - **Query history** - Searchable history of successful queries
+- **Mouse support** - Full mouse interaction including click-to-focus, scrolling, and selecting items in popups
 - **Clipboard support** - Copy query or results to clipboard (also supports OSC 52 for remote terminals)
 - **VIM keybindings** - VIM-style editing for power users
 - **Syntax highlighting** - Colorized JSON output and jq query syntax
