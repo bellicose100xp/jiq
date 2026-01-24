@@ -70,6 +70,7 @@ pub fn preprocess_result(
         max_width,
         result_type,
         query: base_query,
+        execution_time_ms: None,
     })
 }
 

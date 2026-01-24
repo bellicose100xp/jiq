@@ -6,6 +6,7 @@
 
 use std::panic::{self, AssertUnwindSafe};
 use std::sync::mpsc::{Receiver, Sender};
+use std::time::Instant;
 
 use super::preprocess::preprocess_result;
 use super::types::{QueryError, QueryRequest, QueryResponse};
@@ -110,11 +111,14 @@ fn handle_request(
 
     // Execute query with cancellation support
     let query = request.query.clone();
+    let start = Instant::now();
+
     match executor.execute_with_cancel(&request.query, &request.cancel_token) {
         Ok(output) => {
             // Preprocess result (expensive operations done in worker thread)
             match preprocess_result(output, &query, &request.cancel_token) {
-                Ok(processed) => {
+                Ok(mut processed) => {
+                    processed.execution_time_ms = Some(start.elapsed().as_millis() as u64);
                     let _ = response_tx.send(QueryResponse::ProcessedSuccess {
                         processed,
                         request_id: request.request_id,

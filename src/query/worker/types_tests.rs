@@ -41,6 +41,7 @@ fn test_query_response_variants() {
         max_width: 6,
         result_type: ResultType::String,
         query: ".foo".to_string(),
+        execution_time_ms: None,
     };
     let response = QueryResponse::ProcessedSuccess {
         processed,
