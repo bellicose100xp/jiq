@@ -89,6 +89,23 @@ pub fn extract_json_schema_dynamic(json: &str) -> Option<String> {
     extract_json_schema(json, depth)
 }
 
+/// Extract the first JSON value from input
+///
+/// For JSONL input (multiple JSON values), returns the first value as a string.
+/// For single JSON values, returns the input as-is.
+///
+/// # Arguments
+/// * `input` - The JSON or JSONL string
+///
+/// # Returns
+/// * `Some(String)` - The first JSON value as a string
+/// * `None` - If the input is empty or invalid
+pub fn extract_first_json_value(input: &str) -> Option<String> {
+    let mut deserializer =
+        serde_json::Deserializer::from_str(input).into_iter::<serde_json::Value>();
+    deserializer.next()?.ok().map(|v| v.to_string())
+}
+
 /// Convert a serde_json::Value to a schema Value recursively
 fn value_to_schema(value: &Value, current_depth: usize, max_depth: usize) -> Option<Value> {
     // Stop recursion at max depth
