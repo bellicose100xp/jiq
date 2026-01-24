@@ -18,6 +18,7 @@ pub fn handle_insert_mode_key(app: &mut App, key: KeyEvent) {
         app.history.reset_cycling();
         app.debouncer.schedule_execution();
         app.results_scroll.reset();
+        app.results_cursor.reset();
         app.error_overlay_visible = false;
         app.input
             .brace_tracker
@@ -396,6 +397,7 @@ pub fn execute_query_with_auto_show(app: &mut App) {
     query_state.execute_async(query);
 
     app.results_scroll.reset();
+    app.results_cursor.reset();
     app.error_overlay_visible = false;
 
     // AI update happens in poll_query_response() when result arrives

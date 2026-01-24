@@ -46,9 +46,35 @@ fn copy_result(app: &mut App, backend: ClipboardBackend) -> bool {
     };
 
     // Copy what's displayed: last_successful_result_unformatted
-    let result = match &query_state.last_successful_result_unformatted {
+    let full_result = match &query_state.last_successful_result_unformatted {
         Some(text) => text.as_ref().to_string(),
         None => return false,
+    };
+
+    if full_result.is_empty() {
+        return false;
+    }
+
+    let (result, notification) = if app.results_cursor.is_visual_mode() {
+        let (start, end) = app.results_cursor.selection_range();
+        let lines: Vec<&str> = full_result.lines().collect();
+        let start_idx = start as usize;
+        let end_idx = (end as usize).min(lines.len().saturating_sub(1));
+
+        if start_idx < lines.len() {
+            let selected: String = lines[start_idx..=end_idx].join("\n");
+            let line_count = end_idx - start_idx + 1;
+            let notification = if line_count == 1 {
+                "Copied 1 line!".to_string()
+            } else {
+                format!("Copied {} lines!", line_count)
+            };
+            (selected, notification)
+        } else {
+            return false;
+        }
+    } else {
+        (full_result, "Copied result!".to_string())
     };
 
     if result.is_empty() {
@@ -56,7 +82,7 @@ fn copy_result(app: &mut App, backend: ClipboardBackend) -> bool {
     }
 
     if copy_to_clipboard(&result, backend).is_ok() {
-        app.notification.show("Copied result!");
+        app.notification.show(&notification);
         true
     } else {
         false

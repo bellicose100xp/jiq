@@ -75,13 +75,33 @@ impl ScrollState {
         self.h_offset = 0;
     }
 
-    pub fn jump_to_right(&mut self) {
-        self.h_offset = self.max_h_offset;
-    }
-
     pub fn reset(&mut self) {
         self.offset = 0;
         self.h_offset = 0;
+    }
+
+    pub fn ensure_cursor_visible(&mut self, cursor_line: u32) {
+        use crate::results::cursor_state::SCROLLOFF;
+
+        if self.viewport_height == 0 {
+            return;
+        }
+
+        let cursor = cursor_line.min(u16::MAX as u32) as u16;
+        let effective_scrolloff = SCROLLOFF.min(self.viewport_height / 2);
+
+        let visible_start = self.offset;
+        let visible_end = self.offset.saturating_add(self.viewport_height);
+
+        if cursor < visible_start.saturating_add(effective_scrolloff) {
+            self.offset = cursor.saturating_sub(effective_scrolloff);
+        } else if cursor >= visible_end.saturating_sub(effective_scrolloff) {
+            let new_offset = cursor
+                .saturating_add(effective_scrolloff)
+                .saturating_add(1)
+                .saturating_sub(self.viewport_height);
+            self.offset = new_offset.min(self.max_offset);
+        }
     }
 }
 

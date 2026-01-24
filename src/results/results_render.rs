@@ -3,7 +3,7 @@ use ratatui::{
     layout::{Alignment, Constraint, Layout, Rect},
     style::{Color, Modifier, Style},
     text::{Line, Span, Text},
-    widgets::{Block, Borders, Paragraph},
+    widgets::{Block, Borders, Padding, Paragraph},
 };
 
 use crate::app::App;
@@ -17,6 +17,11 @@ const MATCH_HIGHLIGHT_BG: Color = Color::Rgb(128, 128, 128);
 const MATCH_HIGHLIGHT_FG: Color = Color::White;
 const CURRENT_MATCH_HIGHLIGHT_BG: Color = Color::Rgb(255, 165, 0);
 const CURRENT_MATCH_HIGHLIGHT_FG: Color = Color::Black;
+
+const CURSOR_LINE_BG: Color = Color::Rgb(50, 55, 65);
+const HOVERED_LINE_BG: Color = Color::Rgb(45, 50, 60);
+const VISUAL_SELECTION_BG: Color = Color::Rgb(70, 80, 100);
+const CURSOR_INDICATOR_FG: Color = Color::Rgb(255, 85, 85);
 
 // Rainbow spinner animation
 const SPINNER_CHARS: &[char] = &['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
@@ -132,6 +137,20 @@ pub fn render_pane(app: &mut App, frame: &mut Frame, area: Rect) -> (Rect, Optio
         app.results_scroll
             .update_h_bounds(q.max_line_width(), viewport_width);
     }
+
+    app.results_cursor.update_total_lines(line_count);
+
+    if let Some(q) = &app.query
+        && let Some(unformatted) = &q.last_successful_result_unformatted
+    {
+        let widths: Vec<u16> = unformatted
+            .lines()
+            .map(|l| l.len().min(u16::MAX as usize) as u16)
+            .collect();
+        app.results_cursor
+            .update_line_widths(std::sync::Arc::new(widths));
+    }
+
     let position_indicator = format_position_indicator(&app.results_scroll, line_count);
 
     let search_visible = app.search.is_visible();
@@ -259,6 +278,7 @@ pub fn render_pane(app: &mut App, frame: &mut Frame, area: Rect) -> (Rect, Optio
     if let Some(rendered) = &query_state.last_successful_result_rendered {
         let mut block = Block::default()
             .borders(Borders::ALL)
+            .padding(Padding::right(1))
             .title(title)
             .border_style(Style::default().fg(border_color));
         if let Some(rt) = right_title.clone() {
@@ -328,6 +348,13 @@ pub fn render_pane(app: &mut App, frame: &mut Frame, area: Rect) -> (Rect, Optio
             viewport_text
         };
 
+        let show_cursor = app.focus == crate::app::Focus::ResultsPane;
+        let final_text = if show_cursor {
+            apply_cursor_highlights(final_text, &app.results_cursor, app.results_scroll.offset)
+        } else {
+            final_text
+        };
+
         // Vertical scroll handled by viewport slicing, but horizontal scroll still needed
         let content = Paragraph::new(final_text)
             .block(block)
@@ -335,10 +362,21 @@ pub fn render_pane(app: &mut App, frame: &mut Frame, area: Rect) -> (Rect, Optio
 
         frame.render_widget(content, results_area);
         render_scrollbar(frame, results_area, &app.results_scroll, line_count);
+
+        if show_cursor {
+            render_cursor_indicator(
+                frame,
+                results_area,
+                &app.results_cursor,
+                app.results_scroll.offset,
+                app.results_scroll.h_offset,
+            );
+        }
     } else {
         // No successful result yet - show empty
         let mut block = Block::default()
             .borders(Borders::ALL)
+            .padding(Padding::right(1))
             .title(title)
             .border_style(Style::default().fg(border_color));
         if let Some(rt) = right_title {
@@ -597,6 +635,92 @@ fn apply_highlights_to_line(
     }
 
     Line::from(result_spans)
+}
+
+fn apply_cursor_highlights(
+    text: Text<'_>,
+    cursor_state: &crate::results::cursor_state::CursorState,
+    scroll_offset: u16,
+) -> Text<'static> {
+    let cursor_line = cursor_state.cursor_line();
+    let hovered_line = cursor_state.hovered_line();
+    let is_visual = cursor_state.is_visual_mode();
+    let (sel_start, sel_end) = cursor_state.selection_range();
+
+    Text::from(
+        text.lines
+            .into_iter()
+            .enumerate()
+            .map(|(line_idx, line)| {
+                let absolute_line = line_idx as u32 + scroll_offset as u32;
+
+                let bg_color =
+                    if is_visual && absolute_line >= sel_start && absolute_line <= sel_end {
+                        Some(VISUAL_SELECTION_BG)
+                    } else if absolute_line == cursor_line {
+                        Some(CURSOR_LINE_BG)
+                    } else if Some(absolute_line) == hovered_line {
+                        Some(HOVERED_LINE_BG)
+                    } else {
+                        None
+                    };
+
+                if let Some(bg) = bg_color {
+                    Line::from(
+                        line.spans
+                            .into_iter()
+                            .map(|span| Span::styled(span.content.to_string(), span.style.bg(bg)))
+                            .collect::<Vec<_>>(),
+                    )
+                } else {
+                    Line::from(
+                        line.spans
+                            .into_iter()
+                            .map(|span| Span::styled(span.content.to_string(), span.style))
+                            .collect::<Vec<_>>(),
+                    )
+                }
+            })
+            .collect::<Vec<_>>(),
+    )
+}
+
+fn render_cursor_indicator(
+    frame: &mut Frame,
+    results_area: Rect,
+    cursor_state: &crate::results::cursor_state::CursorState,
+    scroll_offset: u16,
+    _h_offset: u16,
+) {
+    let cursor_line = cursor_state.cursor_line();
+
+    if cursor_line < scroll_offset as u32 {
+        return;
+    }
+
+    let relative_line = cursor_line.saturating_sub(scroll_offset as u32) as u16;
+    let viewport_height = results_area.height.saturating_sub(2);
+
+    if relative_line >= viewport_height {
+        return;
+    }
+
+    let indicator_x = results_area.x;
+    let indicator_y = results_area
+        .y
+        .saturating_add(1)
+        .saturating_add(relative_line);
+
+    let indicator = Span::styled("▌", Style::default().fg(CURSOR_INDICATOR_FG));
+    frame.render_widget(
+        Paragraph::new(Line::from(indicator)),
+        Rect {
+            x: indicator_x,
+            y: indicator_y,
+            width: 1,
+            height: 1,
+        },
+    );
 }
 
 #[cfg(test)]

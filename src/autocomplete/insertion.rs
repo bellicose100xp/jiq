@@ -54,6 +54,7 @@ pub fn insert_suggestion_from_app(app: &mut App, suggestion: &Suggestion) {
 
     app.autocomplete.hide();
     app.results_scroll.reset();
+    app.results_cursor.reset();
     app.error_overlay_visible = false;
 
     let query = app.input.textarea.lines()[0].as_ref();

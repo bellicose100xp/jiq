@@ -2,306 +2,218 @@
 
 use super::*;
 use crate::app::Focus;
-use crate::test_utils::test_helpers::{app_with_query, key, key_with_mods, test_app};
+use crate::test_utils::test_helpers::{app_with_query, key, key_with_mods};
 use std::sync::Arc;
 
-#[test]
-fn test_j_scrolls_down_one_line() {
+fn setup_app_with_content(line_count: u32, viewport_height: u16) -> crate::app::App {
     let mut app = app_with_query(".");
     app.focus = Focus::ResultsPane;
 
-    let content: String = (0..20).map(|i| format!("line{}\n", i)).collect();
+    let content: String = (0..line_count).map(|i| format!("line{}\n", i)).collect();
     let query_state = app.query.as_mut().unwrap();
     query_state.result = Ok(content.clone());
     query_state.last_successful_result = Some(Arc::new(content.clone()));
-    query_state.cached_line_count = content.lines().count() as u32;
+    query_state.cached_line_count = line_count;
 
-    let line_count = app.results_line_count_u32();
-    app.results_scroll.update_bounds(line_count, 10);
-    app.results_scroll.offset = 0;
-
-    app.handle_key_event(key(KeyCode::Char('j')));
-
-    assert_eq!(app.results_scroll.offset, 1);
+    app.results_scroll
+        .update_bounds(line_count, viewport_height);
+    app.results_cursor.update_total_lines(line_count);
+    app
 }
 
 #[test]
-fn test_k_scrolls_up_one_line() {
-    let mut app = app_with_query(".");
-    app.focus = Focus::ResultsPane;
-    app.results_scroll.offset = 5;
+fn test_j_moves_cursor_down_one_line() {
+    let mut app = setup_app_with_content(20, 10);
+
+    app.handle_key_event(key(KeyCode::Char('j')));
+
+    assert_eq!(app.results_cursor.cursor_line(), 1);
+}
+
+#[test]
+fn test_k_moves_cursor_up_one_line() {
+    let mut app = setup_app_with_content(20, 10);
+    app.results_cursor.move_to_line(5);
 
     app.handle_key_event(key(KeyCode::Char('k')));
 
-    assert_eq!(app.results_scroll.offset, 4);
+    assert_eq!(app.results_cursor.cursor_line(), 4);
 }
 
 #[test]
 fn test_k_at_top_stays_at_zero() {
-    let mut app = app_with_query(".");
-    app.focus = Focus::ResultsPane;
-    app.results_scroll.offset = 0;
+    let mut app = setup_app_with_content(20, 10);
 
     app.handle_key_event(key(KeyCode::Char('k')));
 
-    assert_eq!(app.results_scroll.offset, 0);
+    assert_eq!(app.results_cursor.cursor_line(), 0);
 }
 
 #[test]
-fn test_capital_j_scrolls_down_ten_lines() {
-    let mut app = app_with_query(".");
-    app.focus = Focus::ResultsPane;
-
-    let content: String = (0..30).map(|i| format!("line{}\n", i)).collect();
-    let query_state = app.query.as_mut().unwrap();
-    query_state.result = Ok(content.clone());
-    query_state.last_successful_result = Some(Arc::new(content.clone()));
-    query_state.cached_line_count = content.lines().count() as u32;
-
-    let line_count = app.results_line_count_u32();
-    app.results_scroll.update_bounds(line_count, 10);
-    app.results_scroll.offset = 5;
+fn test_capital_j_moves_cursor_down_ten_lines() {
+    let mut app = setup_app_with_content(30, 10);
 
     app.handle_key_event(key(KeyCode::Char('J')));
 
-    assert_eq!(app.results_scroll.offset, 15);
+    assert_eq!(app.results_cursor.cursor_line(), 10);
 }
 
 #[test]
-fn test_capital_k_scrolls_up_ten_lines() {
-    let mut app = app_with_query(".");
-    app.focus = Focus::ResultsPane;
-    app.results_scroll.offset = 20;
+fn test_capital_k_moves_cursor_up_ten_lines() {
+    let mut app = setup_app_with_content(30, 10);
+    app.results_cursor.move_to_line(20);
 
     app.handle_key_event(key(KeyCode::Char('K')));
 
-    assert_eq!(app.results_scroll.offset, 10);
+    assert_eq!(app.results_cursor.cursor_line(), 10);
 }
 
 #[test]
-fn test_g_jumps_to_top() {
-    let mut app = app_with_query(".");
-    app.focus = Focus::ResultsPane;
-    app.results_scroll.offset = 50;
+fn test_g_jumps_cursor_to_top() {
+    let mut app = setup_app_with_content(50, 10);
+    app.results_cursor.move_to_line(25);
+    app.results_scroll.offset = 20;
 
     app.handle_key_event(key(KeyCode::Char('g')));
 
+    assert_eq!(app.results_cursor.cursor_line(), 0);
     assert_eq!(app.results_scroll.offset, 0);
 }
 
 #[test]
-fn test_capital_g_jumps_to_bottom() {
-    let json = r#"{"line1": 1, "line2": 2, "line3": 3}"#;
-    let mut app = test_app(json);
-    app.input.textarea.insert_str(".");
-    app.focus = Focus::ResultsPane;
-    app.results_scroll.offset = 0;
-    app.results_scroll.viewport_height = 2;
-
-    let line_count = app.results_line_count_u32();
-    app.results_scroll.update_bounds(line_count, 2);
-    let max_scroll = app.results_scroll.max_offset;
+fn test_capital_g_jumps_cursor_to_bottom() {
+    let mut app = setup_app_with_content(20, 10);
 
     app.handle_key_event(key(KeyCode::Char('G')));
 
-    assert_eq!(app.results_scroll.offset, max_scroll);
+    assert_eq!(app.results_cursor.cursor_line(), 19);
 }
 
 #[test]
-fn test_page_up_scrolls_half_page() {
-    let mut app = app_with_query(".");
-    app.focus = Focus::ResultsPane;
-    app.results_scroll.offset = 20;
-    app.results_scroll.viewport_height = 20;
+fn test_page_up_moves_cursor_half_page() {
+    let mut app = setup_app_with_content(50, 20);
+    app.results_cursor.move_to_line(25);
 
     app.handle_key_event(key(KeyCode::PageUp));
 
-    assert_eq!(app.results_scroll.offset, 10);
+    assert_eq!(app.results_cursor.cursor_line(), 15);
 }
 
 #[test]
-fn test_page_down_scrolls_half_page() {
-    let mut app = app_with_query(".");
-    app.focus = Focus::ResultsPane;
-
-    let content: String = (0..50).map(|i| format!("line{}\n", i)).collect();
-    let query_state = app.query.as_mut().unwrap();
-    query_state.result = Ok(content.clone());
-    query_state.last_successful_result = Some(Arc::new(content.clone()));
-    query_state.cached_line_count = content.lines().count() as u32;
-
-    let line_count = app.results_line_count_u32();
-    app.results_scroll.update_bounds(line_count, 20);
-    app.results_scroll.offset = 0;
+fn test_page_down_moves_cursor_half_page() {
+    let mut app = setup_app_with_content(50, 20);
 
     app.handle_key_event(key(KeyCode::PageDown));
 
-    assert_eq!(app.results_scroll.offset, 10);
+    assert_eq!(app.results_cursor.cursor_line(), 10);
 }
 
 #[test]
-fn test_ctrl_u_scrolls_half_page_up() {
-    let mut app = app_with_query(".");
-    app.focus = Focus::ResultsPane;
-    app.results_scroll.offset = 20;
-    app.results_scroll.viewport_height = 20;
+fn test_ctrl_u_moves_cursor_half_page_up() {
+    let mut app = setup_app_with_content(50, 20);
+    app.results_cursor.move_to_line(25);
 
     app.handle_key_event(key_with_mods(KeyCode::Char('u'), KeyModifiers::CONTROL));
 
-    assert_eq!(app.results_scroll.offset, 10);
+    assert_eq!(app.results_cursor.cursor_line(), 15);
 }
 
 #[test]
-fn test_ctrl_d_scrolls_half_page_down() {
-    let mut app = app_with_query(".");
-    app.focus = Focus::ResultsPane;
-
-    let content: String = (0..50).map(|i| format!("line{}\n", i)).collect();
-    let query_state = app.query.as_mut().unwrap();
-    query_state.result = Ok(content.clone());
-    query_state.last_successful_result = Some(Arc::new(content.clone()));
-    query_state.cached_line_count = content.lines().count() as u32;
-
-    let line_count = app.results_line_count_u32();
-    app.results_scroll.update_bounds(line_count, 20);
-    app.results_scroll.offset = 0;
+fn test_ctrl_d_moves_cursor_half_page_down() {
+    let mut app = setup_app_with_content(50, 20);
 
     app.handle_key_event(key_with_mods(KeyCode::Char('d'), KeyModifiers::CONTROL));
 
-    assert_eq!(app.results_scroll.offset, 10);
+    assert_eq!(app.results_cursor.cursor_line(), 10);
 }
 
 #[test]
-fn test_up_arrow_scrolls_in_results_pane() {
-    let mut app = app_with_query(".");
-    app.focus = Focus::ResultsPane;
-    app.results_scroll.offset = 5;
+fn test_up_arrow_moves_cursor_in_results_pane() {
+    let mut app = setup_app_with_content(20, 10);
+    app.results_cursor.move_to_line(5);
 
     app.handle_key_event(key(KeyCode::Up));
 
-    assert_eq!(app.results_scroll.offset, 4);
+    assert_eq!(app.results_cursor.cursor_line(), 4);
 }
 
 #[test]
-fn test_down_arrow_scrolls_in_results_pane() {
-    let mut app = app_with_query(".");
-    app.focus = Focus::ResultsPane;
-
-    let content: String = (0..20).map(|i| format!("line{}\n", i)).collect();
-    let query_state = app.query.as_mut().unwrap();
-    query_state.result = Ok(content.clone());
-    query_state.last_successful_result = Some(Arc::new(content.clone()));
-    query_state.cached_line_count = content.lines().count() as u32;
-
-    let line_count = app.results_line_count_u32();
-    app.results_scroll.update_bounds(line_count, 10);
-    app.results_scroll.offset = 0;
+fn test_down_arrow_moves_cursor_in_results_pane() {
+    let mut app = setup_app_with_content(20, 10);
 
     app.handle_key_event(key(KeyCode::Down));
 
-    assert_eq!(app.results_scroll.offset, 1);
+    assert_eq!(app.results_cursor.cursor_line(), 1);
 }
 
 #[test]
-fn test_home_jumps_to_top() {
-    let mut app = app_with_query(".");
-    app.focus = Focus::ResultsPane;
-    app.results_scroll.offset = 50;
+fn test_home_jumps_cursor_to_top() {
+    let mut app = setup_app_with_content(50, 10);
+    app.results_cursor.move_to_line(25);
+    app.results_scroll.offset = 20;
 
     app.handle_key_event(key(KeyCode::Home));
 
+    assert_eq!(app.results_cursor.cursor_line(), 0);
     assert_eq!(app.results_scroll.offset, 0);
 }
 
 #[test]
-fn test_scroll_clamped_to_max() {
-    let mut app = app_with_query("");
-    app.focus = Focus::ResultsPane;
+fn test_scroll_follows_cursor_with_scrolloff() {
+    let mut app = setup_app_with_content(50, 10);
 
-    let content = "line1\nline2\nline3".to_string();
-    let query_state = app.query.as_mut().unwrap();
-    query_state.result = Ok(content.clone());
-    query_state.last_successful_result = Some(Arc::new(content.clone()));
-    query_state.cached_line_count = content.lines().count() as u32;
+    for _ in 0..10 {
+        app.handle_key_event(key(KeyCode::Char('j')));
+    }
 
-    let line_count = app.results_line_count_u32();
-    app.results_scroll.update_bounds(line_count, 10);
+    assert_eq!(app.results_cursor.cursor_line(), 10);
+    assert!(app.results_scroll.offset > 0);
+}
 
-    assert_eq!(app.results_scroll.max_offset, 0);
-
-    app.handle_key_event(key(KeyCode::Char('j')));
-    assert_eq!(app.results_scroll.offset, 0);
+#[test]
+fn test_cursor_clamped_at_last_line() {
+    let mut app = setup_app_with_content(5, 10);
 
     for _ in 0..100 {
         app.handle_key_event(key(KeyCode::Char('j')));
     }
-    assert_eq!(app.results_scroll.offset, 0);
+
+    assert_eq!(app.results_cursor.cursor_line(), 4);
 }
 
 #[test]
 fn test_scroll_clamped_with_content() {
-    let mut app = app_with_query("");
-    app.focus = Focus::ResultsPane;
-
-    let content: String = (0..20).map(|i| format!("line{}\n", i)).collect();
-    let query_state = app.query.as_mut().unwrap();
-    query_state.result = Ok(content.clone());
-    query_state.last_successful_result = Some(Arc::new(content.clone()));
-    query_state.cached_line_count = content.lines().count() as u32;
-
-    let line_count = app.results_line_count_u32();
-    app.results_scroll.update_bounds(line_count, 10);
-
-    assert_eq!(app.results_scroll.max_offset, 10);
+    let mut app = setup_app_with_content(20, 10);
 
     for _ in 0..100 {
         app.handle_key_event(key(KeyCode::Char('j')));
     }
 
-    assert_eq!(app.results_scroll.offset, 10);
+    assert_eq!(app.results_cursor.cursor_line(), 19);
+    assert!(app.results_scroll.offset <= 10);
 }
 
 #[test]
 fn test_scroll_page_down_clamped() {
-    let mut app = app_with_query("");
-    app.focus = Focus::ResultsPane;
-
-    let content: String = (0..15).map(|i| format!("line{}\n", i)).collect();
-    let query_state = app.query.as_mut().unwrap();
-    query_state.result = Ok(content.clone());
-    query_state.last_successful_result = Some(Arc::new(content.clone()));
-    query_state.cached_line_count = content.lines().count() as u32;
-
-    let line_count = app.results_line_count_u32();
-    app.results_scroll.update_bounds(line_count, 10);
-
-    assert_eq!(app.results_scroll.max_offset, 5);
+    let mut app = setup_app_with_content(15, 10);
 
     app.handle_key_event(key(KeyCode::PageDown));
-    assert_eq!(app.results_scroll.offset, 5);
+    let cursor_after_first = app.results_cursor.cursor_line();
 
     app.handle_key_event(key(KeyCode::PageDown));
-    assert_eq!(app.results_scroll.offset, 5);
+    let cursor_after_second = app.results_cursor.cursor_line();
+
+    assert!(cursor_after_second >= cursor_after_first);
+    assert!(cursor_after_second < 15);
 }
 
 #[test]
 fn test_scroll_j_clamped() {
-    let mut app = app_with_query("");
-    app.focus = Focus::ResultsPane;
-
-    let content: String = (0..5).map(|i| format!("line{}\n", i)).collect();
-    let query_state = app.query.as_mut().unwrap();
-    query_state.result = Ok(content.clone());
-    query_state.last_successful_result = Some(Arc::new(content.clone()));
-    query_state.cached_line_count = content.lines().count() as u32;
-
-    let line_count = app.results_line_count_u32();
-    app.results_scroll.update_bounds(line_count, 3);
-
-    assert_eq!(app.results_scroll.max_offset, 2);
+    let mut app = setup_app_with_content(5, 3);
 
     app.handle_key_event(key(KeyCode::Char('J')));
-    assert_eq!(app.results_scroll.offset, 2);
+
+    assert_eq!(app.results_cursor.cursor_line(), 4);
 }
 
 #[test]
@@ -313,7 +225,7 @@ fn test_question_mark_toggles_help_in_results_pane() {
     assert!(app.help.visible);
 }
 
-fn app_with_wide_content() -> App {
+fn app_with_wide_content() -> crate::app::App {
     let mut app = app_with_query(".");
     app.focus = Focus::ResultsPane;
     let content: String = (0..10)
@@ -322,9 +234,18 @@ fn app_with_wide_content() -> App {
     let query_state = app.query.as_mut().unwrap();
     query_state.result = Ok(content.clone());
     query_state.last_successful_result = Some(Arc::new(content.clone()));
+    query_state.last_successful_result_unformatted = Some(Arc::new(content.clone()));
     query_state.cached_line_count = content.lines().count() as u32;
     query_state.cached_max_line_width = content.lines().map(|l| l.len()).max().unwrap_or(0) as u16;
     app.results_scroll.update_h_bounds(101, 40);
+
+    let widths: Vec<u16> = content
+        .lines()
+        .map(|l| l.len().min(u16::MAX as usize) as u16)
+        .collect();
+    app.results_cursor
+        .update_line_widths(std::sync::Arc::new(widths));
+    app.results_cursor.update_total_lines(10);
     app
 }
 
@@ -409,13 +330,17 @@ fn test_caret_jumps_to_left_edge() {
 }
 
 #[test]
-fn test_dollar_jumps_to_right_edge() {
+fn test_dollar_jumps_to_cursor_line_end() {
     let mut app = app_with_wide_content();
     app.results_scroll.h_offset = 0;
+    app.results_cursor.move_to_line(0);
 
     app.handle_key_event(key(KeyCode::Char('$')));
 
-    assert_eq!(app.results_scroll.h_offset, 61);
+    let cursor_line_width = app.results_cursor.get_cursor_line_width();
+    let viewport_width = app.results_scroll.viewport_width;
+    let expected = cursor_line_width.saturating_sub(viewport_width);
+    assert_eq!(app.results_scroll.h_offset, expected);
 }
 
 #[test]
@@ -439,21 +364,12 @@ fn test_l_scroll_right_clamped_at_max() {
 }
 
 #[test]
-fn test_end_jumps_to_bottom() {
-    let mut app = app_with_query(".");
-    app.focus = Focus::ResultsPane;
-
-    let content: String = (0..20).map(|i| format!("line{}\n", i)).collect();
-    let query_state = app.query.as_mut().unwrap();
-    query_state.result = Ok(content.clone());
-    query_state.last_successful_result = Some(Arc::new(content.clone()));
-    query_state.cached_line_count = content.lines().count() as u32;
-    app.results_scroll.update_bounds(20, 10);
-    app.results_scroll.offset = 0;
+fn test_end_jumps_cursor_to_bottom() {
+    let mut app = setup_app_with_content(20, 10);
 
     app.handle_key_event(key(KeyCode::End));
 
-    assert_eq!(app.results_scroll.offset, 10);
+    assert_eq!(app.results_cursor.cursor_line(), 19);
 }
 
 #[test]
@@ -557,4 +473,64 @@ fn test_i_key_restores_tooltip_state() {
 
     assert_eq!(app.focus, Focus::InputField);
     assert!(app.tooltip.enabled);
+}
+
+#[test]
+fn test_v_enters_visual_mode() {
+    let mut app = setup_app_with_content(20, 10);
+    app.results_cursor.move_to_line(5);
+
+    app.handle_key_event(key(KeyCode::Char('v')));
+
+    assert!(app.results_cursor.is_visual_mode());
+    assert_eq!(app.results_cursor.selection_range(), (5, 5));
+}
+
+#[test]
+fn test_visual_mode_extends_selection_with_j() {
+    let mut app = setup_app_with_content(20, 10);
+    app.results_cursor.move_to_line(5);
+
+    app.handle_key_event(key(KeyCode::Char('v')));
+    app.handle_key_event(key(KeyCode::Char('j')));
+    app.handle_key_event(key(KeyCode::Char('j')));
+
+    assert!(app.results_cursor.is_visual_mode());
+    assert_eq!(app.results_cursor.selection_range(), (5, 7));
+}
+
+#[test]
+fn test_visual_mode_extends_selection_with_k() {
+    let mut app = setup_app_with_content(20, 10);
+    app.results_cursor.move_to_line(10);
+
+    app.handle_key_event(key(KeyCode::Char('v')));
+    app.handle_key_event(key(KeyCode::Char('k')));
+    app.handle_key_event(key(KeyCode::Char('k')));
+
+    assert!(app.results_cursor.is_visual_mode());
+    assert_eq!(app.results_cursor.selection_range(), (8, 10));
+}
+
+#[test]
+fn test_esc_exits_visual_mode() {
+    let mut app = setup_app_with_content(20, 10);
+
+    app.handle_key_event(key(KeyCode::Char('v')));
+    assert!(app.results_cursor.is_visual_mode());
+
+    app.handle_key_event(key(KeyCode::Esc));
+    assert!(!app.results_cursor.is_visual_mode());
+}
+
+#[test]
+fn test_tab_exits_visual_mode() {
+    let mut app = setup_app_with_content(20, 10);
+
+    app.handle_key_event(key(KeyCode::Char('v')));
+    assert!(app.results_cursor.is_visual_mode());
+
+    app.handle_key_event(key(KeyCode::Tab));
+    assert!(!app.results_cursor.is_visual_mode());
+    assert_eq!(app.focus, Focus::InputField);
 }

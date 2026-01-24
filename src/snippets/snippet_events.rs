@@ -274,6 +274,7 @@ fn apply_snippet(app: &mut App, query: &str) {
     }
 
     app.results_scroll.reset();
+    app.results_cursor.reset();
     app.error_overlay_visible = false;
 }
 

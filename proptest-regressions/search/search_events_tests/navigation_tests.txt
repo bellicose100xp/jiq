@@ -5,3 +5,6 @@
 # It is recommended to check this file in to source control so that
 # everyone who runs the test benefits from these saved cases.
 cc 9e57d7828d099dac8879b389696628f45022dfdd05670e84c7408a11daf82104 # shrinks to viewport_width = 20, max_h_offset = 20, initial_h_offset_factor = 0.0, key_type = 0
+cc 86662193ece5524b49d80b2d47b190e6764d5ba6aa0a297bb5e3582c82e3de9a # shrinks to viewport_height = 10, max_offset = 20, initial_offset_factor = 0.0, key_type = 0
+cc 30d70a7ee7362d6b77053d798b7813067b1111703fb0714a46f12200925a649d # shrinks to viewport_height = 5, max_offset = 10, initial_offset_factor = 0.0, key_type = 2
+cc 665e170b2fdf727f3ed9d527335984cf7b0494704f0ee9010c71ee4d55abe214 # shrinks to viewport_width = 20, max_h_offset = 20, initial_h_offset_factor = 0.0, key_type = 6
