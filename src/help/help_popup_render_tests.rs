@@ -38,14 +38,28 @@ fn test_render_help_sections_with_subsections() {
 
 #[test]
 fn test_render_tab_bar_highlights_active() {
-    // Just verify it doesn't panic - visual inspection needed for actual styling
-    let _tabs = render_tab_bar(HelpTab::Global);
+    let line = render_tab_bar(HelpTab::Global, None);
+    let content = line.to_string();
+    assert!(content.contains("[1:Global]"));
 }
 
 #[test]
 fn test_render_tab_bar_all_tabs() {
     for tab in HelpTab::all() {
-        // Just verify it doesn't panic for any tab
-        let _tabs = render_tab_bar(*tab);
+        let line = render_tab_bar(*tab, None);
+        assert!(!line.spans.is_empty());
     }
+}
+
+#[test]
+fn test_render_tab_bar_with_hover() {
+    let line = render_tab_bar(HelpTab::Global, Some(HelpTab::Input));
+    assert!(!line.spans.is_empty());
+}
+
+#[test]
+fn test_render_tab_bar_hover_same_as_active() {
+    let line = render_tab_bar(HelpTab::Global, Some(HelpTab::Global));
+    let content = line.to_string();
+    assert!(content.contains("[1:Global]"));
 }

@@ -77,6 +77,7 @@ pub struct HelpPopupState {
     pub visible: bool,
     pub active_tab: HelpTab,
     scroll_per_tab: [ScrollState; HelpTab::COUNT],
+    hovered_tab: Option<HelpTab>,
 }
 
 impl HelpPopupState {
@@ -93,6 +94,7 @@ impl HelpPopupState {
                 ScrollState::new(),
                 ScrollState::new(),
             ],
+            hovered_tab: None,
         }
     }
 
@@ -104,9 +106,58 @@ impl HelpPopupState {
         &mut self.scroll_per_tab[self.active_tab.index()]
     }
 
+    pub fn get_hovered_tab(&self) -> Option<HelpTab> {
+        self.hovered_tab
+    }
+
+    pub fn set_hovered_tab(&mut self, tab: Option<HelpTab>) {
+        self.hovered_tab = tab;
+    }
+
+    pub fn clear_hovered_tab(&mut self) {
+        self.hovered_tab = None;
+    }
+
+    /// Spacing between tabs in the tab bar (must match render)
+    const TAB_DIVIDER_WIDTH: u16 = 3;
+
+    /// Find which tab is at the given X coordinate within the tab bar
+    ///
+    /// Returns the tab if found, None if X is outside all tabs or in divider space.
+    pub fn tab_at_x(&self, relative_x: u16) -> Option<HelpTab> {
+        let mut x_pos: u16 = 0;
+
+        for tab in HelpTab::all() {
+            let label_width = self.tab_label_width(*tab);
+            let tab_end = x_pos.saturating_add(label_width);
+
+            if relative_x >= x_pos && relative_x < tab_end {
+                return Some(*tab);
+            }
+
+            // Move past this tab and the divider space
+            x_pos = tab_end.saturating_add(Self::TAB_DIVIDER_WIDTH);
+        }
+
+        None
+    }
+
+    /// Calculate the display width of a tab label
+    fn tab_label_width(&self, tab: HelpTab) -> u16 {
+        let name = tab.name();
+        // Format: "N:Name" or "[N:Name]" for active tab
+        let base_width = 2 + name.len() as u16; // "N:" + name
+        if tab == self.active_tab {
+            base_width + 2 // Add brackets []
+        } else {
+            base_width
+        }
+    }
+
     pub fn reset(&mut self) {
         self.visible = false;
         self.active_tab = HelpTab::Global;
+        self.hovered_tab = None;
         for scroll in &mut self.scroll_per_tab {
             scroll.reset();
         }

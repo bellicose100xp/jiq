@@ -3,7 +3,7 @@ use ratatui::{
     layout::{Constraint, Direction, Layout, Rect},
     style::{Color, Modifier, Style},
     text::{Line, Span, Text},
-    widgets::{Block, Borders, Paragraph, Tabs},
+    widgets::{Block, Borders, Paragraph},
 };
 
 use crate::app::App;
@@ -53,8 +53,8 @@ pub fn render_popup(app: &mut App, frame: &mut Frame) -> Option<Rect> {
         .split(inner_area);
 
     // Render tab bar
-    let tabs = render_tab_bar(app.help.active_tab);
-    frame.render_widget(tabs, chunks[0]);
+    let tab_line = render_tab_bar(app.help.active_tab, app.help.get_hovered_tab());
+    frame.render_widget(Paragraph::new(tab_line), chunks[0]);
 
     // Render separator line
     let separator = Line::from(Span::styled(
@@ -107,28 +107,40 @@ pub fn render_popup(app: &mut App, frame: &mut Frame) -> Option<Rect> {
     Some(popup_area)
 }
 
-fn render_tab_bar(active_tab: HelpTab) -> Tabs<'static> {
-    let titles: Vec<Line> = HelpTab::all()
-        .iter()
-        .map(|tab| {
-            let number = tab.index() + 1;
-            let label = format!("{}:{}", number, tab.name());
-            if *tab == active_tab {
-                Line::styled(
-                    format!("[{}]", label),
-                    Style::default()
-                        .fg(Color::Cyan)
-                        .add_modifier(Modifier::BOLD),
-                )
-            } else {
-                Line::styled(label, Style::default().fg(Color::DarkGray))
-            }
-        })
-        .collect();
+/// Spacing between tabs in the tab bar (in characters)
+pub const TAB_DIVIDER_WIDTH: u16 = 3;
 
-    Tabs::new(titles)
-        .divider(Span::raw(" "))
-        .highlight_style(Style::default())
+fn render_tab_bar(active_tab: HelpTab, hovered_tab: Option<HelpTab>) -> Line<'static> {
+    let mut spans = Vec::new();
+    let divider = " ".repeat(TAB_DIVIDER_WIDTH as usize);
+
+    for (i, tab) in HelpTab::all().iter().enumerate() {
+        if i > 0 {
+            spans.push(Span::raw(divider.clone()));
+        }
+
+        let number = tab.index() + 1;
+        let label = format!("{}:{}", number, tab.name());
+        let is_hovered = hovered_tab == Some(*tab) && *tab != active_tab;
+
+        if *tab == active_tab {
+            spans.push(Span::styled(
+                format!("[{}]", label),
+                Style::default()
+                    .fg(Color::Cyan)
+                    .add_modifier(Modifier::BOLD),
+            ));
+        } else if is_hovered {
+            spans.push(Span::styled(
+                label,
+                Style::default().fg(Color::White).bg(Color::Indexed(236)),
+            ));
+        } else {
+            spans.push(Span::styled(label, Style::default().fg(Color::DarkGray)));
+        }
+    }
+
+    Line::from(spans)
 }
 
 fn render_help_sections(sections: &[HelpSection]) -> Vec<Line<'static>> {

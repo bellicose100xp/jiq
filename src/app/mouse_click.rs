@@ -32,6 +32,7 @@ pub fn handle_click(app: &mut App, region: Option<Region>, mouse: MouseEvent) {
         Some(Region::SearchBar) => click_search_bar(app),
         Some(Region::AiWindow) => click_ai_window(app, mouse),
         Some(Region::SnippetList) => click_snippet_list(app, mouse),
+        Some(Region::HelpPopup) => click_help_popup(app, mouse),
         _ => {}
     }
 }
@@ -123,6 +124,36 @@ fn click_snippet_list(app: &mut App, mouse: MouseEvent) {
     let relative_y = mouse.row.saturating_sub(inner_y);
     if let Some(index) = app.snippets.snippet_at_y(relative_y) {
         app.snippets.select_at(index);
+    }
+}
+
+fn click_help_popup(app: &mut App, mouse: MouseEvent) {
+    if !app.help.visible {
+        return;
+    }
+
+    let Some(help_rect) = app.layout_regions.help_popup else {
+        return;
+    };
+
+    // Tab bar is inside the popup border, at the first row of inner area
+    let tab_bar_y = help_rect.y.saturating_add(1);
+    let inner_x = help_rect.x.saturating_add(1);
+    let tab_bar_width = help_rect.width.saturating_sub(2);
+
+    // Only handle clicks on the tab bar row
+    if mouse.row != tab_bar_y {
+        return;
+    }
+
+    // Check horizontal bounds
+    if mouse.column < inner_x || mouse.column >= inner_x.saturating_add(tab_bar_width) {
+        return;
+    }
+
+    let relative_x = mouse.column.saturating_sub(inner_x);
+    if let Some(tab) = app.help.tab_at_x(relative_x) {
+        app.help.active_tab = tab;
     }
 }
 

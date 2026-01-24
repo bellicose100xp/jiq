@@ -108,4 +108,81 @@ fn test_help_popup_state_reset() {
         state.active_tab = *tab;
         assert_eq!(state.current_scroll().offset, 0);
     }
+
+    // Hovered tab should also be reset
+    assert_eq!(state.get_hovered_tab(), None);
+}
+
+#[test]
+fn test_help_popup_hovered_tab() {
+    let mut state = HelpPopupState::new();
+
+    assert_eq!(state.get_hovered_tab(), None);
+
+    state.set_hovered_tab(Some(HelpTab::Input));
+    assert_eq!(state.get_hovered_tab(), Some(HelpTab::Input));
+
+    state.set_hovered_tab(Some(HelpTab::AI));
+    assert_eq!(state.get_hovered_tab(), Some(HelpTab::AI));
+
+    state.clear_hovered_tab();
+    assert_eq!(state.get_hovered_tab(), None);
+}
+
+#[test]
+fn test_tab_at_x_global_active() {
+    let state = HelpPopupState::new(); // Global is active
+    // Active Global has [1:Global] = 10 chars
+    // Tab positions with Global active (3-char divider):
+    // [1:Global] = 10 chars, divider = 3
+    // 2:Input = 7 chars, divider = 3
+    // 3:Result = 8 chars, ...
+
+    // Position 0-9: [1:Global]
+    assert_eq!(state.tab_at_x(0), Some(HelpTab::Global));
+    assert_eq!(state.tab_at_x(9), Some(HelpTab::Global));
+
+    // Position 10-12 is divider (3 chars)
+    assert_eq!(state.tab_at_x(10), None);
+    assert_eq!(state.tab_at_x(12), None);
+
+    // Position 13-19: 2:Input (7 chars)
+    assert_eq!(state.tab_at_x(13), Some(HelpTab::Input));
+    assert_eq!(state.tab_at_x(19), Some(HelpTab::Input));
+
+    // Position 20-22 is divider
+    assert_eq!(state.tab_at_x(20), None);
+
+    // Position 23-30: 3:Result (8 chars)
+    assert_eq!(state.tab_at_x(23), Some(HelpTab::Result));
+}
+
+#[test]
+fn test_tab_at_x_input_active() {
+    let mut state = HelpPopupState::new();
+    state.active_tab = HelpTab::Input;
+    // With Input active (3-char divider):
+    // 1:Global = 8 chars, divider = 3
+    // [2:Input] = 9 chars, divider = 3
+    // 3:Result = 8 chars, ...
+
+    // Position 0-7: 1:Global (8 chars)
+    assert_eq!(state.tab_at_x(0), Some(HelpTab::Global));
+    assert_eq!(state.tab_at_x(7), Some(HelpTab::Global));
+
+    // Position 8-10 is divider (3 chars)
+    assert_eq!(state.tab_at_x(8), None);
+    assert_eq!(state.tab_at_x(10), None);
+
+    // Position 11-19: [2:Input] (9 chars)
+    assert_eq!(state.tab_at_x(11), Some(HelpTab::Input));
+    assert_eq!(state.tab_at_x(19), Some(HelpTab::Input));
+}
+
+#[test]
+fn test_tab_at_x_out_of_bounds() {
+    let state = HelpPopupState::new();
+
+    // Way past the end
+    assert_eq!(state.tab_at_x(200), None);
 }

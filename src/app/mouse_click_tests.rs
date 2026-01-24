@@ -338,3 +338,98 @@ fn test_dismiss_error_overlay_consumes_click() {
         "Focus should not change when dismissing error overlay"
     );
 }
+
+#[test]
+fn test_click_help_popup_tab_changes_active_tab() {
+    use crate::help::HelpTab;
+
+    let mut app = setup_app();
+    app.help.visible = true;
+    app.help.active_tab = HelpTab::Global;
+    app.layout_regions.help_popup = Some(ratatui::layout::Rect::new(10, 5, 70, 20));
+
+    // With Global active: [1:Global] = 10 chars, divider = 3, so 2:Input starts at inner_x = 13
+    // inner_x starts at popup_x + 1 = 11, so Input starts at column 24
+    let mouse = create_mouse_event(24, 6);
+    handle_click(&mut app, Some(Region::HelpPopup), mouse);
+
+    assert_eq!(app.help.active_tab, HelpTab::Input);
+}
+
+#[test]
+fn test_click_help_popup_same_tab_stays_active() {
+    use crate::help::HelpTab;
+
+    let mut app = setup_app();
+    app.help.visible = true;
+    app.help.active_tab = HelpTab::Global;
+    app.layout_regions.help_popup = Some(ratatui::layout::Rect::new(10, 5, 70, 20));
+
+    // Click on [1:Global] at column 15, y = 6
+    let mouse = create_mouse_event(15, 6);
+    handle_click(&mut app, Some(Region::HelpPopup), mouse);
+
+    assert_eq!(app.help.active_tab, HelpTab::Global);
+}
+
+#[test]
+fn test_click_help_popup_on_divider_no_change() {
+    use crate::help::HelpTab;
+
+    let mut app = setup_app();
+    app.help.visible = true;
+    app.help.active_tab = HelpTab::Global;
+    app.layout_regions.help_popup = Some(ratatui::layout::Rect::new(10, 5, 70, 20));
+
+    // Click on divider at column 21 (inner_x = 10 which is divider after [1:Global])
+    let mouse = create_mouse_event(21, 6);
+    handle_click(&mut app, Some(Region::HelpPopup), mouse);
+
+    assert_eq!(app.help.active_tab, HelpTab::Global);
+}
+
+#[test]
+fn test_click_help_popup_below_tab_bar_no_change() {
+    use crate::help::HelpTab;
+
+    let mut app = setup_app();
+    app.help.visible = true;
+    app.help.active_tab = HelpTab::Global;
+    app.layout_regions.help_popup = Some(ratatui::layout::Rect::new(10, 5, 70, 20));
+
+    // Click on content area (y = 8, below tab bar at y = 6)
+    let mouse = create_mouse_event(22, 8);
+    handle_click(&mut app, Some(Region::HelpPopup), mouse);
+
+    assert_eq!(app.help.active_tab, HelpTab::Global);
+}
+
+#[test]
+fn test_click_help_popup_not_visible_no_change() {
+    use crate::help::HelpTab;
+
+    let mut app = setup_app();
+    app.help.visible = false;
+    app.help.active_tab = HelpTab::Global;
+    app.layout_regions.help_popup = Some(ratatui::layout::Rect::new(10, 5, 70, 20));
+
+    let mouse = create_mouse_event(22, 6);
+    handle_click(&mut app, Some(Region::HelpPopup), mouse);
+
+    assert_eq!(app.help.active_tab, HelpTab::Global);
+}
+
+#[test]
+fn test_click_help_popup_no_region_no_change() {
+    use crate::help::HelpTab;
+
+    let mut app = setup_app();
+    app.help.visible = true;
+    app.help.active_tab = HelpTab::Global;
+    app.layout_regions.help_popup = None;
+
+    let mouse = create_mouse_event(22, 6);
+    handle_click(&mut app, Some(Region::HelpPopup), mouse);
+
+    assert_eq!(app.help.active_tab, HelpTab::Global);
+}
