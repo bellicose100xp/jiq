@@ -15,6 +15,7 @@
 - **Function tooltip** - Quick reference help for jq functions with examples
 - **Search in results** - Find and navigate text in JSON output with highlighting
 - **Query history** - Searchable history of successful queries
+- **Mouse support** - Full mouse interaction including click-to-focus, scrolling, and selecting items in popups
 - **Clipboard support** - Copy query or results to clipboard (also supports OSC 52 for remote terminals)
 - **VIM keybindings** - VIM-style editing for power users
 - **Syntax highlighting** - Colorized JSON output and jq query syntax
@@ -209,7 +210,32 @@ curl https://api.example.com/data | jiq
 | `Ctrl+u` / `PageUp` | Scroll half page up (also works from input field) |
 | `g` / `Home` | Jump to top |
 | `G` / `End` | Jump to bottom |
-| `Mouse wheel` | Scroll up/down |
+
+</details>
+
+<details>
+<summary><b>Mouse Support</b></summary>
+
+**Focus & Navigation:**
+| Action | Result |
+|--------|--------|
+| Click on results pane | Focus results pane |
+| Click on query input | Focus input field and enter INSERT mode |
+| Mouse wheel | Scroll the component under the cursor |
+| Click and drag scrollbar | Scroll results pane |
+
+**Popups & Suggestions:**
+| Action | Result |
+|--------|--------|
+| Click on autocomplete suggestion | Select suggestion |
+| Click on AI suggestion | Select suggestion |
+| Double-click on AI suggestion | Apply suggestion |
+| Click on history entry | Select entry |
+| Double-click on history entry | Apply entry |
+| Click on snippet entry | Select snippet |
+| Double-click on snippet entry | Apply snippet |
+| Click on help popup tabs | Switch between help sections |
+| Mouse wheel in popups | Scroll popup content |
 
 </details>
 
