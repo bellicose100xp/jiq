@@ -12,15 +12,51 @@ use crate::layout::Region;
 /// Updates hover state based on cursor position within components.
 pub fn handle_hover(app: &mut App, region: Option<Region>, mouse: MouseEvent) {
     match region {
+        Some(Region::ResultsPane) => hover_results_pane(app, mouse),
         Some(Region::AiWindow) => hover_ai_window(app, mouse),
         Some(Region::SnippetList) => hover_snippet_list(app, mouse),
         Some(Region::HelpPopup) => hover_help_popup(app, mouse),
         _ => {
+            clear_results_hover(app);
             clear_ai_hover(app);
             clear_snippet_hover(app);
             clear_help_hover(app);
         }
     }
+}
+
+/// Handle hover within the results pane
+fn hover_results_pane(app: &mut App, mouse: MouseEvent) {
+    clear_ai_hover(app);
+    clear_snippet_hover(app);
+    clear_help_hover(app);
+
+    let Some(results_rect) = app.layout_regions.results_pane else {
+        app.results_cursor.clear_hover();
+        return;
+    };
+
+    let inner_y = results_rect.y.saturating_add(1);
+    let inner_height = results_rect.height.saturating_sub(2);
+
+    if mouse.row < inner_y || mouse.row >= inner_y.saturating_add(inner_height) {
+        app.results_cursor.clear_hover();
+        return;
+    }
+
+    let relative_y = mouse.row.saturating_sub(inner_y) as u32;
+    let hovered_line = app.results_scroll.offset as u32 + relative_y;
+
+    if hovered_line < app.results_cursor.total_lines() {
+        app.results_cursor.set_hovered(Some(hovered_line));
+    } else {
+        app.results_cursor.clear_hover();
+    }
+}
+
+/// Clear results pane hover state
+fn clear_results_hover(app: &mut App) {
+    app.results_cursor.clear_hover();
 }
 
 /// Handle hover within the AI window

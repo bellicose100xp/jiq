@@ -3,7 +3,7 @@ source: src/input/input_render_tests.rs
 expression: output
 ---
 "┌ Object ───────────────────────────────────────────────────────── L1-1/1 (0%) ┐"
-"│"Alice"                                                                       │"
+"▌"Alice"                                                                       │"
 "│                                                                              │"
 "│                                                                              │"
 "│                                                                              │"

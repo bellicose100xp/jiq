@@ -44,6 +44,7 @@ fn replace_query_with(app: &mut App, text: &str) {
     }
 
     app.results_scroll.reset();
+    app.results_cursor.reset();
     app.error_overlay_visible = false;
 }
 

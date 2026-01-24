@@ -27,7 +27,7 @@ pub fn handle_click(app: &mut App, region: Option<Region>, mouse: MouseEvent) {
     }
 
     match region {
-        Some(Region::ResultsPane) => click_results_pane(app),
+        Some(Region::ResultsPane) => click_results_pane(app, mouse),
         Some(Region::InputField) => click_input_field(app),
         Some(Region::SearchBar) => click_search_bar(app),
         Some(Region::AiWindow) => click_ai_window(app, mouse),
@@ -37,12 +37,30 @@ pub fn handle_click(app: &mut App, region: Option<Region>, mouse: MouseEvent) {
     }
 }
 
-fn click_results_pane(app: &mut App) {
+fn click_results_pane(app: &mut App, mouse: MouseEvent) {
     if app.focus != Focus::ResultsPane {
         app.focus = Focus::ResultsPane;
     }
     if app.search.is_visible() && !app.search.is_confirmed() {
         app.search.confirm();
+    }
+
+    let Some(results_rect) = app.layout_regions.results_pane else {
+        return;
+    };
+
+    let inner_y = results_rect.y.saturating_add(1);
+    let inner_height = results_rect.height.saturating_sub(2);
+
+    if mouse.row < inner_y || mouse.row >= inner_y.saturating_add(inner_height) {
+        return;
+    }
+
+    let relative_y = mouse.row.saturating_sub(inner_y) as u32;
+    let clicked_line = app.results_scroll.offset as u32 + relative_y;
+
+    if clicked_line < app.results_cursor.total_lines() {
+        app.results_cursor.click_select(clicked_line);
     }
 }
 

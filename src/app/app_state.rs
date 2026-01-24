@@ -7,6 +7,7 @@ use crate::input::{FileLoader, InputState};
 use crate::layout::LayoutRegions;
 use crate::notification::NotificationState;
 use crate::query::{Debouncer, QueryState};
+use crate::results::cursor_state::CursorState;
 use crate::scroll::ScrollState;
 use crate::search::SearchState;
 use crate::snippets::SnippetState;
@@ -31,6 +32,7 @@ pub struct App {
     pub file_loader: Option<FileLoader>,
     pub focus: Focus,
     pub results_scroll: ScrollState,
+    pub results_cursor: CursorState,
     pub output_mode: Option<OutputMode>,
     pub should_quit: bool,
     pub autocomplete: AutocompleteState,
@@ -134,6 +136,7 @@ impl App {
             file_loader: Some(loader),
             focus: Focus::InputField,
             results_scroll: ScrollState::new(),
+            results_cursor: CursorState::new(),
             output_mode: None,
             should_quit: false,
             autocomplete: AutocompleteState::new(),
