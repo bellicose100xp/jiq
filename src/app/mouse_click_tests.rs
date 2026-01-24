@@ -45,6 +45,33 @@ fn test_click_results_pane_when_already_focused() {
 }
 
 #[test]
+fn test_click_results_pane_confirms_search_when_unconfirmed() {
+    let mut app = setup_app();
+    app.search.open();
+    assert!(!app.search.is_confirmed());
+    let mouse = create_mouse_event(10, 10);
+
+    handle_click(&mut app, Some(Region::ResultsPane), mouse);
+
+    assert!(app.search.is_confirmed());
+    assert!(app.search.is_visible());
+}
+
+#[test]
+fn test_click_results_pane_does_not_unconfirm_when_already_confirmed() {
+    let mut app = setup_app();
+    app.search.open();
+    app.search.confirm();
+    assert!(app.search.is_confirmed());
+    let mouse = create_mouse_event(10, 10);
+
+    handle_click(&mut app, Some(Region::ResultsPane), mouse);
+
+    assert!(app.search.is_confirmed());
+    assert!(app.search.is_visible());
+}
+
+#[test]
 fn test_click_input_field_changes_focus_from_results() {
     let mut app = setup_app();
     app.focus = Focus::ResultsPane;

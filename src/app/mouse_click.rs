@@ -41,6 +41,9 @@ fn click_results_pane(app: &mut App) {
     if app.focus != Focus::ResultsPane {
         app.focus = Focus::ResultsPane;
     }
+    if app.search.is_visible() && !app.search.is_confirmed() {
+        app.search.confirm();
+    }
 }
 
 fn click_input_field(app: &mut App) {
