@@ -28,7 +28,7 @@ pub fn handle_click(app: &mut App, region: Option<Region>, mouse: MouseEvent) {
 
     match region {
         Some(Region::ResultsPane) => click_results_pane(app, mouse),
-        Some(Region::InputField) => click_input_field(app),
+        Some(Region::InputField) => click_input_field(app, mouse),
         Some(Region::SearchBar) => click_search_bar(app),
         Some(Region::AiWindow) => click_ai_window(app, mouse),
         Some(Region::SnippetList) => click_snippet_list(app, mouse),
@@ -64,11 +64,34 @@ fn click_results_pane(app: &mut App, mouse: MouseEvent) {
     }
 }
 
-fn click_input_field(app: &mut App) {
+fn click_input_field(app: &mut App, mouse: MouseEvent) {
     if app.focus != Focus::InputField {
         app.focus = Focus::InputField;
         app.input.editor_mode = EditorMode::Insert;
     }
+
+    // Calculate cursor position from click coordinates
+    let Some(input_rect) = app.layout_regions.input_field else {
+        return;
+    };
+
+    // Inner area is inside the border (1 char padding on each side)
+    let inner_x = input_rect.x.saturating_add(1);
+    let inner_width = input_rect.width.saturating_sub(2);
+
+    // Check if click is within the inner horizontal bounds
+    if mouse.column < inner_x || mouse.column >= inner_x.saturating_add(inner_width) {
+        return;
+    }
+
+    // Calculate the character position relative to the visible area
+    let relative_x = (mouse.column - inner_x) as usize;
+
+    // Add scroll offset to get the actual character position
+    let target_col = app.input.scroll_offset + relative_x;
+
+    // Set cursor to the calculated position
+    app.input.set_cursor_column(target_col);
 }
 
 fn click_search_bar(app: &mut App) {

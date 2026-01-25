@@ -262,15 +262,58 @@ fn test_scroll_autocomplete_up() {
 }
 
 #[test]
-fn test_scroll_input_field_does_nothing() {
+fn test_scroll_input_field_down() {
     let mut app = setup_app_for_scroll_tests();
-    let initial_offset = app.results_scroll.offset;
+    app.input.textarea.insert_str("abcdefghijklmnopqrstuvwxyz");
+    app.input.scroll_offset = 0;
 
     handle_scroll(&mut app, Some(Region::InputField), ScrollDirection::Down);
 
     assert_eq!(
-        app.results_scroll.offset, initial_offset,
-        "Input field is not scrollable"
+        app.input.scroll_offset, 3,
+        "Input field should scroll right by 3 chars"
+    );
+}
+
+#[test]
+fn test_scroll_input_field_up() {
+    let mut app = setup_app_for_scroll_tests();
+    app.input.textarea.insert_str("abcdefghijklmnopqrstuvwxyz");
+    app.input.scroll_offset = 10;
+
+    handle_scroll(&mut app, Some(Region::InputField), ScrollDirection::Up);
+
+    assert_eq!(
+        app.input.scroll_offset, 7,
+        "Input field should scroll left by 3 chars"
+    );
+}
+
+#[test]
+fn test_scroll_input_field_clamps_at_zero() {
+    let mut app = setup_app_for_scroll_tests();
+    app.input.textarea.insert_str("short");
+    app.input.scroll_offset = 1;
+
+    handle_scroll(&mut app, Some(Region::InputField), ScrollDirection::Up);
+
+    assert_eq!(
+        app.input.scroll_offset, 0,
+        "Input field scroll should not go below 0"
+    );
+}
+
+#[test]
+fn test_scroll_input_field_clamps_at_text_length() {
+    let mut app = setup_app_for_scroll_tests();
+    app.input.textarea.insert_str("short");
+    app.input.scroll_offset = 3;
+
+    handle_scroll(&mut app, Some(Region::InputField), ScrollDirection::Down);
+
+    assert_eq!(
+        app.input.scroll_offset, 5,
+        "Input field scroll should not exceed text length"
     );
 }
 

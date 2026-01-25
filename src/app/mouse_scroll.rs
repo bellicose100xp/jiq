@@ -25,9 +25,9 @@ pub fn handle_scroll(app: &mut App, region: Option<Region>, direction: ScrollDir
         Some(Region::SnippetList) => scroll_snippets(app, direction),
         Some(Region::HistoryPopup) => scroll_history(app, direction),
         Some(Region::Autocomplete) => scroll_autocomplete(app, direction),
+        Some(Region::InputField) => scroll_input(app, direction),
         // Non-scrollable regions: do nothing
-        Some(Region::InputField)
-        | Some(Region::SearchBar)
+        Some(Region::SearchBar)
         | Some(Region::Tooltip)
         | Some(Region::ErrorOverlay)
         | Some(Region::SnippetPreview) => {}
@@ -79,6 +79,18 @@ fn scroll_autocomplete(app: &mut App, direction: ScrollDirection) {
     match direction {
         ScrollDirection::Up => app.autocomplete.scroll_view_up(LIST_SCROLL_ITEMS),
         ScrollDirection::Down => app.autocomplete.scroll_view_down(LIST_SCROLL_ITEMS),
+    }
+}
+
+const INPUT_SCROLL_CHARS: isize = 3;
+
+fn scroll_input(app: &mut App, direction: ScrollDirection) {
+    let text_length = app.input.query().chars().count();
+    match direction {
+        ScrollDirection::Up => app
+            .input
+            .scroll_horizontal(-INPUT_SCROLL_CHARS, text_length),
+        ScrollDirection::Down => app.input.scroll_horizontal(INPUT_SCROLL_CHARS, text_length),
     }
 }
 
