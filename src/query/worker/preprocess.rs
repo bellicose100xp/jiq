@@ -34,17 +34,11 @@ pub fn preprocess_result(
     }
     let unformatted = strip_ansi_codes(&output);
 
-    // Compute line metrics
+    // Compute line metrics and widths in a single pass
     if cancel_token.is_cancelled() {
         return Err(QueryError::Cancelled);
     }
-    let line_count = output.lines().count() as u32;
-    let max_width = output
-        .lines()
-        .map(|l| l.len())
-        .max()
-        .unwrap_or(0)
-        .min(u16::MAX as usize) as u16;
+    let (line_count, max_width, line_widths) = compute_line_metrics(&unformatted);
 
     // Parse ANSI to RenderedLine
     if cancel_token.is_cancelled() {
@@ -52,13 +46,13 @@ pub fn preprocess_result(
     }
     let rendered_lines = parse_ansi_to_rendered_lines(&output, cancel_token)?;
 
-    // Parse JSON for autocomplete
+    // Parse JSON and detect type in single pass
     if cancel_token.is_cancelled() {
         return Err(QueryError::Cancelled);
     }
-    let parsed = parse_first_value(&unformatted).map(Arc::new);
+    let (parsed, result_type) = parse_and_detect_type(&unformatted);
+    let parsed = parsed.map(Arc::new);
 
-    let result_type = detect_result_type(&unformatted);
     let base_query = normalize_base_query(query);
 
     Ok(ProcessedResult {
@@ -68,10 +62,35 @@ pub fn preprocess_result(
         parsed,
         line_count,
         max_width,
+        line_widths,
         result_type,
         query: base_query,
         execution_time_ms: None,
     })
+}
+
+/// Compute line count, max width, and individual line widths in a single pass
+///
+/// Returns (line_count, max_width, line_widths) to avoid multiple iterations.
+fn compute_line_metrics(output: &str) -> (u32, u16, Arc<Vec<u16>>) {
+    let mut line_count: u32 = 0;
+    let mut max_width: usize = 0;
+    let mut widths: Vec<u16> = Vec::new();
+
+    for line in output.lines() {
+        line_count += 1;
+        let width = line.len().min(u16::MAX as usize);
+        widths.push(width as u16);
+        if width > max_width {
+            max_width = width;
+        }
+    }
+
+    (
+        line_count,
+        max_width.min(u16::MAX as usize) as u16,
+        Arc::new(widths),
+    )
 }
 
 /// Parse ANSI text into rendered lines
@@ -172,54 +191,50 @@ fn skip_csi_sequence(bytes: &[u8], start: usize) -> usize {
     pos
 }
 
-/// Parse first JSON value from result text
+/// Parse JSON and detect its type in a single pass
 ///
+/// Returns both the parsed first value and the result type, avoiding duplicate parsing.
 /// Handles both single values and destructured output (multiple JSON values).
-/// For destructured results like `{"a":1}\n{"b":2}`, parses just the first value.
-fn parse_first_value(text: &str) -> Option<Value> {
+///
+/// Uses fast-path `from_str` for single values (common case), falling back to
+/// streaming parser for destructured output like `{"a":1}\n{"b":2}`.
+pub fn parse_and_detect_type(text: &str) -> (Option<Value>, ResultType) {
     let text = text.trim();
     if text.is_empty() {
-        return None;
+        return (None, ResultType::Null);
     }
 
-    // Try to parse the entire text first (common case: single value)
-    if let Ok(value) = serde_json::from_str(text) {
-        return Some(value);
+    // FAST PATH: Try full parse first (common case: single value)
+    // from_str fails on destructured output (trailing content after first value)
+    if let Ok(value) = serde_json::from_str::<Value>(text) {
+        let result_type = value_to_result_type(&value, false);
+        return (Some(value), result_type);
     }
 
-    // Fallback: use streaming parser to get first value (handles destructured output)
+    // FALLBACK: Streaming parse for destructured output (multiple JSON values)
     let mut deserializer = serde_json::Deserializer::from_str(text).into_iter();
-    deserializer.next().and_then(|r| r.ok())
-}
-
-/// Detect the type of a query result for type-aware autosuggestions
-///
-/// Examines the structure of the result to determine:
-/// - Is it an array? Are elements objects or primitives?
-/// - Is it multiple values (destructured)?
-/// - Is it a single value? What type?
-fn detect_result_type(result: &str) -> ResultType {
-    use serde_json::Deserializer;
-
-    // Use streaming parser to read first value
-    let mut deserializer = Deserializer::from_str(result).into_iter();
 
     let first_value = match deserializer.next() {
         Some(Ok(v)) => v,
-        _ => return ResultType::Null,
+        _ => return (None, ResultType::Null),
     };
 
-    // Check if there's a second value (indicates destructured output)
-    let has_multiple_values = deserializer.next().is_some();
+    // Check for multiple values (destructured output)
+    let has_multiple = deserializer.next().is_some();
+    let result_type = value_to_result_type(&first_value, has_multiple);
 
-    // Determine type based on first value and whether there are more
-    match first_value {
-        Value::Object(_) if has_multiple_values => ResultType::DestructuredObjects,
+    (Some(first_value), result_type)
+}
+
+/// Convert a parsed JSON value to its ResultType
+fn value_to_result_type(value: &Value, has_multiple: bool) -> ResultType {
+    match value {
+        Value::Object(_) if has_multiple => ResultType::DestructuredObjects,
         Value::Object(_) => ResultType::Object,
-        Value::Array(ref arr) => {
+        Value::Array(arr) => {
             if arr.is_empty() {
                 ResultType::Array
-            } else if matches!(arr[0], Value::Object(_)) {
+            } else if matches!(arr.first(), Some(Value::Object(_))) {
                 ResultType::ArrayOfObjects
             } else {
                 ResultType::Array

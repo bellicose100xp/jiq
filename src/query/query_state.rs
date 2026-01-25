@@ -6,7 +6,7 @@ use ansi_to_tui::IntoText;
 use ratatui::text::{Line, Span, Text};
 
 use crate::query::executor::JqExecutor;
-use crate::query::worker::preprocess::strip_ansi_codes;
+use crate::query::worker::preprocess::{parse_and_detect_type, strip_ansi_codes};
 use crate::query::worker::types::RenderedLine;
 use crate::query::worker::{QueryRequest, QueryResponse, spawn_worker};
 use serde_json::Value;
@@ -60,6 +60,8 @@ pub struct QueryState {
     pub(crate) cached_line_count: u32,
     /// Cached max line width (computed once per result, not per render)
     pub(crate) cached_max_line_width: u16,
+    /// Cached line widths per line (computed once per result, not per render)
+    pub(crate) cached_line_widths: Option<Arc<Vec<u16>>>,
     /// Cached execution time in milliseconds
     pub(crate) cached_execution_time_ms: Option<u64>,
     /// Whether current result is null/empty (valid query but no results)
@@ -103,15 +105,16 @@ impl QueryState {
             });
 
         let base_query_for_suggestions = Some(".".to_string());
-        let base_type_for_suggestions = last_successful_result_unformatted
-            .as_ref()
-            .map(|s| Self::detect_result_type(s));
 
-        // Avoid re-parsing on every keystroke
-        let last_successful_result_parsed = last_successful_result_unformatted
-            .as_ref()
-            .and_then(|s| Self::parse_first_value(s))
-            .map(Arc::new);
+        // Parse JSON and detect type in single pass (avoids duplicate parsing)
+        let (last_successful_result_parsed, base_type_for_suggestions) =
+            last_successful_result_unformatted
+                .as_ref()
+                .map(|s| {
+                    let (parsed, result_type) = parse_and_detect_type(s);
+                    (parsed.map(Arc::new), Some(result_type))
+                })
+                .unwrap_or((None, None));
 
         // Pre-render result to avoid expensive conversion in render loop
         let last_successful_result_rendered = last_successful_result.clone().map(|s| {
@@ -121,20 +124,29 @@ impl QueryState {
                 .unwrap_or_else(|_| Text::raw(s.to_string()))
         });
 
-        // Cache line count and max width for initial result
-        let (cached_line_count, cached_max_line_width) = last_successful_result
-            .as_ref()
-            .map(|s| {
-                let line_count = s.lines().count() as u32;
-                let max_width = s
-                    .lines()
-                    .map(|l| l.len())
-                    .max()
-                    .unwrap_or(0)
-                    .min(u16::MAX as usize) as u16;
-                (line_count, max_width)
-            })
-            .unwrap_or((0, 0));
+        // Cache line count, max width, and line widths for initial result
+        let (cached_line_count, cached_max_line_width, cached_line_widths) =
+            last_successful_result_unformatted
+                .as_ref()
+                .map(|s| {
+                    let mut line_count: u32 = 0;
+                    let mut max_width: usize = 0;
+                    let mut widths: Vec<u16> = Vec::new();
+                    for line in s.lines() {
+                        line_count += 1;
+                        let width = line.len().min(u16::MAX as usize);
+                        widths.push(width as u16);
+                        if width > max_width {
+                            max_width = width;
+                        }
+                    }
+                    (
+                        line_count,
+                        max_width.min(u16::MAX as usize) as u16,
+                        Some(Arc::new(widths)),
+                    )
+                })
+                .unwrap_or((0, 0, None));
 
         let (request_tx, request_rx) = channel();
         let (response_tx, response_rx) = channel();
@@ -153,6 +165,7 @@ impl QueryState {
             base_type_for_suggestions,
             cached_line_count,
             cached_max_line_width,
+            cached_line_widths,
             cached_execution_time_ms: None,
             is_empty_result: false,
             request_tx: Some(request_tx),
@@ -191,14 +204,19 @@ impl QueryState {
         self.is_empty_result = is_only_nulls;
 
         if !is_only_nulls {
-            // Cache line count and max width BEFORE moving output
-            let cached_line_count = output.lines().count() as u32;
-            let cached_max_line_width = output
-                .lines()
-                .map(|l| l.len())
-                .max()
-                .unwrap_or(0)
-                .min(u16::MAX as usize) as u16;
+            // Cache line count, max width, and line widths BEFORE moving output
+            let mut cached_line_count: u32 = 0;
+            let mut cached_max_line_width: usize = 0;
+            let mut widths: Vec<u16> = Vec::new();
+            for line in unformatted.lines() {
+                cached_line_count += 1;
+                let width = line.len().min(u16::MAX as usize);
+                widths.push(width as u16);
+                if width > cached_max_line_width {
+                    cached_max_line_width = width;
+                }
+            }
+            let cached_max_line_width = cached_max_line_width.min(u16::MAX as usize) as u16;
 
             // Pre-render result BEFORE moving output into Arc
             // This avoids expensive into_text() conversion in render loop
@@ -219,17 +237,18 @@ impl QueryState {
                     crate::ai::context::MAX_JSON_SAMPLE_LENGTH,
                 )));
 
-            // Critical: prevents re-parsing large files on EVERY keystroke
-            self.last_successful_result_parsed =
-                Self::parse_first_value(&unformatted).map(Arc::new);
+            // Parse JSON and detect type in single pass (avoids duplicate parsing)
+            let (parsed, result_type) = parse_and_detect_type(&unformatted);
+            self.last_successful_result_parsed = parsed.map(Arc::new);
+            self.base_type_for_suggestions = Some(result_type);
 
             // Trim trailing whitespace/incomplete operators: ".services | ." → ".services"
             let base_query = Self::normalize_base_query(query);
             self.base_query_for_suggestions = Some(base_query);
-            self.base_type_for_suggestions = Some(Self::detect_result_type(&unformatted));
 
             self.cached_line_count = cached_line_count;
             self.cached_max_line_width = cached_max_line_width;
+            self.cached_line_widths = Some(Arc::new(widths));
         }
     }
 
@@ -378,6 +397,7 @@ impl QueryState {
                         )));
                     self.cached_line_count = processed.line_count;
                     self.cached_max_line_width = processed.max_width;
+                    self.cached_line_widths = Some(processed.line_widths);
                     self.cached_execution_time_ms = processed.execution_time_ms;
                     self.base_query_for_suggestions = Some(processed.query.clone());
                     self.base_type_for_suggestions = Some(processed.result_type);
@@ -454,66 +474,6 @@ impl QueryState {
         }
 
         base
-    }
-
-    /// Detect the type of a query result for type-aware autosuggestions
-    ///
-    /// Examines the structure of the result to determine:
-    /// - Is it an array? Are elements objects or primitives?
-    /// - Is it multiple values (destructured)?
-    /// - Is it a single value? What type?
-    fn detect_result_type(result: &str) -> ResultType {
-        use serde_json::Deserializer;
-
-        // Use streaming parser to read first value
-        let mut deserializer = Deserializer::from_str(result).into_iter();
-
-        let first_value = match deserializer.next() {
-            Some(Ok(v)) => v,
-            _ => return ResultType::Null,
-        };
-
-        // Check if there's a second value (indicates destructured output)
-        let has_multiple_values = deserializer.next().is_some();
-
-        // Determine type based on first value and whether there are more
-        match first_value {
-            Value::Object(_) if has_multiple_values => ResultType::DestructuredObjects,
-            Value::Object(_) => ResultType::Object,
-            Value::Array(ref arr) => {
-                if arr.is_empty() {
-                    ResultType::Array
-                } else if matches!(arr[0], Value::Object(_)) {
-                    ResultType::ArrayOfObjects
-                } else {
-                    ResultType::Array
-                }
-            }
-            Value::String(_) => ResultType::String,
-            Value::Number(_) => ResultType::Number,
-            Value::Bool(_) => ResultType::Boolean,
-            Value::Null => ResultType::Null,
-        }
-    }
-
-    /// Parse first JSON value from result text
-    ///
-    /// Handles both single values and destructured output (multiple JSON values).
-    /// For destructured results like `{"a":1}\n{"b":2}`, parses just the first value.
-    fn parse_first_value(text: &str) -> Option<Value> {
-        let text = text.trim();
-        if text.is_empty() {
-            return None;
-        }
-
-        // Try to parse the entire text first (common case: single value)
-        if let Ok(value) = serde_json::from_str(text) {
-            return Some(value);
-        }
-
-        // Fallback: use streaming parser to get first value (handles destructured output)
-        let mut deserializer = serde_json::Deserializer::from_str(text).into_iter();
-        deserializer.next().and_then(|r| r.ok())
     }
 
     /// Convert pre-rendered lines to Text for display

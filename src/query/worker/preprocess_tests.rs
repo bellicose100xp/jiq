@@ -1,7 +1,9 @@
 //! Tests for preprocessing functions
 
 use crate::query::query_state::ResultType;
-use crate::query::worker::preprocess::{preprocess_result, strip_ansi_codes};
+use crate::query::worker::preprocess::{
+    parse_and_detect_type, preprocess_result, strip_ansi_codes,
+};
 use crate::query::worker::types::QueryError;
 use tokio_util::sync::CancellationToken;
 
@@ -49,6 +51,44 @@ fn test_preprocess_result_computes_line_metrics() {
     let processed = result.unwrap();
     assert_eq!(processed.line_count, 3);
     assert_eq!(processed.max_width, 5); // "line1".len()
+    assert_eq!(processed.line_widths.len(), 3);
+    assert_eq!(processed.line_widths[0], 5);
+    assert_eq!(processed.line_widths[1], 5);
+    assert_eq!(processed.line_widths[2], 5);
+}
+
+#[test]
+fn test_preprocess_result_computes_line_widths_varying_lengths() {
+    let output = "a\nbb\nccc\ndddd".to_string();
+    let cancel_token = CancellationToken::new();
+
+    let result = preprocess_result(output, ".", &cancel_token);
+    assert!(result.is_ok());
+
+    let processed = result.unwrap();
+    assert_eq!(processed.line_count, 4);
+    assert_eq!(processed.max_width, 4); // "dddd".len()
+    assert_eq!(processed.line_widths.len(), 4);
+    assert_eq!(processed.line_widths[0], 1);
+    assert_eq!(processed.line_widths[1], 2);
+    assert_eq!(processed.line_widths[2], 3);
+    assert_eq!(processed.line_widths[3], 4);
+}
+
+#[test]
+fn test_preprocess_result_line_widths_empty_lines() {
+    let output = "abc\n\nxyz".to_string();
+    let cancel_token = CancellationToken::new();
+
+    let result = preprocess_result(output, ".", &cancel_token);
+    assert!(result.is_ok());
+
+    let processed = result.unwrap();
+    assert_eq!(processed.line_count, 3);
+    assert_eq!(processed.line_widths.len(), 3);
+    assert_eq!(processed.line_widths[0], 3);
+    assert_eq!(processed.line_widths[1], 0); // empty line
+    assert_eq!(processed.line_widths[2], 3);
 }
 
 #[test]
@@ -189,7 +229,7 @@ fn test_preprocess_large_file_computes_correct_width() {
 
 #[test]
 fn test_preprocess_max_width_clamped_to_u16_max() {
-    // Test that max_width doesn't overflow u16
+    // Test that max_width and line_widths don't overflow u16
     let very_long_line = "a".repeat(100_000);
     let cancel_token = CancellationToken::new();
 
@@ -201,6 +241,12 @@ fn test_preprocess_max_width_clamped_to_u16_max() {
         processed.max_width,
         u16::MAX,
         "max_width should be clamped to u16::MAX"
+    );
+    assert_eq!(processed.line_widths.len(), 1);
+    assert_eq!(
+        processed.line_widths[0],
+        u16::MAX,
+        "line_widths should be clamped to u16::MAX"
     );
 }
 
@@ -296,4 +342,133 @@ fn test_strip_ansi_codes_escape_at_boundaries() {
     let input = "\x1b[0;32mstart\x1b[0m middle \x1b[1;39mend\x1b[0m";
     let result = strip_ansi_codes(input);
     assert_eq!(result, "start middle end", "Should handle boundary escapes");
+}
+
+// Unit tests for parse_and_detect_type function
+
+#[test]
+fn test_parse_and_detect_type_single_object() {
+    let (parsed, result_type) = parse_and_detect_type(r#"{"name": "test"}"#);
+    assert!(parsed.is_some());
+    assert!(parsed.unwrap().is_object());
+    assert_eq!(result_type, ResultType::Object);
+}
+
+#[test]
+fn test_parse_and_detect_type_destructured_objects() {
+    let input = "{\"a\": 1}\n{\"b\": 2}";
+    let (parsed, result_type) = parse_and_detect_type(input);
+    assert!(parsed.is_some());
+    assert!(parsed.unwrap().is_object());
+    assert_eq!(result_type, ResultType::DestructuredObjects);
+}
+
+#[test]
+fn test_parse_and_detect_type_array_of_objects() {
+    let (parsed, result_type) = parse_and_detect_type(r#"[{"id": 1}, {"id": 2}]"#);
+    assert!(parsed.is_some());
+    assert!(parsed.unwrap().is_array());
+    assert_eq!(result_type, ResultType::ArrayOfObjects);
+}
+
+#[test]
+fn test_parse_and_detect_type_empty_array() {
+    let (parsed, result_type) = parse_and_detect_type("[]");
+    assert!(parsed.is_some());
+    assert_eq!(result_type, ResultType::Array);
+}
+
+#[test]
+fn test_parse_and_detect_type_array_of_primitives() {
+    let (parsed, result_type) = parse_and_detect_type("[1, 2, 3]");
+    assert!(parsed.is_some());
+    assert_eq!(result_type, ResultType::Array);
+}
+
+#[test]
+fn test_parse_and_detect_type_string() {
+    let (parsed, result_type) = parse_and_detect_type(r#""hello""#);
+    assert!(parsed.is_some());
+    assert_eq!(result_type, ResultType::String);
+}
+
+#[test]
+fn test_parse_and_detect_type_number() {
+    let (parsed, result_type) = parse_and_detect_type("42");
+    assert!(parsed.is_some());
+    assert_eq!(result_type, ResultType::Number);
+
+    let (parsed, result_type) = parse_and_detect_type("3.14");
+    assert!(parsed.is_some());
+    assert_eq!(result_type, ResultType::Number);
+}
+
+#[test]
+fn test_parse_and_detect_type_boolean() {
+    let (parsed, result_type) = parse_and_detect_type("true");
+    assert!(parsed.is_some());
+    assert_eq!(result_type, ResultType::Boolean);
+
+    let (parsed, result_type) = parse_and_detect_type("false");
+    assert!(parsed.is_some());
+    assert_eq!(result_type, ResultType::Boolean);
+}
+
+#[test]
+fn test_parse_and_detect_type_null() {
+    let (parsed, result_type) = parse_and_detect_type("null");
+    assert!(parsed.is_some());
+    assert_eq!(result_type, ResultType::Null);
+}
+
+#[test]
+fn test_parse_and_detect_type_empty_string() {
+    let (parsed, result_type) = parse_and_detect_type("");
+    assert!(parsed.is_none());
+    assert_eq!(result_type, ResultType::Null);
+}
+
+#[test]
+fn test_parse_and_detect_type_whitespace_only() {
+    let (parsed, result_type) = parse_and_detect_type("   \n\t  ");
+    assert!(parsed.is_none());
+    assert_eq!(result_type, ResultType::Null);
+}
+
+#[test]
+fn test_parse_and_detect_type_invalid_json() {
+    let (parsed, result_type) = parse_and_detect_type("not valid json");
+    assert!(parsed.is_none());
+    assert_eq!(result_type, ResultType::Null);
+}
+
+#[test]
+fn test_parse_and_detect_type_trims_whitespace() {
+    let (parsed, result_type) = parse_and_detect_type("  {\"a\": 1}  ");
+    assert!(parsed.is_some());
+    assert_eq!(result_type, ResultType::Object);
+}
+
+#[test]
+fn test_parse_and_detect_type_pretty_printed_object() {
+    let input = r#"{
+  "name": "test",
+  "value": 42
+}"#;
+    let (parsed, result_type) = parse_and_detect_type(input);
+    assert!(parsed.is_some());
+    assert_eq!(result_type, ResultType::Object);
+}
+
+#[test]
+fn test_parse_and_detect_type_pretty_printed_destructured() {
+    let input = r#"{
+  "id": 1
+}
+{
+  "id": 2
+}"#;
+    let (parsed, result_type) = parse_and_detect_type(input);
+    assert!(parsed.is_some());
+    assert_eq!(result_type, ResultType::DestructuredObjects);
 }
