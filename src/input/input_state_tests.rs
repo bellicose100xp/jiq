@@ -436,3 +436,203 @@ fn test_sync_textarea_actually_scrolls() {
         scroll_after_move
     );
 }
+
+#[test]
+fn test_scroll_horizontal_right() {
+    let mut state = InputState::new();
+    state.textarea.insert_str("abcdefghijklmnopqrstuvwxyz");
+    state.scroll_offset = 5;
+
+    state.scroll_horizontal(3, 26);
+
+    assert_eq!(state.scroll_offset, 8);
+}
+
+#[test]
+fn test_scroll_horizontal_left() {
+    let mut state = InputState::new();
+    state.textarea.insert_str("abcdefghijklmnopqrstuvwxyz");
+    state.scroll_offset = 10;
+
+    state.scroll_horizontal(-3, 26);
+
+    assert_eq!(state.scroll_offset, 7);
+}
+
+#[test]
+fn test_scroll_horizontal_clamps_at_zero() {
+    let mut state = InputState::new();
+    state.textarea.insert_str("abcdefghij");
+    state.scroll_offset = 2;
+
+    state.scroll_horizontal(-10, 10);
+
+    assert_eq!(state.scroll_offset, 0);
+}
+
+#[test]
+fn test_scroll_horizontal_clamps_at_text_length() {
+    let mut state = InputState::new();
+    state.textarea.insert_str("abcdefghij");
+    state.scroll_offset = 5;
+
+    state.scroll_horizontal(100, 10);
+
+    assert_eq!(state.scroll_offset, 10);
+}
+
+#[test]
+fn test_scroll_horizontal_zero_delta() {
+    let mut state = InputState::new();
+    state.textarea.insert_str("abcdefghij");
+    state.scroll_offset = 5;
+
+    state.scroll_horizontal(0, 10);
+
+    assert_eq!(state.scroll_offset, 5);
+}
+
+#[test]
+fn test_set_cursor_column_forward() {
+    let mut state = InputState::new();
+    state.textarea.insert_str("abcdefghijklmnop");
+    state.textarea.move_cursor(tui_textarea::CursorMove::Head);
+
+    assert_eq!(state.textarea.cursor().1, 0);
+
+    state.set_cursor_column(10);
+
+    assert_eq!(state.textarea.cursor().1, 10);
+}
+
+#[test]
+fn test_set_cursor_column_backward() {
+    let mut state = InputState::new();
+    state.textarea.insert_str("abcdefghijklmnop");
+
+    assert_eq!(state.textarea.cursor().1, 16);
+
+    state.set_cursor_column(5);
+
+    assert_eq!(state.textarea.cursor().1, 5);
+}
+
+#[test]
+fn test_set_cursor_column_same_position() {
+    let mut state = InputState::new();
+    state.textarea.insert_str("abcdefghij");
+
+    state.set_cursor_column(5);
+    let cursor_before = state.textarea.cursor().1;
+
+    state.set_cursor_column(5);
+
+    assert_eq!(state.textarea.cursor().1, cursor_before);
+}
+
+#[test]
+fn test_set_cursor_column_clamps_to_text_length() {
+    let mut state = InputState::new();
+    state.textarea.insert_str("abcde");
+    state.textarea.move_cursor(tui_textarea::CursorMove::Head);
+
+    state.set_cursor_column(100);
+
+    assert_eq!(state.textarea.cursor().1, 5);
+}
+
+#[test]
+fn test_set_cursor_column_to_zero() {
+    let mut state = InputState::new();
+    state.textarea.insert_str("abcdefghij");
+
+    state.set_cursor_column(0);
+
+    assert_eq!(state.textarea.cursor().1, 0);
+}
+
+#[test]
+fn test_set_cursor_column_empty_text() {
+    let mut state = InputState::new();
+
+    state.set_cursor_column(5);
+
+    assert_eq!(state.textarea.cursor().1, 0);
+}
+
+#[test]
+fn test_scroll_horizontal_sets_manual_scroll_flag() {
+    let mut state = InputState::new();
+    state.textarea.insert_str("abcdefghijklmnopqrstuvwxyz");
+
+    assert!(!state.manual_scroll_active);
+
+    state.scroll_horizontal(5, 26);
+
+    assert!(state.manual_scroll_active);
+}
+
+#[test]
+fn test_reset_manual_scroll_clears_flag() {
+    let mut state = InputState::new();
+    state.manual_scroll_active = true;
+
+    state.reset_manual_scroll();
+
+    assert!(!state.manual_scroll_active);
+}
+
+#[test]
+fn test_calculate_scroll_skips_cursor_tracking_when_manual_scroll() {
+    let mut state = InputState::new();
+    let viewport_width = 10;
+
+    state.textarea.insert_str("abcdefghijklmnopqrstuvwxyz");
+    state.calculate_scroll_offset(viewport_width);
+
+    let cursor_col = state.textarea.cursor().1;
+    assert_eq!(cursor_col, 26);
+    assert!(state.scroll_offset > 0);
+
+    state.scroll_offset = 0;
+    state.manual_scroll_active = true;
+
+    state.calculate_scroll_offset(viewport_width);
+
+    assert_eq!(state.scroll_offset, 0);
+}
+
+#[test]
+fn test_calculate_scroll_still_clamps_bounds_when_manual_scroll() {
+    let mut state = InputState::new();
+    let viewport_width = 10;
+
+    state.textarea.insert_str("abcdefghij");
+    state.scroll_offset = 20;
+    state.manual_scroll_active = true;
+
+    state.calculate_scroll_offset(viewport_width);
+
+    assert_eq!(state.scroll_offset, 0);
+}
+
+#[test]
+fn test_manual_scroll_reset_restores_cursor_tracking() {
+    let mut state = InputState::new();
+    let viewport_width = 10;
+
+    state.textarea.insert_str("abcdefghijklmnopqrstuvwxyz");
+    state.calculate_scroll_offset(viewport_width);
+
+    state.scroll_offset = 0;
+    state.manual_scroll_active = true;
+    state.calculate_scroll_offset(viewport_width);
+    assert_eq!(state.scroll_offset, 0);
+
+    state.reset_manual_scroll();
+    state.calculate_scroll_offset(viewport_width);
+
+    let cursor_col = state.textarea.cursor().1;
+    assert!(cursor_col >= state.scroll_offset);
+    assert!(cursor_col < state.scroll_offset + viewport_width);
+}

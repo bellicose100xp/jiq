@@ -85,7 +85,31 @@ fn test_click_input_field_changes_focus_from_results() {
 }
 
 #[test]
-fn test_click_input_field_when_already_focused_does_not_change() {
+fn test_click_input_field_unfocused_does_not_move_cursor() {
+    let mut app = setup_app();
+    app.focus = Focus::ResultsPane;
+    app.input.textarea.insert_str("abcdefghijklmnop");
+    app.input
+        .textarea
+        .move_cursor(tui_textarea::CursorMove::Head);
+    app.input.scroll_offset = 0;
+    app.layout_regions.input_field = Some(ratatui::layout::Rect::new(0, 0, 30, 3));
+    let initial_cursor = app.input.textarea.cursor().1;
+
+    // Click at column 10 - but since unfocused, cursor should NOT move
+    let mouse = create_mouse_event(10, 1);
+    handle_click(&mut app, Some(Region::InputField), mouse);
+
+    assert_eq!(app.focus, Focus::InputField, "Should focus input field");
+    assert_eq!(
+        app.input.textarea.cursor().1,
+        initial_cursor,
+        "Cursor should NOT move when focusing from unfocused state"
+    );
+}
+
+#[test]
+fn test_click_input_field_when_already_focused_does_not_change_mode() {
     let mut app = setup_app();
     app.focus = Focus::InputField;
     app.input.editor_mode = EditorMode::Normal;
@@ -98,6 +122,117 @@ fn test_click_input_field_when_already_focused_does_not_change() {
         app.input.editor_mode,
         EditorMode::Normal,
         "Should not change editor mode when already focused"
+    );
+}
+
+#[test]
+fn test_click_input_field_positions_cursor() {
+    let mut app = setup_app();
+    app.focus = Focus::InputField;
+    app.input.textarea.insert_str("abcdefghijklmnop");
+    app.input
+        .textarea
+        .move_cursor(tui_textarea::CursorMove::Head);
+    app.input.scroll_offset = 0;
+    app.layout_regions.input_field = Some(ratatui::layout::Rect::new(0, 0, 30, 3));
+
+    // Click at column 6 (inner x starts at 1, so column 6 means position 5)
+    let mouse = create_mouse_event(6, 1);
+    handle_click(&mut app, Some(Region::InputField), mouse);
+
+    assert_eq!(
+        app.input.textarea.cursor().1,
+        5,
+        "Cursor should be at position 5"
+    );
+}
+
+#[test]
+fn test_click_input_field_with_scroll_offset() {
+    let mut app = setup_app();
+    app.focus = Focus::InputField;
+    app.input.textarea.insert_str("abcdefghijklmnopqrstuvwxyz");
+    app.input
+        .textarea
+        .move_cursor(tui_textarea::CursorMove::Head);
+    app.input.scroll_offset = 10;
+    app.layout_regions.input_field = Some(ratatui::layout::Rect::new(0, 0, 20, 3));
+
+    // Click at column 6 (inner x starts at 1, so relative position is 5)
+    // With scroll offset 10, target should be 10 + 5 = 15
+    let mouse = create_mouse_event(6, 1);
+    handle_click(&mut app, Some(Region::InputField), mouse);
+
+    assert_eq!(
+        app.input.textarea.cursor().1,
+        15,
+        "Cursor should be at position 15 (scroll offset 10 + relative position 5)"
+    );
+}
+
+#[test]
+fn test_click_input_field_clamps_to_text_length() {
+    let mut app = setup_app();
+    app.focus = Focus::InputField;
+    app.input.textarea.insert_str("short");
+    app.input
+        .textarea
+        .move_cursor(tui_textarea::CursorMove::Head);
+    app.input.scroll_offset = 0;
+    app.layout_regions.input_field = Some(ratatui::layout::Rect::new(0, 0, 30, 3));
+
+    // Click at position beyond text length
+    let mouse = create_mouse_event(20, 1);
+    handle_click(&mut app, Some(Region::InputField), mouse);
+
+    assert_eq!(
+        app.input.textarea.cursor().1,
+        5,
+        "Cursor should be clamped to text length (5)"
+    );
+}
+
+#[test]
+fn test_click_input_field_on_border_ignored() {
+    let mut app = setup_app();
+    app.focus = Focus::InputField;
+    app.input.textarea.insert_str("abcdefghij");
+    app.input
+        .textarea
+        .move_cursor(tui_textarea::CursorMove::Head);
+    app.input.scroll_offset = 0;
+    app.layout_regions.input_field = Some(ratatui::layout::Rect::new(5, 2, 20, 3));
+    let initial_cursor = app.input.textarea.cursor().1;
+
+    // Click on left border (column 5, which is the border x position)
+    let mouse = create_mouse_event(5, 3);
+    handle_click(&mut app, Some(Region::InputField), mouse);
+
+    assert_eq!(
+        app.input.textarea.cursor().1,
+        initial_cursor,
+        "Cursor should not change when clicking on border"
+    );
+}
+
+#[test]
+fn test_click_input_field_no_region_tracked() {
+    let mut app = setup_app();
+    app.focus = Focus::InputField;
+    app.input.textarea.insert_str("abcdefghij");
+    app.input
+        .textarea
+        .move_cursor(tui_textarea::CursorMove::Head);
+    app.layout_regions.input_field = None;
+    let initial_cursor = app.input.textarea.cursor().1;
+
+    let mouse = create_mouse_event(10, 1);
+    handle_click(&mut app, Some(Region::InputField), mouse);
+
+    assert_eq!(
+        app.input.textarea.cursor().1,
+        initial_cursor,
+        "Cursor should not change when input field region is not tracked"
     );
 }
 
