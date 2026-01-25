@@ -14,8 +14,8 @@ This document outlines performance optimization opportunities identified through
 ## Phase Checklist
 
 - [x] Improvement #1: Cache Line Widths
-- [ ] Improvement #2: Single-Pass Line Metrics
-- [ ] Improvement #3: Eliminate Duplicate JSON Parsing
+- [x] Improvement #2: Single-Pass Line Metrics (implemented with #1)
+- [x] Improvement #3: Eliminate Duplicate JSON Parsing
 
 ---
 

@@ -6,7 +6,7 @@ use ansi_to_tui::IntoText;
 use ratatui::text::{Line, Span, Text};
 
 use crate::query::executor::JqExecutor;
-use crate::query::worker::preprocess::strip_ansi_codes;
+use crate::query::worker::preprocess::{parse_and_detect_type, strip_ansi_codes};
 use crate::query::worker::types::RenderedLine;
 use crate::query::worker::{QueryRequest, QueryResponse, spawn_worker};
 use serde_json::Value;
@@ -105,15 +105,16 @@ impl QueryState {
             });
 
         let base_query_for_suggestions = Some(".".to_string());
-        let base_type_for_suggestions = last_successful_result_unformatted
-            .as_ref()
-            .map(|s| Self::detect_result_type(s));
 
-        // Avoid re-parsing on every keystroke
-        let last_successful_result_parsed = last_successful_result_unformatted
-            .as_ref()
-            .and_then(|s| Self::parse_first_value(s))
-            .map(Arc::new);
+        // Parse JSON and detect type in single pass (avoids duplicate parsing)
+        let (last_successful_result_parsed, base_type_for_suggestions) =
+            last_successful_result_unformatted
+                .as_ref()
+                .map(|s| {
+                    let (parsed, result_type) = parse_and_detect_type(s);
+                    (parsed.map(Arc::new), Some(result_type))
+                })
+                .unwrap_or((None, None));
 
         // Pre-render result to avoid expensive conversion in render loop
         let last_successful_result_rendered = last_successful_result.clone().map(|s| {
@@ -236,14 +237,14 @@ impl QueryState {
                     crate::ai::context::MAX_JSON_SAMPLE_LENGTH,
                 )));
 
-            // Critical: prevents re-parsing large files on EVERY keystroke
-            self.last_successful_result_parsed =
-                Self::parse_first_value(&unformatted).map(Arc::new);
+            // Parse JSON and detect type in single pass (avoids duplicate parsing)
+            let (parsed, result_type) = parse_and_detect_type(&unformatted);
+            self.last_successful_result_parsed = parsed.map(Arc::new);
+            self.base_type_for_suggestions = Some(result_type);
 
             // Trim trailing whitespace/incomplete operators: ".services | ." → ".services"
             let base_query = Self::normalize_base_query(query);
             self.base_query_for_suggestions = Some(base_query);
-            self.base_type_for_suggestions = Some(Self::detect_result_type(&unformatted));
 
             self.cached_line_count = cached_line_count;
             self.cached_max_line_width = cached_max_line_width;
@@ -473,66 +474,6 @@ impl QueryState {
         }
 
         base
-    }
-
-    /// Detect the type of a query result for type-aware autosuggestions
-    ///
-    /// Examines the structure of the result to determine:
-    /// - Is it an array? Are elements objects or primitives?
-    /// - Is it multiple values (destructured)?
-    /// - Is it a single value? What type?
-    fn detect_result_type(result: &str) -> ResultType {
-        use serde_json::Deserializer;
-
-        // Use streaming parser to read first value
-        let mut deserializer = Deserializer::from_str(result).into_iter();
-
-        let first_value = match deserializer.next() {
-            Some(Ok(v)) => v,
-            _ => return ResultType::Null,
-        };
-
-        // Check if there's a second value (indicates destructured output)
-        let has_multiple_values = deserializer.next().is_some();
-
-        // Determine type based on first value and whether there are more
-        match first_value {
-            Value::Object(_) if has_multiple_values => ResultType::DestructuredObjects,
-            Value::Object(_) => ResultType::Object,
-            Value::Array(ref arr) => {
-                if arr.is_empty() {
-                    ResultType::Array
-                } else if matches!(arr[0], Value::Object(_)) {
-                    ResultType::ArrayOfObjects
-                } else {
-                    ResultType::Array
-                }
-            }
-            Value::String(_) => ResultType::String,
-            Value::Number(_) => ResultType::Number,
-            Value::Bool(_) => ResultType::Boolean,
-            Value::Null => ResultType::Null,
-        }
-    }
-
-    /// Parse first JSON value from result text
-    ///
-    /// Handles both single values and destructured output (multiple JSON values).
-    /// For destructured results like `{"a":1}\n{"b":2}`, parses just the first value.
-    fn parse_first_value(text: &str) -> Option<Value> {
-        let text = text.trim();
-        if text.is_empty() {
-            return None;
-        }
-
-        // Try to parse the entire text first (common case: single value)
-        if let Ok(value) = serde_json::from_str(text) {
-            return Some(value);
-        }
-
-        // Fallback: use streaming parser to get first value (handles destructured output)
-        let mut deserializer = serde_json::Deserializer::from_str(text).into_iter();
-        deserializer.next().and_then(|r| r.ok())
     }
 
     /// Convert pre-rendered lines to Text for display

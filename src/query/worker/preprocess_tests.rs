@@ -1,7 +1,9 @@
 //! Tests for preprocessing functions
 
 use crate::query::query_state::ResultType;
-use crate::query::worker::preprocess::{preprocess_result, strip_ansi_codes};
+use crate::query::worker::preprocess::{
+    parse_and_detect_type, preprocess_result, strip_ansi_codes,
+};
 use crate::query::worker::types::QueryError;
 use tokio_util::sync::CancellationToken;
 
@@ -340,4 +342,133 @@ fn test_strip_ansi_codes_escape_at_boundaries() {
     let input = "\x1b[0;32mstart\x1b[0m middle \x1b[1;39mend\x1b[0m";
     let result = strip_ansi_codes(input);
     assert_eq!(result, "start middle end", "Should handle boundary escapes");
+}
+
+// Unit tests for parse_and_detect_type function
+
+#[test]
+fn test_parse_and_detect_type_single_object() {
+    let (parsed, result_type) = parse_and_detect_type(r#"{"name": "test"}"#);
+    assert!(parsed.is_some());
+    assert!(parsed.unwrap().is_object());
+    assert_eq!(result_type, ResultType::Object);
+}
+
+#[test]
+fn test_parse_and_detect_type_destructured_objects() {
+    let input = "{\"a\": 1}\n{\"b\": 2}";
+    let (parsed, result_type) = parse_and_detect_type(input);
+    assert!(parsed.is_some());
+    assert!(parsed.unwrap().is_object());
+    assert_eq!(result_type, ResultType::DestructuredObjects);
+}
+
+#[test]
+fn test_parse_and_detect_type_array_of_objects() {
+    let (parsed, result_type) = parse_and_detect_type(r#"[{"id": 1}, {"id": 2}]"#);
+    assert!(parsed.is_some());
+    assert!(parsed.unwrap().is_array());
+    assert_eq!(result_type, ResultType::ArrayOfObjects);
+}
+
+#[test]
+fn test_parse_and_detect_type_empty_array() {
+    let (parsed, result_type) = parse_and_detect_type("[]");
+    assert!(parsed.is_some());
+    assert_eq!(result_type, ResultType::Array);
+}
+
+#[test]
+fn test_parse_and_detect_type_array_of_primitives() {
+    let (parsed, result_type) = parse_and_detect_type("[1, 2, 3]");
+    assert!(parsed.is_some());
+    assert_eq!(result_type, ResultType::Array);
+}
+
+#[test]
+fn test_parse_and_detect_type_string() {
+    let (parsed, result_type) = parse_and_detect_type(r#""hello""#);
+    assert!(parsed.is_some());
+    assert_eq!(result_type, ResultType::String);
+}
+
+#[test]
+fn test_parse_and_detect_type_number() {
+    let (parsed, result_type) = parse_and_detect_type("42");
+    assert!(parsed.is_some());
+    assert_eq!(result_type, ResultType::Number);
+
+    let (parsed, result_type) = parse_and_detect_type("3.14");
+    assert!(parsed.is_some());
+    assert_eq!(result_type, ResultType::Number);
+}
+
+#[test]
+fn test_parse_and_detect_type_boolean() {
+    let (parsed, result_type) = parse_and_detect_type("true");
+    assert!(parsed.is_some());
+    assert_eq!(result_type, ResultType::Boolean);
+
+    let (parsed, result_type) = parse_and_detect_type("false");
+    assert!(parsed.is_some());
+    assert_eq!(result_type, ResultType::Boolean);
+}
+
+#[test]
+fn test_parse_and_detect_type_null() {
+    let (parsed, result_type) = parse_and_detect_type("null");
+    assert!(parsed.is_some());
+    assert_eq!(result_type, ResultType::Null);
+}
+
+#[test]
+fn test_parse_and_detect_type_empty_string() {
+    let (parsed, result_type) = parse_and_detect_type("");
+    assert!(parsed.is_none());
+    assert_eq!(result_type, ResultType::Null);
+}
+
+#[test]
+fn test_parse_and_detect_type_whitespace_only() {
+    let (parsed, result_type) = parse_and_detect_type("   \n\t  ");
+    assert!(parsed.is_none());
+    assert_eq!(result_type, ResultType::Null);
+}
+
+#[test]
+fn test_parse_and_detect_type_invalid_json() {
+    let (parsed, result_type) = parse_and_detect_type("not valid json");
+    assert!(parsed.is_none());
+    assert_eq!(result_type, ResultType::Null);
+}
+
+#[test]
+fn test_parse_and_detect_type_trims_whitespace() {
+    let (parsed, result_type) = parse_and_detect_type("  {\"a\": 1}  ");
+    assert!(parsed.is_some());
+    assert_eq!(result_type, ResultType::Object);
+}
+
+#[test]
+fn test_parse_and_detect_type_pretty_printed_object() {
+    let input = r#"{
+  "name": "test",
+  "value": 42
+}"#;
+    let (parsed, result_type) = parse_and_detect_type(input);
+    assert!(parsed.is_some());
+    assert_eq!(result_type, ResultType::Object);
+}
+
+#[test]
+fn test_parse_and_detect_type_pretty_printed_destructured() {
+    let input = r#"{
+  "id": 1
+}
+{
+  "id": 2
+}"#;
+    let (parsed, result_type) = parse_and_detect_type(input);
+    assert!(parsed.is_some());
+    assert_eq!(result_type, ResultType::DestructuredObjects);
 }
