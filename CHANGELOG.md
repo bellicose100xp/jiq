@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.17.1] - 2026-01-24
+
+### Added
+- **Click-and-drag multi-line selection in results pane** - Mouse selection support for copying multiple lines
+  - Click and drag to select text across multiple lines
+  - Selection follows mouse movement for intuitive text selection
+  - Works seamlessly with existing keyboard-based selection modes
+- **Vim-style cursor navigation with visual line selection** - Enhanced results pane navigation
+  - Visual line selection mode for precise text selection
+  - Cursor-based navigation using vim keybindings
+  - Integrates with mouse selection for flexible interaction
+
 ## [3.17.0] - 2026-01-23
 
 ### Added
