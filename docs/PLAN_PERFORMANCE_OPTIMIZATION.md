@@ -99,3 +99,56 @@ fn compute_line_metrics(output: &str) -> (u32, u16) {
 **Priority:** Medium
 
 ---
+
+## Improvement #3: Eliminate Duplicate JSON Parsing
+
+**Location:** `src/query/worker/preprocess.rs:59-61`
+
+**The Problem:**
+
+Two separate functions parse the same JSON:
+
+```rust
+let parsed = parse_first_value(&unformatted).map(Arc::new);
+let result_type = detect_result_type(&unformatted);
+```
+
+- `parse_first_value()` (line 179-193) parses JSON to get a `Value`
+- `detect_result_type()` (line 201-232) ALSO parses JSON to determine if it's an Object, Array, String, etc.
+
+**Why it's bad:**
+- JSON parsing is expensive - it validates syntax, allocates memory for the structure
+- We're doing this work twice on the exact same string
+- For large JSON results, this is wasteful
+
+**The Fix:**
+
+Combine into a single function that parses once and returns both:
+
+```rust
+fn parse_and_detect_type(text: &str) -> (Option<Value>, ResultType) {
+    // Parse JSON once
+    let value = parse_first_value(text);
+
+    // Determine type from the already-parsed value (no re-parsing!)
+    let result_type = match &value {
+        Some(Value::Object(_)) => ResultType::Object,
+        Some(Value::Array(arr)) if arr.first().map(|v| v.is_object()).unwrap_or(false) => {
+            ResultType::ArrayOfObjects
+        }
+        Some(Value::Array(_)) => ResultType::Array,
+        Some(Value::String(_)) => ResultType::String,
+        Some(Value::Number(_)) => ResultType::Number,
+        Some(Value::Bool(_)) => ResultType::Boolean,
+        Some(Value::Null) | None => ResultType::Null,
+    };
+
+    (value, result_type)
+}
+```
+
+**Impact:** ~50% reduction in JSON parsing time during preprocessing.
+
+**Priority:** Medium
+
+---
