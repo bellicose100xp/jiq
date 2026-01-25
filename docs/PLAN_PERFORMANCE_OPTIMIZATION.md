@@ -51,3 +51,51 @@ if let Some(widths) = &q.cached_line_widths {
 **Priority:** HIGH
 
 ---
+
+## Improvement #2: Single-Pass Line Metrics
+
+**Location:** `src/query/worker/preprocess.rs:41-47`
+
+**The Problem:**
+
+When processing a query result, this code runs:
+
+```rust
+let line_count = output.lines().count() as u32;
+let max_width = output
+    .lines()
+    .map(|l| l.len())
+    .max()
+    .unwrap_or(0)
+    .min(u16::MAX as usize) as u16;
+```
+
+**Why it's bad:**
+- This iterates through ALL lines twice - once to count them, once to find the longest
+- For a 100,000 line file, that's 200,000 iterations instead of 100,000
+
+**The Fix:**
+
+Combine into a single loop:
+
+```rust
+fn compute_line_metrics(output: &str) -> (u32, u16) {
+    let mut line_count: u32 = 0;
+    let mut max_width: usize = 0;
+
+    for line in output.lines() {
+        line_count += 1;
+        if line.len() > max_width {
+            max_width = line.len();
+        }
+    }
+
+    (line_count, max_width.min(u16::MAX as usize) as u16)
+}
+```
+
+**Impact:** ~2x faster line metrics computation. Runs in worker thread so doesn't block UI, but faster is still better.
+
+**Priority:** Medium
+
+---
