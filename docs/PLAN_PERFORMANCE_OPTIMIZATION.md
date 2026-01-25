@@ -11,6 +11,12 @@ This document outlines performance optimization opportunities identified through
 3. **Manual TUI testing** - Verify functionality manually before marking phase complete
 4. **Update docs for deviations** - Any changes made during implementation that differ from the original plan must be documented. Update architecture decisions and modify affected later phases to account for these changes
 
+## Phase Checklist
+
+- [ ] Improvement #1: Cache Line Widths
+- [ ] Improvement #2: Single-Pass Line Metrics
+- [ ] Improvement #3: Eliminate Duplicate JSON Parsing
+
 ---
 
 ## Improvement #1: Cache Line Widths (HIGHEST IMPACT)
@@ -127,6 +133,16 @@ let result_type = detect_result_type(&unformatted);
 - JSON parsing is expensive - it validates syntax, allocates memory for the structure
 - We're doing this work twice on the exact same string
 - For large JSON results, this is wasteful
+
+**Current Flow vs New Flow:**
+
+| Step | Current (wasteful) | After Fix (efficient) |
+|------|-------------------|----------------------|
+| 1 | `parse_first_value()` parses 10MB JSON → ~50ms | `parse_and_detect_type()` parses 10MB JSON → ~50ms |
+| 2 | `detect_result_type()` parses 10MB JSON AGAIN → ~50ms | Check type of already-parsed value → ~0ms |
+| **Total** | **~100ms** | **~50ms** |
+
+The fix simply avoids parsing the same JSON twice. Once we have the parsed `Value` from step 1, checking its type is instant (just a `match` statement).
 
 **Important Trade-off:**
 
