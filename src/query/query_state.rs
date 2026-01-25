@@ -60,6 +60,8 @@ pub struct QueryState {
     pub(crate) cached_line_count: u32,
     /// Cached max line width (computed once per result, not per render)
     pub(crate) cached_max_line_width: u16,
+    /// Cached line widths per line (computed once per result, not per render)
+    pub(crate) cached_line_widths: Option<Arc<Vec<u16>>>,
     /// Cached execution time in milliseconds
     pub(crate) cached_execution_time_ms: Option<u64>,
     /// Whether current result is null/empty (valid query but no results)
@@ -121,20 +123,29 @@ impl QueryState {
                 .unwrap_or_else(|_| Text::raw(s.to_string()))
         });
 
-        // Cache line count and max width for initial result
-        let (cached_line_count, cached_max_line_width) = last_successful_result
-            .as_ref()
-            .map(|s| {
-                let line_count = s.lines().count() as u32;
-                let max_width = s
-                    .lines()
-                    .map(|l| l.len())
-                    .max()
-                    .unwrap_or(0)
-                    .min(u16::MAX as usize) as u16;
-                (line_count, max_width)
-            })
-            .unwrap_or((0, 0));
+        // Cache line count, max width, and line widths for initial result
+        let (cached_line_count, cached_max_line_width, cached_line_widths) =
+            last_successful_result_unformatted
+                .as_ref()
+                .map(|s| {
+                    let mut line_count: u32 = 0;
+                    let mut max_width: usize = 0;
+                    let mut widths: Vec<u16> = Vec::new();
+                    for line in s.lines() {
+                        line_count += 1;
+                        let width = line.len().min(u16::MAX as usize);
+                        widths.push(width as u16);
+                        if width > max_width {
+                            max_width = width;
+                        }
+                    }
+                    (
+                        line_count,
+                        max_width.min(u16::MAX as usize) as u16,
+                        Some(Arc::new(widths)),
+                    )
+                })
+                .unwrap_or((0, 0, None));
 
         let (request_tx, request_rx) = channel();
         let (response_tx, response_rx) = channel();
@@ -153,6 +164,7 @@ impl QueryState {
             base_type_for_suggestions,
             cached_line_count,
             cached_max_line_width,
+            cached_line_widths,
             cached_execution_time_ms: None,
             is_empty_result: false,
             request_tx: Some(request_tx),
@@ -191,14 +203,19 @@ impl QueryState {
         self.is_empty_result = is_only_nulls;
 
         if !is_only_nulls {
-            // Cache line count and max width BEFORE moving output
-            let cached_line_count = output.lines().count() as u32;
-            let cached_max_line_width = output
-                .lines()
-                .map(|l| l.len())
-                .max()
-                .unwrap_or(0)
-                .min(u16::MAX as usize) as u16;
+            // Cache line count, max width, and line widths BEFORE moving output
+            let mut cached_line_count: u32 = 0;
+            let mut cached_max_line_width: usize = 0;
+            let mut widths: Vec<u16> = Vec::new();
+            for line in unformatted.lines() {
+                cached_line_count += 1;
+                let width = line.len().min(u16::MAX as usize);
+                widths.push(width as u16);
+                if width > cached_max_line_width {
+                    cached_max_line_width = width;
+                }
+            }
+            let cached_max_line_width = cached_max_line_width.min(u16::MAX as usize) as u16;
 
             // Pre-render result BEFORE moving output into Arc
             // This avoids expensive into_text() conversion in render loop
@@ -230,6 +247,7 @@ impl QueryState {
 
             self.cached_line_count = cached_line_count;
             self.cached_max_line_width = cached_max_line_width;
+            self.cached_line_widths = Some(Arc::new(widths));
         }
     }
 
@@ -378,6 +396,7 @@ impl QueryState {
                         )));
                     self.cached_line_count = processed.line_count;
                     self.cached_max_line_width = processed.max_width;
+                    self.cached_line_widths = Some(processed.line_widths);
                     self.cached_execution_time_ms = processed.execution_time_ms;
                     self.base_query_for_suggestions = Some(processed.query.clone());
                     self.base_type_for_suggestions = Some(processed.result_type);

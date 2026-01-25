@@ -34,17 +34,11 @@ pub fn preprocess_result(
     }
     let unformatted = strip_ansi_codes(&output);
 
-    // Compute line metrics
+    // Compute line metrics and widths in a single pass
     if cancel_token.is_cancelled() {
         return Err(QueryError::Cancelled);
     }
-    let line_count = output.lines().count() as u32;
-    let max_width = output
-        .lines()
-        .map(|l| l.len())
-        .max()
-        .unwrap_or(0)
-        .min(u16::MAX as usize) as u16;
+    let (line_count, max_width, line_widths) = compute_line_metrics(&unformatted);
 
     // Parse ANSI to RenderedLine
     if cancel_token.is_cancelled() {
@@ -68,10 +62,35 @@ pub fn preprocess_result(
         parsed,
         line_count,
         max_width,
+        line_widths,
         result_type,
         query: base_query,
         execution_time_ms: None,
     })
+}
+
+/// Compute line count, max width, and individual line widths in a single pass
+///
+/// Returns (line_count, max_width, line_widths) to avoid multiple iterations.
+fn compute_line_metrics(output: &str) -> (u32, u16, Arc<Vec<u16>>) {
+    let mut line_count: u32 = 0;
+    let mut max_width: usize = 0;
+    let mut widths: Vec<u16> = Vec::new();
+
+    for line in output.lines() {
+        line_count += 1;
+        let width = line.len().min(u16::MAX as usize);
+        widths.push(width as u16);
+        if width > max_width {
+            max_width = width;
+        }
+    }
+
+    (
+        line_count,
+        max_width.min(u16::MAX as usize) as u16,
+        Arc::new(widths),
+    )
 }
 
 /// Parse ANSI text into rendered lines

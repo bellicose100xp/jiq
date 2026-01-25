@@ -141,14 +141,10 @@ pub fn render_pane(app: &mut App, frame: &mut Frame, area: Rect) -> (Rect, Optio
     app.results_cursor.update_total_lines(line_count);
 
     if let Some(q) = &app.query
-        && let Some(unformatted) = &q.last_successful_result_unformatted
+        && let Some(widths) = &q.cached_line_widths
     {
-        let widths: Vec<u16> = unformatted
-            .lines()
-            .map(|l| l.len().min(u16::MAX as usize) as u16)
-            .collect();
         app.results_cursor
-            .update_line_widths(std::sync::Arc::new(widths));
+            .update_line_widths(std::sync::Arc::clone(widths));
     }
 
     let position_indicator = format_position_indicator(&app.results_scroll, line_count);

@@ -42,6 +42,7 @@ pub struct ProcessedResult {
     pub parsed: Option<Arc<serde_json::Value>>,
     pub line_count: u32,
     pub max_width: u16,
+    pub line_widths: Arc<Vec<u16>>,
     pub result_type: ResultType,
     pub query: String,
     pub execution_time_ms: Option<u64>,

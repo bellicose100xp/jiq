@@ -49,6 +49,44 @@ fn test_preprocess_result_computes_line_metrics() {
     let processed = result.unwrap();
     assert_eq!(processed.line_count, 3);
     assert_eq!(processed.max_width, 5); // "line1".len()
+    assert_eq!(processed.line_widths.len(), 3);
+    assert_eq!(processed.line_widths[0], 5);
+    assert_eq!(processed.line_widths[1], 5);
+    assert_eq!(processed.line_widths[2], 5);
+}
+
+#[test]
+fn test_preprocess_result_computes_line_widths_varying_lengths() {
+    let output = "a\nbb\nccc\ndddd".to_string();
+    let cancel_token = CancellationToken::new();
+
+    let result = preprocess_result(output, ".", &cancel_token);
+    assert!(result.is_ok());
+
+    let processed = result.unwrap();
+    assert_eq!(processed.line_count, 4);
+    assert_eq!(processed.max_width, 4); // "dddd".len()
+    assert_eq!(processed.line_widths.len(), 4);
+    assert_eq!(processed.line_widths[0], 1);
+    assert_eq!(processed.line_widths[1], 2);
+    assert_eq!(processed.line_widths[2], 3);
+    assert_eq!(processed.line_widths[3], 4);
+}
+
+#[test]
+fn test_preprocess_result_line_widths_empty_lines() {
+    let output = "abc\n\nxyz".to_string();
+    let cancel_token = CancellationToken::new();
+
+    let result = preprocess_result(output, ".", &cancel_token);
+    assert!(result.is_ok());
+
+    let processed = result.unwrap();
+    assert_eq!(processed.line_count, 3);
+    assert_eq!(processed.line_widths.len(), 3);
+    assert_eq!(processed.line_widths[0], 3);
+    assert_eq!(processed.line_widths[1], 0); // empty line
+    assert_eq!(processed.line_widths[2], 3);
 }
 
 #[test]
@@ -189,7 +227,7 @@ fn test_preprocess_large_file_computes_correct_width() {
 
 #[test]
 fn test_preprocess_max_width_clamped_to_u16_max() {
-    // Test that max_width doesn't overflow u16
+    // Test that max_width and line_widths don't overflow u16
     let very_long_line = "a".repeat(100_000);
     let cancel_token = CancellationToken::new();
 
@@ -201,6 +239,12 @@ fn test_preprocess_max_width_clamped_to_u16_max() {
         processed.max_width,
         u16::MAX,
         "max_width should be clamped to u16::MAX"
+    );
+    assert_eq!(processed.line_widths.len(), 1);
+    assert_eq!(
+        processed.line_widths[0],
+        u16::MAX,
+        "line_widths should be clamped to u16::MAX"
     );
 }
 
