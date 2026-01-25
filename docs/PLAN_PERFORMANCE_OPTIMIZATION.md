@@ -4,6 +4,13 @@
 
 This document outlines performance optimization opportunities identified through deep analysis of the JIQ codebase. The focus is on improving rendering speed and execution responsiveness.
 
+## Implementation Guidelines
+
+1. **Commit after each phase** - Each phase should be committed separately with a descriptive commit message
+2. **100% test coverage** - All new code must have complete test coverage before committing
+3. **Manual TUI testing** - Verify functionality manually before marking phase complete
+4. **Update docs for deviations** - Any changes made during implementation that differ from the original plan must be documented. Update architecture decisions and modify affected later phases to account for these changes
+
 ---
 
 ## Improvement #1: Cache Line Widths (HIGHEST IMPACT)
