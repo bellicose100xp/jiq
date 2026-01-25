@@ -43,6 +43,7 @@ fn test_query_response_variants() {
         result_type: ResultType::String,
         query: ".foo".to_string(),
         execution_time_ms: None,
+        is_only_nulls: false,
     };
     let response = QueryResponse::ProcessedSuccess {
         processed,

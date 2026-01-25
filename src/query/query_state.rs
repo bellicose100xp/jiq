@@ -196,28 +196,32 @@ impl QueryState {
         // Partial queries like ".s" return "null"; keep last meaningful result for suggestions
         let unformatted = strip_ansi_codes(&output);
 
-        let is_only_nulls = unformatted
-            .lines()
-            .filter(|line| !line.trim().is_empty())
-            .all(|line| line.trim() == "null");
+        // Compute line metrics and is_only_nulls in a single pass
+        // is_only_nulls is true if all non-empty lines are "null" (including vacuous truth for empty output)
+        let mut cached_line_count: u32 = 0;
+        let mut cached_max_line_width: usize = 0;
+        let mut widths: Vec<u16> = Vec::new();
+        let mut is_only_nulls = true;
+
+        for line in unformatted.lines() {
+            cached_line_count += 1;
+            let width = line.len().min(u16::MAX as usize);
+            widths.push(width as u16);
+            if width > cached_max_line_width {
+                cached_max_line_width = width;
+            }
+
+            let trimmed = line.trim();
+            if !trimmed.is_empty() && trimmed != "null" {
+                is_only_nulls = false;
+            }
+        }
+
+        let cached_max_line_width = cached_max_line_width.min(u16::MAX as usize) as u16;
 
         self.is_empty_result = is_only_nulls;
 
         if !is_only_nulls {
-            // Cache line count, max width, and line widths BEFORE moving output
-            let mut cached_line_count: u32 = 0;
-            let mut cached_max_line_width: usize = 0;
-            let mut widths: Vec<u16> = Vec::new();
-            for line in unformatted.lines() {
-                cached_line_count += 1;
-                let width = line.len().min(u16::MAX as usize);
-                widths.push(width as u16);
-                if width > cached_max_line_width {
-                    cached_max_line_width = width;
-                }
-            }
-            let cached_max_line_width = cached_max_line_width.min(u16::MAX as usize) as u16;
-
             // Pre-render result BEFORE moving output into Arc
             // This avoids expensive into_text() conversion in render loop
             let rendered = output
@@ -365,12 +369,8 @@ impl QueryState {
                     return None;
                 }
 
-                // Check if result is only nulls (same logic as sync path)
-                let is_only_nulls = processed
-                    .unformatted
-                    .lines()
-                    .filter(|line| !line.trim().is_empty())
-                    .all(|line| line.trim() == "null");
+                // Use precomputed is_only_nulls from worker thread
+                let is_only_nulls = processed.is_only_nulls;
 
                 self.is_empty_result = is_only_nulls;
 

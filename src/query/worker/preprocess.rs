@@ -34,11 +34,11 @@ pub fn preprocess_result(
     }
     let unformatted = strip_ansi_codes(&output);
 
-    // Compute line metrics and widths in a single pass
+    // Compute line metrics, widths, and is_only_nulls in a single pass
     if cancel_token.is_cancelled() {
         return Err(QueryError::Cancelled);
     }
-    let (line_count, max_width, line_widths) = compute_line_metrics(&unformatted);
+    let (line_count, max_width, line_widths, is_only_nulls) = compute_line_metrics(&unformatted);
 
     // Parse ANSI to RenderedLine
     if cancel_token.is_cancelled() {
@@ -66,16 +66,19 @@ pub fn preprocess_result(
         result_type,
         query: base_query,
         execution_time_ms: None,
+        is_only_nulls,
     })
 }
 
-/// Compute line count, max width, and individual line widths in a single pass
+/// Compute line count, max width, individual line widths, and is_only_nulls in a single pass
 ///
-/// Returns (line_count, max_width, line_widths) to avoid multiple iterations.
-fn compute_line_metrics(output: &str) -> (u32, u16, Arc<Vec<u16>>) {
+/// Returns (line_count, max_width, line_widths, is_only_nulls) to avoid multiple iterations.
+/// is_only_nulls is true if all non-empty lines are "null" (including vacuous truth for empty output).
+fn compute_line_metrics(output: &str) -> (u32, u16, Arc<Vec<u16>>, bool) {
     let mut line_count: u32 = 0;
     let mut max_width: usize = 0;
     let mut widths: Vec<u16> = Vec::new();
+    let mut is_only_nulls = true;
 
     for line in output.lines() {
         line_count += 1;
@@ -84,12 +87,18 @@ fn compute_line_metrics(output: &str) -> (u32, u16, Arc<Vec<u16>>) {
         if width > max_width {
             max_width = width;
         }
+
+        let trimmed = line.trim();
+        if !trimmed.is_empty() && trimmed != "null" {
+            is_only_nulls = false;
+        }
     }
 
     (
         line_count,
         max_width.min(u16::MAX as usize) as u16,
         Arc::new(widths),
+        is_only_nulls,
     )
 }
 
