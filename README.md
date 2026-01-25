@@ -224,7 +224,7 @@ curl https://api.example.com/data | jiq
 | `v` / `V` | Enter visual line selection mode |
 | `j` / `k` / `↑` / `↓` | Extend selection up/down |
 | `y` | Copy selected lines to clipboard |
-| `ESC` / `v` / `V` | Exit visual mode |
+| `ESC` | Exit visual mode (or press `v`/`V` again to toggle) |
 | `Click + Drag` | Select multiple lines with mouse |
 
 **Mouse**
