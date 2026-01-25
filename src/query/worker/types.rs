@@ -46,6 +46,7 @@ pub struct ProcessedResult {
     pub result_type: ResultType,
     pub query: String,
     pub execution_time_ms: Option<u64>,
+    pub is_only_nulls: bool,
 }
 
 /// Response from query execution
