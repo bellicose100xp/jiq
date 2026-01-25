@@ -152,3 +152,17 @@ fn parse_and_detect_type(text: &str) -> (Option<Value>, ResultType) {
 **Priority:** Medium
 
 ---
+
+## Summary
+
+| # | Improvement | Impact | Priority |
+|---|-------------|--------|----------|
+| 1 | Cache Line Widths | Eliminates O(n) per frame | **HIGH** |
+| 2 | Single-Pass Line Metrics | ~2x faster metrics | Medium |
+| 3 | Eliminate Duplicate JSON Parsing | ~50% less parse time | Medium |
+
+### Implementation Order
+
+1. **Improvement #1** - Highest impact, should be done first
+2. **Improvement #2** - Simple refactor, quick win
+3. **Improvement #3** - Moderate refactor, good improvement
