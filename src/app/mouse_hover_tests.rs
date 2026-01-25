@@ -1,6 +1,6 @@
 //! Tests for mouse hover handling
 
-use ratatui::crossterm::event::{MouseEvent, MouseEventKind};
+use ratatui::crossterm::event::{MouseButton, MouseEvent, MouseEventKind};
 use ratatui::layout::Rect;
 
 use super::*;
@@ -14,6 +14,15 @@ fn create_test_app() -> App {
 fn create_mouse_event(column: u16, row: u16) -> MouseEvent {
     MouseEvent {
         kind: MouseEventKind::Moved,
+        column,
+        row,
+        modifiers: ratatui::crossterm::event::KeyModifiers::NONE,
+    }
+}
+
+fn create_drag_event(column: u16, row: u16) -> MouseEvent {
+    MouseEvent {
+        kind: MouseEventKind::Drag(MouseButton::Left),
         column,
         row,
         modifiers: ratatui::crossterm::event::KeyModifiers::NONE,
@@ -305,4 +314,90 @@ fn test_leaving_help_popup_clears_hover() {
     handle_hover(&mut app, Some(Region::ResultsPane), mouse);
 
     assert_eq!(app.help.get_hovered_tab(), None);
+}
+
+#[test]
+fn test_drag_in_visual_mode_extends_selection() {
+    let mut app = test_app(
+        r#"["line1","line2","line3","line4","line5","line6","line7","line8","line9","line10"]"#,
+    );
+    app.results_cursor.update_total_lines(10);
+    app.layout_regions.results_pane = Some(Rect::new(0, 0, 50, 12));
+
+    app.results_cursor.click_select(2);
+    assert!(app.results_cursor.is_visual_mode());
+    assert_eq!(app.results_cursor.selection_range(), (2, 2));
+
+    let mouse = create_drag_event(5, 6);
+    handle_hover(&mut app, Some(Region::ResultsPane), mouse);
+
+    assert_eq!(app.results_cursor.selection_range(), (2, 5));
+}
+
+#[test]
+fn test_drag_extends_selection_upward() {
+    let mut app = test_app(
+        r#"["line1","line2","line3","line4","line5","line6","line7","line8","line9","line10"]"#,
+    );
+    app.results_cursor.update_total_lines(10);
+    app.layout_regions.results_pane = Some(Rect::new(0, 0, 50, 12));
+
+    app.results_cursor.click_select(5);
+    assert_eq!(app.results_cursor.selection_range(), (5, 5));
+
+    let mouse = create_drag_event(5, 3);
+    handle_hover(&mut app, Some(Region::ResultsPane), mouse);
+
+    assert_eq!(app.results_cursor.selection_range(), (2, 5));
+}
+
+#[test]
+fn test_drag_without_visual_mode_does_not_extend() {
+    let mut app = test_app(
+        r#"["line1","line2","line3","line4","line5","line6","line7","line8","line9","line10"]"#,
+    );
+    app.results_cursor.update_total_lines(10);
+    app.layout_regions.results_pane = Some(Rect::new(0, 0, 50, 12));
+
+    app.results_cursor.move_to_line(2);
+    assert!(!app.results_cursor.is_visual_mode());
+
+    let initial_line = app.results_cursor.cursor_line();
+    let mouse = create_drag_event(5, 6);
+    handle_hover(&mut app, Some(Region::ResultsPane), mouse);
+
+    assert_eq!(app.results_cursor.cursor_line(), initial_line);
+}
+
+#[test]
+fn test_drag_outside_results_pane_clears_hover() {
+    let mut app = test_app(
+        r#"["line1","line2","line3","line4","line5","line6","line7","line8","line9","line10"]"#,
+    );
+    app.results_cursor.update_total_lines(10);
+    app.layout_regions.results_pane = Some(Rect::new(0, 0, 50, 12));
+    app.results_cursor.click_select(2);
+    app.results_cursor.set_hovered(Some(2));
+
+    let mouse = create_drag_event(5, 15);
+    handle_hover(&mut app, Some(Region::ResultsPane), mouse);
+
+    assert_eq!(app.results_cursor.hovered_line(), None);
+}
+
+#[test]
+fn test_drag_with_scroll_offset() {
+    let mut app = test_app(
+        r#"["line1","line2","line3","line4","line5","line6","line7","line8","line9","line10"]"#,
+    );
+    app.results_cursor.update_total_lines(10);
+    app.results_scroll.offset = 3;
+    app.layout_regions.results_pane = Some(Rect::new(0, 0, 50, 12));
+
+    app.results_cursor.click_select(3);
+
+    let mouse = create_drag_event(5, 4);
+    handle_hover(&mut app, Some(Region::ResultsPane), mouse);
+
+    assert_eq!(app.results_cursor.selection_range(), (3, 6));
 }

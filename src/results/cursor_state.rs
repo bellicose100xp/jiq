@@ -192,7 +192,6 @@ impl CursorState {
         self.selection_anchor = self.cursor_line;
     }
 
-    #[allow(dead_code)]
     pub fn drag_extend(&mut self, line: u32) {
         if self.mode != SelectionMode::Visual {
             return;

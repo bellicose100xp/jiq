@@ -27,6 +27,8 @@ pub fn handle_hover(app: &mut App, region: Option<Region>, mouse: MouseEvent) {
 
 /// Handle hover within the results pane
 fn hover_results_pane(app: &mut App, mouse: MouseEvent) {
+    use ratatui::crossterm::event::MouseEventKind;
+
     clear_ai_hover(app);
     clear_snippet_hover(app);
     clear_help_hover(app);
@@ -48,6 +50,9 @@ fn hover_results_pane(app: &mut App, mouse: MouseEvent) {
     let hovered_line = app.results_scroll.offset as u32 + relative_y;
 
     if hovered_line < app.results_cursor.total_lines() {
+        if matches!(mouse.kind, MouseEventKind::Drag(_)) && app.results_cursor.is_visual_mode() {
+            app.results_cursor.drag_extend(hovered_line);
+        }
         app.results_cursor.set_hovered(Some(hovered_line));
     } else {
         app.results_cursor.clear_hover();
