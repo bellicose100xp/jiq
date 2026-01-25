@@ -65,12 +65,14 @@ fn click_results_pane(app: &mut App, mouse: MouseEvent) {
 }
 
 fn click_input_field(app: &mut App, mouse: MouseEvent) {
+    // If unfocused, just focus and return (don't move cursor)
     if app.focus != Focus::InputField {
         app.focus = Focus::InputField;
         app.input.editor_mode = EditorMode::Insert;
+        return;
     }
 
-    // Calculate cursor position from click coordinates
+    // Already focused: position cursor at click location
     let Some(input_rect) = app.layout_regions.input_field else {
         return;
     };
