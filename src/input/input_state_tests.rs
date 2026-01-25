@@ -559,3 +559,80 @@ fn test_set_cursor_column_empty_text() {
 
     assert_eq!(state.textarea.cursor().1, 0);
 }
+
+#[test]
+fn test_scroll_horizontal_sets_manual_scroll_flag() {
+    let mut state = InputState::new();
+    state.textarea.insert_str("abcdefghijklmnopqrstuvwxyz");
+
+    assert!(!state.manual_scroll_active);
+
+    state.scroll_horizontal(5, 26);
+
+    assert!(state.manual_scroll_active);
+}
+
+#[test]
+fn test_reset_manual_scroll_clears_flag() {
+    let mut state = InputState::new();
+    state.manual_scroll_active = true;
+
+    state.reset_manual_scroll();
+
+    assert!(!state.manual_scroll_active);
+}
+
+#[test]
+fn test_calculate_scroll_skips_cursor_tracking_when_manual_scroll() {
+    let mut state = InputState::new();
+    let viewport_width = 10;
+
+    state.textarea.insert_str("abcdefghijklmnopqrstuvwxyz");
+    state.calculate_scroll_offset(viewport_width);
+
+    let cursor_col = state.textarea.cursor().1;
+    assert_eq!(cursor_col, 26);
+    assert!(state.scroll_offset > 0);
+
+    state.scroll_offset = 0;
+    state.manual_scroll_active = true;
+
+    state.calculate_scroll_offset(viewport_width);
+
+    assert_eq!(state.scroll_offset, 0);
+}
+
+#[test]
+fn test_calculate_scroll_still_clamps_bounds_when_manual_scroll() {
+    let mut state = InputState::new();
+    let viewport_width = 10;
+
+    state.textarea.insert_str("abcdefghij");
+    state.scroll_offset = 20;
+    state.manual_scroll_active = true;
+
+    state.calculate_scroll_offset(viewport_width);
+
+    assert_eq!(state.scroll_offset, 0);
+}
+
+#[test]
+fn test_manual_scroll_reset_restores_cursor_tracking() {
+    let mut state = InputState::new();
+    let viewport_width = 10;
+
+    state.textarea.insert_str("abcdefghijklmnopqrstuvwxyz");
+    state.calculate_scroll_offset(viewport_width);
+
+    state.scroll_offset = 0;
+    state.manual_scroll_active = true;
+    state.calculate_scroll_offset(viewport_width);
+    assert_eq!(state.scroll_offset, 0);
+
+    state.reset_manual_scroll();
+    state.calculate_scroll_offset(viewport_width);
+
+    let cursor_col = state.textarea.cursor().1;
+    assert!(cursor_col >= state.scroll_offset);
+    assert!(cursor_col < state.scroll_offset + viewport_width);
+}

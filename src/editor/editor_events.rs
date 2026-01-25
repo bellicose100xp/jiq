@@ -12,6 +12,7 @@ use crate::editor::text_objects::{TextObjectTarget, execute_text_object};
 use crate::help::HelpTab;
 
 pub fn handle_insert_mode_key(app: &mut App, key: KeyEvent) {
+    app.input.reset_manual_scroll();
     let content_changed = app.input.textarea.input(key);
 
     if content_changed {
@@ -30,6 +31,7 @@ pub fn handle_insert_mode_key(app: &mut App, key: KeyEvent) {
 }
 
 pub fn handle_normal_mode_key(app: &mut App, key: KeyEvent) {
+    app.input.reset_manual_scroll();
     match key.code {
         KeyCode::Char('?') => {
             if app.help.visible {
@@ -152,6 +154,7 @@ pub fn handle_normal_mode_key(app: &mut App, key: KeyEvent) {
 }
 
 pub fn handle_operator_mode_key(app: &mut App, key: KeyEvent) {
+    app.input.reset_manual_scroll();
     let operator = match app.input.editor_mode {
         EditorMode::Operator(op) => op,
         _ => return,
@@ -265,6 +268,7 @@ pub fn handle_operator_mode_key(app: &mut App, key: KeyEvent) {
 }
 
 pub fn handle_char_search_mode_key(app: &mut App, key: KeyEvent) {
+    app.input.reset_manual_scroll();
     let (direction, search_type) = match app.input.editor_mode {
         EditorMode::CharSearch(dir, st) => (dir, st),
         _ => return,
@@ -287,6 +291,7 @@ pub fn handle_char_search_mode_key(app: &mut App, key: KeyEvent) {
 }
 
 pub fn handle_operator_char_search_mode_key(app: &mut App, key: KeyEvent) {
+    app.input.reset_manual_scroll();
     let (operator, start_col, direction, search_type) = match app.input.editor_mode {
         EditorMode::OperatorCharSearch(op, start, dir, st) => (op, start, dir, st),
         _ => return,
@@ -334,6 +339,7 @@ pub fn handle_operator_char_search_mode_key(app: &mut App, key: KeyEvent) {
 }
 
 pub fn handle_text_object_mode_key(app: &mut App, key: KeyEvent) {
+    app.input.reset_manual_scroll();
     let (operator, scope) = match app.input.editor_mode {
         EditorMode::TextObject(op, sc) => (op, sc),
         _ => return,

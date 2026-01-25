@@ -13,6 +13,7 @@ pub struct InputState {
     pub scroll_offset: usize,
     pub brace_tracker: BraceTracker,
     pub last_char_search: Option<CharSearchState>,
+    pub manual_scroll_active: bool,
 }
 
 impl InputState {
@@ -34,6 +35,7 @@ impl InputState {
             scroll_offset: 0,
             brace_tracker: BraceTracker::new(),
             last_char_search: None,
+            manual_scroll_active: false,
         }
     }
 
@@ -47,16 +49,20 @@ impl InputState {
 
         let mut new_scroll = self.scroll_offset;
 
-        if cursor_col < new_scroll {
-            new_scroll = cursor_col;
-        } else if cursor_col >= new_scroll + viewport_width {
-            new_scroll = cursor_col + 1 - viewport_width;
-        }
+        if !self.manual_scroll_active {
+            if cursor_col < new_scroll {
+                new_scroll = cursor_col;
+            } else if cursor_col >= new_scroll + viewport_width {
+                new_scroll = cursor_col + 1 - viewport_width;
+            }
 
-        if text_length < new_scroll + viewport_width {
-            let min_scroll = text_length.saturating_sub(viewport_width);
-            let max_scroll_for_cursor = cursor_col.saturating_sub(viewport_width - 1);
-            new_scroll = new_scroll.min(min_scroll.max(max_scroll_for_cursor));
+            if text_length < new_scroll + viewport_width {
+                let min_scroll = text_length.saturating_sub(viewport_width);
+                let max_scroll_for_cursor = cursor_col.saturating_sub(viewport_width - 1);
+                new_scroll = new_scroll.min(min_scroll.max(max_scroll_for_cursor));
+            }
+        } else if text_length < new_scroll + viewport_width {
+            new_scroll = new_scroll.min(text_length.saturating_sub(viewport_width));
         }
 
         self.scroll_offset = new_scroll;
@@ -74,6 +80,11 @@ impl InputState {
             self.scroll_offset.saturating_add(delta as usize)
         };
         self.scroll_offset = new_offset.min(text_length);
+        self.manual_scroll_active = true;
+    }
+
+    pub fn reset_manual_scroll(&mut self) {
+        self.manual_scroll_active = false;
     }
 
     /// Move cursor to a specific column position
