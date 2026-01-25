@@ -128,33 +128,91 @@ let result_type = detect_result_type(&unformatted);
 - We're doing this work twice on the exact same string
 - For large JSON results, this is wasteful
 
+**Important Trade-off:**
+
+The current implementation has nuances that must be preserved:
+
+1. **Fast-path optimization**: `parse_first_value` uses `serde_json::from_str` first (faster for single JSON values - the common case), only falling back to streaming for destructured output.
+
+2. **Multiple value detection**: `detect_result_type` must peek at the SECOND value to distinguish:
+   - `{"a":1}` → `ResultType::Object` (single object)
+   - `{"a":1}\n{"b":2}` → `ResultType::DestructuredObjects` (multiple objects)
+
 **The Fix:**
 
-Combine into a single function that parses once and returns both:
+Combine into a single function that preserves both behaviors:
 
 ```rust
 fn parse_and_detect_type(text: &str) -> (Option<Value>, ResultType) {
-    // Parse JSON once
-    let value = parse_first_value(text);
+    let text = text.trim();
+    if text.is_empty() {
+        return (None, ResultType::Null);
+    }
 
-    // Determine type from the already-parsed value (no re-parsing!)
-    let result_type = match &value {
-        Some(Value::Object(_)) => ResultType::Object,
-        Some(Value::Array(arr)) if arr.first().map(|v| v.is_object()).unwrap_or(false) => {
-            ResultType::ArrayOfObjects
-        }
-        Some(Value::Array(_)) => ResultType::Array,
-        Some(Value::String(_)) => ResultType::String,
-        Some(Value::Number(_)) => ResultType::Number,
-        Some(Value::Bool(_)) => ResultType::Boolean,
-        Some(Value::Null) | None => ResultType::Null,
+    // FAST PATH: Try full parse first (common case: single value)
+    // This is more efficient than streaming for well-formed single JSON values
+    if let Ok(value) = serde_json::from_str::<Value>(text) {
+        // Single value - determine type directly from parsed value
+        // No need to check for multiple values since full parse succeeded
+        // (full parse fails on destructured output like `{"a":1}\n{"b":2}`)
+        let result_type = match &value {
+            Value::Object(_) => ResultType::Object,
+            Value::Array(arr) => {
+                if arr.is_empty() {
+                    ResultType::Array
+                } else if matches!(arr.first(), Some(Value::Object(_))) {
+                    ResultType::ArrayOfObjects
+                } else {
+                    ResultType::Array
+                }
+            }
+            Value::String(_) => ResultType::String,
+            Value::Number(_) => ResultType::Number,
+            Value::Bool(_) => ResultType::Boolean,
+            Value::Null => ResultType::Null,
+        };
+        return (Some(value), result_type);
+    }
+
+    // FALLBACK: Streaming parse for destructured output (multiple JSON values)
+    let mut deserializer = serde_json::Deserializer::from_str(text).into_iter();
+
+    let first_value = match deserializer.next() {
+        Some(Ok(v)) => v,
+        _ => return (None, ResultType::Null),
     };
 
-    (value, result_type)
+    // Check for multiple values (destructured output)
+    let has_multiple = deserializer.next().is_some();
+
+    let result_type = match &first_value {
+        Value::Object(_) if has_multiple => ResultType::DestructuredObjects,
+        Value::Object(_) => ResultType::Object,
+        Value::Array(arr) => {
+            if arr.is_empty() {
+                ResultType::Array
+            } else if matches!(arr.first(), Some(Value::Object(_))) {
+                ResultType::ArrayOfObjects
+            } else {
+                ResultType::Array
+            }
+        }
+        Value::String(_) => ResultType::String,
+        Value::Number(_) => ResultType::Number,
+        Value::Bool(_) => ResultType::Boolean,
+        Value::Null => ResultType::Null,
+    };
+
+    (Some(first_value), result_type)
 }
 ```
 
-**Impact:** ~50% reduction in JSON parsing time during preprocessing.
+**Key points:**
+- Fast-path (`from_str`) preserved for single values (most common case)
+- Streaming fallback only used when fast-path fails (destructured output)
+- Multiple value detection preserved in streaming path
+
+**Impact:** ~50% reduction in JSON parsing time during preprocessing (one parse instead of two).
 
 **Priority:** Medium
 
