@@ -121,6 +121,8 @@ curl https://api.example.com/data | jiq
 | `Backspace` / `Delete` | Delete characters |
 | `Ctrl+d` / `Ctrl+u` | Scroll results half page down/up |
 | `ESC` | Switch to NORMAL mode / Close autocomplete |
+| `Mouse click` | Position cursor at click location (when focused) |
+| `Mouse wheel` | Horizontal scroll through query |
 
 </details>
 
@@ -198,19 +200,38 @@ curl https://api.example.com/data | jiq
 <details>
 <summary><b>Results Pane</b> (when focused)</summary>
 
+**Cursor Navigation**
 | Key | Action |
 |-----|--------|
-| `j` / `k` / `↑` / `↓` | Scroll 1 line |
-| `J` / `K` | Scroll 10 lines |
+| `j` / `k` / `↑` / `↓` | Move cursor up/down 1 line |
+| `J` / `K` | Move cursor up/down 10 lines |
+| `Ctrl+d` / `PageDown` | Move cursor half page down (also works from input field) |
+| `Ctrl+u` / `PageUp` | Move cursor half page up (also works from input field) |
+| `g` / `Home` | Jump cursor to top |
+| `G` / `End` | Jump cursor to bottom |
+
+**Horizontal Scrolling**
+| Key | Action |
+|-----|--------|
 | `h` / `l` / `←` / `→` | Scroll 1 column |
 | `H` / `L` | Scroll 10 columns |
 | `0` / `^` | Jump to left edge |
 | `$` | Jump to right edge |
-| `Ctrl+d` / `PageDown` | Scroll half page down (also works from input field) |
-| `Ctrl+u` / `PageUp` | Scroll half page up (also works from input field) |
-| `g` / `Home` | Jump to top |
-| `G` / `End` | Jump to bottom |
+
+**Visual Line Selection**
+| Key | Action |
+|-----|--------|
+| `v` / `V` | Enter visual line selection mode |
+| `j` / `k` / `↑` / `↓` | Extend selection up/down |
+| `y` | Copy selected lines to clipboard |
+| `ESC` / `v` / `V` | Exit visual mode |
+| `Click + Drag` | Select multiple lines with mouse |
+
+**Mouse**
+| Key | Action |
+|-----|--------|
 | `Mouse wheel` | Scroll up/down |
+| `Click + Drag` | Multi-line visual selection |
 
 </details>
 
@@ -279,18 +300,25 @@ The AI assistant analyzes your query and data to provide intelligent suggestions
 
 Save frequently used jq queries for quick access. Snippets are stored in `~/.config/jiq/snippets.toml`.
 
+**Browse Mode**
 | Key | Action |
 |-----|--------|
 | `Ctrl+S` | Open snippet library |
 | `↑` / `↓` | Navigate snippets |
 | Type characters | Fuzzy search filter |
 | `Enter` | Apply selected snippet |
-| `n` | Create new snippet from current query |
-| `e` | Edit selected snippet |
-| `Ctrl+R` | Replace snippet query with current input |
-| `d` / `x` | Delete selected snippet |
-| `Tab` / `Shift+Tab` | Cycle fields (in create/edit mode) |
-| `ESC` | Close popup / Cancel edit |
+| `Ctrl+N` | Create new snippet from current query |
+| `Ctrl+E` | Edit selected snippet |
+| `Ctrl+R` | Update snippet query with current input |
+| `Ctrl+D` | Delete selected snippet |
+| `ESC` | Close popup |
+
+**Create/Edit Mode**
+| Key | Action |
+|-----|--------|
+| `Tab` / `Shift+Tab` | Navigate between fields |
+| `Enter` | Save snippet |
+| `ESC` | Cancel |
 
 </details>
 
