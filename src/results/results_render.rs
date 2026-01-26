@@ -3,7 +3,7 @@ use ratatui::{
     layout::{Alignment, Constraint, Layout, Rect},
     style::{Color, Modifier, Style},
     text::{Line, Span, Text},
-    widgets::{Block, Borders, Padding, Paragraph},
+    widgets::{Block, BorderType, Borders, Padding, Paragraph},
 };
 
 use crate::app::App;
@@ -274,6 +274,7 @@ pub fn render_pane(app: &mut App, frame: &mut Frame, area: Rect) -> (Rect, Optio
     if let Some(rendered) = &query_state.last_successful_result_rendered {
         let mut block = Block::default()
             .borders(Borders::ALL)
+            .border_type(BorderType::Rounded)
             .padding(Padding::right(1))
             .title(title)
             .border_style(Style::default().fg(border_color));
@@ -372,6 +373,7 @@ pub fn render_pane(app: &mut App, frame: &mut Frame, area: Rect) -> (Rect, Optio
         // No successful result yet - show empty
         let mut block = Block::default()
             .borders(Borders::ALL)
+            .border_type(BorderType::Rounded)
             .padding(Padding::right(1))
             .title(title)
             .border_style(Style::default().fg(border_color));
@@ -419,6 +421,7 @@ fn render_loading_indicator(frame: &mut Frame, area: Rect) {
     let text = "Loading file...";
     let block = Block::default()
         .borders(Borders::ALL)
+        .border_type(BorderType::Rounded)
         .title(" Loading ")
         .border_style(Style::default().fg(Color::Yellow));
 
@@ -432,6 +435,7 @@ fn render_loading_indicator(frame: &mut Frame, area: Rect) {
 fn render_error_message(frame: &mut Frame, area: Rect, message: &str) {
     let block = Block::default()
         .borders(Borders::ALL)
+        .border_type(BorderType::Rounded)
         .title(" Error ")
         .border_style(Style::default().fg(Color::Red));
 
@@ -484,6 +488,7 @@ pub fn render_error_overlay(app: &App, frame: &mut Frame, results_area: Rect) ->
         popup::clear_area(frame, overlay_area);
         let error_block = Block::default()
             .borders(Borders::ALL)
+            .border_type(BorderType::Rounded)
             .title(" Syntax Error (Ctrl+E to close) ")
             .border_style(Style::default().fg(Color::Red))
             .style(Style::default().bg(Color::Black));

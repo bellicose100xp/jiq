@@ -2,10 +2,10 @@
 source: src/snippets/snippet_render_tests.rs
 expression: output
 ---
-"┌ Search ──────────────────────────────┐"
+"╭ Search ──────────────────────────────╮"
 "│                                      │"
-"└──────────────────────────────────────┘"
-"┌ Snippets ────────────────────────────┐"
+"╰──────────────────────────────────────╯"
+"╭ Snippets ────────────────────────────╮"
 "│   No snippets yet. Press Ctrl+N to cr│"
 "│                                      │"
 "│                                      │"
@@ -13,10 +13,10 @@ expression: output
 "│                                      │"
 "│                                      │"
 "│                                      │"
-"└l+N] New | [Ctrl+E] Edit | [Ctrl+R] Re┘"
-"┌ Snippet Preview ─────────────────────┐"
+"╰l+N] New | [Ctrl+E] Edit | [Ctrl+R] Re╯"
+"╭ Snippet Preview ─────────────────────╮"
 "│ No snippet selected                  │"
-"└──────────────────────────────────────┘"
+"╰──────────────────────────────────────╯"
 "                                        "
 "                                        "
 "                                        "

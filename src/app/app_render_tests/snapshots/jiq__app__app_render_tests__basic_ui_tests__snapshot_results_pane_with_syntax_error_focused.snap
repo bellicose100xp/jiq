@@ -2,7 +2,7 @@
 source: src/app/app_render_tests/basic_ui_tests.rs
 expression: output
 ---
-"┌ ⚠ Syntax Error | String | Showing last successful result ─────── L1-1/1 (0%) ┐"
+"╭ ⚠ Syntax Error | String | Showing last successful result ─────── L1-1/1 (0%) ╮"
 "▌"Alice"                                                                       │"
 "│                                                                              │"
 "│                                                                              │"
@@ -21,8 +21,8 @@ expression: output
 "│                                                                              │"
 "│                                                                              │"
 "│                                                                              │"
-"└─── [Tab/Shift+Tab] Edit query | [i] Edit query in INSERT mode | [?] Help ────┘"
-"┌ Query [INSERT] ⚠ Syntax Error (Ctrl+E to view) Press Ctrl+A for AI Assistant ┐"
+"╰─── [Tab/Shift+Tab] Edit query | [i] Edit query in INSERT mode | [?] Help ────╯"
+"╭ Query [INSERT] ⚠ Syntax Error (Ctrl+E to view) Press Ctrl+A for AI Assistant ╮"
 "│.invalid[                                                                     │"
-"└───────────────────────────── Tab to edit query ──────────────────────────────┘"
+"╰───────────────────────────── Tab to edit query ──────────────────────────────╯"
 " F1/?: Help | Shift+Tab: Switch Pane | Ctrl+S: Snippets | Enter: Output Result |"

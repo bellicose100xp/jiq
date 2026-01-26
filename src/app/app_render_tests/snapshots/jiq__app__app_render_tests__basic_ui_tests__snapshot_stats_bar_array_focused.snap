@@ -2,7 +2,7 @@
 source: src/app/app_render_tests/basic_ui_tests.rs
 expression: output
 ---
-"┌ Array [3 objects] ──────────────────────────────────────────── L1-11/11 (0%) ┐"
+"╭ Array [3 objects] ──────────────────────────────────────────── L1-11/11 (0%) ╮"
 "▌[                                                                             │"
 "│  {                                                                           │"
 "│    "id": 1                                                                   │"
@@ -21,8 +21,8 @@ expression: output
 "│                                                                              │"
 "│                                                                              │"
 "│                                                                              │"
-"└─── [Tab/Shift+Tab] Edit query | [i] Edit query in INSERT mode | [?] Help ────┘"
-"┌ Query [INSERT] ─────────────────────────────── Press Ctrl+A for AI Assistant ┐"
+"╰─── [Tab/Shift+Tab] Edit query | [i] Edit query in INSERT mode | [?] Help ────╯"
+"╭ Query [INSERT] ─────────────────────────────── Press Ctrl+A for AI Assistant ╮"
 "│                                                                              │"
-"└───────────────────────────── Tab to edit query ──────────────────────────────┘"
+"╰───────────────────────────── Tab to edit query ──────────────────────────────╯"
 " F1/?: Help | Shift+Tab: Switch Pane | Ctrl+S: Snippets | Enter: Output Result |"

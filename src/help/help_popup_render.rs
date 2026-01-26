@@ -3,7 +3,7 @@ use ratatui::{
     layout::{Constraint, Direction, Layout, Rect},
     style::{Color, Modifier, Style},
     text::{Line, Span, Text},
-    widgets::{Block, Borders, Paragraph},
+    widgets::{Block, BorderType, Borders, Paragraph},
 };
 
 use crate::app::App;
@@ -34,6 +34,7 @@ pub fn render_popup(app: &mut App, frame: &mut Frame) -> Option<Rect> {
     // Outer block with title and border
     let outer_block = Block::default()
         .borders(Borders::ALL)
+        .border_type(BorderType::Rounded)
         .title(" Keyboard Shortcuts ")
         .border_style(Style::default().fg(Color::Cyan))
         .style(Style::default().bg(Color::Black));

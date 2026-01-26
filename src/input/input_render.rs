@@ -3,7 +3,7 @@ use ratatui::{
     layout::{Alignment, Rect},
     style::{Color, Style},
     text::{Line, Span},
-    widgets::{Block, Borders, Paragraph},
+    widgets::{Block, BorderType, Borders, Paragraph},
 };
 
 use crate::app::{App, Focus};
@@ -92,6 +92,7 @@ pub fn render_field(app: &mut App, frame: &mut Frame, area: Rect) -> Rect {
 
     let mut block = Block::default()
         .borders(Borders::ALL)
+        .border_type(BorderType::Rounded)
         .title(title)
         .border_style(Style::default().fg(border_color));
 

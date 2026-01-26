@@ -3,7 +3,7 @@ use ratatui::{
     layout::{Constraint, Layout, Rect},
     style::{Color, Modifier, Style},
     text::{Line, Span},
-    widgets::{Block, Borders, Paragraph},
+    widgets::{Block, BorderType, Borders, Paragraph},
 };
 
 use super::snippet_state::{SnippetMode, SnippetState};
@@ -121,6 +121,7 @@ fn render_minimal(
         let popup = Paragraph::new(content).block(
             Block::default()
                 .borders(Borders::ALL)
+                .border_type(BorderType::Rounded)
                 .title(title)
                 .title_bottom(hints.alignment(ratatui::layout::Alignment::Center))
                 .border_style(Style::default().fg(Color::LightGreen))
@@ -153,6 +154,7 @@ fn render_search(state: &mut SnippetState, frame: &mut Frame, area: Rect) {
     search_textarea.set_block(
         Block::default()
             .borders(Borders::ALL)
+            .border_type(BorderType::Rounded)
             .title(" Search ")
             .border_style(Style::default().fg(Color::LightGreen))
             .style(Style::default().bg(Color::Black)),
@@ -178,6 +180,7 @@ fn render_list(
 
     let block = Block::default()
         .borders(Borders::ALL)
+        .border_type(BorderType::Rounded)
         .title(title)
         .title_bottom(hints.alignment(ratatui::layout::Alignment::Center))
         .border_style(Style::default().fg(Color::LightGreen))
@@ -224,6 +227,7 @@ fn render_preview(
     let preview = Paragraph::new(content).block(
         Block::default()
             .borders(Borders::ALL)
+            .border_type(BorderType::Rounded)
             .title(" Snippet Preview ")
             .border_style(Style::default().fg(Color::LightGreen))
             .style(Style::default().bg(Color::Black)),
@@ -390,6 +394,7 @@ fn render_create_minimal(
             name_textarea.set_block(
                 Block::default()
                     .borders(Borders::ALL)
+                    .border_type(BorderType::Rounded)
                     .title(" New Snippet - Name ")
                     .border_style(Style::default().fg(Color::Yellow))
                     .style(Style::default().bg(Color::Black)),
@@ -402,6 +407,7 @@ fn render_create_minimal(
             query_textarea.set_block(
                 Block::default()
                     .borders(Borders::ALL)
+                    .border_type(BorderType::Rounded)
                     .title(" New Snippet - Query ")
                     .border_style(Style::default().fg(Color::Yellow))
                     .style(Style::default().bg(Color::Black)),
@@ -414,6 +420,7 @@ fn render_create_minimal(
             desc_textarea.set_block(
                 Block::default()
                     .borders(Borders::ALL)
+                    .border_type(BorderType::Rounded)
                     .title(" New Snippet - Description ")
                     .border_style(Style::default().fg(Color::Yellow))
                     .style(Style::default().bg(Color::Black)),
@@ -440,6 +447,7 @@ fn render_create_name_input(
     name_textarea.set_block(
         Block::default()
             .borders(Borders::ALL)
+            .border_type(BorderType::Rounded)
             .title(" Name ")
             .border_style(Style::default().fg(border_color))
             .style(Style::default().bg(Color::Black)),
@@ -456,6 +464,7 @@ fn render_create_name_input(
         let display = Paragraph::new(format!(" {}", content)).block(
             Block::default()
                 .borders(Borders::ALL)
+                .border_type(BorderType::Rounded)
                 .title(" Name ")
                 .border_style(Style::default().fg(Color::LightGreen))
                 .style(Style::default().bg(Color::Black)),
@@ -479,6 +488,7 @@ fn render_create_query_input(
     query_textarea.set_block(
         Block::default()
             .borders(Borders::ALL)
+            .border_type(BorderType::Rounded)
             .title(" Query ")
             .border_style(Style::default().fg(border_color))
             .style(Style::default().bg(Color::Black)),
@@ -495,6 +505,7 @@ fn render_create_query_input(
         let display = Paragraph::new(format!(" {}", content)).block(
             Block::default()
                 .borders(Borders::ALL)
+                .border_type(BorderType::Rounded)
                 .title(" Query ")
                 .border_style(Style::default().fg(Color::LightGreen))
                 .style(Style::default().bg(Color::Black)),
@@ -518,6 +529,7 @@ fn render_create_description_input(
     desc_textarea.set_block(
         Block::default()
             .borders(Borders::ALL)
+            .border_type(BorderType::Rounded)
             .title(" Description (optional) ")
             .border_style(Style::default().fg(border_color))
             .style(Style::default().bg(Color::Black)),
@@ -534,6 +546,7 @@ fn render_create_description_input(
         let display = Paragraph::new(format!(" {}", content)).block(
             Block::default()
                 .borders(Borders::ALL)
+                .border_type(BorderType::Rounded)
                 .title(" Description (optional) ")
                 .border_style(Style::default().fg(Color::LightGreen))
                 .style(Style::default().bg(Color::Black)),
@@ -562,6 +575,7 @@ fn render_create_hints(mode: &SnippetMode, frame: &mut Frame, area: Rect) {
     let hints_widget = Paragraph::new(vec![hints]).block(
         Block::default()
             .borders(Borders::ALL)
+            .border_type(BorderType::Rounded)
             .border_style(Style::default().fg(Color::LightGreen))
             .style(Style::default().bg(Color::Black)),
     );
@@ -615,6 +629,7 @@ fn render_edit_minimal(
             name_textarea.set_block(
                 Block::default()
                     .borders(Borders::ALL)
+                    .border_type(BorderType::Rounded)
                     .title(" Edit Snippet - Name ")
                     .border_style(Style::default().fg(Color::Yellow))
                     .style(Style::default().bg(Color::Black)),
@@ -627,6 +642,7 @@ fn render_edit_minimal(
             query_textarea.set_block(
                 Block::default()
                     .borders(Borders::ALL)
+                    .border_type(BorderType::Rounded)
                     .title(" Edit Snippet - Query ")
                     .border_style(Style::default().fg(Color::Yellow))
                     .style(Style::default().bg(Color::Black)),
@@ -639,6 +655,7 @@ fn render_edit_minimal(
             desc_textarea.set_block(
                 Block::default()
                     .borders(Borders::ALL)
+                    .border_type(BorderType::Rounded)
                     .title(" Edit Snippet - Description ")
                     .border_style(Style::default().fg(Color::Yellow))
                     .style(Style::default().bg(Color::Black)),
@@ -665,6 +682,7 @@ fn render_edit_name_input(
     name_textarea.set_block(
         Block::default()
             .borders(Borders::ALL)
+            .border_type(BorderType::Rounded)
             .title(" Name ")
             .border_style(Style::default().fg(border_color))
             .style(Style::default().bg(Color::Black)),
@@ -681,6 +699,7 @@ fn render_edit_name_input(
         let display = Paragraph::new(format!(" {}", content)).block(
             Block::default()
                 .borders(Borders::ALL)
+                .border_type(BorderType::Rounded)
                 .title(" Name ")
                 .border_style(Style::default().fg(Color::LightGreen))
                 .style(Style::default().bg(Color::Black)),
@@ -704,6 +723,7 @@ fn render_edit_query_input(
     query_textarea.set_block(
         Block::default()
             .borders(Borders::ALL)
+            .border_type(BorderType::Rounded)
             .title(" Query ")
             .border_style(Style::default().fg(border_color))
             .style(Style::default().bg(Color::Black)),
@@ -720,6 +740,7 @@ fn render_edit_query_input(
         let display = Paragraph::new(format!(" {}", content)).block(
             Block::default()
                 .borders(Borders::ALL)
+                .border_type(BorderType::Rounded)
                 .title(" Query ")
                 .border_style(Style::default().fg(Color::LightGreen))
                 .style(Style::default().bg(Color::Black)),
@@ -743,6 +764,7 @@ fn render_edit_description_input(
     desc_textarea.set_block(
         Block::default()
             .borders(Borders::ALL)
+            .border_type(BorderType::Rounded)
             .title(" Description (optional) ")
             .border_style(Style::default().fg(border_color))
             .style(Style::default().bg(Color::Black)),
@@ -759,6 +781,7 @@ fn render_edit_description_input(
         let display = Paragraph::new(format!(" {}", content)).block(
             Block::default()
                 .borders(Borders::ALL)
+                .border_type(BorderType::Rounded)
                 .title(" Description (optional) ")
                 .border_style(Style::default().fg(Color::LightGreen))
                 .style(Style::default().bg(Color::Black)),
@@ -787,6 +810,7 @@ fn render_edit_hints(mode: &SnippetMode, frame: &mut Frame, area: Rect) {
     let hints_widget = Paragraph::new(vec![hints]).block(
         Block::default()
             .borders(Borders::ALL)
+            .border_type(BorderType::Rounded)
             .border_style(Style::default().fg(Color::LightGreen))
             .style(Style::default().bg(Color::Black)),
     );
@@ -831,6 +855,7 @@ fn render_confirm_delete_mode(state: &SnippetState, frame: &mut Frame, area: Rec
     let dialog = Paragraph::new(content).block(
         Block::default()
             .borders(Borders::ALL)
+            .border_type(BorderType::Rounded)
             .title(" Confirm Delete ")
             .border_style(Style::default().fg(Color::Red))
             .style(Style::default().bg(Color::Black)),
@@ -919,6 +944,7 @@ fn render_confirm_update_mode(state: &SnippetState, frame: &mut Frame, area: Rec
     let dialog = Paragraph::new(content).block(
         Block::default()
             .borders(Borders::ALL)
+            .border_type(BorderType::Rounded)
             .title(" Replace Snippet Query ")
             .border_style(Style::default().fg(Color::LightGreen))
             .style(Style::default().bg(Color::Black)),

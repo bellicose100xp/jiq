@@ -2,7 +2,7 @@
 source: src/app/app_render_tests/result_state_tests.rs
 expression: output
 ---
-"┌ Stream [3] ───────────────────────────────────────────────────────────────────────────────────────────── L1-3/3 (0%) ┐"
+"╭ Stream [3] ───────────────────────────────────────────────────────────────────────────────────────────── L1-3/3 (0%) ╮"
 "▌"svc1"                                                                                                                │"
 "│"svc2"                                                                                                                │"
 "│"svc3"                                                                                                                │"
@@ -27,8 +27,8 @@ expression: output
 "│                                                                                                                      │"
 "│                                                                                                                      │"
 "│                                                                                                                      │"
-"└─────────────────────── [Tab/Shift+Tab] Edit query | [i] Edit query in INSERT mode | [?] Help ────────────────────────┘"
-"┌ Query [INSERT] ─────────────────────────────────────────────────────────────────────── Press Ctrl+A for AI Assistant ┐"
+"╰─────────────────────── [Tab/Shift+Tab] Edit query | [i] Edit query in INSERT mode | [?] Help ────────────────────────╯"
+"╭ Query [INSERT] ─────────────────────────────────────────────────────────────────────── Press Ctrl+A for AI Assistant ╮"
 "│.[].name                                                                                                              │"
-"└───────────────────────────────────────────────── Tab to edit query ──────────────────────────────────────────────────┘"
+"╰───────────────────────────────────────────────── Tab to edit query ──────────────────────────────────────────────────╯"
 " F1/?: Help | Shift+Tab: Switch Pane | Ctrl+S: Snippets | Enter: Output Result | Ctrl+Q: Output Query | q: Quit         "

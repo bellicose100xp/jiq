@@ -3,7 +3,7 @@ use ratatui::{
     layout::{Alignment, Rect},
     style::{Color, Modifier, Style},
     text::{Line, Span},
-    widgets::{Block, Borders},
+    widgets::{Block, BorderType, Borders},
 };
 
 use crate::app::App;
@@ -44,6 +44,7 @@ pub fn render_bar(app: &mut App, frame: &mut Frame, area: Rect) {
 
     let mut block = Block::default()
         .borders(Borders::ALL)
+        .border_type(BorderType::Rounded)
         .title(title)
         .title_top(
             Line::from(Span::styled(

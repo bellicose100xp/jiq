@@ -2,7 +2,7 @@
 source: src/input/input_render_tests.rs
 expression: output
 ---
-"┌ Object ───────────────────────────────────────────────────────── L1-1/1 (0%) ┐"
+"╭ Object ───────────────────────────────────────────────────────── L1-1/1 (0%) ╮"
 "▌"Alice"                                                                       │"
 "│                                                                              │"
 "│                                                                              │"
@@ -21,8 +21,8 @@ expression: output
 "│                                                                              │"
 "│                                                                              │"
 "│                                                                              │"
-"└─── [Tab/Shift+Tab] Edit query | [i] Edit query in INSERT mode | [?] Help ────┘"
-"┌ Query [INSERT] ─────────────────────────────── Press Ctrl+A for AI Assistant ┐"
+"╰─── [Tab/Shift+Tab] Edit query | [i] Edit query in INSERT mode | [?] Help ────╯"
+"╭ Query [INSERT] ─────────────────────────────── Press Ctrl+A for AI Assistant ╮"
 "│.users | map(select(.name == "Alice")) | .[0].name                            │"
-"└───────────────────────────── Tab to edit query ──────────────────────────────┘"
+"╰───────────────────────────── Tab to edit query ──────────────────────────────╯"
 " F1/?: Help | Shift+Tab: Switch Pane | Ctrl+S: Snippets | Enter: Output Result |"

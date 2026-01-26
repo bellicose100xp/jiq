@@ -1,12 +1,12 @@
 ---
-source: src/notification/notification_render.rs
+source: src/notification/notification_render_tests.rs
 expression: output
 ---
 "                                                                                "
 "                                                                                "
-"                                                             ┌───────────────┐  "
+"                                                             ╭───────────────╮  "
 "                                                             │ Copied query! │  "
-"                                                             └───────────────┘  "
+"                                                             ╰───────────────╯  "
 "                                                                                "
 "                                                                                "
 "                                                                                "

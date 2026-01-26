@@ -2,11 +2,11 @@
 source: src/snippets/snippet_render_tests.rs
 expression: output
 ---
-"┌ Snippets (2) ────────────────────────────────────────────┐"
+"╭ Snippets (2) ────────────────────────────────────────────╮"
 "│ ► Keys - Get keys                                        │"
 "│                                                          │"
 "│                                                          │"
-"└ply | [Ctrl+N] New | [Ctrl+E] Edit | [Ctrl+R] Replace | [C┘"
+"╰ply | [Ctrl+N] New | [Ctrl+E] Edit | [Ctrl+R] Replace | [C╯"
 "                                                            "
 "                                                            "
 "                                                            "

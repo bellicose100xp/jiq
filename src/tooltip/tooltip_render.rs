@@ -3,7 +3,7 @@ use ratatui::{
     layout::Rect,
     style::{Color, Modifier, Style},
     text::{Line, Span, Text},
-    widgets::{Block, Borders, Paragraph},
+    widgets::{Block, BorderType, Borders, Paragraph},
 };
 
 use crate::app::App;
@@ -233,6 +233,7 @@ pub fn render_popup(app: &App, frame: &mut Frame, input_area: Rect) -> Option<Re
     let popup_widget = Paragraph::new(text).block(
         Block::default()
             .borders(Borders::ALL)
+            .border_type(BorderType::Rounded)
             .title(title)
             .title_top(dismiss_hint.alignment(ratatui::layout::Alignment::Right))
             .border_style(Style::default().fg(Color::Magenta))

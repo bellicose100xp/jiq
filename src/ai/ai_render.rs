@@ -8,7 +8,7 @@ use ratatui::{
     layout::Rect,
     style::{Color, Modifier, Style},
     text::{Line, Span},
-    widgets::{Block, Borders, Paragraph, Wrap},
+    widgets::{Block, BorderType, Borders, Paragraph, Wrap},
 };
 
 use super::ai_state::AiState;
@@ -349,6 +349,7 @@ pub fn render_popup(ai_state: &mut AiState, frame: &mut Frame, input_area: Rect)
 
     let block = Block::default()
         .borders(Borders::ALL)
+        .border_type(BorderType::Rounded)
         .title(title)
         .title_top(counter.alignment(ratatui::layout::Alignment::Center))
         .title_top(model_name_title.alignment(ratatui::layout::Alignment::Right))

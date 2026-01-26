@@ -3,7 +3,7 @@ use ratatui::{
     layout::Rect,
     style::{Color, Modifier, Style},
     text::{Line, Span},
-    widgets::{Block, Borders, List, ListItem},
+    widgets::{Block, BorderType, Borders, List, ListItem},
 };
 
 use crate::app::App;
@@ -136,6 +136,7 @@ pub fn render_popup(app: &App, frame: &mut Frame, input_area: Rect) -> Option<Re
 
     let block = Block::default()
         .borders(Borders::ALL)
+        .border_type(BorderType::Rounded)
         .title(" Suggestions ")
         .border_style(Style::default().fg(Color::Cyan))
         .style(Style::default().bg(Color::Black));

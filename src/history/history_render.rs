@@ -3,7 +3,7 @@ use ratatui::{
     layout::{Constraint, Layout, Rect},
     style::{Color, Modifier, Style},
     text::{Line, Span},
-    widgets::{Block, Borders, List, ListItem},
+    widgets::{Block, BorderType, Borders, List, ListItem},
 };
 
 use crate::app::App;
@@ -88,6 +88,7 @@ pub fn render_popup(app: &mut App, frame: &mut Frame, input_area: Rect) -> Optio
 
     let block = Block::default()
         .borders(Borders::ALL)
+        .border_type(BorderType::Rounded)
         .title(title)
         .border_style(Style::default().fg(Color::Cyan))
         .style(Style::default().bg(Color::Black));
@@ -120,6 +121,7 @@ pub fn render_popup(app: &mut App, frame: &mut Frame, input_area: Rect) -> Optio
     search_textarea.set_block(
         Block::default()
             .borders(Borders::ALL)
+            .border_type(BorderType::Rounded)
             .title(" Search ")
             .border_style(Style::default().fg(Color::Cyan))
             .style(Style::default().bg(Color::Black)),

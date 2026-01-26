@@ -3,7 +3,7 @@ use ratatui::{
     layout::Rect,
     style::Style,
     text::{Line, Span},
-    widgets::{Block, Borders, Paragraph},
+    widgets::{Block, BorderType, Borders, Paragraph},
 };
 
 use super::notification_state::NotificationState;
@@ -45,6 +45,7 @@ pub fn render_notification(frame: &mut Frame, notification: &mut NotificationSta
 
     let block = Block::default()
         .borders(Borders::ALL)
+        .border_type(BorderType::Rounded)
         .border_style(Style::default().fg(style.border).bg(style.bg))
         .style(Style::default().bg(style.bg));
 
