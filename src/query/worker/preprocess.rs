@@ -118,7 +118,6 @@ fn parse_ansi_to_rendered_lines(
     // Parse ANSI codes to Text
     let text: Text = output
         .as_bytes()
-        .to_vec()
         .into_text()
         .unwrap_or_else(|_| Text::raw(output.to_string()));
 

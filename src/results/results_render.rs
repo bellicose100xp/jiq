@@ -536,7 +536,7 @@ fn apply_search_highlights(
                     Line::from(
                         line.spans
                             .into_iter()
-                            .map(|span| Span::styled(span.content.to_string(), span.style))
+                            .map(|span| Span::styled(span.content.into_owned(), span.style))
                             .collect::<Vec<_>>(),
                     )
                 })
@@ -559,7 +559,7 @@ fn apply_search_highlights(
                 Line::from(
                     line.spans
                         .into_iter()
-                        .map(|span| Span::styled(span.content.to_string(), span.style))
+                        .map(|span| Span::styled(span.content.into_owned(), span.style))
                         .collect::<Vec<_>>(),
                 )
             } else {
