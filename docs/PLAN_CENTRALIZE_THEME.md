@@ -465,6 +465,9 @@ pub mod syntax {
     pub const OPERATOR: Color = Color::Magenta;
     pub const VARIABLE: Color = Color::Red;
     pub const FIELD: Color = Color::Cyan;
+
+    // Bracket matching (overlay.rs)
+    pub const BRACKET_MATCH: Color = Color::Yellow;
 }
 ```
 
@@ -491,13 +494,13 @@ pub mod syntax {
 3. **Notification** (`notification/notification_state.rs`) → `theme::notification::*`
 4. **Help Line** (`help/help_line_render.rs`) → `theme::help_line::*`
 5. **History** (`history/history_render.rs`) → `theme::history::*`
-6. **Input** (`input/input_render.rs`) → `theme::input::*`
+6. **Input** (`input/input_render.rs`, `input/input_state.rs`) → `theme::input::*`
 7. **Autocomplete** (`autocomplete/autocomplete_render.rs`) → `theme::autocomplete::*`
 8. **Tooltip** (`tooltip/tooltip_render.rs`) → `theme::tooltip::*`
 9. **Help Popup** (`help/help_popup_render.rs`) → `theme::help::*`
 10. **Snippets** (`snippets/snippet_render.rs`) → `theme::snippets::*`
-11. **AI** (`ai/ai_render.rs`, `ai/render/*`) → `theme::ai::*`
-12. **Syntax Highlighting** (`syntax_highlight.rs`) → `theme::syntax::*`
+11. **AI** (`ai/ai_render.rs`, `ai/render/suggestions.rs`, `ai/render/content.rs`) → `theme::ai::*`
+12. **Syntax Highlighting** (`syntax_highlight.rs`, `syntax_highlight/overlay.rs`) → `theme::syntax::*`
 
 ### Phase 4: Cleanup
 1. Remove all inline color definitions from render files
@@ -542,11 +545,13 @@ let style = Style::default().fg(Color::Cyan);
 | `src/lib.rs` or `src/main.rs` | **EDIT** - Add `pub mod theme;` |
 | `src/results/results_render.rs` | **EDIT** - Use `theme::results::*` |
 | `src/input/input_render.rs` | **EDIT** - Use `theme::input::*` |
+| `src/input/input_state.rs` | **EDIT** - Use `theme::input::*` (initial border) |
 | `src/search/search_render.rs` | **EDIT** - Use `theme::search::*` |
 | `src/help/help_popup_render.rs` | **EDIT** - Use `theme::help::*` |
 | `src/help/help_line_render.rs` | **EDIT** - Use `theme::help_line::*` |
 | `src/ai/ai_render.rs` | **EDIT** - Use `theme::ai::*` |
 | `src/ai/render/suggestions.rs` | **EDIT** - Use `theme::ai::*` |
+| `src/ai/render/content.rs` | **EDIT** - Use `theme::ai::*` |
 | `src/ai/suggestion/parser.rs` | **EDIT** - Use `theme::ai::*` |
 | `src/history/history_render.rs` | **EDIT** - Use `theme::history::*` |
 | `src/snippets/snippet_render.rs` | **EDIT** - Use `theme::snippets::*` |
@@ -554,6 +559,7 @@ let style = Style::default().fg(Color::Cyan);
 | `src/notification/notification_state.rs` | **EDIT** - Use `theme::notification::*` |
 | `src/tooltip/tooltip_render.rs` | **EDIT** - Use `theme::tooltip::*` |
 | `src/syntax_highlight.rs` | **EDIT** - Use `theme::syntax::*` |
+| `src/syntax_highlight/overlay.rs` | **EDIT** - Use `theme::syntax::BRACKET_MATCH` |
 | `src/widgets/scrollbar.rs` | **EDIT** - Use `theme::scrollbar::*` |
 | `CLAUDE.md` | **EDIT** - Add theme.rs usage guidelines |
 | `CONTRIBUTING.md` | **EDIT** - Add theme contribution rules (if file exists) |
@@ -594,6 +600,6 @@ This is purely a code organization improvement.
 ## Estimated Scope
 
 - **Files to create**: 1 (`theme.rs`)
-- **Files to modify**: ~16 render files + test files with color assertions
+- **Files to modify**: ~19 source files + test files with color assertions + documentation
 - **Lines of theme code**: ~400 lines in `theme.rs`
 - **Lines to remove**: ~150 scattered constants/inline colors
