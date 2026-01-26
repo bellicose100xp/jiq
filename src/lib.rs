@@ -25,6 +25,7 @@ pub mod syntax_highlight;
 
 #[cfg(test)]
 pub mod test_utils;
+pub mod theme;
 pub mod tooltip;
 pub mod widgets;
 

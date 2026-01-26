@@ -1,13 +1,14 @@
 use ratatui::{
     Frame,
     layout::{Constraint, Direction, Layout, Rect},
-    style::{Color, Modifier, Style},
+    style::Style,
     text::{Line, Span, Text},
     widgets::{Block, BorderType, Borders, Paragraph},
 };
 
 use crate::app::App;
 use crate::help::{HELP_FOOTER, HelpSection, HelpTab, get_tab_content};
+use crate::theme;
 use crate::widgets::{popup, scrollbar};
 
 /// Render the help popup
@@ -36,8 +37,8 @@ pub fn render_popup(app: &mut App, frame: &mut Frame) -> Option<Rect> {
         .borders(Borders::ALL)
         .border_type(BorderType::Rounded)
         .title(" Keyboard Shortcuts ")
-        .border_style(Style::default().fg(Color::Cyan))
-        .style(Style::default().bg(Color::Black));
+        .border_style(Style::default().fg(theme::help::BORDER))
+        .style(Style::default().bg(theme::help::BACKGROUND));
 
     let inner_area = outer_block.inner(popup_area);
     frame.render_widget(outer_block, popup_area);
@@ -60,7 +61,7 @@ pub fn render_popup(app: &mut App, frame: &mut Frame) -> Option<Rect> {
     // Render separator line
     let separator = Line::from(Span::styled(
         "─".repeat(chunks[1].width as usize),
-        Style::default().fg(Color::DarkGray),
+        Style::default().fg(theme::help::FOOTER),
     ));
     frame.render_widget(Paragraph::new(separator), chunks[1]);
 
@@ -81,7 +82,7 @@ pub fn render_popup(app: &mut App, frame: &mut Frame) -> Option<Rect> {
     // Render footer
     let footer = Line::from(Span::styled(
         HELP_FOOTER,
-        Style::default().fg(Color::DarkGray),
+        Style::default().fg(theme::help::FOOTER),
     ));
     frame.render_widget(Paragraph::new(footer).centered(), chunks[3]);
 
@@ -102,7 +103,7 @@ pub fn render_popup(app: &mut App, frame: &mut Frame) -> Option<Rect> {
         content_height as usize,
         viewport,
         clamped_offset,
-        Color::Cyan,
+        theme::help::SCROLLBAR,
     );
 
     Some(popup_area)
@@ -127,17 +128,17 @@ fn render_tab_bar(active_tab: HelpTab, hovered_tab: Option<HelpTab>) -> Line<'st
         if *tab == active_tab {
             spans.push(Span::styled(
                 format!("[{}]", label),
-                Style::default()
-                    .fg(Color::Cyan)
-                    .add_modifier(Modifier::BOLD),
+                theme::help::TAB_ACTIVE,
             ));
         } else if is_hovered {
             spans.push(Span::styled(
                 label,
-                Style::default().fg(Color::White).bg(Color::Indexed(236)),
+                Style::default()
+                    .fg(theme::help::TAB_HOVER_FG)
+                    .bg(theme::help::TAB_HOVER_BG),
             ));
         } else {
-            spans.push(Span::styled(label, Style::default().fg(Color::DarkGray)));
+            spans.push(Span::styled(label, theme::help::TAB_INACTIVE));
         }
     }
 
@@ -155,24 +156,14 @@ fn render_help_sections(sections: &[HelpSection]) -> Vec<Line<'static>> {
             }
             lines.push(Line::from(vec![
                 Span::raw("  "),
-                Span::styled(
-                    format!("── {} ──", title),
-                    Style::default()
-                        .fg(Color::Cyan)
-                        .add_modifier(Modifier::BOLD),
-                ),
+                Span::styled(format!("── {} ──", title), theme::help::SECTION_HEADER),
             ]));
         }
 
         // Add entries
         for (key, desc) in section.entries {
-            let key_span = Span::styled(
-                format!("  {:<15}", key),
-                Style::default()
-                    .fg(Color::Yellow)
-                    .add_modifier(Modifier::BOLD),
-            );
-            let desc_span = Span::styled(*desc, Style::default().fg(Color::White));
+            let key_span = Span::styled(format!("  {:<15}", key), theme::help::KEY);
+            let desc_span = Span::styled(*desc, Style::default().fg(theme::help::DESCRIPTION));
             lines.push(Line::from(vec![key_span, desc_span]));
         }
     }

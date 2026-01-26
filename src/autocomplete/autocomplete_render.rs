@@ -1,7 +1,7 @@
 use ratatui::{
     Frame,
     layout::Rect,
-    style::{Color, Modifier, Style},
+    style::Style,
     text::{Line, Span},
     widgets::{Block, BorderType, Borders, List, ListItem},
 };
@@ -10,6 +10,7 @@ use crate::app::App;
 use crate::autocomplete::SuggestionType;
 use crate::autocomplete::autocomplete_state::MAX_VISIBLE_SUGGESTIONS;
 use crate::scroll::Scrollable;
+use crate::theme;
 use crate::widgets::{popup, scrollbar};
 
 const MAX_POPUP_WIDTH: usize = 60;
@@ -79,11 +80,11 @@ pub fn render_popup(app: &App, frame: &mut Frame, input_area: Rect) -> Option<Re
         .visible_suggestions()
         .map(|(abs_idx, suggestion)| {
             let type_color = match suggestion.suggestion_type {
-                SuggestionType::Function => Color::Yellow,
-                SuggestionType::Field => Color::Cyan,
-                SuggestionType::Operator => Color::Magenta,
-                SuggestionType::Pattern => Color::Green,
-                SuggestionType::Variable => Color::Red,
+                SuggestionType::Function => theme::autocomplete::TYPE_FUNCTION,
+                SuggestionType::Field => theme::autocomplete::TYPE_FIELD,
+                SuggestionType::Operator => theme::autocomplete::TYPE_OPERATOR,
+                SuggestionType::Pattern => theme::autocomplete::TYPE_PATTERN,
+                SuggestionType::Variable => theme::autocomplete::TYPE_VARIABLE,
             };
 
             let type_label = get_type_label(suggestion);
@@ -106,24 +107,30 @@ pub fn render_popup(app: &App, frame: &mut Frame, input_area: Rect) -> Option<Re
                     Span::styled(
                         format!("► {}{}", truncated_text, padding),
                         Style::default()
-                            .fg(Color::Black)
-                            .bg(Color::Cyan)
-                            .add_modifier(Modifier::BOLD),
+                            .fg(theme::autocomplete::ITEM_SELECTED_FG)
+                            .bg(theme::autocomplete::ITEM_SELECTED_BG)
+                            .add_modifier(theme::autocomplete::ITEM_SELECTED_MODIFIER),
                     ),
                     Span::styled(
                         format!(" {}", type_label),
-                        Style::default().fg(Color::Black).bg(Color::Cyan),
+                        Style::default()
+                            .fg(theme::autocomplete::ITEM_SELECTED_FG)
+                            .bg(theme::autocomplete::ITEM_SELECTED_BG),
                     ),
                 ])
             } else {
                 Line::from(vec![
                     Span::styled(
                         format!("  {}{}", truncated_text, padding),
-                        Style::default().fg(Color::White).bg(Color::Black),
+                        Style::default()
+                            .fg(theme::autocomplete::ITEM_NORMAL_FG)
+                            .bg(theme::autocomplete::ITEM_NORMAL_BG),
                     ),
                     Span::styled(
                         format!(" {}", type_label),
-                        Style::default().fg(type_color).bg(Color::Black),
+                        Style::default()
+                            .fg(type_color)
+                            .bg(theme::autocomplete::ITEM_NORMAL_BG),
                     ),
                 ])
             };
@@ -138,8 +145,8 @@ pub fn render_popup(app: &App, frame: &mut Frame, input_area: Rect) -> Option<Re
         .borders(Borders::ALL)
         .border_type(BorderType::Rounded)
         .title(" Suggestions ")
-        .border_style(Style::default().fg(Color::Cyan))
-        .style(Style::default().bg(Color::Black));
+        .border_style(Style::default().fg(theme::autocomplete::BORDER))
+        .style(Style::default().bg(theme::autocomplete::BACKGROUND));
 
     let list = List::new(items).block(block);
     frame.render_widget(list, popup_area);
@@ -161,7 +168,7 @@ pub fn render_popup(app: &App, frame: &mut Frame, input_area: Rect) -> Option<Re
         total,
         viewport,
         clamped_offset,
-        Color::Cyan,
+        theme::autocomplete::SCROLLBAR,
     );
 
     Some(popup_area)

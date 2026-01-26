@@ -1,11 +1,12 @@
 use ratatui::{
-    style::{Color, Style},
+    style::Style,
     widgets::{Block, Borders},
 };
 use tui_textarea::TextArea;
 
 use crate::autocomplete::BraceTracker;
 use crate::editor::{CharSearchState, EditorMode};
+use crate::theme;
 
 pub struct InputState {
     pub textarea: TextArea<'static>,
@@ -24,7 +25,7 @@ impl InputState {
             Block::default()
                 .borders(Borders::ALL)
                 .title(" Query ")
-                .border_style(Style::default().fg(Color::DarkGray)),
+                .border_style(Style::default().fg(theme::input::BORDER_UNFOCUSED)),
         );
 
         textarea.set_cursor_line_style(Style::default());

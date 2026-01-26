@@ -1,6 +1,8 @@
-use ratatui::style::{Modifier, Style};
+use ratatui::style::Style;
 use std::collections::HashMap;
 use tui_textarea::TextArea;
+
+use crate::theme;
 
 /// Represents a single match position in the results
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -17,7 +19,7 @@ pub struct Match {
 fn create_search_textarea() -> TextArea<'static> {
     let mut textarea = TextArea::default();
     textarea.set_cursor_line_style(Style::default());
-    textarea.set_cursor_style(Style::default().add_modifier(Modifier::REVERSED));
+    textarea.set_cursor_style(theme::palette::CURSOR);
     textarea
 }
 

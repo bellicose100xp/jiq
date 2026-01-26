@@ -3,12 +3,13 @@
 //! Handles building the content text based on AI state.
 
 use ratatui::{
-    style::{Color, Modifier, Style},
+    style::Style,
     text::{Line, Span, Text},
 };
 
 use crate::ai::ai_state::AiState;
 use crate::ai::render::text::wrap_text;
+use crate::theme;
 
 /// Build the content text based on AI state
 pub fn build_content(ai_state: &AiState, max_width: u16) -> Text<'static> {
@@ -16,59 +17,52 @@ pub fn build_content(ai_state: &AiState, max_width: u16) -> Text<'static> {
 
     if !ai_state.configured {
         lines.push(Line::from(vec![
-            Span::styled("⚙ ", Style::default().fg(Color::Yellow)),
-            Span::styled(
-                "AI provider not configured",
-                Style::default()
-                    .fg(Color::Yellow)
-                    .add_modifier(Modifier::BOLD),
-            ),
+            Span::styled("⚙ ", Style::default().fg(theme::ai::CONFIG_ICON)),
+            Span::styled("AI provider not configured", theme::ai::CONFIG_TITLE),
         ]));
         lines.push(Line::from(""));
         lines.push(Line::from(Span::styled(
             "To enable AI assistance, configure a provider",
-            Style::default().fg(Color::Gray),
+            Style::default().fg(theme::ai::CONFIG_DESC),
         )));
         lines.push(Line::from(Span::styled(
             "in ~/.config/jiq/config.toml:",
-            Style::default().fg(Color::Gray),
+            Style::default().fg(theme::ai::CONFIG_DESC),
         )));
         lines.push(Line::from(""));
         lines.push(Line::from(Span::styled(
             "[ai]",
-            Style::default().fg(Color::Cyan),
+            Style::default().fg(theme::ai::CONFIG_CODE),
         )));
         lines.push(Line::from(Span::styled(
             "enabled = true",
-            Style::default().fg(Color::Cyan),
+            Style::default().fg(theme::ai::CONFIG_CODE),
         )));
         lines.push(Line::from(Span::styled(
             "provider = \"anthropic\"  # or \"openai\", \"gemini\", \"bedrock\"",
-            Style::default().fg(Color::Cyan),
+            Style::default().fg(theme::ai::CONFIG_CODE),
         )));
         lines.push(Line::from(""));
         lines.push(Line::from(Span::styled(
             "[ai.anthropic]",
-            Style::default().fg(Color::Cyan),
+            Style::default().fg(theme::ai::CONFIG_CODE),
         )));
         lines.push(Line::from(Span::styled(
             "api_key = \"sk-ant-...\"",
-            Style::default().fg(Color::Cyan),
+            Style::default().fg(theme::ai::CONFIG_CODE),
         )));
         lines.push(Line::from(Span::styled(
             "model = \"claude-3-5-sonnet-20241022\"",
-            Style::default().fg(Color::Cyan),
+            Style::default().fg(theme::ai::CONFIG_CODE),
         )));
         lines.push(Line::from(""));
         lines.push(Line::from(Span::styled(
             "For more details, see:",
-            Style::default().fg(Color::Gray),
+            Style::default().fg(theme::ai::CONFIG_DESC),
         )));
         lines.push(Line::from(Span::styled(
             "https://github.com/bellicose100xp/jiq#configuration",
-            Style::default()
-                .fg(Color::Blue)
-                .add_modifier(Modifier::UNDERLINED),
+            theme::ai::CONFIG_LINK,
         )));
 
         return Text::from(lines);
@@ -76,18 +70,15 @@ pub fn build_content(ai_state: &AiState, max_width: u16) -> Text<'static> {
 
     if let Some(error) = &ai_state.error {
         lines.push(Line::from(vec![
-            Span::styled("⚠ ", Style::default().fg(Color::Red)),
-            Span::styled(
-                "Error",
-                Style::default().fg(Color::Red).add_modifier(Modifier::BOLD),
-            ),
+            Span::styled("⚠ ", Style::default().fg(theme::ai::ERROR_ICON)),
+            Span::styled("Error", theme::ai::ERROR_TITLE),
         ]));
         lines.push(Line::from(""));
 
         for line in wrap_text(error, max_width as usize) {
             lines.push(Line::from(Span::styled(
                 line,
-                Style::default().fg(Color::Red),
+                Style::default().fg(theme::ai::ERROR_MESSAGE),
             )));
         }
 
@@ -99,20 +90,15 @@ pub fn build_content(ai_state: &AiState, max_width: u16) -> Text<'static> {
             for line in wrap_text(prev, max_width as usize) {
                 lines.push(Line::from(Span::styled(
                     line,
-                    Style::default().fg(Color::DarkGray),
+                    Style::default().fg(theme::ai::PREVIOUS_RESPONSE),
                 )));
             }
             lines.push(Line::from(""));
         }
 
         lines.push(Line::from(vec![
-            Span::styled("⏳ ", Style::default().fg(Color::Yellow)),
-            Span::styled(
-                "Thinking...",
-                Style::default()
-                    .fg(Color::Yellow)
-                    .add_modifier(Modifier::ITALIC),
-            ),
+            Span::styled("⏳ ", Style::default().fg(theme::ai::THINKING_ICON)),
+            Span::styled("Thinking...", theme::ai::THINKING_TEXT),
         ]));
 
         return Text::from(lines);
@@ -127,7 +113,7 @@ pub fn build_content(ai_state: &AiState, max_width: u16) -> Text<'static> {
             for line in wrap_text(&ai_state.response, max_width as usize) {
                 lines.push(Line::from(Span::styled(
                     line,
-                    Style::default().fg(Color::White),
+                    Style::default().fg(theme::ai::RESULT_TEXT),
                 )));
             }
         }

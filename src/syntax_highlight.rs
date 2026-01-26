@@ -13,8 +13,10 @@
 pub mod bracket_matcher;
 pub mod overlay;
 
-use ratatui::style::{Color, Style};
+use ratatui::style::Style;
 use ratatui::text::Span;
+
+use crate::theme;
 
 pub struct JqHighlighter;
 
@@ -34,7 +36,10 @@ impl JqHighlighter {
 
             if chars[i] == '"' {
                 let (content, new_i) = parse_string(&chars, i);
-                spans.push(Span::styled(content, Style::default().fg(Color::Green)));
+                spans.push(Span::styled(
+                    content,
+                    Style::default().fg(theme::syntax::STRING),
+                ));
                 i = new_i;
                 continue;
             }
@@ -43,14 +48,20 @@ impl JqHighlighter {
                 || (chars[i] == '-' && i + 1 < chars.len() && chars[i + 1].is_ascii_digit())
             {
                 let (content, new_i) = parse_number(&chars, i);
-                spans.push(Span::styled(content, Style::default().fg(Color::Cyan)));
+                spans.push(Span::styled(
+                    content,
+                    Style::default().fg(theme::syntax::NUMBER),
+                ));
                 i = new_i;
                 continue;
             }
 
             if is_operator(chars[i]) {
                 let (content, new_i) = parse_operator(&chars, i);
-                spans.push(Span::styled(content, Style::default().fg(Color::Magenta)));
+                spans.push(Span::styled(
+                    content,
+                    Style::default().fg(theme::syntax::OPERATOR),
+                ));
                 i = new_i;
                 continue;
             }
@@ -223,13 +234,13 @@ fn is_followed_by_colon(chars: &[char], pos: usize) -> bool {
 /// Style with appropriate color applied
 fn classify_word(word: &str, is_object_field: bool) -> Style {
     if is_keyword(word) {
-        Style::default().fg(Color::Yellow)
+        Style::default().fg(theme::syntax::KEYWORD)
     } else if is_builtin_function(word) {
-        Style::default().fg(Color::Blue)
+        Style::default().fg(theme::syntax::FUNCTION)
     } else if is_variable(word) {
-        Style::default().fg(Color::Red)
+        Style::default().fg(theme::syntax::VARIABLE)
     } else if is_object_field {
-        Style::default().fg(Color::Cyan)
+        Style::default().fg(theme::syntax::FIELD)
     } else {
         Style::default()
     }

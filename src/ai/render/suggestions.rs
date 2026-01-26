@@ -3,11 +3,12 @@
 //! Handles rendering of structured AI suggestions with selection highlighting.
 
 use ratatui::{
-    style::{Color, Modifier, Style},
+    style::{Modifier, Style},
     text::{Line, Span},
 };
 
 use crate::ai::ai_state::AiState;
+use crate::theme;
 
 /// Render suggestions with selection highlighting
 ///
@@ -52,9 +53,9 @@ where
             let mut spans = Vec::new();
 
             if has_selection_number {
-                let mut style = Style::default().fg(Color::DarkGray);
+                let mut style = Style::default().fg(theme::ai::SUGGESTION_TEXT_NORMAL);
                 if is_selected {
-                    style = style.fg(Color::Black);
+                    style = style.fg(theme::ai::SUGGESTION_TEXT_SELECTED);
                 }
                 spans.push(Span::styled(format!("{}. ", i + 1), style));
             }
@@ -64,22 +65,22 @@ where
 
             spans.push(Span::styled(" ", Style::default()));
 
-            let query_style = Style::default().fg(Color::Cyan);
+            let query_style = Style::default().fg(theme::ai::QUERY_TEXT);
             spans.push(Span::styled(first_query_line.clone(), query_style));
 
             let mut line = Line::from(spans);
             if is_selected {
-                line = line.style(Style::default().bg(Color::DarkGray));
+                line = line.style(Style::default().bg(theme::ai::SUGGESTION_SELECTED_BG));
             }
             lines.push(line);
         }
 
         for query_line in query_lines.iter().skip(1) {
             let indent = " ".repeat(prefix_len);
-            let style = Style::default().fg(Color::Cyan);
+            let style = Style::default().fg(theme::ai::QUERY_TEXT);
             let mut line = Line::from(Span::styled(format!("{}{}", indent, query_line), style));
             if is_selected {
-                line = line.style(Style::default().bg(Color::DarkGray));
+                line = line.style(Style::default().bg(theme::ai::SUGGESTION_SELECTED_BG));
             }
             lines.push(line);
         }
@@ -87,13 +88,13 @@ where
         if !suggestion.description.is_empty() {
             let desc_max_width = max_width.saturating_sub(3) as usize;
             for desc_line in wrap_text_fn(&suggestion.description, desc_max_width) {
-                let mut style = Style::default().fg(Color::DarkGray);
+                let mut style = Style::default().fg(theme::ai::SUGGESTION_DESC_NORMAL);
                 if is_selected {
-                    style = style.fg(Color::Gray);
+                    style = style.fg(theme::ai::SUGGESTION_DESC_MUTED);
                 }
                 let mut line = Line::from(Span::styled(format!("   {}", desc_line), style));
                 if is_selected {
-                    line = line.style(Style::default().bg(Color::DarkGray));
+                    line = line.style(Style::default().bg(theme::ai::SUGGESTION_SELECTED_BG));
                 }
                 lines.push(line);
             }

@@ -50,3 +50,23 @@ All checks must pass before staging files.
 - Prefer composition over deep nesting
 - Extract helper functions for complex conditionals
 - Use early returns to reduce indentation levels
+
+## Theme & Styling
+
+All colors and styles are centralized in `src/theme.rs`. When adding or modifying UI components:
+
+- **DO** add new colors to the appropriate module in `theme.rs`
+- **DO** use `theme::module::CONSTANT` in render files
+- **DON'T** hardcode `Color::*` values directly in render files
+- **DON'T** import `ratatui::style::Color` in render files (use theme constants instead)
+
+Example:
+```rust
+// Good
+use crate::theme;
+let style = Style::default().fg(theme::input::MODE_INSERT);
+
+// Bad
+use ratatui::style::Color;
+let style = Style::default().fg(Color::Cyan);
+```

@@ -13,6 +13,8 @@
 use ratatui::style::Color;
 use serde::Deserialize;
 
+use crate::theme;
+
 // =========================================================================
 // JSON Response Types
 // =========================================================================
@@ -56,9 +58,9 @@ impl SuggestionType {
     /// Get the color for this suggestion type
     pub fn color(&self) -> Color {
         match self {
-            SuggestionType::Fix => Color::Red,
-            SuggestionType::Optimize => Color::Yellow,
-            SuggestionType::Next => Color::Green,
+            SuggestionType::Fix => theme::ai::SUGGESTION_FIX,
+            SuggestionType::Optimize => theme::ai::SUGGESTION_OPTIMIZE,
+            SuggestionType::Next => theme::ai::SUGGESTION_NEXT,
         }
     }
 

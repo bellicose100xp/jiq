@@ -1,12 +1,8 @@
-use ratatui::{
-    Frame,
-    layout::Rect,
-    style::{Color, Style},
-    widgets::Paragraph,
-};
+use ratatui::{Frame, layout::Rect, style::Style, widgets::Paragraph};
 
 use crate::app::{App, Focus};
 use crate::editor::EditorMode;
+use crate::theme;
 
 pub fn render_line(app: &App, frame: &mut Frame, area: Rect) {
     let help_text = if app.search.is_visible() {
@@ -28,7 +24,7 @@ pub fn render_line(app: &App, frame: &mut Frame, area: Rect) {
         " F1/?: Help | Shift+Tab: Switch Pane | Ctrl+S: Snippets | Enter: Output Result | Ctrl+Q: Output Query | q: Quit"
     };
 
-    let help = Paragraph::new(help_text).style(Style::default().fg(Color::DarkGray));
+    let help = Paragraph::new(help_text).style(Style::default().fg(theme::help_line::TEXT));
 
     frame.render_widget(help, area);
 }

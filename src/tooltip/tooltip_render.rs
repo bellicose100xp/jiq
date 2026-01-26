@@ -1,12 +1,13 @@
 use ratatui::{
     Frame,
     layout::Rect,
-    style::{Color, Modifier, Style},
+    style::Style,
     text::{Line, Span, Text},
     widgets::{Block, BorderType, Borders, Paragraph},
 };
 
 use crate::app::App;
+use crate::theme;
 use crate::tooltip::{get_operator_content, get_tooltip_content};
 use crate::widgets::popup;
 
@@ -159,7 +160,7 @@ pub fn render_popup(app: &App, frame: &mut Frame, input_area: Rect) -> Option<Re
     // Description line
     lines.push(Line::from(vec![Span::styled(
         content.description,
-        Style::default().fg(Color::White),
+        Style::default().fg(theme::tooltip::DESCRIPTION),
     )]));
 
     // Blank line before examples
@@ -171,7 +172,7 @@ pub fn render_popup(app: &App, frame: &mut Frame, input_area: Rect) -> Option<Re
             // No description, just show code
             lines.push(Line::from(vec![Span::styled(
                 format!("  {}", code),
-                Style::default().fg(Color::Cyan),
+                Style::default().fg(theme::tooltip::EXAMPLE),
             )]));
         } else {
             // Two-column: code (padded) │ description
@@ -179,10 +180,10 @@ pub fn render_popup(app: &App, frame: &mut Frame, input_area: Rect) -> Option<Re
             lines.push(Line::from(vec![
                 Span::styled(
                     format!("  {}", padded_code),
-                    Style::default().fg(Color::Cyan),
+                    Style::default().fg(theme::tooltip::EXAMPLE),
                 ),
-                Span::styled(" │ ", Style::default().fg(Color::DarkGray)),
-                Span::styled(*desc, Style::default().fg(Color::Gray)),
+                Span::styled(" │ ", Style::default().fg(theme::tooltip::SEPARATOR)),
+                Span::styled(*desc, Style::default().fg(theme::tooltip::EXAMPLE_DESC)),
             ]));
         }
     }
@@ -195,14 +196,14 @@ pub fn render_popup(app: &App, frame: &mut Frame, input_area: Rect) -> Option<Re
             Span::styled("💡 ", Style::default()),
             Span::styled(
                 wrapped_tip_lines[0].clone(),
-                Style::default().fg(Color::Yellow),
+                Style::default().fg(theme::tooltip::TIP),
             ),
         ]));
         // Subsequent lines with spacing to align with first line
         for line in wrapped_tip_lines.iter().skip(1) {
             lines.push(Line::from(vec![
                 Span::raw("   "), // 3 spaces to align with text after emoji
-                Span::styled(line.clone(), Style::default().fg(Color::Yellow)),
+                Span::styled(line.clone(), Style::default().fg(theme::tooltip::TIP)),
             ]));
         }
     }
@@ -213,19 +214,14 @@ pub fn render_popup(app: &App, frame: &mut Frame, input_area: Rect) -> Option<Re
     // Format: "fn: select" or "operator: //"
     let title = Line::from(vec![
         Span::raw(" "),
-        Span::styled(
-            format!("{}: {}", title_prefix, name),
-            Style::default()
-                .fg(Color::Magenta)
-                .add_modifier(Modifier::BOLD),
-        ),
+        Span::styled(format!("{}: {}", title_prefix, name), theme::tooltip::TITLE),
         Span::raw(" "),
     ]);
 
     // Build dismiss hint for top-right of border
     let dismiss_hint = Line::from(vec![Span::styled(
         " Ctrl+T to dismiss ",
-        Style::default().fg(Color::DarkGray),
+        Style::default().fg(theme::tooltip::DISMISS_HINT),
     )]);
 
     // Create the popup widget with purple border
@@ -236,8 +232,8 @@ pub fn render_popup(app: &App, frame: &mut Frame, input_area: Rect) -> Option<Re
             .border_type(BorderType::Rounded)
             .title(title)
             .title_top(dismiss_hint.alignment(ratatui::layout::Alignment::Right))
-            .border_style(Style::default().fg(Color::Magenta))
-            .style(Style::default().bg(Color::Black)),
+            .border_style(Style::default().fg(theme::tooltip::BORDER))
+            .style(Style::default().bg(theme::tooltip::BACKGROUND)),
     );
 
     frame.render_widget(popup_widget, popup_area);

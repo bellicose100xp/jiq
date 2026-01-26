@@ -94,6 +94,12 @@ cargo clippy -D warnings # Must pass
 - Prefer early returns over deep nesting
 - Extract helpers for complex conditionals
 
+**Theme & Styling:**
+- All colors are centralized in `src/theme.rs`
+- Use `theme::module::CONSTANT` in render files
+- Never hardcode `Color::*` in render files
+- Add new colors to `theme.rs` before using them
+
 ### Rust 2024 Edition
 
 - Use `#[derive(Default)]` with `#[default]` for enums

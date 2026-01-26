@@ -1,7 +1,7 @@
 use ratatui::{
     Frame,
     layout::{Alignment, Rect},
-    style::{Color, Style},
+    style::Style,
     text::{Line, Span},
     widgets::{Block, BorderType, Borders, Paragraph},
 };
@@ -13,6 +13,7 @@ use crate::syntax_highlight::bracket_matcher::find_matching_bracket;
 use crate::syntax_highlight::overlay::{
     extract_visible_spans, highlight_bracket_pairs, insert_cursor_into_spans,
 };
+use crate::theme;
 
 /// Render the input field
 ///
@@ -22,25 +23,25 @@ pub fn render_field(app: &mut App, frame: &mut Frame, area: Rect) -> Rect {
     app.input.calculate_scroll_offset(viewport_width);
 
     let mode_color = match app.input.editor_mode {
-        EditorMode::Insert => Color::Cyan,
-        EditorMode::Normal => Color::Yellow,
-        EditorMode::Operator(_) => Color::Green,
-        EditorMode::CharSearch(_, _) => Color::Magenta,
-        EditorMode::OperatorCharSearch(_, _, _, _) => Color::Green,
-        EditorMode::TextObject(_, _) => Color::Green,
+        EditorMode::Insert => theme::input::MODE_INSERT,
+        EditorMode::Normal => theme::input::MODE_NORMAL,
+        EditorMode::Operator(_) => theme::input::MODE_OPERATOR,
+        EditorMode::CharSearch(_, _) => theme::input::MODE_CHAR_SEARCH,
+        EditorMode::OperatorCharSearch(_, _, _, _) => theme::input::MODE_OPERATOR,
+        EditorMode::TextObject(_, _) => theme::input::MODE_OPERATOR,
     };
 
     let border_color = if app.focus == Focus::InputField {
         mode_color
     } else {
-        Color::DarkGray
+        theme::input::BORDER_UNFOCUSED
     };
 
     let is_focused = app.focus == Focus::InputField;
     let mode_display_color = if is_focused {
         mode_color
     } else {
-        Color::DarkGray
+        theme::input::UNFOCUSED_HINT
     };
 
     let mode_text = app.input.editor_mode.display();
@@ -66,7 +67,7 @@ pub fn render_field(app: &mut App, frame: &mut Frame, area: Rect) -> Rect {
     {
         title_spans.push(Span::styled(
             "⚠ Syntax Error (Ctrl+E to view)",
-            Style::default().fg(Color::Yellow),
+            Style::default().fg(theme::input::SYNTAX_ERROR_WARNING),
         ));
     }
 
@@ -75,7 +76,7 @@ pub fn render_field(app: &mut App, frame: &mut Frame, area: Rect) -> Rect {
     let tooltip_hint = if !app.tooltip.enabled && app.tooltip.current_function.is_some() {
         Some(Line::from(vec![Span::styled(
             " Ctrl+T for tooltip ",
-            Style::default().fg(Color::Magenta),
+            Style::default().fg(theme::input::TOOLTIP_HINT),
         )]))
     } else {
         None
@@ -84,7 +85,7 @@ pub fn render_field(app: &mut App, frame: &mut Frame, area: Rect) -> Rect {
     let ai_hint = if !app.ai.visible {
         Some(Line::from(vec![Span::styled(
             " Press Ctrl+A for AI Assistant ",
-            Style::default().fg(Color::Cyan),
+            Style::default().fg(theme::input::AI_HINT),
         )]))
     } else {
         None
@@ -106,7 +107,7 @@ pub fn render_field(app: &mut App, frame: &mut Frame, area: Rect) -> Rect {
         block = block.title_bottom(
             Line::from(vec![Span::styled(
                 " Tab to edit query ",
-                Style::default().fg(Color::DarkGray),
+                Style::default().fg(theme::input::UNFOCUSED_HINT),
             )])
             .alignment(Alignment::Center),
         );
@@ -143,7 +144,12 @@ pub fn render_field(app: &mut App, frame: &mut Frame, area: Rect) -> Rect {
         } else {
             visible_spans
                 .into_iter()
-                .map(|span| Span::styled(span.content, Style::default().fg(Color::DarkGray)))
+                .map(|span| {
+                    Span::styled(
+                        span.content,
+                        Style::default().fg(theme::input::QUERY_UNFOCUSED),
+                    )
+                })
                 .collect()
         };
 

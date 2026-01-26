@@ -73,20 +73,21 @@ mod property_tests {
 
 #[cfg(test)]
 mod spinner_tests {
-    use super::super::{SPINNER_CHARS, SPINNER_COLORS, get_spinner};
+    use super::super::{SPINNER_CHARS, get_spinner};
+    use crate::theme;
 
     #[test]
     fn test_spinner_first_frame() {
         let (char, color) = get_spinner(0);
         assert_eq!(char, SPINNER_CHARS[0]);
-        assert_eq!(color, SPINNER_COLORS[0]);
+        assert_eq!(color, theme::results::SPINNER_COLORS[0]);
     }
 
     #[test]
     fn test_spinner_second_frame() {
         let (char, color) = get_spinner(8);
         assert_eq!(char, SPINNER_CHARS[1]);
-        assert_eq!(color, SPINNER_COLORS[1]);
+        assert_eq!(color, theme::results::SPINNER_COLORS[1]);
     }
 
     #[test]
@@ -111,7 +112,7 @@ mod spinner_tests {
             let (_, color) = get_spinner(i * 8);
             assert_eq!(
                 color,
-                SPINNER_COLORS[i as usize],
+                theme::results::SPINNER_COLORS[i as usize],
                 "Frame {} should have color at index {}",
                 i * 8,
                 i
@@ -155,7 +156,7 @@ mod spinner_tests {
         // At frame 64: char index = 8, color index = 0 (wrapped)
         let (char, color) = get_spinner(64);
         assert_eq!(char, SPINNER_CHARS[8]);
-        assert_eq!(color, SPINNER_COLORS[0]);
+        assert_eq!(color, theme::results::SPINNER_COLORS[0]);
     }
 
     #[test]
@@ -164,7 +165,7 @@ mod spinner_tests {
         let (char, color) = get_spinner(u64::MAX);
         // Should still produce valid char and color
         assert!(SPINNER_CHARS.contains(&char));
-        assert!(SPINNER_COLORS.contains(&color));
+        assert!(theme::results::SPINNER_COLORS.contains(&color));
     }
 
     #[test]

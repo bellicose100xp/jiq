@@ -6,13 +6,14 @@
 use ratatui::{
     Frame,
     layout::Rect,
-    style::{Color, Modifier, Style},
+    style::{Modifier, Style},
     text::{Line, Span},
     widgets::{Block, BorderType, Borders, Paragraph, Wrap},
 };
 
 use super::ai_state::AiState;
 use crate::scroll::Scrollable;
+use crate::theme;
 use crate::widgets::{popup, scrollbar};
 
 // Use modules from render submodule instead of loading them directly
@@ -163,9 +164,9 @@ fn render_suggestions_as_widgets(
 
             if has_selection_number {
                 let style = if is_selected {
-                    Style::default().fg(Color::Black)
+                    Style::default().fg(theme::ai::SUGGESTION_TEXT_SELECTED)
                 } else {
-                    Style::default().fg(Color::DarkGray)
+                    Style::default().fg(theme::ai::SUGGESTION_TEXT_NORMAL)
                 };
                 spans.push(Span::styled(format!("{}. ", i + 1), style));
             }
@@ -174,7 +175,7 @@ fn render_suggestions_as_widgets(
             spans.push(Span::styled(type_label.to_string(), type_style));
             spans.push(Span::styled(" ", Style::default()));
 
-            let query_style = Style::default().fg(Color::Cyan);
+            let query_style = Style::default().fg(theme::ai::QUERY_TEXT);
             spans.push(Span::styled(first_query_line.clone(), query_style));
 
             lines.push(Line::from(spans));
@@ -183,7 +184,7 @@ fn render_suggestions_as_widgets(
         // Wrapped query lines
         for query_line in query_lines.iter().skip(1) {
             let indent = " ".repeat(prefix_len);
-            let style = Style::default().fg(Color::Cyan);
+            let style = Style::default().fg(theme::ai::QUERY_TEXT);
             lines.push(Line::from(Span::styled(
                 format!("{}{}", indent, query_line),
                 style,
@@ -195,9 +196,9 @@ fn render_suggestions_as_widgets(
             let desc_max_width = max_width.saturating_sub(3) as usize;
             for desc_line in wrap_text(&suggestion.description, desc_max_width) {
                 let style = if is_selected {
-                    Style::default().fg(Color::Gray)
+                    Style::default().fg(theme::ai::SUGGESTION_DESC_MUTED)
                 } else {
-                    Style::default().fg(Color::DarkGray)
+                    Style::default().fg(theme::ai::SUGGESTION_DESC_NORMAL)
                 };
                 lines.push(Line::from(Span::styled(format!("   {}", desc_line), style)));
             }
@@ -212,9 +213,9 @@ fn render_suggestions_as_widgets(
         // Selected: strong highlight (DarkGray background)
         // Hovered: subtle highlight (Indexed(236) - slightly lighter than black)
         let style = if is_selected {
-            Style::default().bg(Color::DarkGray)
+            Style::default().bg(theme::ai::SUGGESTION_SELECTED_BG)
         } else if is_hovered {
-            Style::default().bg(Color::Indexed(236))
+            Style::default().bg(theme::ai::SUGGESTION_HOVERED_BG)
         } else {
             Style::default()
         };
@@ -281,12 +282,7 @@ pub fn render_popup(ai_state: &mut AiState, frame: &mut Frame, input_area: Rect)
 
     let title = Line::from(vec![
         Span::raw(" "),
-        Span::styled(
-            &ai_state.provider_name,
-            Style::default()
-                .fg(Color::Cyan)
-                .add_modifier(Modifier::BOLD),
-        ),
+        Span::styled(&ai_state.provider_name, theme::ai::TITLE),
         Span::raw(" "),
     ]);
 
@@ -299,7 +295,7 @@ pub fn render_popup(ai_state: &mut AiState, frame: &mut Frame, input_area: Rect)
         let total = ai_state.suggestions.len();
         Line::from(Span::styled(
             format!(" ({}/{}) ", current, total),
-            Style::default().fg(Color::Yellow),
+            Style::default().fg(theme::ai::COUNTER),
         ))
     } else {
         Line::default()
@@ -331,19 +327,19 @@ pub fn render_popup(ai_state: &mut AiState, frame: &mut Frame, input_area: Rect)
 
     let model_name_title = Line::from(vec![
         Span::raw(" "),
-        Span::styled(model_display, Style::default().fg(Color::Blue)),
+        Span::styled(model_display, Style::default().fg(theme::ai::MODEL_DISPLAY)),
         Span::raw(" "),
     ]);
 
     let hints = if !ai_state.suggestions.is_empty() {
         Line::from(vec![Span::styled(
             " Alt+1-5 or Alt+↑↓+Enter to apply | Ctrl+A to close ",
-            Style::default().fg(Color::DarkGray),
+            Style::default().fg(theme::ai::HINT),
         )])
     } else {
         Line::from(vec![Span::styled(
             " Ctrl+A to close ",
-            Style::default().fg(Color::DarkGray),
+            Style::default().fg(theme::ai::HINT),
         )])
     };
 
@@ -354,8 +350,8 @@ pub fn render_popup(ai_state: &mut AiState, frame: &mut Frame, input_area: Rect)
         .title_top(counter.alignment(ratatui::layout::Alignment::Center))
         .title_top(model_name_title.alignment(ratatui::layout::Alignment::Right))
         .title_bottom(hints.alignment(ratatui::layout::Alignment::Center))
-        .border_style(Style::default().fg(Color::Cyan))
-        .style(Style::default().bg(Color::Black));
+        .border_style(Style::default().fg(theme::ai::BORDER))
+        .style(Style::default().bg(theme::ai::BACKGROUND));
 
     // Check if we have suggestions - use widget-based rendering for better backgrounds
     if has_suggestions {
@@ -387,7 +383,7 @@ pub fn render_popup(ai_state: &mut AiState, frame: &mut Frame, input_area: Rect)
             total_content_height,
             viewport,
             clamped_offset,
-            Color::Cyan,
+            theme::ai::SCROLLBAR,
         );
     } else {
         // Use traditional content-based rendering for non-suggestion content

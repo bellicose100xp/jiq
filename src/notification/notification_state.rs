@@ -1,6 +1,8 @@
 use ratatui::style::Color;
 use std::time::{Duration, Instant};
 
+use crate::theme;
+
 /// Notification type - determines style and duration
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum NotificationType {
@@ -25,19 +27,19 @@ impl NotificationType {
     fn style(self) -> NotificationStyle {
         match self {
             NotificationType::Info => NotificationStyle {
-                fg: Color::White,
-                bg: Color::DarkGray,
-                border: Color::Gray,
+                fg: theme::notification::INFO.fg,
+                bg: theme::notification::INFO.bg,
+                border: theme::notification::INFO.border,
             },
             NotificationType::Warning => NotificationStyle {
-                fg: Color::Black,
-                bg: Color::Yellow,
-                border: Color::Yellow,
+                fg: theme::notification::WARNING.fg,
+                bg: theme::notification::WARNING.bg,
+                border: theme::notification::WARNING.border,
             },
             NotificationType::Error => NotificationStyle {
-                fg: Color::White,
-                bg: Color::Red,
-                border: Color::LightRed,
+                fg: theme::notification::ERROR.fg,
+                bg: theme::notification::ERROR.bg,
+                border: theme::notification::ERROR.border,
             },
         }
     }

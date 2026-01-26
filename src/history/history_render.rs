@@ -1,7 +1,7 @@
 use ratatui::{
     Frame,
     layout::{Constraint, Layout, Rect},
-    style::{Color, Modifier, Style},
+    style::Style,
     text::{Line, Span},
     widgets::{Block, BorderType, Borders, List, ListItem},
 };
@@ -9,6 +9,7 @@ use ratatui::{
 use crate::app::App;
 use crate::history::MAX_VISIBLE_HISTORY;
 use crate::scroll::Scrollable;
+use crate::theme;
 use crate::widgets::{popup, scrollbar};
 
 pub const HISTORY_SEARCH_HEIGHT: u16 = 3;
@@ -53,7 +54,7 @@ pub fn render_popup(app: &mut App, frame: &mut Frame, input_area: Rect) -> Optio
     let items: Vec<ListItem> = if app.history.filtered_count() == 0 {
         vec![ListItem::new(Line::from(Span::styled(
             "   No matches",
-            Style::default().fg(Color::DarkGray),
+            Style::default().fg(theme::history::NO_MATCHES),
         )))]
     } else {
         app.history
@@ -70,14 +71,16 @@ pub fn render_popup(app: &mut App, frame: &mut Frame, input_area: Rect) -> Optio
                     Line::from(vec![Span::styled(
                         format!(" ► {} ", display_text),
                         Style::default()
-                            .fg(Color::Black)
-                            .bg(Color::Cyan)
-                            .add_modifier(Modifier::BOLD),
+                            .fg(theme::history::ITEM_SELECTED_FG)
+                            .bg(theme::history::ITEM_SELECTED_BG)
+                            .add_modifier(theme::history::ITEM_SELECTED_MODIFIER),
                     )])
                 } else {
                     Line::from(vec![Span::styled(
                         format!("   {} ", display_text),
-                        Style::default().fg(Color::White).bg(Color::Black),
+                        Style::default()
+                            .fg(theme::history::ITEM_NORMAL_FG)
+                            .bg(theme::history::ITEM_NORMAL_BG),
                     )])
                 };
 
@@ -90,8 +93,8 @@ pub fn render_popup(app: &mut App, frame: &mut Frame, input_area: Rect) -> Optio
         .borders(Borders::ALL)
         .border_type(BorderType::Rounded)
         .title(title)
-        .border_style(Style::default().fg(Color::Cyan))
-        .style(Style::default().bg(Color::Black));
+        .border_style(Style::default().fg(theme::history::BORDER))
+        .style(Style::default().bg(theme::history::BACKGROUND));
 
     let list = List::new(items).block(block);
     frame.render_widget(list, list_area);
@@ -114,7 +117,7 @@ pub fn render_popup(app: &mut App, frame: &mut Frame, input_area: Rect) -> Optio
         app.history.filtered_count(),
         viewport,
         inverted_scroll,
-        Color::Cyan,
+        theme::history::SCROLLBAR,
     );
 
     let search_textarea = app.history.search_textarea_mut();
@@ -123,10 +126,14 @@ pub fn render_popup(app: &mut App, frame: &mut Frame, input_area: Rect) -> Optio
             .borders(Borders::ALL)
             .border_type(BorderType::Rounded)
             .title(" Search ")
-            .border_style(Style::default().fg(Color::Cyan))
-            .style(Style::default().bg(Color::Black)),
+            .border_style(Style::default().fg(theme::history::BORDER))
+            .style(Style::default().bg(theme::history::BACKGROUND)),
     );
-    search_textarea.set_style(Style::default().fg(Color::White).bg(Color::Black));
+    search_textarea.set_style(
+        Style::default()
+            .fg(theme::history::SEARCH_TEXT)
+            .bg(theme::history::SEARCH_BG),
+    );
     frame.render_widget(&*search_textarea, search_area);
 
     Some(popup_area)
