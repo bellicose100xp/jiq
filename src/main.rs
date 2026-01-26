@@ -33,7 +33,7 @@ mod stats;
 mod syntax_highlight;
 #[cfg(test)]
 mod test_utils;
-mod theme;
+pub mod theme;
 mod tooltip;
 mod widgets;
 
