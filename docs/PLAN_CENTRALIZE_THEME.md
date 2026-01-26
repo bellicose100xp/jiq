@@ -504,6 +504,34 @@ pub mod syntax {
 2. Ensure no `Color::` imports remain in render files (only `theme::*`)
 3. Update any tests that assert on specific colors
 
+### Phase 5: Update Documentation
+1. Update `CLAUDE.md` to document theme.rs usage guidelines
+2. Update `CONTRIBUTING.md` (if exists) with theme contribution rules
+
+Add the following guidelines to documentation:
+
+```markdown
+## Theme & Styling
+
+All colors and styles are centralized in `src/theme.rs`. When adding or modifying UI components:
+
+- **DO** add new colors to the appropriate module in `theme.rs`
+- **DO** use `theme::module::CONSTANT` in render files
+- **DON'T** hardcode `Color::*` values directly in render files
+- **DON'T** import `ratatui::style::Color` in render files (import from theme instead)
+
+Example:
+```rust
+// Good
+use crate::theme;
+let style = Style::default().fg(theme::input::MODE_INSERT);
+
+// Bad
+use ratatui::style::Color;
+let style = Style::default().fg(Color::Cyan);
+```
+```
+
 ---
 
 ## File Changes Summary
@@ -527,6 +555,8 @@ pub mod syntax {
 | `src/tooltip/tooltip_render.rs` | **EDIT** - Use `theme::tooltip::*` |
 | `src/syntax_highlight.rs` | **EDIT** - Use `theme::syntax::*` |
 | `src/widgets/scrollbar.rs` | **EDIT** - Use `theme::scrollbar::*` |
+| `CLAUDE.md` | **EDIT** - Add theme.rs usage guidelines |
+| `CONTRIBUTING.md` | **EDIT** - Add theme contribution rules (if file exists) |
 
 ---
 
