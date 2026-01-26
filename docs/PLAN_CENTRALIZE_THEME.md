@@ -327,21 +327,30 @@ pub mod ai {
         .fg(Color::Cyan)
         .add_modifier(Modifier::BOLD);
 
-    // Model info
-    pub const MODEL_NAME: Color = Color::Blue;
+    // Model info (underlined for clickable appearance)
+    pub const MODEL_NAME: Style = Style::new()
+        .fg(Color::Blue)
+        .add_modifier(Modifier::UNDERLINED);
 
     // Loading state
     pub const LOADING_ICON: Color = Color::Yellow;
-    pub const LOADING_TEXT: Color = Color::Yellow;  // + BOLD
+    pub const LOADING_TEXT: Style = Style::new()
+        .fg(Color::Yellow)
+        .add_modifier(Modifier::BOLD);
     pub const TOKEN_COUNT: Color = Color::Gray;
 
     // Thinking state
     pub const THINKING_ICON: Color = Color::Yellow;
-    pub const THINKING_TEXT: Color = Color::Yellow;  // + BOLD
+    pub const THINKING_TEXT: Style = Style::new()
+        .fg(Color::Yellow)
+        .add_modifier(Modifier::BOLD)
+        .add_modifier(Modifier::ITALIC);
 
     // Error state
     pub const ERROR_ICON: Color = Color::Red;
-    pub const ERROR_TITLE: Color = Color::Red;  // + BOLD
+    pub const ERROR_TITLE: Style = Style::new()
+        .fg(Color::Red)
+        .add_modifier(Modifier::BOLD);
     pub const ERROR_MESSAGE: Color = Color::Red;
     pub const RETRY_HINT: Color = Color::DarkGray;
 
@@ -469,9 +478,95 @@ pub mod syntax {
     pub const VARIABLE: Color = Color::Red;
     pub const FIELD: Color = Color::Cyan;
 
-    // Bracket matching (overlay.rs)
-    pub const BRACKET_MATCH: Color = Color::Yellow;
+    /// Bracket pair matching style (color + bold + underlined)
+    /// Applied to matching brackets when cursor is on a bracket
+    pub mod bracket_match {
+        use super::*;
+
+        pub const COLOR: Color = Color::Yellow;
+        pub const STYLE: Style = Style::new()
+            .fg(Color::Yellow)
+            .add_modifier(Modifier::BOLD)
+            .add_modifier(Modifier::UNDERLINED);
+    }
 }
+```
+
+---
+
+## Modifier Usage Reference
+
+This section documents all `Modifier::` usages in the codebase. Modifiers are style attributes that affect text rendering beyond just color (bold, italic, underlined, etc.).
+
+### Modifier by Type
+
+| Modifier | Usage | Components |
+|----------|-------|------------|
+| `BOLD` | Emphasis, headers, selected items | help (keys, headers), history (selected), snippets (selected), autocomplete (selected), ai (title, loading, thinking, error), tooltip (title) |
+| `REVERSED` | Cursor display in text areas | input, search, history, snippets (shared via `palette::CURSOR`) |
+| `DIM` | Stale/outdated content | results (stale results indicator) |
+| `UNDERLINED` | Links, special highlights | syntax (bracket match), ai (model name link) |
+| `ITALIC` | Thinking/processing states | ai (thinking state text) |
+
+### Modifier by Component
+
+**Input Field** (`input_render.rs`, `input_state.rs`)
+- `REVERSED` - Cursor style
+
+**Results Pane** (`results_render.rs`)
+- `DIM` - Stale results indicator
+
+**Search Bar** (`search_render.rs`, `search_state.rs`)
+- `REVERSED` - Cursor style
+
+**Help Popup** (`help_popup_render.rs`)
+- `BOLD` - Section headers, key bindings
+
+**History Popup** (`history_render.rs`, `history_state.rs`)
+- `BOLD` - Selected item
+- `REVERSED` - Search cursor
+
+**Snippets Popup** (`snippet_render.rs`, `snippet_state.rs`)
+- `BOLD` - Selected item
+- `REVERSED` - Field cursor
+
+**Autocomplete** (`autocomplete_render.rs`)
+- `BOLD` - Selected item
+
+**AI Window** (`ai_render.rs`, `ai/render/content.rs`)
+- `BOLD` - Title, loading text, thinking text, error title
+- `UNDERLINED` - Model name (clickable appearance)
+- `ITALIC` - Thinking state text
+
+**Tooltip** (`tooltip_render.rs`)
+- `BOLD` - Title
+
+**Syntax Highlighting** (`syntax_highlight/overlay.rs`)
+- `BOLD` + `UNDERLINED` - Bracket pair matching (combined)
+
+### Theme Module Integration
+
+Modifiers are included in `Style` constants where they're always used together:
+
+```rust
+// Examples from theme.rs
+
+// In palette module - shared cursor style
+pub const CURSOR: Style = Style::new().add_modifier(Modifier::REVERSED);
+
+// In help module - always bold keys
+pub const KEY: Style = Style::new()
+    .fg(Color::Yellow)
+    .add_modifier(Modifier::BOLD);
+
+// In results module - standalone modifier
+pub const STALE_MODIFIER: Modifier = Modifier::DIM;
+
+// In syntax::bracket_match - combined modifiers
+pub const STYLE: Style = Style::new()
+    .fg(Color::Yellow)
+    .add_modifier(Modifier::BOLD)
+    .add_modifier(Modifier::UNDERLINED);
 ```
 
 ---
@@ -565,7 +660,7 @@ let style = Style::default().fg(Color::Cyan);
 | `src/notification/notification_state.rs` | **EDIT** - Use `theme::notification::*` |
 | `src/tooltip/tooltip_render.rs` | **EDIT** - Use `theme::tooltip::*` |
 | `src/syntax_highlight.rs` | **EDIT** - Use `theme::syntax::*` |
-| `src/syntax_highlight/overlay.rs` | **EDIT** - Use `theme::syntax::BRACKET_MATCH` |
+| `src/syntax_highlight/overlay.rs` | **EDIT** - Use `theme::syntax::bracket_match::STYLE` |
 | `src/widgets/scrollbar.rs` | **EDIT** - Use `theme::scrollbar::*` |
 | `CLAUDE.md` | **EDIT** - Add theme.rs usage guidelines |
 | `CONTRIBUTING.md` | **EDIT** - Add theme contribution rules (if file exists) |
