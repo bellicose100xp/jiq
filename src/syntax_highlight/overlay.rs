@@ -5,8 +5,10 @@
 //! - Inserting a cursor indicator into styled spans
 //! - Highlighting matching bracket pairs with underline
 
-use ratatui::style::{Color, Modifier};
+use ratatui::style::Modifier;
 use ratatui::text::Span;
+
+use crate::theme;
 
 /// Extracts the visible portion of spans for a scrolled viewport.
 ///
@@ -215,7 +217,10 @@ fn apply_enhanced_modifiers_at_positions(
             }
 
             let char_at_pos = span_chars[pos_in_span].to_string();
-            let enhanced_style = span.style.fg(Color::Yellow).add_modifier(modifiers);
+            let enhanced_style = span
+                .style
+                .fg(theme::syntax::bracket_match::COLOR)
+                .add_modifier(modifiers);
             result.push(Span::styled(char_at_pos, enhanced_style));
 
             last_end = pos_in_span + 1;
