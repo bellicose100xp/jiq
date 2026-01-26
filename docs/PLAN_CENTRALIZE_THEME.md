@@ -218,6 +218,8 @@ pub mod help {
 
     // Border and title
     pub const BORDER: Color = Color::Cyan;
+    pub const BACKGROUND: Color = Color::Black;
+    pub const SCROLLBAR: Color = Color::Cyan;
     pub const TITLE: Style = Style::new()
         .fg(Color::Cyan)
         .add_modifier(Modifier::BOLD);
@@ -228,6 +230,7 @@ pub mod help {
         .add_modifier(Modifier::BOLD);
     pub const TAB_INACTIVE: Style = Style::new()
         .fg(Color::DarkGray);
+    pub const TAB_HOVER_FG: Color = Color::White;
     pub const TAB_HOVER_BG: Color = Color::Indexed(236);
 
     // Content
@@ -274,6 +277,7 @@ pub mod snippets {
     // Border (distinct green color)
     pub const BORDER: Color = Color::LightGreen;
     pub const SCROLLBAR: Color = Color::LightGreen;
+    pub const BACKGROUND: Color = Color::Black;
 
     // List items
     pub const ITEM_NORMAL_FG: Color = Color::White;
@@ -289,6 +293,23 @@ pub mod snippets {
     pub const DESCRIPTION: Color = Color::DarkGray;
     pub const QUERY_PREVIEW: Color = Color::Yellow;
     pub const CATEGORY: Color = Color::Green;
+
+    // Edit/Create mode
+    pub const FIELD_ACTIVE_BORDER: Color = Color::Yellow;
+    pub const FIELD_INACTIVE_BORDER: Color = Color::LightGreen;
+    pub const FIELD_TEXT: Color = Color::White;
+    pub const FIELD_BG: Color = Color::Black;
+
+    // Delete confirmation
+    pub const DELETE_BORDER: Color = Color::Red;
+
+    // Keyboard hints
+    pub const HINT_KEY: Color = Color::Yellow;
+    pub const HINT_TEXT: Color = Color::White;
+
+    // Search
+    pub const SEARCH_TEXT: Color = Color::White;
+    pub const SEARCH_BG: Color = Color::Black;
 }
 
 /// AI assistant styles
@@ -297,20 +318,52 @@ pub mod ai {
 
     // Border and title
     pub const BORDER: Color = Color::Cyan;
+    pub const BACKGROUND: Color = Color::Black;
+    pub const SCROLLBAR: Color = Color::Cyan;
     pub const TITLE: Style = Style::new()
         .fg(Color::Cyan)
         .add_modifier(Modifier::BOLD);
+
+    // Model info
     pub const MODEL_NAME: Color = Color::Blue;
 
-    // Suggestions
+    // Loading state
+    pub const LOADING_ICON: Color = Color::Yellow;
+    pub const LOADING_TEXT: Color = Color::Yellow;  // + BOLD
+    pub const TOKEN_COUNT: Color = Color::Gray;
+
+    // Thinking state
+    pub const THINKING_ICON: Color = Color::Yellow;
+    pub const THINKING_TEXT: Color = Color::Yellow;  // + BOLD
+
+    // Error state
+    pub const ERROR_ICON: Color = Color::Red;
+    pub const ERROR_TITLE: Color = Color::Red;  // + BOLD
+    pub const ERROR_MESSAGE: Color = Color::Red;
+    pub const RETRY_HINT: Color = Color::DarkGray;
+
+    // Content text
+    pub const QUERY_TEXT: Color = Color::Cyan;
+    pub const STATUS_TEXT: Color = Color::Cyan;
+    pub const RESULT_TEXT: Color = Color::White;
+
+    // Suggestion list
     pub const SUGGESTION_SELECTED_BG: Color = Color::DarkGray;
     pub const SUGGESTION_HOVERED_BG: Color = Color::Indexed(236);
+    pub const SUGGESTION_TEXT_SELECTED: Color = Color::Black;
+    pub const SUGGESTION_TEXT_NORMAL: Color = Color::DarkGray;
+    pub const SUGGESTION_NAME: Color = Color::Cyan;
+    pub const SUGGESTION_DESC_NORMAL: Color = Color::DarkGray;
+    pub const SUGGESTION_DESC_MUTED: Color = Color::Gray;
+
+    // Suggestion type colors
     pub const SUGGESTION_FIX: Color = Color::Red;
     pub const SUGGESTION_OPTIMIZE: Color = Color::Yellow;
     pub const SUGGESTION_NEXT: Color = Color::Green;
 
     // Hints
     pub const HINT: Color = Color::DarkGray;
+    pub const KEY_HINT: Color = Color::Yellow;
 }
 
 /// Autocomplete dropdown styles
@@ -320,6 +373,7 @@ pub mod autocomplete {
     // Border and scrollbar
     pub const BORDER: Color = Color::Cyan;
     pub const SCROLLBAR: Color = Color::Cyan;
+    pub const BACKGROUND: Color = Color::Black;
 
     // List items
     pub const ITEM_NORMAL_FG: Color = Color::White;
@@ -342,6 +396,7 @@ pub mod tooltip {
 
     // Border and title (distinct magenta)
     pub const BORDER: Color = Color::Magenta;
+    pub const BACKGROUND: Color = Color::Black;
     pub const TITLE: Style = Style::new()
         .fg(Color::Magenta)
         .add_modifier(Modifier::BOLD);
@@ -349,6 +404,7 @@ pub mod tooltip {
     // Content
     pub const DESCRIPTION: Color = Color::White;
     pub const EXAMPLE: Color = Color::Cyan;
+    pub const EXAMPLE_DESC: Color = Color::Gray;
     pub const TIP: Color = Color::Yellow;
     pub const SEPARATOR: Color = Color::DarkGray;
     pub const DISMISS_HINT: Color = Color::DarkGray;
@@ -508,6 +564,6 @@ This is purely a code organization improvement.
 ## Estimated Scope
 
 - **Files to create**: 1 (`theme.rs`)
-- **Files to modify**: ~16 render files
-- **Lines of theme code**: ~300 lines in `theme.rs`
-- **Lines to remove**: ~100 scattered constants/inline colors
+- **Files to modify**: ~16 render files + test files with color assertions
+- **Lines of theme code**: ~400 lines in `theme.rs`
+- **Lines to remove**: ~150 scattered constants/inline colors
