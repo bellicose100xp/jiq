@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.18.0] - 2026-01-26
+
+### Changed
+- **Centralized theme configuration** - All colors and styles now defined in `src/theme.rs`
+  - Single source of truth for all UI colors across the application
+  - Organized into component-specific submodules (input, results, search, help, history, snippets, ai, autocomplete, tooltip, syntax)
+  - Eliminates hardcoded `Color::*` values scattered throughout render files
+  - Easier to maintain consistent styling and make theme-wide changes
+  - Added theme usage guidelines to CLAUDE.md for contributors
+
 ## [3.17.8] - 2026-01-26
 
 ### Changed
