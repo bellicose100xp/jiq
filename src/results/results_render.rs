@@ -665,7 +665,18 @@ fn apply_cursor_highlights(
                     Line::from(
                         line.spans
                             .into_iter()
-                            .map(|span| Span::styled(span.content.into_owned(), span.style.bg(bg)))
+                            .map(|span| {
+                                let existing_bg = span.style.bg;
+                                let is_search_highlight = existing_bg
+                                    == Some(CURRENT_MATCH_HIGHLIGHT_BG)
+                                    || existing_bg == Some(MATCH_HIGHLIGHT_BG);
+
+                                if is_search_highlight {
+                                    Span::styled(span.content.into_owned(), span.style)
+                                } else {
+                                    Span::styled(span.content.into_owned(), span.style.bg(bg))
+                                }
+                            })
                             .collect::<Vec<_>>(),
                     )
                 } else {
