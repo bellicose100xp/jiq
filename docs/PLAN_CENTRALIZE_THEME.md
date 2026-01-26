@@ -109,6 +109,9 @@ pub mod palette {
     pub const WARNING: Color = Color::Yellow;
     pub const ERROR: Color = Color::Red;
     pub const INFO: Color = Color::Blue;
+
+    // Shared cursor style (used by textarea widgets in history, search, snippets, input)
+    pub const CURSOR: Style = Style::new().add_modifier(Modifier::REVERSED);
 }
 
 /// Input field styles
@@ -547,6 +550,7 @@ let style = Style::default().fg(Color::Cyan);
 | `src/input/input_render.rs` | **EDIT** - Use `theme::input::*` |
 | `src/input/input_state.rs` | **EDIT** - Use `theme::input::*` (initial border) |
 | `src/search/search_render.rs` | **EDIT** - Use `theme::search::*` |
+| `src/search/search_state.rs` | **EDIT** - Use shared cursor style |
 | `src/help/help_popup_render.rs` | **EDIT** - Use `theme::help::*` |
 | `src/help/help_line_render.rs` | **EDIT** - Use `theme::help_line::*` |
 | `src/ai/ai_render.rs` | **EDIT** - Use `theme::ai::*` |
@@ -554,7 +558,9 @@ let style = Style::default().fg(Color::Cyan);
 | `src/ai/render/content.rs` | **EDIT** - Use `theme::ai::*` |
 | `src/ai/suggestion/parser.rs` | **EDIT** - Use `theme::ai::*` |
 | `src/history/history_render.rs` | **EDIT** - Use `theme::history::*` |
+| `src/history/history_state.rs` | **EDIT** - Use shared cursor style |
 | `src/snippets/snippet_render.rs` | **EDIT** - Use `theme::snippets::*` |
+| `src/snippets/snippet_state.rs` | **EDIT** - Use shared cursor style |
 | `src/autocomplete/autocomplete_render.rs` | **EDIT** - Use `theme::autocomplete::*` |
 | `src/notification/notification_state.rs` | **EDIT** - Use `theme::notification::*` |
 | `src/tooltip/tooltip_render.rs` | **EDIT** - Use `theme::tooltip::*` |
@@ -600,6 +606,6 @@ This is purely a code organization improvement.
 ## Estimated Scope
 
 - **Files to create**: 1 (`theme.rs`)
-- **Files to modify**: ~19 source files + test files with color assertions + documentation
+- **Files to modify**: ~22 source files + test files with color assertions + documentation
 - **Lines of theme code**: ~400 lines in `theme.rs`
 - **Lines to remove**: ~150 scattered constants/inline colors
