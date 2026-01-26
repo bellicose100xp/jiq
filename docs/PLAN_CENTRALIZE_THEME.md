@@ -18,6 +18,7 @@ Centralize all theme-related code (colors, styles, modifiers) into a single `the
 | Input Field | `input/input_render.rs` | Hardcoded inline |
 | Search Bar | `search/search_render.rs` | Hardcoded inline |
 | Help Popup | `help/help_popup_render.rs` | Hardcoded inline |
+| Help Line | `help/help_line_render.rs` | Hardcoded inline |
 | AI Window | `ai/ai_render.rs` | Hardcoded inline |
 | History | `history/history_render.rs` | Hardcoded inline |
 | Snippets | `snippets/snippet_render.rs` | Hardcoded inline |
@@ -120,9 +121,17 @@ pub mod input {
     pub const MODE_OPERATOR: Color = Color::Green;
     pub const MODE_CHAR_SEARCH: Color = Color::Magenta;
 
-    // Border colors
-    pub const BORDER_FOCUSED: Color = Color::Cyan;
+    // Border colors (focused border uses mode color)
     pub const BORDER_UNFOCUSED: Color = Color::DarkGray;
+
+    // Title hints
+    pub const SYNTAX_ERROR_WARNING: Color = Color::Yellow;
+    pub const TOOLTIP_HINT: Color = Color::Magenta;
+    pub const AI_HINT: Color = Color::Cyan;
+    pub const UNFOCUSED_HINT: Color = Color::DarkGray;
+
+    // Unfocused query text
+    pub const QUERY_UNFOCUSED: Color = Color::DarkGray;
 
     pub const CURSOR: Style = Style::new()
         .add_modifier(Modifier::REVERSED);
@@ -132,35 +141,53 @@ pub mod input {
 pub mod results {
     use super::*;
 
-    // Border
+    // Border colors
     pub const BORDER_FOCUSED: Color = Color::Cyan;
     pub const BORDER_UNFOCUSED: Color = Color::DarkGray;
+    pub const BORDER_WARNING: Color = Color::Yellow;  // Partial results
+    pub const BORDER_ERROR: Color = Color::Red;       // Error state
+    pub const BACKGROUND: Color = Color::Black;
+
+    // Search mode text colors (in title)
+    pub const SEARCH_ACTIVE: Color = Color::LightMagenta;
+    pub const SEARCH_INACTIVE: Color = Color::DarkGray;
+
+    // Query timing indicator colors
+    pub const TIMING_NORMAL: Color = Color::Cyan;     // < 200ms (uses border color)
+    pub const TIMING_SLOW: Color = Color::Yellow;     // 200-1000ms
+    pub const TIMING_VERY_SLOW: Color = Color::Red;   // > 1000ms
+
+    // Query state indicators
+    pub const RESULT_OK: Color = Color::Green;
+    pub const RESULT_WARNING: Color = Color::Yellow;
+    pub const RESULT_ERROR: Color = Color::Red;
+    pub const RESULT_PENDING: Color = Color::Gray;
 
     // Search match highlighting
     pub const MATCH_HIGHLIGHT_BG: Color = Color::Rgb(128, 128, 128);
     pub const MATCH_HIGHLIGHT_FG: Color = Color::White;
-    pub const CURRENT_MATCH_BG: Color = Color::Rgb(200, 150, 50);
+    pub const CURRENT_MATCH_BG: Color = Color::Rgb(255, 165, 0);  // Orange
     pub const CURRENT_MATCH_FG: Color = Color::Black;
 
     // Cursor and selection
     pub const CURSOR_LINE_BG: Color = Color::Rgb(50, 55, 65);
-    pub const HOVERED_LINE_BG: Color = Color::Rgb(40, 44, 52);
-    pub const VISUAL_SELECTION_BG: Color = Color::Rgb(68, 68, 102);
-    pub const CURSOR_INDICATOR_FG: Color = Color::Rgb(97, 175, 239);
+    pub const HOVERED_LINE_BG: Color = Color::Rgb(45, 50, 60);
+    pub const VISUAL_SELECTION_BG: Color = Color::Rgb(70, 80, 100);
+    pub const CURSOR_INDICATOR_FG: Color = Color::Rgb(255, 85, 85);  // Red
 
     // Stale state
     pub const STALE_MODIFIER: Modifier = Modifier::DIM;
 
-    // Spinner animation colors
+    // Spinner animation colors (rainbow)
     pub const SPINNER_COLORS: &[Color] = &[
         Color::Rgb(255, 107, 107), // Red/Coral
         Color::Rgb(255, 159, 67),  // Orange
         Color::Rgb(254, 202, 87),  // Yellow
-        Color::Rgb(46, 213, 115),  // Green
-        Color::Rgb(30, 144, 255),  // Blue
-        Color::Rgb(156, 136, 255), // Purple
-        Color::Rgb(255, 107, 129), // Pink
-        Color::Rgb(116, 185, 255), // Light Blue
+        Color::Rgb(72, 219, 147),  // Green
+        Color::Rgb(69, 170, 242),  // Blue
+        Color::Rgb(120, 111, 213), // Indigo
+        Color::Rgb(214, 128, 255), // Violet
+        Color::Rgb(255, 121, 198), // Pink
     ];
 }
 
@@ -170,9 +197,19 @@ pub mod search {
 
     pub const BORDER_ACTIVE: Color = Color::LightMagenta;
     pub const BORDER_INACTIVE: Color = Color::DarkGray;
+    pub const BACKGROUND: Color = Color::Black;
+
+    // Text colors
+    pub const TEXT_ACTIVE: Color = Color::White;
+    pub const TEXT_INACTIVE: Color = Color::DarkGray;
+
+    // Match count display
     pub const NO_MATCHES: Color = Color::Red;
     pub const MATCH_COUNT: Color = Color::Gray;
     pub const MATCH_COUNT_CONFIRMED: Color = Color::DarkGray;
+
+    // Hints at bottom
+    pub const HINTS: Color = Color::LightMagenta;
 }
 
 /// Help popup styles
@@ -213,6 +250,7 @@ pub mod history {
     // Border and scrollbar
     pub const BORDER: Color = Color::Cyan;
     pub const SCROLLBAR: Color = Color::Cyan;
+    pub const BACKGROUND: Color = Color::Black;
 
     // List items
     pub const ITEM_NORMAL_FG: Color = Color::White;
@@ -220,6 +258,13 @@ pub mod history {
     pub const ITEM_SELECTED_FG: Color = Color::Black;
     pub const ITEM_SELECTED_BG: Color = Color::Cyan;
     pub const ITEM_SELECTED_MODIFIER: Modifier = Modifier::BOLD;
+
+    // Empty state
+    pub const NO_MATCHES: Color = Color::DarkGray;
+
+    // Search textarea
+    pub const SEARCH_TEXT: Color = Color::White;
+    pub const SEARCH_BG: Color = Color::Black;
 }
 
 /// Snippets popup styles
@@ -333,9 +378,16 @@ pub mod notification {
 
     pub const ERROR: NotificationColors = NotificationColors {
         fg: Color::White,
-        bg: Color::Rgb(139, 0, 0),
-        border: Color::Red,
+        bg: Color::Red,
+        border: Color::LightRed,
     };
+}
+
+/// Help line (bottom status bar) styles
+pub mod help_line {
+    use super::*;
+
+    pub const TEXT: Color = Color::DarkGray;
 }
 
 /// Scrollbar styles (for components that share scrollbar appearance)
@@ -381,14 +433,15 @@ pub mod syntax {
 1. **Scrollbar** (`widgets/scrollbar.rs`) → `theme::scrollbar::*`
 2. **Search** (`search/search_render.rs`) → `theme::search::*`
 3. **Notification** (`notification/notification_state.rs`) → `theme::notification::*`
-4. **History** (`history/history_render.rs`) → `theme::history::*`
-5. **Input** (`input/input_render.rs`) → `theme::input::*`
-6. **Autocomplete** (`autocomplete/autocomplete_render.rs`) → `theme::autocomplete::*`
-7. **Tooltip** (`tooltip/tooltip_render.rs`) → `theme::tooltip::*`
-8. **Help Popup** (`help/help_popup_render.rs`) → `theme::help::*`
-9. **Snippets** (`snippets/snippet_render.rs`) → `theme::snippets::*`
-10. **AI** (`ai/ai_render.rs`, `ai/render/*`) → `theme::ai::*`
-11. **Syntax Highlighting** (`syntax_highlight.rs`) → `theme::syntax::*`
+4. **Help Line** (`help/help_line_render.rs`) → `theme::help_line::*`
+5. **History** (`history/history_render.rs`) → `theme::history::*`
+6. **Input** (`input/input_render.rs`) → `theme::input::*`
+7. **Autocomplete** (`autocomplete/autocomplete_render.rs`) → `theme::autocomplete::*`
+8. **Tooltip** (`tooltip/tooltip_render.rs`) → `theme::tooltip::*`
+9. **Help Popup** (`help/help_popup_render.rs`) → `theme::help::*`
+10. **Snippets** (`snippets/snippet_render.rs`) → `theme::snippets::*`
+11. **AI** (`ai/ai_render.rs`, `ai/render/*`) → `theme::ai::*`
+12. **Syntax Highlighting** (`syntax_highlight.rs`) → `theme::syntax::*`
 
 ### Phase 4: Cleanup
 1. Remove all inline color definitions from render files
@@ -407,6 +460,7 @@ pub mod syntax {
 | `src/input/input_render.rs` | **EDIT** - Use `theme::input::*` |
 | `src/search/search_render.rs` | **EDIT** - Use `theme::search::*` |
 | `src/help/help_popup_render.rs` | **EDIT** - Use `theme::help::*` |
+| `src/help/help_line_render.rs` | **EDIT** - Use `theme::help_line::*` |
 | `src/ai/ai_render.rs` | **EDIT** - Use `theme::ai::*` |
 | `src/ai/render/suggestions.rs` | **EDIT** - Use `theme::ai::*` |
 | `src/ai/suggestion/parser.rs` | **EDIT** - Use `theme::ai::*` |
@@ -454,6 +508,6 @@ This is purely a code organization improvement.
 ## Estimated Scope
 
 - **Files to create**: 1 (`theme.rs`)
-- **Files to modify**: ~15 render files
-- **Lines of theme code**: ~250 lines in `theme.rs`
+- **Files to modify**: ~16 render files
+- **Lines of theme code**: ~300 lines in `theme.rs`
 - **Lines to remove**: ~100 scattered constants/inline colors
