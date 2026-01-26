@@ -1,5 +1,40 @@
 # Centralize Theme Configuration Plan
 
+## Implementation Guidelines
+
+1. **Commit after each phase** - Each phase should be committed separately with a descriptive commit message
+2. **100% test coverage** - All new code must have complete test coverage before committing
+3. **Manual TUI testing** - Verify functionality visually after each phase (colors should be identical)
+4. **Update docs for deviations** - Any changes made during implementation that differ from the original plan must be documented
+5. **No regressions** - Colors and styles must look identical before and after each phase
+
+After each phase:
+1. Run `cargo build --release` - must pass
+2. Run `cargo clippy --all-targets --all-features` - zero errors
+3. Run `cargo fmt --all --check` - zero formatting issues
+4. Run `cargo test` - all tests pass
+5. Manual TUI testing - verify colors unchanged visually
+6. Commit with descriptive message
+
+---
+
+## Phase Checklist
+
+- [ ] Phase 1: Create Theme Module
+- [ ] Phase 2: Migrate Results Pane
+- [ ] Phase 3: Migrate Input Field
+- [ ] Phase 4: Migrate Search Bar
+- [ ] Phase 5: Migrate Simple Utilities (scrollbar, help_line, notification)
+- [ ] Phase 6: Migrate Help Popup
+- [ ] Phase 7: Migrate History Popup
+- [ ] Phase 8: Migrate Snippets Popup
+- [ ] Phase 9: Migrate AI Window
+- [ ] Phase 10: Migrate Autocomplete & Tooltip
+- [ ] Phase 11: Migrate Syntax Highlighting
+- [ ] Phase 12: Cleanup & Documentation
+
+---
+
 ## Goal
 
 Centralize all theme-related code (colors, styles, modifiers) into a single `theme.rs` module. This is **not** about creating a multi-theme system—it's about having one place to edit the default theme without touching business logic components.
@@ -574,42 +609,272 @@ pub const STYLE: Style = Style::new()
 ## Migration Strategy
 
 ### Phase 1: Create Theme Module
-1. Create `src/theme.rs` with all color definitions
-2. Add `pub mod theme;` to `lib.rs` or `main.rs`
-3. No changes to render files yet
 
-### Phase 2: Migrate Results Pane (Largest File)
-1. Replace constants in `results_render.rs` with `theme::results::*`
-2. Remove local constant definitions
-3. Test thoroughly
+**Goal:** Create the central theme module with all color/style definitions.
 
-### Phase 3: Migrate Component by Component
+**Files:**
+| File | Action |
+|------|--------|
+| `src/theme.rs` | **CREATE** - Full theme module with all submodules |
+| `src/main.rs` | **EDIT** - Add `pub mod theme;` |
 
-**Order by complexity (simplest first):**
+**Steps:**
+1. Create `src/theme.rs` with all color definitions (see Module Structure above)
+2. Add `pub mod theme;` to `main.rs`
+3. Run `cargo build` to verify compilation
+4. No changes to render files yet - theme module is unused
 
-1. **Scrollbar** (`widgets/scrollbar.rs`) → `theme::scrollbar::*`
-2. **Search** (`search/search_render.rs`) → `theme::search::*`
-3. **Notification** (`notification/notification_state.rs`) → `theme::notification::*`
-4. **Help Line** (`help/help_line_render.rs`) → `theme::help_line::*`
-5. **History** (`history/history_render.rs`) → `theme::history::*`
-6. **Input** (`input/input_render.rs`, `input/input_state.rs`) → `theme::input::*`
-7. **Autocomplete** (`autocomplete/autocomplete_render.rs`) → `theme::autocomplete::*`
-8. **Tooltip** (`tooltip/tooltip_render.rs`) → `theme::tooltip::*`
-9. **Help Popup** (`help/help_popup_render.rs`) → `theme::help::*`
-10. **Snippets** (`snippets/snippet_render.rs`) → `theme::snippets::*`
-11. **AI** (`ai/ai_render.rs`, `ai/render/suggestions.rs`, `ai/render/content.rs`) → `theme::ai::*`
-12. **Syntax Highlighting** (`syntax_highlight.rs`, `syntax_highlight/overlay.rs`) → `theme::syntax::*`
+**Test:** `cargo build --release` passes
 
-### Phase 4: Cleanup
-1. Remove all inline color definitions from render files
-2. Ensure no `Color::` imports remain in render files (only `theme::*`)
-3. Update any tests that assert on specific colors
+---
 
-### Phase 5: Update Documentation
-1. Update `CLAUDE.md` to document theme.rs usage guidelines
-2. Update `CONTRIBUTING.md` (if exists) with theme contribution rules
+### Phase 2: Migrate Results Pane
 
-Add the following guidelines to documentation:
+**Goal:** Migrate the largest/most complex component first to validate the approach.
+
+**Files:**
+| File | Action |
+|------|--------|
+| `src/results/results_render.rs` | **EDIT** - Replace constants with `theme::results::*` |
+
+**Steps:**
+1. Add `use crate::theme;` import
+2. Replace all local `const` color definitions with theme references
+3. Replace inline `Color::*` usages with theme constants
+4. Remove unused `Color` imports
+
+**Test:**
+- Visual: Results pane colors unchanged (borders, highlights, spinner, cursor)
+- Test: All existing tests pass
+
+---
+
+### Phase 3: Migrate Input Field
+
+**Goal:** Migrate input field components.
+
+**Files:**
+| File | Action |
+|------|--------|
+| `src/input/input_render.rs` | **EDIT** - Use `theme::input::*` |
+| `src/input/input_state.rs` | **EDIT** - Use `theme::input::BORDER_UNFOCUSED` |
+
+**Steps:**
+1. Replace mode colors (Insert=Cyan, Normal=Yellow, etc.)
+2. Replace border colors
+3. Replace hint colors (tooltip, AI, syntax error)
+4. Update input_state.rs initial border color
+
+**Test:**
+- Visual: Input field colors unchanged in all modes (Insert, Normal, Operator, CharSearch)
+- Visual: Border color correct when focused/unfocused
+
+---
+
+### Phase 4: Migrate Search Bar
+
+**Goal:** Migrate search bar components.
+
+**Files:**
+| File | Action |
+|------|--------|
+| `src/search/search_render.rs` | **EDIT** - Use `theme::search::*` |
+| `src/search/search_state.rs` | **EDIT** - Use `theme::palette::CURSOR` |
+
+**Steps:**
+1. Replace border colors (active=LightMagenta, inactive=DarkGray)
+2. Replace text colors
+3. Replace match count colors
+4. Replace hint colors
+5. Update cursor style in search_state.rs
+
+**Test:**
+- Visual: Search bar colors correct (active vs confirmed states)
+- Visual: Match count red when no matches
+
+---
+
+### Phase 5: Migrate Simple Utilities
+
+**Goal:** Migrate simple components with few colors.
+
+**Files:**
+| File | Action |
+|------|--------|
+| `src/widgets/scrollbar.rs` | **EDIT** - Use `theme::scrollbar::*` |
+| `src/help/help_line_render.rs` | **EDIT** - Use `theme::help_line::*` |
+| `src/notification/notification_state.rs` | **EDIT** - Use `theme::notification::*` |
+| `src/notification/notification_render.rs` | **EDIT** - Use theme notification colors |
+
+**Steps:**
+1. Scrollbar: Replace default color parameter
+2. Help line: Replace text color
+3. Notification: Replace NotificationType::style() with theme constants
+
+**Test:**
+- Visual: Scrollbar visible and styled
+- Visual: Help line text visible
+- Visual: Notifications display correctly (info, warning, error)
+
+---
+
+### Phase 6: Migrate Help Popup
+
+**Goal:** Migrate the help popup component.
+
+**Files:**
+| File | Action |
+|------|--------|
+| `src/help/help_popup_render.rs` | **EDIT** - Use `theme::help::*` |
+
+**Steps:**
+1. Replace border and title styles
+2. Replace tab bar styles (active, inactive, hover)
+3. Replace section header styles
+4. Replace key and description styles
+5. Replace footer color
+
+**Test:**
+- Visual: Help popup (F1) displays correctly
+- Visual: Tab switching highlights correctly
+- Visual: Keys are yellow, descriptions white
+
+---
+
+### Phase 7: Migrate History Popup
+
+**Goal:** Migrate the history popup component.
+
+**Files:**
+| File | Action |
+|------|--------|
+| `src/history/history_render.rs` | **EDIT** - Use `theme::history::*` |
+| `src/history/history_state.rs` | **EDIT** - Use `theme::palette::CURSOR` |
+
+**Steps:**
+1. Replace border and scrollbar colors
+2. Replace list item colors (normal, selected)
+3. Replace empty state color
+4. Replace search textarea colors
+5. Update cursor style in state
+
+**Test:**
+- Visual: History popup (Ctrl+R) displays correctly
+- Visual: Selection highlighting works
+- Visual: Search filtering works
+
+---
+
+### Phase 8: Migrate Snippets Popup
+
+**Goal:** Migrate the snippets popup component.
+
+**Files:**
+| File | Action |
+|------|--------|
+| `src/snippets/snippet_render.rs` | **EDIT** - Use `theme::snippets::*` |
+| `src/snippets/snippet_state.rs` | **EDIT** - Use `theme::palette::CURSOR` |
+
+**Steps:**
+1. Replace border color (LightGreen - distinct from other popups)
+2. Replace list item colors
+3. Replace content colors (name, description, query preview)
+4. Replace edit mode field colors
+5. Replace delete confirmation border color
+6. Replace keyboard hint colors
+7. Update cursor style in state
+
+**Test:**
+- Visual: Snippets popup (Ctrl+S) displays correctly
+- Visual: Green border distinguishes from history
+- Visual: Edit/create mode fields styled correctly
+
+---
+
+### Phase 9: Migrate AI Window
+
+**Goal:** Migrate the AI assistant window components.
+
+**Files:**
+| File | Action |
+|------|--------|
+| `src/ai/ai_render.rs` | **EDIT** - Use `theme::ai::*` |
+| `src/ai/render/content.rs` | **EDIT** - Use `theme::ai::*` |
+| `src/ai/render/suggestions.rs` | **EDIT** - Use `theme::ai::*` |
+| `src/ai/suggestion/parser.rs` | **EDIT** - Use `theme::ai::SUGGESTION_*` |
+
+**Steps:**
+1. Replace border and title styles
+2. Replace loading/thinking/error state styles
+3. Replace content text colors
+4. Replace suggestion list colors
+5. Replace suggestion type colors (Fix=Red, Optimize=Yellow, Next=Green)
+6. Replace hint colors
+
+**Test:**
+- Visual: AI window (Tab when available) displays correctly
+- Visual: Loading spinner animated
+- Visual: Suggestion types color-coded
+
+---
+
+### Phase 10: Migrate Autocomplete & Tooltip
+
+**Goal:** Migrate autocomplete dropdown and tooltip components.
+
+**Files:**
+| File | Action |
+|------|--------|
+| `src/autocomplete/autocomplete_render.rs` | **EDIT** - Use `theme::autocomplete::*` |
+| `src/tooltip/tooltip_render.rs` | **EDIT** - Use `theme::tooltip::*` |
+
+**Steps:**
+1. Autocomplete: Replace border, list item, and type colors
+2. Tooltip: Replace border (Magenta - distinct), title, content colors
+
+**Test:**
+- Visual: Autocomplete dropdown displays correctly
+- Visual: Completion types color-coded (function=Yellow, field=Cyan, etc.)
+- Visual: Tooltip has magenta border
+
+---
+
+### Phase 11: Migrate Syntax Highlighting
+
+**Goal:** Migrate syntax highlighting and bracket matching.
+
+**Files:**
+| File | Action |
+|------|--------|
+| `src/syntax_highlight.rs` | **EDIT** - Use `theme::syntax::*` |
+| `src/syntax_highlight/overlay.rs` | **EDIT** - Use `theme::syntax::bracket_match::STYLE` |
+
+**Steps:**
+1. Replace token colors (keyword, function, string, number, operator, variable, field)
+2. Replace bracket match style (Yellow + BOLD + UNDERLINED)
+
+**Test:**
+- Visual: Syntax highlighting in query input works
+- Visual: Bracket matching highlights pairs correctly
+
+---
+
+### Phase 12: Cleanup & Documentation
+
+**Goal:** Final cleanup and documentation updates.
+
+**Files:**
+| File | Action |
+|------|--------|
+| All migrated files | **VERIFY** - No remaining `Color::` imports |
+| Test files | **UPDATE** - Fix any color-specific assertions |
+| `CLAUDE.md` | **EDIT** - Add theme.rs usage guidelines |
+| `CONTRIBUTING.md` | **EDIT** - Add theme contribution rules (if exists) |
+
+**Steps:**
+1. Search for any remaining `Color::` imports in render files (should be none)
+2. Update any snapshot tests that assert on ANSI color codes
+3. Add theme guidelines to CLAUDE.md:
 
 ```markdown
 ## Theme & Styling
@@ -633,37 +898,92 @@ let style = Style::default().fg(Color::Cyan);
 ```
 ```
 
+4. Update CONTRIBUTING.md with similar guidelines (if file exists)
+
+**Test:**
+- `cargo build --release` passes
+- `cargo clippy --all-targets --all-features` - zero errors
+- `cargo fmt --all --check` - zero formatting issues
+- `cargo test` - all tests pass
+- Full manual TUI testing of all components
+
 ---
 
-## File Changes Summary
+## File Changes Summary (By Phase)
 
+### Phase 1
 | File | Action |
 |------|--------|
 | `src/theme.rs` | **CREATE** - Central theme module |
-| `src/lib.rs` or `src/main.rs` | **EDIT** - Add `pub mod theme;` |
+| `src/main.rs` | **EDIT** - Add `pub mod theme;` |
+
+### Phase 2
+| File | Action |
+|------|--------|
 | `src/results/results_render.rs` | **EDIT** - Use `theme::results::*` |
+
+### Phase 3
+| File | Action |
+|------|--------|
 | `src/input/input_render.rs` | **EDIT** - Use `theme::input::*` |
-| `src/input/input_state.rs` | **EDIT** - Use `theme::input::*` (initial border) |
+| `src/input/input_state.rs` | **EDIT** - Use `theme::input::BORDER_UNFOCUSED` |
+
+### Phase 4
+| File | Action |
+|------|--------|
 | `src/search/search_render.rs` | **EDIT** - Use `theme::search::*` |
-| `src/search/search_state.rs` | **EDIT** - Use shared cursor style |
-| `src/help/help_popup_render.rs` | **EDIT** - Use `theme::help::*` |
+| `src/search/search_state.rs` | **EDIT** - Use `theme::palette::CURSOR` |
+
+### Phase 5
+| File | Action |
+|------|--------|
+| `src/widgets/scrollbar.rs` | **EDIT** - Use `theme::scrollbar::*` |
 | `src/help/help_line_render.rs` | **EDIT** - Use `theme::help_line::*` |
-| `src/ai/ai_render.rs` | **EDIT** - Use `theme::ai::*` |
-| `src/ai/render/suggestions.rs` | **EDIT** - Use `theme::ai::*` |
-| `src/ai/render/content.rs` | **EDIT** - Use `theme::ai::*` |
-| `src/ai/suggestion/parser.rs` | **EDIT** - Use `theme::ai::*` |
-| `src/history/history_render.rs` | **EDIT** - Use `theme::history::*` |
-| `src/history/history_state.rs` | **EDIT** - Use shared cursor style |
-| `src/snippets/snippet_render.rs` | **EDIT** - Use `theme::snippets::*` |
-| `src/snippets/snippet_state.rs` | **EDIT** - Use shared cursor style |
-| `src/autocomplete/autocomplete_render.rs` | **EDIT** - Use `theme::autocomplete::*` |
 | `src/notification/notification_state.rs` | **EDIT** - Use `theme::notification::*` |
+| `src/notification/notification_render.rs` | **EDIT** - Use theme notification colors |
+
+### Phase 6
+| File | Action |
+|------|--------|
+| `src/help/help_popup_render.rs` | **EDIT** - Use `theme::help::*` |
+
+### Phase 7
+| File | Action |
+|------|--------|
+| `src/history/history_render.rs` | **EDIT** - Use `theme::history::*` |
+| `src/history/history_state.rs` | **EDIT** - Use `theme::palette::CURSOR` |
+
+### Phase 8
+| File | Action |
+|------|--------|
+| `src/snippets/snippet_render.rs` | **EDIT** - Use `theme::snippets::*` |
+| `src/snippets/snippet_state.rs` | **EDIT** - Use `theme::palette::CURSOR` |
+
+### Phase 9
+| File | Action |
+|------|--------|
+| `src/ai/ai_render.rs` | **EDIT** - Use `theme::ai::*` |
+| `src/ai/render/content.rs` | **EDIT** - Use `theme::ai::*` |
+| `src/ai/render/suggestions.rs` | **EDIT** - Use `theme::ai::*` |
+| `src/ai/suggestion/parser.rs` | **EDIT** - Use `theme::ai::SUGGESTION_*` |
+
+### Phase 10
+| File | Action |
+|------|--------|
+| `src/autocomplete/autocomplete_render.rs` | **EDIT** - Use `theme::autocomplete::*` |
 | `src/tooltip/tooltip_render.rs` | **EDIT** - Use `theme::tooltip::*` |
+
+### Phase 11
+| File | Action |
+|------|--------|
 | `src/syntax_highlight.rs` | **EDIT** - Use `theme::syntax::*` |
 | `src/syntax_highlight/overlay.rs` | **EDIT** - Use `theme::syntax::bracket_match::STYLE` |
-| `src/widgets/scrollbar.rs` | **EDIT** - Use `theme::scrollbar::*` |
+
+### Phase 12
+| File | Action |
+|------|--------|
 | `CLAUDE.md` | **EDIT** - Add theme.rs usage guidelines |
-| `CONTRIBUTING.md` | **EDIT** - Add theme contribution rules (if file exists) |
+| `CONTRIBUTING.md` | **EDIT** - Add theme contribution rules (if exists) |
 
 ---
 
@@ -700,7 +1020,8 @@ This is purely a code organization improvement.
 
 ## Estimated Scope
 
+- **Phases**: 12 (each independently testable and committable)
 - **Files to create**: 1 (`theme.rs`)
-- **Files to modify**: ~22 source files + test files with color assertions + documentation
-- **Lines of theme code**: ~400 lines in `theme.rs`
+- **Files to modify**: ~24 source files + documentation
+- **Lines of theme code**: ~500 lines in `theme.rs`
 - **Lines to remove**: ~150 scattered constants/inline colors
