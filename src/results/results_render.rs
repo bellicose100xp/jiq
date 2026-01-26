@@ -508,7 +508,7 @@ fn apply_dim_to_text(text: Text<'_>) -> Text<'static> {
                         .into_iter()
                         .map(|span| {
                             Span::styled(
-                                span.content.to_string(),
+                                span.content.into_owned(),
                                 span.style.add_modifier(Modifier::DIM),
                             )
                         })
@@ -665,14 +665,14 @@ fn apply_cursor_highlights(
                     Line::from(
                         line.spans
                             .into_iter()
-                            .map(|span| Span::styled(span.content.to_string(), span.style.bg(bg)))
+                            .map(|span| Span::styled(span.content.into_owned(), span.style.bg(bg)))
                             .collect::<Vec<_>>(),
                     )
                 } else {
                     Line::from(
                         line.spans
                             .into_iter()
-                            .map(|span| Span::styled(span.content.to_string(), span.style))
+                            .map(|span| Span::styled(span.content.into_owned(), span.style))
                             .collect::<Vec<_>>(),
                     )
                 }

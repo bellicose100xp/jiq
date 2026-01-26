@@ -16,8 +16,8 @@ This document outlines performance optimization opportunities identified through
 - [x] Improvement #1: Cache Line Widths
 - [x] Improvement #2: Single-Pass Line Metrics (implemented with #1)
 - [x] Improvement #3: Eliminate Duplicate JSON Parsing
-- [ ] Improvement #4: Use `into_owned()` in `apply_dim_to_text`
-- [ ] Improvement #5: Use `into_owned()` in `apply_cursor_highlights`
+- [x] Improvement #4: Use `into_owned()` in `apply_dim_to_text`
+- [x] Improvement #5: Use `into_owned()` in `apply_cursor_highlights`
 
 ---
 
@@ -450,8 +450,8 @@ fn apply_cursor_highlights(
 | 1 | Cache Line Widths | Eliminates O(n) per frame | **HIGH** | ✅ Done |
 | 2 | Single-Pass Line Metrics | ~2x faster metrics | Medium | ✅ Done |
 | 3 | Eliminate Duplicate JSON Parsing | ~50% less parse time | Medium | ✅ Done |
-| 4 | `into_owned()` in `apply_dim_to_text` | ~50-100μs/frame savings | Medium | Pending |
-| 5 | `into_owned()` in `apply_cursor_highlights` | ~50-100μs/frame savings | Medium | Pending |
+| 4 | `into_owned()` in `apply_dim_to_text` | ~50-100μs/frame savings | Medium | ✅ Done |
+| 5 | `into_owned()` in `apply_cursor_highlights` | ~50-100μs/frame savings | Medium | ✅ Done |
 
 ### Implementation Order
 
@@ -459,7 +459,5 @@ fn apply_cursor_highlights(
 1. **Improvement #1** - Highest impact, done first
 2. **Improvement #2** - Simple refactor, quick win
 3. **Improvement #3** - Moderate refactor, good improvement
-
-**Pending:**
 4. **Improvement #4** - Single line change, eliminates cloning during error/empty states
 5. **Improvement #5** - Single line change, eliminates cloning when results pane focused
