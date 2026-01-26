@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.17.6] - 2026-01-25
+
+### Performance
+- **Optimized search highlights and reduced ANSI parsing memory** - Improved memory efficiency during search result rendering
+  - Reduced allocations when highlighting search matches
+  - More efficient ANSI code parsing for large result sets
+
 ## [3.17.5] - 2026-01-25
 
 ### Fixed
