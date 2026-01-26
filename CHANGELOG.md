@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.17.5] - 2026-01-25
+
+### Fixed
+- **Search highlight preserved when cursor is on same line** - Search matches now remain highlighted when navigating to a line containing a match
+  - Previously, moving cursor to a line with a search match would lose the search highlight
+  - Search highlighting now correctly persists regardless of cursor position
+
 ## [3.17.4] - 2026-01-25
 
 ### Performance
