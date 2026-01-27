@@ -19,6 +19,40 @@ const DESCRIPTION_INPUT_HEIGHT: u16 = 3;
 const QUERY_INPUT_HEIGHT: u16 = 3;
 const HINTS_HEIGHT: u16 = 3;
 
+fn build_browse_hints() -> Line<'static> {
+    theme::border_hints::build_hints(
+        &[
+            ("↑/↓", "Navigate"),
+            ("Enter", "Apply"),
+            ("Ctrl+N", "New"),
+            ("Ctrl+E", "Edit"),
+            ("Ctrl+R", "Replace"),
+            ("Ctrl+D", "Delete"),
+            ("Esc", "Close"),
+        ],
+        theme::snippets::BORDER,
+    )
+}
+
+fn build_form_hints(action: &'static str) -> Line<'static> {
+    theme::border_hints::build_hints(
+        &[
+            ("Enter", action),
+            ("Tab", "Next"),
+            ("Shift+Tab", "Prev"),
+            ("Esc", "Cancel"),
+        ],
+        theme::snippets::FIELD_ACTIVE_BORDER,
+    )
+}
+
+fn build_confirm_hints() -> Line<'static> {
+    theme::border_hints::build_hints(
+        &[("Enter", "Confirm"), ("Esc", "Cancel")],
+        theme::snippets::FIELD_ACTIVE_BORDER,
+    )
+}
+
 /// Render the snippet manager popup
 ///
 /// Returns (list_area, preview_area) for region tracking.
@@ -115,10 +149,7 @@ fn render_minimal(
         let content = build_list_content_from_visible(state, area.width, state.get_hovered());
         let title = build_list_title(filtered_count, total_count);
 
-        let hints = Line::from(vec![Span::styled(
-            " [↑/↓] Navigate | [Enter] Apply | [Ctrl+N] New | [Ctrl+E] Edit | [Ctrl+R] Replace | [Ctrl+D] Delete | [Esc] Close ",
-            Style::default().fg(theme::snippets::BORDER),
-        )]);
+        let hints = build_browse_hints();
 
         let popup = Paragraph::new(content).block(
             Block::default()
@@ -179,10 +210,7 @@ fn render_list(
     let content = build_list_content_from_visible(state, area.width, state.get_hovered());
     let title = build_list_title(filtered_count, total_count);
 
-    let hints = Line::from(vec![Span::styled(
-        " [↑/↓] Navigate | [Enter] Apply | [Ctrl+N] New | [Ctrl+E] Edit | [Ctrl+R] Replace | [Ctrl+D] Delete | [Esc] Close ",
-        Style::default().fg(theme::snippets::BORDER),
-    )]);
+    let hints = build_browse_hints();
 
     let block = Block::default()
         .borders(Borders::ALL)
@@ -593,31 +621,7 @@ fn render_create_description_input(
 fn render_create_hints(mode: &SnippetMode, frame: &mut Frame, area: Rect) {
     let hints = match mode {
         SnippetMode::CreateName | SnippetMode::CreateQuery | SnippetMode::CreateDescription => {
-            Line::from(vec![
-                Span::styled(
-                    " [Enter]",
-                    Style::default().fg(theme::snippets::FIELD_ACTIVE_BORDER),
-                ),
-                Span::styled(
-                    " Create  ",
-                    Style::default().fg(theme::snippets::FIELD_TEXT),
-                ),
-                Span::styled(
-                    "[Tab]",
-                    Style::default().fg(theme::snippets::FIELD_ACTIVE_BORDER),
-                ),
-                Span::styled(" Next  ", Style::default().fg(theme::snippets::FIELD_TEXT)),
-                Span::styled(
-                    "[Shift+Tab]",
-                    Style::default().fg(theme::snippets::FIELD_ACTIVE_BORDER),
-                ),
-                Span::styled(" Prev  ", Style::default().fg(theme::snippets::FIELD_TEXT)),
-                Span::styled(
-                    "[Esc]",
-                    Style::default().fg(theme::snippets::FIELD_ACTIVE_BORDER),
-                ),
-                Span::styled(" Cancel", Style::default().fg(theme::snippets::FIELD_TEXT)),
-            ])
+            build_form_hints("Create")
         }
         _ => Line::from(vec![]),
     };
@@ -868,31 +872,7 @@ fn render_edit_hints(mode: &SnippetMode, frame: &mut Frame, area: Rect) {
     let hints = match mode {
         SnippetMode::EditName { .. }
         | SnippetMode::EditQuery { .. }
-        | SnippetMode::EditDescription { .. } => Line::from(vec![
-            Span::styled(
-                " [Enter]",
-                Style::default().fg(theme::snippets::FIELD_ACTIVE_BORDER),
-            ),
-            Span::styled(
-                " Update  ",
-                Style::default().fg(theme::snippets::FIELD_TEXT),
-            ),
-            Span::styled(
-                "[Tab]",
-                Style::default().fg(theme::snippets::FIELD_ACTIVE_BORDER),
-            ),
-            Span::styled(" Next  ", Style::default().fg(theme::snippets::FIELD_TEXT)),
-            Span::styled(
-                "[Shift+Tab]",
-                Style::default().fg(theme::snippets::FIELD_ACTIVE_BORDER),
-            ),
-            Span::styled(" Prev  ", Style::default().fg(theme::snippets::FIELD_TEXT)),
-            Span::styled(
-                "[Esc]",
-                Style::default().fg(theme::snippets::FIELD_ACTIVE_BORDER),
-            ),
-            Span::styled(" Cancel", Style::default().fg(theme::snippets::FIELD_TEXT)),
-        ]),
+        | SnippetMode::EditDescription { .. } => build_form_hints("Update"),
         _ => Line::from(vec![]),
     };
 
@@ -933,21 +913,7 @@ fn render_confirm_delete_mode(state: &SnippetState, frame: &mut Frame, area: Rec
             Style::default().fg(theme::snippets::FIELD_TEXT),
         )),
         Line::from(""),
-        Line::from(vec![
-            Span::styled(
-                " [Enter]",
-                Style::default().fg(theme::snippets::FIELD_ACTIVE_BORDER),
-            ),
-            Span::styled(
-                " Confirm    ",
-                Style::default().fg(theme::snippets::FIELD_TEXT),
-            ),
-            Span::styled(
-                "[Esc]",
-                Style::default().fg(theme::snippets::FIELD_ACTIVE_BORDER),
-            ),
-            Span::styled(" Cancel", Style::default().fg(theme::snippets::FIELD_TEXT)),
-        ]),
+        build_confirm_hints(),
     ];
 
     let dialog = Paragraph::new(content).block(
@@ -1030,21 +996,7 @@ fn render_confirm_update_mode(state: &SnippetState, frame: &mut Frame, area: Rec
     }
 
     content.push(Line::from(""));
-    content.push(Line::from(vec![
-        Span::styled(
-            " [Enter]",
-            Style::default().fg(theme::snippets::FIELD_ACTIVE_BORDER),
-        ),
-        Span::styled(
-            " Confirm    ",
-            Style::default().fg(theme::snippets::FIELD_TEXT),
-        ),
-        Span::styled(
-            "[Esc]",
-            Style::default().fg(theme::snippets::FIELD_ACTIVE_BORDER),
-        ),
-        Span::styled(" Cancel", Style::default().fg(theme::snippets::FIELD_TEXT)),
-    ]));
+    content.push(build_confirm_hints());
 
     let dialog = Paragraph::new(content).block(
         Block::default()

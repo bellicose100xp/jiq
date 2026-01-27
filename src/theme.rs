@@ -98,6 +98,10 @@ pub mod results {
     // Stale state
     pub const STALE_MODIFIER: Modifier = Modifier::DIM;
 
+    // Hints (bottom of results pane)
+    pub const HINT_KEY: Color = Color::Cyan;
+    pub const HINT_DESCRIPTION: Style = Style::new().fg(Color::Cyan).add_modifier(Modifier::DIM);
+
     // Spinner animation colors (rainbow)
     pub const SPINNER_COLORS: &[Color] = &[
         Color::Rgb(255, 107, 107), // Red/Coral
@@ -359,6 +363,37 @@ pub mod help_line {
     pub const KEY: Color = Color::Gray;
     pub const DESCRIPTION: Color = Color::DarkGray;
     pub const SEPARATOR: Color = Color::DarkGray;
+}
+
+/// Border hint utilities - for building styled keyboard shortcuts on borders
+pub mod border_hints {
+    use super::*;
+    use ratatui::text::{Line, Span};
+
+    /// Build a single hint with key in full color and description dimmed
+    pub fn hint(key: &'static str, desc: &'static str, color: Color) -> Vec<Span<'static>> {
+        vec![
+            Span::styled(key, Style::new().fg(color)),
+            Span::styled(format!(" {} ", desc), Style::new().fg(color).add_modifier(Modifier::DIM)),
+        ]
+    }
+
+    /// Build a separator dot in dimmed color
+    pub fn separator(color: Color) -> Span<'static> {
+        Span::styled("• ", Style::new().fg(color).add_modifier(Modifier::DIM))
+    }
+
+    /// Build a line with multiple hints separated by dots
+    pub fn build_hints(hints: &[(&'static str, &'static str)], color: Color) -> Line<'static> {
+        let mut spans = vec![Span::raw(" ")];
+        for (i, (key, desc)) in hints.iter().enumerate() {
+            if i > 0 {
+                spans.push(separator(color));
+            }
+            spans.extend(hint(key, desc, color));
+        }
+        Line::from(spans)
+    }
 }
 
 /// Scrollbar styles (for components that share scrollbar appearance)

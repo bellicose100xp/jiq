@@ -331,28 +331,18 @@ pub fn render_popup(ai_state: &mut AiState, frame: &mut Frame, input_area: Rect)
         Span::raw(" "),
     ]);
 
-    let key_style = Style::default().fg(theme::help_line::KEY);
-    let desc_style = Style::default().fg(theme::help_line::DESCRIPTION);
-    let sep_style = Style::default().fg(theme::help_line::SEPARATOR);
-
     let hints = if !ai_state.suggestions.is_empty() {
-        Line::from(vec![
-            Span::styled(" Alt+1-5", key_style),
-            Span::styled(" Apply ", desc_style),
-            Span::styled("•", sep_style),
-            Span::styled(" Alt+↑↓", key_style),
-            Span::styled(" Select ", desc_style),
-            Span::styled("[Enter]", key_style),
-            Span::styled(" Apply Selection ", desc_style),
-            Span::styled("•", sep_style),
-            Span::styled(" Ctrl+A", key_style),
-            Span::styled(" Close ", desc_style),
-        ])
+        theme::border_hints::build_hints(
+            &[
+                ("Alt+1-5", "Apply"),
+                ("Alt+↑↓", "Select"),
+                ("Enter", "Apply Selection"),
+                ("Ctrl+A", "Close"),
+            ],
+            theme::ai::BORDER,
+        )
     } else {
-        Line::from(vec![
-            Span::styled(" Ctrl+A", key_style),
-            Span::styled(" Close ", desc_style),
-        ])
+        theme::border_hints::build_hints(&[("Ctrl+A", "Close")], theme::ai::BORDER)
     };
 
     let block = Block::default()

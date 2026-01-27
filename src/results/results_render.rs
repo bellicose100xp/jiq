@@ -15,6 +15,25 @@ use crate::widgets::{popup, scrollbar};
 
 const SPINNER_CHARS: &[char] = &['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
 
+fn build_results_pane_hints() -> Line<'static> {
+    theme::border_hints::build_hints(
+        &[("Tab", "Edit Query"), ("i", "Edit Query")],
+        theme::results::HINT_KEY,
+    )
+}
+
+fn build_search_hints() -> Line<'static> {
+    theme::border_hints::build_hints(
+        &[
+            ("n/N", "Next/Prev"),
+            ("Enter", "Next"),
+            ("Ctrl+F", "Edit"),
+            ("Esc", "Close"),
+        ],
+        theme::results::SEARCH_ACTIVE,
+    )
+}
+
 fn get_spinner(frame_count: u64) -> (char, Color) {
     let index = (frame_count / 8) as usize;
     let char_idx = index % SPINNER_CHARS.len();
@@ -263,20 +282,12 @@ pub fn render_pane(app: &mut App, frame: &mut Frame, area: Rect) -> (Rect, Optio
             block = block.title_top(rt.alignment(Alignment::Right));
         }
         if search_visible && app.search.is_confirmed() {
-            let hints = Line::from(vec![Span::styled(
-                " [n/N] Next/Prev | [Enter] Next | [Ctrl+F or /] Edit | [Esc] Close",
-                Style::default().fg(theme::results::SEARCH_ACTIVE),
-            )]);
-            block = block.title_bottom(hints.alignment(Alignment::Center));
+            block = block.title_bottom(build_search_hints().alignment(Alignment::Center));
         }
 
         // Add navigation hints when results pane is focused and search is not visible
         if !search_visible && app.focus == crate::app::Focus::ResultsPane {
-            let hints = Line::from(vec![Span::styled(
-                " [Tab/Shift+Tab] Edit query | [i] Edit query in INSERT mode | [?] Help ",
-                Style::default().fg(theme::results::BORDER_FOCUSED),
-            )]);
-            block = block.title_bottom(hints.alignment(Alignment::Center));
+            block = block.title_bottom(build_results_pane_hints().alignment(Alignment::Center));
         }
 
         // Add execution time display in bottom-left corner
@@ -362,17 +373,9 @@ pub fn render_pane(app: &mut App, frame: &mut Frame, area: Rect) -> (Rect, Optio
             block = block.title_top(rt.alignment(Alignment::Right));
         }
         if search_visible && app.search.is_confirmed() {
-            let hints = Line::from(vec![Span::styled(
-                " [n/N] Next/Prev | [Enter] Next | [Ctrl+F or /] Edit | [Esc] Close",
-                Style::default().fg(theme::results::SEARCH_ACTIVE),
-            )]);
-            block = block.title_bottom(hints.alignment(Alignment::Center));
+            block = block.title_bottom(build_search_hints().alignment(Alignment::Center));
         } else if !search_visible && app.focus == crate::app::Focus::ResultsPane {
-            let hints = Line::from(vec![Span::styled(
-                " [Tab/Shift+Tab] Edit query | [i] Edit query in INSERT mode | [?] Help ",
-                Style::default().fg(theme::results::BORDER_FOCUSED),
-            )]);
-            block = block.title_bottom(hints.alignment(Alignment::Center));
+            block = block.title_bottom(build_results_pane_hints().alignment(Alignment::Center));
         }
 
         // Add execution time display in bottom-left corner

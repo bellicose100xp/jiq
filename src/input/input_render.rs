@@ -83,10 +83,10 @@ pub fn render_field(app: &mut App, frame: &mut Frame, area: Rect) -> Rect {
     };
 
     let ai_hint = if !app.ai.visible {
-        Some(Line::from(vec![Span::styled(
-            " Press Ctrl+A for AI Assistant ",
-            Style::default().fg(theme::input::AI_HINT),
-        )]))
+        Some(theme::border_hints::build_hints(
+            &[("Ctrl+A", "AI Assistant")],
+            theme::input::AI_HINT,
+        ))
     } else {
         None
     };
@@ -103,28 +103,28 @@ pub fn render_field(app: &mut App, frame: &mut Frame, area: Rect) -> Rect {
         block = block.title_top(hint.alignment(Alignment::Right));
     }
 
-    if !is_focused {
-        block = block.title_bottom(
-            Line::from(vec![Span::styled(
-                " Tab to edit query ",
-                Style::default().fg(theme::input::UNFOCUSED_HINT),
-            )])
-            .alignment(Alignment::Center),
-        );
-    } else if !app.query().is_empty() {
-        let key_style = Style::default().fg(mode_color);
-        let desc_style = Style::default().fg(theme::help_line::DESCRIPTION);
-        let sep_style = Style::default().fg(theme::help_line::SEPARATOR);
-        block = block.title_bottom(
-            Line::from(vec![
-                Span::styled(" [Enter]", key_style),
-                Span::styled(" Output Result ", desc_style),
-                Span::styled("•", sep_style),
-                Span::styled(" [Ctrl+Q]", key_style),
-                Span::styled(" Output Query ", desc_style),
-            ])
-            .alignment(Alignment::Center),
-        );
+    if is_focused {
+        if !app.query().is_empty() {
+            block = block.title_bottom(
+                theme::border_hints::build_hints(
+                    &[("Enter", "Output Result"), ("Ctrl+Q", "Output Query")],
+                    mode_color,
+                )
+                .alignment(Alignment::Center),
+            );
+        } else {
+            block = block.title_bottom(
+                theme::border_hints::build_hints(
+                    &[
+                        ("Ctrl+P", "Previous Query"),
+                        ("Ctrl+N", "Next Query"),
+                        ("Ctrl+R", "History"),
+                    ],
+                    mode_color,
+                )
+                .alignment(Alignment::Center),
+            );
+        }
     }
 
     let query = app.query();
