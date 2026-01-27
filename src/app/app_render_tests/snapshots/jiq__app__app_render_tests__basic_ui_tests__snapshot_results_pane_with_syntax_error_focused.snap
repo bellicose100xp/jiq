@@ -22,7 +22,7 @@ expression: output
 "│                                                                              │"
 "│                                                                              │"
 "╰─────────────────────── Tab Edit Query • i Edit Query ────────────────────────╯"
-"╭ Query [INSERT] ⚠ Syntax Error (Ctrl+E to view)───────────────────────────────╮"
+"╭ Query [INSERT] ──────────────────────────────────────────────────────────────╮"
 "│.invalid[                                                                     │"
 "╰──────────────────────────────────────────────────────────────────────────────╯"
 " F1/? Help • Shift+Tab Edit Query • Ctrl+S Snippets • Ctrl+F Search • Ctrl+C Qui"

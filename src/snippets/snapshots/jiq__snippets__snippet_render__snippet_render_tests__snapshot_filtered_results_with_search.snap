@@ -6,7 +6,7 @@ expression: output
 "│select                                                                        │"
 "╰──────────────────────────────────────────────────────────────────────────────╯"
 "╭ Snippets (2/3) ──────────────────────────────────────────────────────────────╮"
-"│ ► Select all keys - Returns array of all keys                                │"
+"│ ▌ Select all keys - Returns array of all keys                                │"
 "│   Select items - Select all items                                            │"
 "│                                                                              │"
 "│                                                                              │"

@@ -294,21 +294,30 @@ fn build_list_content_from_visible(
             .map(|(i, s)| {
                 let is_selected = i == selected_index;
                 let is_hovered = hovered_index == Some(i) && !is_selected;
-                let prefix = if is_selected { " ► " } else { "   " };
 
-                let (name_style, desc_style, bg_color) = if is_selected {
+                let (prefix, name_style, desc_style, bg_color) = if is_selected {
                     (
+                        vec![Span::styled(
+                            " ▌ ",
+                            Style::default()
+                                .fg(theme::snippets::ITEM_SELECTED_INDICATOR)
+                                .bg(theme::snippets::ITEM_SELECTED_BG),
+                        )],
                         Style::default()
-                            .fg(theme::snippets::BACKGROUND)
+                            .fg(theme::snippets::FIELD_TEXT)
                             .bg(theme::snippets::ITEM_SELECTED_BG)
                             .add_modifier(Modifier::BOLD),
                         Style::default()
-                            .fg(theme::snippets::BACKGROUND)
+                            .fg(theme::snippets::DESCRIPTION)
                             .bg(theme::snippets::ITEM_SELECTED_BG),
                         Some(theme::snippets::ITEM_SELECTED_BG),
                     )
                 } else if is_hovered {
                     (
+                        vec![Span::styled(
+                            "   ",
+                            Style::default().bg(theme::snippets::ITEM_HOVERED_BG),
+                        )],
                         Style::default()
                             .fg(theme::snippets::FIELD_TEXT)
                             .bg(theme::snippets::ITEM_HOVERED_BG),
@@ -319,16 +328,21 @@ fn build_list_content_from_visible(
                     )
                 } else {
                     (
+                        vec![Span::styled(
+                            "   ",
+                            Style::default().bg(theme::snippets::ITEM_NORMAL_BG),
+                        )],
                         Style::default().fg(theme::snippets::FIELD_TEXT),
                         Style::default().fg(theme::snippets::DESCRIPTION),
                         None,
                     )
                 };
 
-                let mut spans = vec![Span::styled(format!("{}{}", prefix, s.name), name_style)];
+                let mut spans = prefix;
+                spans.push(Span::styled(s.name.clone(), name_style));
 
                 if let Some(desc) = &s.description {
-                    let name_len = prefix.len() + s.name.len();
+                    let name_len = 3 + s.name.len(); // 3 = width of prefix " ▌ " or "   "
                     let separator = " - ";
                     let available = max_width.saturating_sub(name_len + separator.len());
 

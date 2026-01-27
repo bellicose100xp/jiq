@@ -199,7 +199,8 @@ pub mod snippets {
     pub const ITEM_NORMAL_FG: Color = Color::White;
     pub const ITEM_NORMAL_BG: Color = Color::Black;
     pub const ITEM_SELECTED_FG: Color = Color::Black;
-    pub const ITEM_SELECTED_BG: Color = Color::Cyan;
+    pub const ITEM_SELECTED_BG: Color = Color::Rgb(35, 50, 70);
+    pub const ITEM_SELECTED_INDICATOR: Color = Color::LightGreen;
     pub const ITEM_SELECTED_MODIFIER: Modifier = Modifier::BOLD;
     pub const ITEM_HOVERED_FG: Color = Color::White;
     pub const ITEM_HOVERED_BG: Color = Color::Indexed(236);

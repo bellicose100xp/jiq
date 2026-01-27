@@ -6,7 +6,7 @@ expression: output
 "│                                                                              │"
 "╰──────────────────────────────────────────────────────────────────────────────╯"
 "╭ Snippets (2) ────────────────────────────────────────────────────────────────╮"
-"│ ► Select all keys - Returns an array of all keys in the object               │"
+"│ ▌ Select all keys - Returns an array of all keys in the object               │"
 "│   Flatten arrays - Flattens nested arrays into a single array                │"
 "│                                                                              │"
 "│                                                                              │"

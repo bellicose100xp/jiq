@@ -178,7 +178,8 @@ fn test_permission_error() {
     use std::thread;
     use std::time::Duration;
 
-    // Create a file with no read permissions
+    // Skip test if running as root (root can read any file regardless of permissions)
+    // Check by trying to read a file with no permissions
     let json_content = r#"{"name": "test"}"#;
     let (_temp_dir, file_path) = create_temp_json_file(json_content);
 
@@ -186,6 +187,16 @@ fn test_permission_error() {
     let mut perms = fs::metadata(&file_path).unwrap().permissions();
     perms.set_mode(0o000); // No permissions
     fs::set_permissions(&file_path, perms).unwrap();
+
+    // Check if we can still read the file (indicates elevated privileges like root)
+    if fs::read_to_string(&file_path).is_ok() {
+        // Restore permissions for cleanup
+        let mut perms = fs::metadata(&file_path).unwrap().permissions();
+        perms.set_mode(0o644);
+        let _ = fs::set_permissions(&file_path, perms);
+        eprintln!("Skipping test_permission_error: running with elevated privileges (root)");
+        return;
+    }
 
     let mut loader = FileLoader::spawn_load(file_path.clone());
 
