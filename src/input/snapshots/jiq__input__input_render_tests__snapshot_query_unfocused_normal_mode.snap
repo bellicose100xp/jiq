@@ -25,4 +25,4 @@ expression: output
 "╭ Query [NORMAL] (press 'i' to edit) ─────────── Press Ctrl+A for AI Assistant ╮"
 "│.name                                                                         │"
 "╰───────────────────────────── Tab to edit query ──────────────────────────────╯"
-" F1/?: Help | Shift+Tab: Switch Pane | Ctrl+S: Snippets | Enter: Output Result |"
+" F1/? Help • Shift+Tab Edit Query • Ctrl+S Snippets • Ctrl+F Search • Ctrl+C Qui"

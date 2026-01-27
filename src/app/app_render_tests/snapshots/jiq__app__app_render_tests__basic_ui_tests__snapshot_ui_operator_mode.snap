@@ -25,4 +25,4 @@ expression: output
 "╭ Query [OPERATOR(d)] ────────────────────────── Press Ctrl+A for AI Assistant ╮"
 "│                                                                              │"
 "╰──────────────────────────────────────────────────────────────────────────────╯"
-" F1/?: Help | Shift+Tab: Switch Pane | Ctrl+S: Snippets | Enter: Output Result |"
+" F1/? Help • Shift+Tab Navigate Results • Ctrl+S Snippets • Ctrl+F Search • Ctrl"

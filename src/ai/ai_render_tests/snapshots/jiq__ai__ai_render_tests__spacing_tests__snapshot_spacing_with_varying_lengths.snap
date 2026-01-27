@@ -27,7 +27,7 @@ expression: output
 "                                                       │   This is a much longer description that █ "
 "                                                       │   wraps across multiple lines to test    ║ "
 "                                                       │   spacing consistency                    ║ "
-"                                                       ╰1-5 or Alt+↑↓+Enter to apply | Ctrl+A to c╯ "
+"                                                       ╰ • Alt+↑↓ Select [Enter] Apply Selection •╯ "
 "                                                                                                    "
 "                                                                                                    "
 "                                                                                                    "

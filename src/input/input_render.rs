@@ -111,6 +111,20 @@ pub fn render_field(app: &mut App, frame: &mut Frame, area: Rect) -> Rect {
             )])
             .alignment(Alignment::Center),
         );
+    } else if !app.query().is_empty() {
+        let key_style = Style::default().fg(mode_color);
+        let desc_style = Style::default().fg(theme::help_line::DESCRIPTION);
+        let sep_style = Style::default().fg(theme::help_line::SEPARATOR);
+        block = block.title_bottom(
+            Line::from(vec![
+                Span::styled(" [Enter]", key_style),
+                Span::styled(" Output Result ", desc_style),
+                Span::styled("•", sep_style),
+                Span::styled(" [Ctrl+Q]", key_style),
+                Span::styled(" Output Query ", desc_style),
+            ])
+            .alignment(Alignment::Center),
+        );
     }
 
     let query = app.query();

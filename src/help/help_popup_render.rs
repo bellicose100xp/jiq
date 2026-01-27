@@ -7,7 +7,7 @@ use ratatui::{
 };
 
 use crate::app::App;
-use crate::help::{HELP_FOOTER, HelpSection, HelpTab, get_tab_content};
+use crate::help::{HelpSection, HelpTab, get_tab_content};
 use crate::theme;
 use crate::widgets::{popup, scrollbar};
 
@@ -79,11 +79,27 @@ pub fn render_popup(app: &mut App, frame: &mut Frame) -> Option<Rect> {
     let paragraph = Paragraph::new(Text::from(lines)).scroll((app.help.current_scroll().offset, 0));
     frame.render_widget(paragraph, chunks[2]);
 
-    // Render footer
-    let footer = Line::from(Span::styled(
-        HELP_FOOTER,
-        Style::default().fg(theme::help::FOOTER),
-    ));
+    // Render footer with styled keys/descriptions
+    let key_style = Style::default().fg(theme::help_line::KEY);
+    let desc_style = Style::default().fg(theme::help_line::DESCRIPTION);
+    let sep_style = Style::default().fg(theme::help_line::SEPARATOR);
+
+    let footer = Line::from(vec![
+        Span::styled("1-7", key_style),
+        Span::styled(" jump ", desc_style),
+        Span::styled("•", sep_style),
+        Span::styled(" Tab", key_style),
+        Span::styled(" next ", desc_style),
+        Span::styled("•", sep_style),
+        Span::styled(" h/l", key_style),
+        Span::styled(" switch ", desc_style),
+        Span::styled("•", sep_style),
+        Span::styled(" j/k", key_style),
+        Span::styled(" scroll ", desc_style),
+        Span::styled("•", sep_style),
+        Span::styled(" q", key_style),
+        Span::styled(" close", desc_style),
+    ]);
     frame.render_widget(Paragraph::new(footer).centered(), chunks[3]);
 
     // Render scrollbar on outer border (excluding corners), matching border color

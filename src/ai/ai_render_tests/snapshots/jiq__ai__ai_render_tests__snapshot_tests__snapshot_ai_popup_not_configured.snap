@@ -27,7 +27,7 @@ expression: output
 "                                                       │                                          │ "
 "                                                       │[ai]                                      │ "
 "                                                       │enabled = true                            │ "
-"                                                       ╰──────────── Ctrl+A to close ─────────────╯ "
+"                                                       ╰────────────── Ctrl+A Close ──────────────╯ "
 "                                                                                                    "
 "                                                                                                    "
 "                                                                                                    "

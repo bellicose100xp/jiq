@@ -31,4 +31,4 @@ expression: output
 "╭ Query [INSERT] ─────────────────────────────────────────────────────────────────────── Press Ctrl+A for AI Assistant ╮"
 "│.[] | select(.name == "nonexistent")                                                                                  │"
 "╰───────────────────────────────────────────────── Tab to edit query ──────────────────────────────────────────────────╯"
-" F1/?: Help | Shift+Tab: Switch Pane | Ctrl+S: Snippets | Enter: Output Result | Ctrl+Q: Output Query | q: Quit         "
+" F1/? Help • Shift+Tab Edit Query • Ctrl+S Snippets • Ctrl+F Search • Ctrl+C Quit                                       "

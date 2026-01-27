@@ -187,28 +187,6 @@ fn test_all_entries_have_descriptions() {
 }
 
 #[test]
-#[allow(clippy::const_is_empty)]
-fn test_help_footer_not_empty() {
-    assert!(!HELP_FOOTER.is_empty());
-}
-
-#[test]
-fn test_help_footer_contains_navigation_hints() {
-    assert!(
-        HELP_FOOTER.contains("Tab") || HELP_FOOTER.contains("tab"),
-        "Footer should mention tab navigation"
-    );
-    assert!(
-        HELP_FOOTER.contains("scroll"),
-        "Footer should mention scrolling"
-    );
-    assert!(
-        HELP_FOOTER.contains("close"),
-        "Footer should mention how to close"
-    );
-}
-
-#[test]
 fn test_get_tab_content_returns_correct_tab() {
     for tab in HelpTab::all() {
         let content = get_tab_content(*tab);

@@ -2,4 +2,4 @@
 source: src/help/help_line_render_tests.rs
 expression: output
 ---
-" F1/?: Help | Esc: Close | n/N: Next/Prev | /: Edit Search                                                              "
+" F1/? Help • Esc Close • n/N Next/Prev • Ctrl+F Edit Search • / Edit Search                                             "

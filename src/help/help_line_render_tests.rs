@@ -75,7 +75,7 @@ fn test_help_text_contains_snippets_shortcut_insert_empty() {
     app.input.editor_mode = EditorMode::Insert;
 
     let output = render_help_line_to_string(&app, 120, 1);
-    assert!(output.contains("Ctrl+S: Snippets"));
+    assert!(output.contains("Ctrl+S") && output.contains("Snippets"));
 }
 
 #[test]
@@ -90,7 +90,7 @@ fn test_help_text_contains_snippets_shortcut_insert_with_query() {
     }
 
     let output = render_help_line_to_string(&app, 120, 1);
-    assert!(output.contains("Ctrl+S: Snippets"));
+    assert!(output.contains("Ctrl+S") && output.contains("Snippets"));
 }
 
 #[test]
@@ -100,7 +100,7 @@ fn test_help_text_contains_snippets_shortcut_normal_mode() {
     app.input.editor_mode = EditorMode::Normal;
 
     let output = render_help_line_to_string(&app, 120, 1);
-    assert!(output.contains("Ctrl+S: Snippets"));
+    assert!(output.contains("Ctrl+S") && output.contains("Snippets"));
 }
 
 #[test]
@@ -138,7 +138,7 @@ fn test_help_text_excludes_snippets_shortcut_when_search_active() {
 
     let output = render_help_line_to_string(&app, 120, 1);
     assert!(!output.contains("Ctrl+S"));
-    assert!(output.contains("Esc: Close"));
+    assert!(output.contains("Esc") && output.contains("Close"));
 }
 
 #[test]
@@ -147,6 +147,6 @@ fn test_help_text_excludes_snippets_shortcut_when_snippet_manager_active() {
     app.snippets.open();
 
     let output = render_help_line_to_string(&app, 120, 1);
-    assert!(!output.contains("Ctrl+S: Snippets"));
-    assert!(output.contains("Esc: Close"));
+    assert!(!output.contains("Ctrl+S"));
+    assert!(output.contains("Esc") && output.contains("Close"));
 }

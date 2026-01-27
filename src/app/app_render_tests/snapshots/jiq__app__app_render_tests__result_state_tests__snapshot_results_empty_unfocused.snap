@@ -30,5 +30,5 @@ expression: output
 "╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯"
 "╭ Query [INSERT] ─────────────────────────────────────────────────────────────────────── Press Ctrl+A for AI Assistant ╮"
 "│.[] | select(.name == "nonexistent")                                                                                  │"
-"╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯"
-" F1: Help | Shift+Tab: Switch Pane | Ctrl+S: Snippets | ↑/Ctrl+R: History | Enter: Output Result | Ctrl+Q: Output Query "
+"╰─────────────────────────────────── [Enter] Output Result • [Ctrl+Q] Output Query ────────────────────────────────────╯"
+" F1 Help • Shift+Tab Navigate Results • Ctrl+S Snippets • Ctrl+F Search • Ctrl+P/N Cycle History • Ctrl+R History • Ctrl"

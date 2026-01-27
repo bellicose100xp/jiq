@@ -24,5 +24,5 @@ expression: output
 "╰──────────────────────────────────────────────────────────────────────────────╯"
 "╭ Query [INSERT] ⚠ Syntax Error (Ctrl+E to view) Press Ctrl+A for AI Assistant ╮"
 "│.invalid[                                                                     │"
-"╰──────────────────────────────────────────────────────────────────────────────╯"
-" F1: Help | Shift+Tab: Switch Pane | Ctrl+S: Snippets | ↑/Ctrl+R: History | Ente"
+"╰─────────────── [Enter] Output Result • [Ctrl+Q] Output Query ────────────────╯"
+" F1 Help • Shift+Tab Navigate Results • Ctrl+S Snippets • Ctrl+F Search • Ctrl+P"

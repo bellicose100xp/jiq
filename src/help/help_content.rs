@@ -172,8 +172,6 @@ pub const HELP_CATEGORIES: &[HelpCategory] = &[
     },
 ];
 
-pub const HELP_FOOTER: &str = "1-7: jump | Tab: next | h/l: switch | j/k: scroll | q: close";
-
 pub fn get_tab_content(tab: HelpTab) -> &'static HelpCategory {
     HELP_CATEGORIES
         .iter()

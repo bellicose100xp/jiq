@@ -25,4 +25,4 @@ expression: output
 "╭ Search (press / to edit): ──────────────────────────────────────────── (1/1) ╮"
 "│match_here                                                                    │"
 "╰──────────────────────────────────────────────────────────────────────────────╯"
-" F1/?: Help | Esc: Close | n/N: Next/Prev | /: Edit Search                      "
+" F1/? Help • Esc Close • n/N Next/Prev • Ctrl+F Edit Search • / Edit Search     "

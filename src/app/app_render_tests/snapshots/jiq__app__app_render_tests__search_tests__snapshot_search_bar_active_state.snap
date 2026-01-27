@@ -25,4 +25,4 @@ expression: output
 "╭ Search: ────────────────────────────────────────────────────────────── (1/2) ╮"
 "│alice                                                                         │"
 "╰─────────────────────── [Enter] Confirm | [Esc] Close ────────────────────────╯"
-" F1/?: Help | Esc: Close | Enter: Confirm Search                                "
+" F1/? Help • Esc Close • Enter Confirm Search                                   "

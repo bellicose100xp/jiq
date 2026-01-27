@@ -356,7 +356,9 @@ pub mod notification {
 pub mod help_line {
     use super::*;
 
-    pub const TEXT: Color = Color::DarkGray;
+    pub const KEY: Color = Color::Gray;
+    pub const DESCRIPTION: Color = Color::DarkGray;
+    pub const SEPARATOR: Color = Color::DarkGray;
 }
 
 /// Scrollbar styles (for components that share scrollbar appearance)
