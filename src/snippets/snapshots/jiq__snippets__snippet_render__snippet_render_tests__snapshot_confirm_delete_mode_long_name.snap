@@ -12,7 +12,7 @@ expression: output
 "               │                                                │               "
 "               │ Delete "This is a very long snippet n…"?       │               "
 "               │                                                │               "
-"               │ [Enter] Confirm    [Esc] Cancel                │               "
+"               │ Enter Confirm • Esc Cancel                     │               "
 "               │                                                │               "
 "               ╰────────────────────────────────────────────────╯               "
 "                                                                                "

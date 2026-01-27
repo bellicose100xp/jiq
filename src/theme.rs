@@ -373,7 +373,10 @@ pub mod border_hints {
     pub fn hint(key: &'static str, desc: &'static str, color: Color) -> Vec<Span<'static>> {
         vec![
             Span::styled(key, Style::new().fg(color)),
-            Span::styled(format!(" {} ", desc), Style::new().fg(color).add_modifier(Modifier::DIM)),
+            Span::styled(
+                format!(" {} ", desc),
+                Style::new().fg(color).add_modifier(Modifier::DIM),
+            ),
         ]
     }
 

@@ -16,6 +16,9 @@ use crate::scroll::Scrollable;
 use crate::theme;
 use crate::widgets::{popup, scrollbar};
 
+const HORIZONTAL_PADDING: u16 = 1;
+const VERTICAL_PADDING: u16 = 1;
+
 // Use modules from render submodule instead of loading them directly
 use super::render::layout;
 
@@ -260,11 +263,13 @@ pub fn render_popup(ai_state: &mut AiState, frame: &mut Frame, input_area: Rect)
 
     let popup_area = if has_suggestions {
         // Pre-calculate content height for suggestions
+        // Account for borders (2) + horizontal padding on each side
         let max_content_width = frame_area
             .width
             .saturating_sub(AUTOCOMPLETE_RESERVED_WIDTH)
-            .saturating_sub(4); // Account for borders
-        let content_height = calculate_suggestions_height(ai_state, max_content_width);
+            .saturating_sub(2 + HORIZONTAL_PADDING * 2);
+        let content_height =
+            calculate_suggestions_height(ai_state, max_content_width) + VERTICAL_PADDING * 2;
         let area = calculate_popup_area_with_height(frame_area, input_area, content_height)?;
         // Store the height for use during loading transitions
         ai_state.previous_popup_height = Some(area.height);
@@ -360,10 +365,11 @@ pub fn render_popup(ai_state: &mut AiState, frame: &mut Frame, input_area: Rect)
         // Render the border block first
         frame.render_widget(block.clone(), popup_area);
 
-        // Get inner area and render suggestions as individual widgets
+        // Get inner area with padding for better visual spacing
         let inner_area = block.inner(popup_area);
-        let max_width = inner_area.width;
-        render_suggestions_as_widgets(ai_state, frame, inner_area, max_width);
+        let padded_area = popup::inset_rect(inner_area, HORIZONTAL_PADDING, VERTICAL_PADDING);
+        let max_width = padded_area.width;
+        render_suggestions_as_widgets(ai_state, frame, padded_area, max_width);
 
         // Render scrollbar on border (excluding corners), matching border color
         let scrollbar_area = Rect {
@@ -388,12 +394,17 @@ pub fn render_popup(ai_state: &mut AiState, frame: &mut Frame, input_area: Rect)
             theme::ai::SCROLLBAR,
         );
     } else {
+        // Render the border block first
+        frame.render_widget(block.clone(), popup_area);
+
+        // Get inner area with padding for better visual spacing
+        let inner_area = block.inner(popup_area);
+        let padded_area = popup::inset_rect(inner_area, HORIZONTAL_PADDING, VERTICAL_PADDING);
+
         // Use traditional content-based rendering for non-suggestion content
-        let content = build_content(ai_state, popup_area.width.saturating_sub(4));
-        let popup_widget = Paragraph::new(content)
-            .wrap(Wrap { trim: false })
-            .block(block);
-        frame.render_widget(popup_widget, popup_area);
+        let content = build_content(ai_state, padded_area.width);
+        let popup_widget = Paragraph::new(content).wrap(Wrap { trim: false });
+        frame.render_widget(popup_widget, padded_area);
     }
 
     Some(popup_area)

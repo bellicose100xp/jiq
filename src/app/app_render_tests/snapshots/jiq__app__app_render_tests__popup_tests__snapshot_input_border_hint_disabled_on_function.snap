@@ -24,5 +24,5 @@ expression: output
 "╰──────────────────────────────────────────────────────────────────────────────╯"
 "╭ Query [INSERT] ────────────────────────────────────────── Ctrl+T for tooltip ╮"
 "│                                                                              │"
-"╰──────────────────────────────────────────────────────────────────────────────╯"
+"╰───────── Ctrl+P Previous Query • Ctrl+N Next Query • Ctrl+R History ─────────╯"
 " F1 Help • Shift+Tab Navigate Results • Ctrl+S Snippets • Ctrl+F Search • Ctrl+P"

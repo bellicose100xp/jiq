@@ -19,11 +19,11 @@ expression: output
 "                                                                                                    "
 "                                                                                                    "
 "                                                       ╭ Anthropic ───────── claude-3-5-sonnet... ╮ "
-"                                                       │Previous suggestion: Use .foo instead of  │ "
-"                                                       │.bar                                      │ "
 "                                                       │                                          │ "
-"                                                       │⏳ Thinking...                            │ " Hidden by multi-width symbols: [(57, " ")]
+"                                                       │ Previous suggestion: Use .foo instead of │ "
+"                                                       │ .bar                                     │ "
 "                                                       │                                          │ "
+"                                                       │ ⏳ Thinking...                           │ " Hidden by multi-width symbols: [(58, " ")]
 "                                                       │                                          │ "
 "                                                       │                                          │ "
 "                                                       │                                          │ "

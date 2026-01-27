@@ -158,7 +158,8 @@ fn test_height_adjusts_with_new_suggestions() {
         },
     ];
 
-    let height_with_short = render_and_get_popup_height(&mut state, 100, 30);
+    // Use larger terminal to avoid both hitting the max height ceiling
+    let height_with_short = render_and_get_popup_height(&mut state, 100, 50);
     let short_height = height_with_short.unwrap();
 
     // Update with 5 longer suggestions
@@ -190,7 +191,7 @@ fn test_height_adjusts_with_new_suggestions() {
         },
     ];
 
-    let height_with_long = render_and_get_popup_height(&mut state, 100, 30);
+    let height_with_long = render_and_get_popup_height(&mut state, 100, 50);
     let long_height = height_with_long.unwrap();
 
     assert!(
