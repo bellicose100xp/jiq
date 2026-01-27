@@ -82,10 +82,10 @@ pub fn render_field(app: &mut App, frame: &mut Frame, area: Rect) -> Rect {
         None
     };
 
-    let ai_hint = if !app.ai.visible {
+    let ai_hint = if is_focused && !app.ai.visible {
         Some(theme::border_hints::build_hints(
             &[("Ctrl+A", "AI Assistant")],
-            theme::input::AI_HINT,
+            mode_color,
         ))
     } else {
         None
