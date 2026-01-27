@@ -105,3 +105,16 @@ fn snapshot_query_unfocused_with_syntax_error() {
     let output = render_to_string(&mut app, TEST_WIDTH, TEST_HEIGHT);
     assert_snapshot!(output);
 }
+
+#[test]
+fn snapshot_query_focused_with_syntax_error() {
+    let json = r#"{"name": "Alice"}"#;
+    let mut app = test_app(json);
+    app.input.textarea.insert_str(".invalid[");
+    app.query.as_mut().unwrap().execute(".invalid[");
+    app.focus = Focus::InputField;
+    app.input.editor_mode = EditorMode::Insert;
+
+    let output = render_to_string(&mut app, TEST_WIDTH, TEST_HEIGHT);
+    assert_snapshot!(output);
+}

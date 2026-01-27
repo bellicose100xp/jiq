@@ -42,7 +42,9 @@ pub fn render_field(app: &mut App, frame: &mut Frame, area: Rect) -> Rect {
     };
 
     let is_focused = app.focus == Focus::InputField;
-    let mode_display_color = if is_focused {
+    let mode_display_color = if has_error && is_focused {
+        theme::input::BORDER_ERROR
+    } else if is_focused {
         mode_color
     } else {
         theme::input::UNFOCUSED_HINT
