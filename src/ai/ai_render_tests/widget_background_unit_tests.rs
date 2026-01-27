@@ -5,10 +5,10 @@
 use super::*;
 use crate::ai::ai_state::lifecycle::TEST_MAX_CONTEXT_LENGTH;
 use crate::ai::ai_state::{Suggestion, SuggestionType};
+use crate::theme;
 use ratatui::Terminal;
 use ratatui::backend::TestBackend;
 use ratatui::layout::Rect;
-use ratatui::style::Color;
 
 /// Create a test terminal and render, returning the backend for inspection
 fn render_and_get_backend(ai_state: &mut AiState, width: u16, height: u16) -> TestBackend {
@@ -80,9 +80,10 @@ fn test_selected_suggestion_has_background() {
         "Should find the second suggestion in the rendered output"
     );
 
-    // Check that cells in the selected suggestion's row have DarkGray background
+    // Check that cells in the selected suggestion's row have the theme background
     let row = found_second_suggestion_row.unwrap();
-    let mut cells_with_darkgray_bg = 0;
+    let expected_bg = theme::ai::SUGGESTION_SELECTED_BG;
+    let mut cells_with_selected_bg = 0;
     let mut total_non_empty_cells = 0;
 
     for x in 0..buffer.area.width {
@@ -97,20 +98,20 @@ fn test_selected_suggestion_has_background() {
                 let is_inside_popup = symbol != " " || x > 50; // Rough heuristic
                 if is_inside_popup {
                     total_non_empty_cells += 1;
-                    if cell.bg == Color::DarkGray {
-                        cells_with_darkgray_bg += 1;
+                    if cell.bg == expected_bg {
+                        cells_with_selected_bg += 1;
                     }
                 }
             }
         }
     }
 
-    // Verify that at least some cells have the DarkGray background
+    // Verify that at least some cells have the selected background
     // (We expect the entire row width within the popup to have it)
     assert!(
-        cells_with_darkgray_bg > 0,
-        "Selected suggestion should have cells with DarkGray background. Found {} cells with DarkGray bg out of {} total cells",
-        cells_with_darkgray_bg,
+        cells_with_selected_bg > 0,
+        "Selected suggestion should have cells with selected background. Found {} cells with selected bg out of {} total cells",
+        cells_with_selected_bg,
         total_non_empty_cells
     );
 }
@@ -167,24 +168,25 @@ fn test_unselected_suggestion_no_background() {
         "Should find the first suggestion in the rendered output"
     );
 
-    // Check that cells in the unselected suggestion's row do NOT have DarkGray background
+    // Check that cells in the unselected suggestion's row do NOT have selected background
     let row = found_first_suggestion_row.unwrap();
-    let mut cells_with_darkgray_bg = 0;
+    let selected_bg = theme::ai::SUGGESTION_SELECTED_BG;
+    let mut cells_with_selected_bg = 0;
 
     for x in 0..buffer.area.width {
         let idx = (row * buffer.area.width + x) as usize;
         if idx < buffer.content.len() {
             let cell = &buffer.content[idx];
-            if cell.bg == Color::DarkGray {
-                cells_with_darkgray_bg += 1;
+            if cell.bg == selected_bg {
+                cells_with_selected_bg += 1;
             }
         }
     }
 
-    // Unselected suggestion should have NO DarkGray background cells
+    // Unselected suggestion should have NO selected background cells
     assert_eq!(
-        cells_with_darkgray_bg, 0,
-        "Unselected suggestion should NOT have DarkGray background. Found {} cells with DarkGray bg",
-        cells_with_darkgray_bg
+        cells_with_selected_bg, 0,
+        "Unselected suggestion should NOT have selected background. Found {} cells with selected bg",
+        cells_with_selected_bg
     );
 }

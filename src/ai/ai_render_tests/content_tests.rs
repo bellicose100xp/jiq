@@ -3,8 +3,8 @@
 use super::*;
 use crate::ai::ai_state::lifecycle::TEST_MAX_CONTEXT_LENGTH;
 use crate::ai::render::text::wrap_text;
+use crate::theme;
 use proptest::prelude::*;
-use ratatui::style::Color;
 
 // =========================================================================
 // Unit Tests
@@ -413,14 +413,15 @@ proptest! {
 
         let buffer = terminal.backend().buffer();
 
-        // Check that at least one cell has a DarkGray background (widget-level styling)
+        // Check that at least one cell has the selected background (widget-level styling)
+        let expected_bg = theme::ai::SUGGESTION_SELECTED_BG;
         let has_background = buffer.content.iter().any(|cell| {
-            cell.bg == Color::DarkGray
+            cell.bg == expected_bg
         });
 
         prop_assert!(
             has_background,
-            "Selected suggestion should have cells with DarkGray background color"
+            "Selected suggestion should have cells with selected background color"
         );
     }
 }

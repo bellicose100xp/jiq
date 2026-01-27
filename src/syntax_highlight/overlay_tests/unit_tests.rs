@@ -1,4 +1,5 @@
 use super::*;
+use crate::theme;
 
 #[test]
 fn test_extract_visible_spans_no_scroll() {
@@ -189,7 +190,7 @@ fn test_highlight_bracket_pairs_preserves_existing_style() {
     let spans = vec![Span::styled(
         "map(.)",
         Style::default()
-            .fg(Color::Blue)
+            .fg(theme::syntax::FUNCTION)
             .add_modifier(Modifier::BOLD),
     )];
 
@@ -197,7 +198,10 @@ fn test_highlight_bracket_pairs_preserves_existing_style() {
 
     assert!(result[1].style.add_modifier.contains(Modifier::UNDERLINED));
     assert!(result[1].style.add_modifier.contains(Modifier::BOLD));
-    assert_eq!(result[1].style.fg, Some(Color::Yellow));
+    assert_eq!(
+        result[1].style.fg,
+        Some(theme::syntax::bracket_match::COLOR)
+    );
 }
 
 #[test]

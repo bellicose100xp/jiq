@@ -1,6 +1,7 @@
 //! Tests for suggestion parsing
 
 use super::*;
+use crate::theme;
 use proptest::prelude::*;
 
 // =========================================================================
@@ -9,9 +10,12 @@ use proptest::prelude::*;
 
 #[test]
 fn test_suggestion_type_colors() {
-    assert_eq!(SuggestionType::Fix.color(), Color::Red);
-    assert_eq!(SuggestionType::Optimize.color(), Color::Yellow);
-    assert_eq!(SuggestionType::Next.color(), Color::Green);
+    assert_eq!(SuggestionType::Fix.color(), theme::ai::SUGGESTION_FIX);
+    assert_eq!(
+        SuggestionType::Optimize.color(),
+        theme::ai::SUGGESTION_OPTIMIZE
+    );
+    assert_eq!(SuggestionType::Next.color(), theme::ai::SUGGESTION_NEXT);
 }
 
 #[test]
@@ -283,9 +287,9 @@ proptest! {
     ) {
         let types = [SuggestionType::Fix, SuggestionType::Optimize, SuggestionType::Next];
         let expected_colors = [
-            Color::Red,
-            Color::Yellow,
-            Color::Green,
+            theme::ai::SUGGESTION_FIX,
+            theme::ai::SUGGESTION_OPTIMIZE,
+            theme::ai::SUGGESTION_NEXT,
         ];
 
         let suggestion_type = types[type_idx];
