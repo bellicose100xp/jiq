@@ -48,7 +48,6 @@ pub mod input {
     // Title hints
     pub const SYNTAX_ERROR_WARNING: Color = Color::Yellow;
     pub const TOOLTIP_HINT: Color = Color::Magenta;
-    pub const AI_HINT: Color = Color::Cyan;
     pub const UNFOCUSED_HINT: Color = Color::DarkGray;
 
     // Unfocused query text
