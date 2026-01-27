@@ -169,12 +169,17 @@ pub mod history {
     pub const SCROLLBAR: Color = Color::Cyan;
     pub const BACKGROUND: Color = Color::Black;
 
-    // List items
-    pub const ITEM_NORMAL_FG: Color = Color::White;
-    pub const ITEM_NORMAL_BG: Color = Color::Black;
-    pub const ITEM_SELECTED_BG: Color = Color::Rgb(50, 70, 90);
-    pub const ITEM_SELECTED_INDICATOR: Color = Color::Cyan;
+    // Selected item - prominent "hero" state
+    pub const ITEM_SELECTED_BG: Color = Color::Rgb(30, 45, 65);
+    pub const ITEM_SELECTED_FG: Color = Color::White;
+    pub const ITEM_SELECTED_BAR: Color = Color::Cyan;
     pub const ITEM_SELECTED_MODIFIER: Modifier = Modifier::BOLD;
+
+    // Normal items - recede visually with alternating backgrounds
+    pub const ITEM_NORMAL_FG: Color = Color::Rgb(140, 145, 155);
+    pub const ITEM_NORMAL_BG_ODD: Color = Color::Black;
+    pub const ITEM_NORMAL_BG_EVEN: Color = Color::Rgb(18, 22, 28);
+    pub const SYNTAX_DIM_MODIFIER: Modifier = Modifier::DIM;
 
     // Empty state
     pub const NO_MATCHES: Color = Color::DarkGray;
