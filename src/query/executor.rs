@@ -110,8 +110,24 @@ impl JqExecutor {
         // Empty query defaults to identity filter
         let query = if query.trim().is_empty() { "." } else { query };
 
-        // Spawn jq process
+        // Galaxy theme colors for jq output (using true color ANSI codes)
+        // Format: null:false:true:numbers:strings:arrays:objects:keys
+        // Each segment is an ANSI SGR code (38;2;R;G;B for true color)
+        let jq_colors = [
+            "38;2;130;133;158",  // null - muted gray
+            "38;2;224;108;117",  // false - soft red
+            "38;2;107;203;119",  // true - fresh green
+            "38;2;189;147;249",  // numbers - purple
+            "38;2;107;203;119",  // strings - fresh green
+            "1;38;2;0;217;255",  // arrays - bold electric cyan
+            "1;38;2;0;217;255",  // objects - bold electric cyan
+            "1;38;2;255;217;61", // keys - bold golden yellow
+        ]
+        .join(":");
+
+        // Spawn jq process with custom colors
         let mut child = Command::new("jq")
+            .env("JQ_COLORS", jq_colors)
             .arg("--color-output")
             .arg(query)
             .stdin(Stdio::piped())

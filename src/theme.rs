@@ -4,6 +4,8 @@
 //! - Add new colors to the appropriate module
 //! - Use `theme::module::CONSTANT` in render files
 //! - Do NOT hardcode `Color::*` values directly in render files
+//!
+//! Theme: Galaxy - Purple/pink accents with deep space blue background
 
 use ratatui::style::{Color, Modifier, Style};
 
@@ -13,20 +15,32 @@ use ratatui::style::{Color, Modifier, Style};
 pub mod palette {
     use super::*;
 
-    // Text colors
-    pub const TEXT: Color = Color::White;
-    pub const TEXT_DIM: Color = Color::DarkGray;
-    pub const TEXT_MUTED: Color = Color::Gray;
+    // Text colors - softer than pure white
+    pub const TEXT: Color = Color::Rgb(236, 236, 244);
+    pub const TEXT_DIM: Color = Color::Rgb(90, 92, 119);
+    pub const TEXT_MUTED: Color = Color::Rgb(130, 133, 158);
 
-    // Background colors
-    pub const BG_DARK: Color = Color::Black;
-    pub const BG_HOVER: Color = Color::Indexed(236);
+    // Background colors - deep space blue tints
+    pub const BG_DARK: Color = Color::Rgb(26, 26, 46);
+    pub const BG_SURFACE: Color = Color::Rgb(35, 35, 58);
+    pub const BG_HOVER: Color = Color::Rgb(45, 45, 72);
+    pub const BG_HIGHLIGHT: Color = Color::Rgb(55, 55, 85);
 
-    // Semantic colors
-    pub const SUCCESS: Color = Color::Green;
-    pub const WARNING: Color = Color::Yellow;
-    pub const ERROR: Color = Color::Red;
-    pub const INFO: Color = Color::Blue;
+    // Semantic colors - vibrant Galaxy palette
+    pub const SUCCESS: Color = Color::Rgb(107, 203, 119);
+    pub const WARNING: Color = Color::Rgb(255, 217, 61);
+    pub const ERROR: Color = Color::Rgb(224, 108, 117);
+    pub const INFO: Color = Color::Rgb(0, 217, 255);
+
+    // Accent colors
+    pub const CYAN: Color = Color::Rgb(0, 217, 255);
+    pub const YELLOW: Color = Color::Rgb(255, 217, 61);
+    pub const GREEN: Color = Color::Rgb(107, 203, 119);
+    pub const MAGENTA: Color = Color::Rgb(198, 120, 221);
+    pub const PINK: Color = Color::Rgb(255, 107, 157);
+    pub const RED: Color = Color::Rgb(224, 108, 117);
+    pub const ORANGE: Color = Color::Rgb(255, 184, 108);
+    pub const PURPLE: Color = Color::Rgb(189, 147, 249);
 
     // Shared cursor style (used by textarea widgets in history, search, snippets, input)
     pub const CURSOR: Style = Style::new().add_modifier(Modifier::REVERSED);
@@ -36,23 +50,23 @@ pub mod palette {
 pub mod input {
     use super::*;
 
-    // Mode indicator colors
-    pub const MODE_INSERT: Color = Color::Cyan;
-    pub const MODE_NORMAL: Color = Color::Yellow;
-    pub const MODE_OPERATOR: Color = Color::Green;
-    pub const MODE_CHAR_SEARCH: Color = Color::Magenta;
+    // Mode indicator colors - vibrant and distinct
+    pub const MODE_INSERT: Color = Color::Rgb(0, 217, 255); // Electric cyan
+    pub const MODE_NORMAL: Color = Color::Rgb(255, 217, 61); // Golden yellow
+    pub const MODE_OPERATOR: Color = Color::Rgb(107, 203, 119); // Fresh green
+    pub const MODE_CHAR_SEARCH: Color = Color::Rgb(255, 107, 157); // Hot pink
 
     // Border colors (focused border uses mode color)
-    pub const BORDER_UNFOCUSED: Color = Color::DarkGray;
-    pub const BORDER_ERROR: Color = Color::Red;
+    pub const BORDER_UNFOCUSED: Color = Color::Rgb(90, 92, 119);
+    pub const BORDER_ERROR: Color = Color::Rgb(224, 108, 117);
 
     // Title hints
-    pub const SYNTAX_ERROR_WARNING: Color = Color::Yellow;
-    pub const TOOLTIP_HINT: Color = Color::Magenta;
-    pub const UNFOCUSED_HINT: Color = Color::DarkGray;
+    pub const SYNTAX_ERROR_WARNING: Color = Color::Rgb(255, 217, 61);
+    pub const TOOLTIP_HINT: Color = Color::Rgb(198, 120, 221); // Vibrant purple
+    pub const UNFOCUSED_HINT: Color = Color::Rgb(90, 92, 119);
 
     // Unfocused query text
-    pub const QUERY_UNFOCUSED: Color = Color::DarkGray;
+    pub const QUERY_UNFOCUSED: Color = Color::Rgb(90, 92, 119);
 
     pub const CURSOR: Style = Style::new().add_modifier(Modifier::REVERSED);
 }
@@ -62,56 +76,58 @@ pub mod results {
     use super::*;
 
     // Border colors
-    pub const BORDER_FOCUSED: Color = Color::Cyan;
-    pub const BORDER_UNFOCUSED: Color = Color::DarkGray;
-    pub const BORDER_WARNING: Color = Color::Yellow;
-    pub const BORDER_ERROR: Color = Color::Red;
-    pub const BACKGROUND: Color = Color::Black;
+    pub const BORDER_FOCUSED: Color = Color::Rgb(0, 217, 255); // Electric cyan
+    pub const BORDER_UNFOCUSED: Color = Color::Rgb(90, 92, 119);
+    pub const BORDER_WARNING: Color = Color::Rgb(255, 217, 61);
+    pub const BORDER_ERROR: Color = Color::Rgb(224, 108, 117);
+    pub const BACKGROUND: Color = Color::Rgb(26, 26, 46);
 
     // Search mode text colors (in title)
-    pub const SEARCH_ACTIVE: Color = Color::LightMagenta;
-    pub const SEARCH_INACTIVE: Color = Color::DarkGray;
+    pub const SEARCH_ACTIVE: Color = Color::Rgb(255, 107, 157); // Hot pink
+    pub const SEARCH_INACTIVE: Color = Color::Rgb(90, 92, 119);
 
     // Query timing indicator colors
-    pub const TIMING_NORMAL: Color = Color::Cyan;
-    pub const TIMING_SLOW: Color = Color::Yellow;
-    pub const TIMING_VERY_SLOW: Color = Color::Red;
+    pub const TIMING_NORMAL: Color = Color::Rgb(0, 217, 255);
+    pub const TIMING_SLOW: Color = Color::Rgb(255, 217, 61);
+    pub const TIMING_VERY_SLOW: Color = Color::Rgb(224, 108, 117);
 
     // Query state indicators
-    pub const RESULT_OK: Color = Color::Green;
-    pub const RESULT_WARNING: Color = Color::Yellow;
-    pub const RESULT_ERROR: Color = Color::Red;
-    pub const RESULT_PENDING: Color = Color::Gray;
+    pub const RESULT_OK: Color = Color::Rgb(107, 203, 119);
+    pub const RESULT_WARNING: Color = Color::Rgb(255, 217, 61);
+    pub const RESULT_ERROR: Color = Color::Rgb(224, 108, 117);
+    pub const RESULT_PENDING: Color = Color::Rgb(130, 133, 158);
 
     // Search match highlighting
-    pub const MATCH_HIGHLIGHT_BG: Color = Color::Rgb(128, 128, 128);
-    pub const MATCH_HIGHLIGHT_FG: Color = Color::White;
-    pub const CURRENT_MATCH_BG: Color = Color::Rgb(255, 165, 0);
-    pub const CURRENT_MATCH_FG: Color = Color::Black;
+    pub const MATCH_HIGHLIGHT_BG: Color = Color::Rgb(85, 85, 115);
+    pub const MATCH_HIGHLIGHT_FG: Color = Color::Rgb(236, 236, 244);
+    pub const CURRENT_MATCH_BG: Color = Color::Rgb(255, 184, 108); // Orange
+    pub const CURRENT_MATCH_FG: Color = Color::Rgb(26, 26, 46);
 
     // Cursor and selection
-    pub const CURSOR_LINE_BG: Color = Color::Rgb(50, 55, 65);
-    pub const HOVERED_LINE_BG: Color = Color::Rgb(45, 50, 60);
-    pub const VISUAL_SELECTION_BG: Color = Color::Rgb(70, 80, 100);
-    pub const CURSOR_INDICATOR_FG: Color = Color::Rgb(255, 85, 85);
+    pub const CURSOR_LINE_BG: Color = Color::Rgb(45, 45, 72);
+    pub const HOVERED_LINE_BG: Color = Color::Rgb(40, 40, 65);
+    pub const VISUAL_SELECTION_BG: Color = Color::Rgb(60, 60, 95);
+    pub const CURSOR_INDICATOR_FG: Color = Color::Rgb(255, 107, 157);
 
     // Stale state
     pub const STALE_MODIFIER: Modifier = Modifier::DIM;
 
     // Hints (bottom of results pane)
-    pub const HINT_KEY: Color = Color::Cyan;
-    pub const HINT_DESCRIPTION: Style = Style::new().fg(Color::Cyan).add_modifier(Modifier::DIM);
+    pub const HINT_KEY: Color = Color::Rgb(0, 217, 255);
+    pub const HINT_DESCRIPTION: Style = Style::new()
+        .fg(Color::Rgb(0, 217, 255))
+        .add_modifier(Modifier::DIM);
 
-    // Spinner animation colors (rainbow)
+    // Spinner animation colors (galaxy rainbow)
     pub const SPINNER_COLORS: &[Color] = &[
-        Color::Rgb(255, 107, 107), // Red/Coral
-        Color::Rgb(255, 159, 67),  // Orange
-        Color::Rgb(254, 202, 87),  // Yellow
-        Color::Rgb(72, 219, 147),  // Green
-        Color::Rgb(69, 170, 242),  // Blue
-        Color::Rgb(120, 111, 213), // Indigo
-        Color::Rgb(214, 128, 255), // Violet
-        Color::Rgb(255, 121, 198), // Pink
+        Color::Rgb(255, 107, 157), // Pink
+        Color::Rgb(255, 184, 108), // Orange
+        Color::Rgb(255, 217, 61),  // Yellow
+        Color::Rgb(107, 203, 119), // Green
+        Color::Rgb(0, 217, 255),   // Cyan
+        Color::Rgb(189, 147, 249), // Purple
+        Color::Rgb(198, 120, 221), // Magenta
+        Color::Rgb(224, 108, 117), // Red
     ];
 }
 
@@ -119,21 +135,21 @@ pub mod results {
 pub mod search {
     use super::*;
 
-    pub const BORDER_ACTIVE: Color = Color::LightMagenta;
-    pub const BORDER_INACTIVE: Color = Color::DarkGray;
-    pub const BACKGROUND: Color = Color::Black;
+    pub const BORDER_ACTIVE: Color = Color::Rgb(255, 107, 157); // Hot pink
+    pub const BORDER_INACTIVE: Color = Color::Rgb(90, 92, 119);
+    pub const BACKGROUND: Color = Color::Rgb(26, 26, 46);
 
     // Text colors
-    pub const TEXT_ACTIVE: Color = Color::White;
-    pub const TEXT_INACTIVE: Color = Color::DarkGray;
+    pub const TEXT_ACTIVE: Color = Color::Rgb(236, 236, 244);
+    pub const TEXT_INACTIVE: Color = Color::Rgb(90, 92, 119);
 
     // Match count display
-    pub const NO_MATCHES: Color = Color::Red;
-    pub const MATCH_COUNT: Color = Color::Gray;
-    pub const MATCH_COUNT_CONFIRMED: Color = Color::DarkGray;
+    pub const NO_MATCHES: Color = Color::Rgb(224, 108, 117);
+    pub const MATCH_COUNT: Color = Color::Rgb(130, 133, 158);
+    pub const MATCH_COUNT_CONFIRMED: Color = Color::Rgb(90, 92, 119);
 
     // Hints at bottom
-    pub const HINTS: Color = Color::LightMagenta;
+    pub const HINTS: Color = Color::Rgb(255, 107, 157);
 }
 
 /// Help popup styles
@@ -141,24 +157,34 @@ pub mod help {
     use super::*;
 
     // Border and title
-    pub const BORDER: Color = Color::Cyan;
-    pub const BACKGROUND: Color = Color::Black;
-    pub const SCROLLBAR: Color = Color::Cyan;
-    pub const TITLE: Style = Style::new().fg(Color::Cyan).add_modifier(Modifier::BOLD);
+    pub const BORDER: Color = Color::Rgb(0, 217, 255);
+    pub const BACKGROUND: Color = Color::Rgb(26, 26, 46);
+    pub const SCROLLBAR: Color = Color::Rgb(0, 217, 255);
+    pub const TITLE: Style = Style::new()
+        .fg(Color::Rgb(0, 217, 255))
+        .add_modifier(Modifier::BOLD);
 
     // Tab bar
-    pub const TAB_ACTIVE: Style = Style::new().fg(Color::Cyan).add_modifier(Modifier::BOLD);
-    pub const TAB_INACTIVE: Style = Style::new().fg(Color::Cyan).add_modifier(Modifier::DIM);
-    pub const TAB_HOVER_FG: Color = Color::Cyan;
-    pub const TAB_HOVER_BG: Color = Color::Indexed(23); // Subtle dark cyan
+    pub const TAB_ACTIVE: Style = Style::new()
+        .fg(Color::Rgb(0, 217, 255))
+        .add_modifier(Modifier::BOLD);
+    pub const TAB_INACTIVE: Style = Style::new()
+        .fg(Color::Rgb(0, 217, 255))
+        .add_modifier(Modifier::DIM);
+    pub const TAB_HOVER_FG: Color = Color::Rgb(0, 217, 255);
+    pub const TAB_HOVER_BG: Color = Color::Rgb(35, 35, 58);
 
     // Content
-    pub const SECTION_HEADER: Style = Style::new().fg(Color::Cyan).add_modifier(Modifier::BOLD);
-    pub const KEY: Style = Style::new().fg(Color::Yellow).add_modifier(Modifier::BOLD);
-    pub const DESCRIPTION: Color = Color::White;
+    pub const SECTION_HEADER: Style = Style::new()
+        .fg(Color::Rgb(0, 217, 255))
+        .add_modifier(Modifier::BOLD);
+    pub const KEY: Style = Style::new()
+        .fg(Color::Rgb(255, 217, 61))
+        .add_modifier(Modifier::BOLD);
+    pub const DESCRIPTION: Color = Color::Rgb(236, 236, 244);
 
     // Footer
-    pub const FOOTER: Color = Color::DarkGray;
+    pub const FOOTER: Color = Color::Rgb(90, 92, 119);
 }
 
 /// History popup styles
@@ -166,24 +192,24 @@ pub mod history {
     use super::*;
 
     // Border and scrollbar
-    pub const BORDER: Color = Color::Cyan;
-    pub const SCROLLBAR: Color = Color::Cyan;
-    pub const BACKGROUND: Color = Color::Black;
+    pub const BORDER: Color = Color::Rgb(0, 217, 255);
+    pub const SCROLLBAR: Color = Color::Rgb(0, 217, 255);
+    pub const BACKGROUND: Color = Color::Rgb(26, 26, 46);
 
     // Selected item - clear highlight with accent indicator
-    pub const ITEM_SELECTED_BG: Color = Color::Rgb(35, 50, 70);
-    pub const ITEM_SELECTED_INDICATOR: Color = Color::Cyan;
+    pub const ITEM_SELECTED_BG: Color = Color::Rgb(45, 45, 72);
+    pub const ITEM_SELECTED_INDICATOR: Color = Color::Rgb(0, 217, 255);
 
     // Normal items - clean, readable with uniform background
-    pub const ITEM_NORMAL_BG: Color = Color::Black;
-    pub const ITEM_NORMAL_FG: Color = Color::Rgb(160, 165, 175);
+    pub const ITEM_NORMAL_BG: Color = Color::Rgb(26, 26, 46);
+    pub const ITEM_NORMAL_FG: Color = Color::Rgb(180, 182, 200);
 
     // Empty state
-    pub const NO_MATCHES: Color = Color::DarkGray;
+    pub const NO_MATCHES: Color = Color::Rgb(90, 92, 119);
 
     // Search textarea
-    pub const SEARCH_TEXT: Color = Color::White;
-    pub const SEARCH_BG: Color = Color::Black;
+    pub const SEARCH_TEXT: Color = Color::Rgb(236, 236, 244);
+    pub const SEARCH_BG: Color = Color::Rgb(26, 26, 46);
 }
 
 /// Snippets popup styles
@@ -191,42 +217,42 @@ pub mod snippets {
     use super::*;
 
     // Border (distinct green color)
-    pub const BORDER: Color = Color::LightGreen;
-    pub const SCROLLBAR: Color = Color::LightGreen;
-    pub const BACKGROUND: Color = Color::Black;
+    pub const BORDER: Color = Color::Rgb(107, 203, 119);
+    pub const SCROLLBAR: Color = Color::Rgb(107, 203, 119);
+    pub const BACKGROUND: Color = Color::Rgb(26, 26, 46);
 
     // List items
-    pub const ITEM_NORMAL_FG: Color = Color::White;
-    pub const ITEM_NORMAL_BG: Color = Color::Black;
-    pub const ITEM_SELECTED_FG: Color = Color::Black;
-    pub const ITEM_SELECTED_BG: Color = Color::Rgb(35, 50, 70);
-    pub const ITEM_SELECTED_INDICATOR: Color = Color::LightGreen;
+    pub const ITEM_NORMAL_FG: Color = Color::Rgb(236, 236, 244);
+    pub const ITEM_NORMAL_BG: Color = Color::Rgb(26, 26, 46);
+    pub const ITEM_SELECTED_FG: Color = Color::Rgb(26, 26, 46);
+    pub const ITEM_SELECTED_BG: Color = Color::Rgb(45, 45, 72);
+    pub const ITEM_SELECTED_INDICATOR: Color = Color::Rgb(107, 203, 119);
     pub const ITEM_SELECTED_MODIFIER: Modifier = Modifier::BOLD;
-    pub const ITEM_HOVERED_FG: Color = Color::White;
-    pub const ITEM_HOVERED_BG: Color = Color::Indexed(236);
+    pub const ITEM_HOVERED_FG: Color = Color::Rgb(236, 236, 244);
+    pub const ITEM_HOVERED_BG: Color = Color::Rgb(40, 40, 65);
 
     // Content
-    pub const NAME: Color = Color::White;
-    pub const DESCRIPTION: Color = Color::DarkGray;
-    pub const QUERY_PREVIEW: Color = Color::Yellow;
-    pub const CATEGORY: Color = Color::Green;
+    pub const NAME: Color = Color::Rgb(236, 236, 244);
+    pub const DESCRIPTION: Color = Color::Rgb(90, 92, 119);
+    pub const QUERY_PREVIEW: Color = Color::Rgb(255, 217, 61);
+    pub const CATEGORY: Color = Color::Rgb(107, 203, 119);
 
     // Edit/Create mode
-    pub const FIELD_ACTIVE_BORDER: Color = Color::Yellow;
-    pub const FIELD_INACTIVE_BORDER: Color = Color::LightGreen;
-    pub const FIELD_TEXT: Color = Color::White;
-    pub const FIELD_BG: Color = Color::Black;
+    pub const FIELD_ACTIVE_BORDER: Color = Color::Rgb(255, 217, 61);
+    pub const FIELD_INACTIVE_BORDER: Color = Color::Rgb(107, 203, 119);
+    pub const FIELD_TEXT: Color = Color::Rgb(236, 236, 244);
+    pub const FIELD_BG: Color = Color::Rgb(26, 26, 46);
 
     // Delete confirmation
-    pub const DELETE_BORDER: Color = Color::Red;
+    pub const DELETE_BORDER: Color = Color::Rgb(224, 108, 117);
 
     // Keyboard hints
-    pub const HINT_KEY: Color = Color::Yellow;
-    pub const HINT_TEXT: Color = Color::White;
+    pub const HINT_KEY: Color = Color::Rgb(255, 217, 61);
+    pub const HINT_TEXT: Color = Color::Rgb(236, 236, 244);
 
     // Search
-    pub const SEARCH_TEXT: Color = Color::White;
-    pub const SEARCH_BG: Color = Color::Black;
+    pub const SEARCH_TEXT: Color = Color::Rgb(236, 236, 244);
+    pub const SEARCH_BG: Color = Color::Rgb(26, 26, 46);
 }
 
 /// AI assistant styles
@@ -234,57 +260,63 @@ pub mod ai {
     use super::*;
 
     // Border and title
-    pub const BORDER: Color = Color::Cyan;
-    pub const BACKGROUND: Color = Color::Black;
-    pub const SCROLLBAR: Color = Color::Cyan;
-    pub const TITLE: Style = Style::new().fg(Color::Cyan).add_modifier(Modifier::BOLD);
+    pub const BORDER: Color = Color::Rgb(0, 217, 255);
+    pub const BACKGROUND: Color = Color::Rgb(26, 26, 46);
+    pub const SCROLLBAR: Color = Color::Rgb(0, 217, 255);
+    pub const TITLE: Style = Style::new()
+        .fg(Color::Rgb(0, 217, 255))
+        .add_modifier(Modifier::BOLD);
 
     // Model display in title bar
-    pub const MODEL_DISPLAY: Color = Color::Blue;
+    pub const MODEL_DISPLAY: Color = Color::Rgb(189, 147, 249); // Purple
 
     // Selection counter in title
-    pub const COUNTER: Color = Color::Yellow;
+    pub const COUNTER: Color = Color::Rgb(255, 217, 61);
 
     // Config not set state
-    pub const CONFIG_ICON: Color = Color::Yellow;
-    pub const CONFIG_TITLE: Style = Style::new().fg(Color::Yellow).add_modifier(Modifier::BOLD);
-    pub const CONFIG_DESC: Color = Color::Gray;
-    pub const CONFIG_CODE: Color = Color::Cyan;
+    pub const CONFIG_ICON: Color = Color::Rgb(255, 217, 61);
+    pub const CONFIG_TITLE: Style = Style::new()
+        .fg(Color::Rgb(255, 217, 61))
+        .add_modifier(Modifier::BOLD);
+    pub const CONFIG_DESC: Color = Color::Rgb(130, 133, 158);
+    pub const CONFIG_CODE: Color = Color::Rgb(0, 217, 255);
     pub const CONFIG_LINK: Style = Style::new()
-        .fg(Color::Blue)
+        .fg(Color::Rgb(189, 147, 249))
         .add_modifier(Modifier::UNDERLINED);
 
     // Thinking state
-    pub const THINKING_ICON: Color = Color::Yellow;
+    pub const THINKING_ICON: Color = Color::Rgb(255, 217, 61);
     pub const THINKING_TEXT: Style = Style::new()
-        .fg(Color::Yellow)
+        .fg(Color::Rgb(255, 217, 61))
         .add_modifier(Modifier::ITALIC);
 
     // Error state
-    pub const ERROR_ICON: Color = Color::Red;
-    pub const ERROR_TITLE: Style = Style::new().fg(Color::Red).add_modifier(Modifier::BOLD);
-    pub const ERROR_MESSAGE: Color = Color::Red;
+    pub const ERROR_ICON: Color = Color::Rgb(224, 108, 117);
+    pub const ERROR_TITLE: Style = Style::new()
+        .fg(Color::Rgb(224, 108, 117))
+        .add_modifier(Modifier::BOLD);
+    pub const ERROR_MESSAGE: Color = Color::Rgb(224, 108, 117);
 
     // Content text
-    pub const QUERY_TEXT: Color = Color::Cyan;
-    pub const RESULT_TEXT: Color = Color::White;
-    pub const PREVIOUS_RESPONSE: Color = Color::DarkGray;
+    pub const QUERY_TEXT: Color = Color::Rgb(0, 217, 255);
+    pub const RESULT_TEXT: Color = Color::Rgb(236, 236, 244);
+    pub const PREVIOUS_RESPONSE: Color = Color::Rgb(90, 92, 119);
 
     // Suggestion list
-    pub const SUGGESTION_SELECTED_BG: Color = Color::DarkGray;
-    pub const SUGGESTION_HOVERED_BG: Color = Color::Indexed(236);
-    pub const SUGGESTION_TEXT_SELECTED: Color = Color::Black;
-    pub const SUGGESTION_TEXT_NORMAL: Color = Color::DarkGray;
-    pub const SUGGESTION_DESC_NORMAL: Color = Color::DarkGray;
-    pub const SUGGESTION_DESC_MUTED: Color = Color::Gray;
+    pub const SUGGESTION_SELECTED_BG: Color = Color::Rgb(55, 55, 85);
+    pub const SUGGESTION_HOVERED_BG: Color = Color::Rgb(45, 45, 72);
+    pub const SUGGESTION_TEXT_SELECTED: Color = Color::Rgb(26, 26, 46);
+    pub const SUGGESTION_TEXT_NORMAL: Color = Color::Rgb(130, 133, 158);
+    pub const SUGGESTION_DESC_NORMAL: Color = Color::Rgb(90, 92, 119);
+    pub const SUGGESTION_DESC_MUTED: Color = Color::Rgb(130, 133, 158);
 
     // Suggestion type colors
-    pub const SUGGESTION_FIX: Color = Color::Red;
-    pub const SUGGESTION_OPTIMIZE: Color = Color::Yellow;
-    pub const SUGGESTION_NEXT: Color = Color::Green;
+    pub const SUGGESTION_FIX: Color = Color::Rgb(224, 108, 117);
+    pub const SUGGESTION_OPTIMIZE: Color = Color::Rgb(255, 217, 61);
+    pub const SUGGESTION_NEXT: Color = Color::Rgb(107, 203, 119);
 
     // Hints
-    pub const HINT: Color = Color::DarkGray;
+    pub const HINT: Color = Color::Rgb(90, 92, 119);
 }
 
 /// Autocomplete dropdown styles
@@ -292,41 +324,43 @@ pub mod autocomplete {
     use super::*;
 
     // Border and scrollbar
-    pub const BORDER: Color = Color::Cyan;
-    pub const SCROLLBAR: Color = Color::Cyan;
-    pub const BACKGROUND: Color = Color::Black;
+    pub const BORDER: Color = Color::Rgb(0, 217, 255);
+    pub const SCROLLBAR: Color = Color::Rgb(0, 217, 255);
+    pub const BACKGROUND: Color = Color::Rgb(26, 26, 46);
 
     // List items
-    pub const ITEM_NORMAL_FG: Color = Color::White;
-    pub const ITEM_NORMAL_BG: Color = Color::Black;
-    pub const ITEM_SELECTED_FG: Color = Color::Black;
-    pub const ITEM_SELECTED_BG: Color = Color::Cyan;
+    pub const ITEM_NORMAL_FG: Color = Color::Rgb(236, 236, 244);
+    pub const ITEM_NORMAL_BG: Color = Color::Rgb(26, 26, 46);
+    pub const ITEM_SELECTED_FG: Color = Color::Rgb(26, 26, 46);
+    pub const ITEM_SELECTED_BG: Color = Color::Rgb(0, 217, 255);
     pub const ITEM_SELECTED_MODIFIER: Modifier = Modifier::BOLD;
 
     // Completion type colors
-    pub const TYPE_FUNCTION: Color = Color::Yellow;
-    pub const TYPE_FIELD: Color = Color::Cyan;
-    pub const TYPE_OPERATOR: Color = Color::Magenta;
-    pub const TYPE_PATTERN: Color = Color::Green;
-    pub const TYPE_VARIABLE: Color = Color::Red;
+    pub const TYPE_FUNCTION: Color = Color::Rgb(255, 217, 61);
+    pub const TYPE_FIELD: Color = Color::Rgb(0, 217, 255);
+    pub const TYPE_OPERATOR: Color = Color::Rgb(198, 120, 221);
+    pub const TYPE_PATTERN: Color = Color::Rgb(107, 203, 119);
+    pub const TYPE_VARIABLE: Color = Color::Rgb(224, 108, 117);
 }
 
 /// Tooltip styles
 pub mod tooltip {
     use super::*;
 
-    // Border and title (distinct magenta)
-    pub const BORDER: Color = Color::Magenta;
-    pub const BACKGROUND: Color = Color::Black;
-    pub const TITLE: Style = Style::new().fg(Color::Magenta).add_modifier(Modifier::BOLD);
+    // Border and title (distinct magenta/purple)
+    pub const BORDER: Color = Color::Rgb(198, 120, 221);
+    pub const BACKGROUND: Color = Color::Rgb(26, 26, 46);
+    pub const TITLE: Style = Style::new()
+        .fg(Color::Rgb(198, 120, 221))
+        .add_modifier(Modifier::BOLD);
 
     // Content
-    pub const DESCRIPTION: Color = Color::White;
-    pub const EXAMPLE: Color = Color::Cyan;
-    pub const EXAMPLE_DESC: Color = Color::Gray;
-    pub const TIP: Color = Color::Yellow;
-    pub const SEPARATOR: Color = Color::DarkGray;
-    pub const DISMISS_HINT: Color = Color::DarkGray;
+    pub const DESCRIPTION: Color = Color::Rgb(236, 236, 244);
+    pub const EXAMPLE: Color = Color::Rgb(0, 217, 255);
+    pub const EXAMPLE_DESC: Color = Color::Rgb(130, 133, 158);
+    pub const TIP: Color = Color::Rgb(255, 217, 61);
+    pub const SEPARATOR: Color = Color::Rgb(90, 92, 119);
+    pub const DISMISS_HINT: Color = Color::Rgb(90, 92, 119);
 }
 
 /// Notification styles
@@ -340,21 +374,21 @@ pub mod notification {
     }
 
     pub const INFO: NotificationColors = NotificationColors {
-        fg: Color::White,
-        bg: Color::DarkGray,
-        border: Color::Gray,
+        fg: Color::Rgb(236, 236, 244),
+        bg: Color::Rgb(55, 55, 85),
+        border: Color::Rgb(130, 133, 158),
     };
 
     pub const WARNING: NotificationColors = NotificationColors {
-        fg: Color::Black,
-        bg: Color::Yellow,
-        border: Color::Yellow,
+        fg: Color::Rgb(26, 26, 46),
+        bg: Color::Rgb(255, 217, 61),
+        border: Color::Rgb(255, 217, 61),
     };
 
     pub const ERROR: NotificationColors = NotificationColors {
-        fg: Color::White,
-        bg: Color::Red,
-        border: Color::LightRed,
+        fg: Color::Rgb(236, 236, 244),
+        bg: Color::Rgb(224, 108, 117),
+        border: Color::Rgb(255, 135, 145),
     };
 }
 
@@ -362,9 +396,9 @@ pub mod notification {
 pub mod help_line {
     use super::*;
 
-    pub const KEY: Color = Color::Gray;
-    pub const DESCRIPTION: Color = Color::DarkGray;
-    pub const SEPARATOR: Color = Color::DarkGray;
+    pub const KEY: Color = Color::Rgb(130, 133, 158);
+    pub const DESCRIPTION: Color = Color::Rgb(90, 92, 119);
+    pub const SEPARATOR: Color = Color::Rgb(90, 92, 119);
 }
 
 /// Border hint utilities - for building styled keyboard shortcuts on borders
@@ -405,30 +439,30 @@ pub mod border_hints {
 pub mod scrollbar {
     use super::*;
 
-    pub const DEFAULT: Color = Color::Cyan;
-    pub const TRACK: Color = Color::DarkGray;
+    pub const DEFAULT: Color = Color::Rgb(0, 217, 255);
+    pub const TRACK: Color = Color::Rgb(55, 55, 85);
 }
 
 /// Syntax highlighting styles (for jq query input)
 pub mod syntax {
     use super::*;
 
-    pub const KEYWORD: Color = Color::Yellow;
-    pub const FUNCTION: Color = Color::Blue;
-    pub const STRING: Color = Color::Green;
-    pub const NUMBER: Color = Color::Cyan;
-    pub const OPERATOR: Color = Color::Magenta;
-    pub const VARIABLE: Color = Color::Red;
-    pub const FIELD: Color = Color::Cyan;
+    pub const KEYWORD: Color = Color::Rgb(255, 107, 157); // Hot pink keywords
+    pub const FUNCTION: Color = Color::Rgb(0, 217, 255); // Electric cyan functions
+    pub const STRING: Color = Color::Rgb(107, 203, 119); // Fresh green strings
+    pub const NUMBER: Color = Color::Rgb(189, 147, 249); // Purple numbers
+    pub const OPERATOR: Color = Color::Rgb(198, 120, 221); // Magenta operators
+    pub const VARIABLE: Color = Color::Rgb(255, 184, 108); // Orange variables
+    pub const FIELD: Color = Color::Rgb(0, 217, 255); // Cyan fields
 
     /// Bracket pair matching style (color + bold + underlined)
     /// Applied to matching brackets when cursor is on a bracket
     pub mod bracket_match {
         use super::*;
 
-        pub const COLOR: Color = Color::Yellow;
+        pub const COLOR: Color = Color::Rgb(255, 217, 61);
         pub const STYLE: Style = Style::new()
-            .fg(Color::Yellow)
+            .fg(Color::Rgb(255, 217, 61))
             .add_modifier(Modifier::BOLD)
             .add_modifier(Modifier::UNDERLINED);
     }
