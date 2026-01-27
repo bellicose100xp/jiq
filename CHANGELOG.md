@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.18.1] - 2026-01-26
+
+### Added
+- **Syntax highlighting in history and snippets** - jq syntax highlighting now applied to query text in:
+  - History popup entries
+  - Snippets preview panel
+  - Replace snippet confirmation dialog (old/new queries)
+
+### Changed
+- History selection background updated to darker color for better contrast with syntax highlighting
+
 ## [3.18.0] - 2026-01-26
 
 ### Changed
