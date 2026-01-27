@@ -58,11 +58,13 @@ pub fn render_bar(app: &mut App, frame: &mut Frame, area: Rect) {
         .style(Style::default().bg(theme::search::BACKGROUND));
 
     if !is_confirmed {
-        let hints = Line::from(vec![Span::styled(
-            " [Enter] Confirm | [Esc] Close ",
-            Style::default().fg(theme::search::HINTS),
-        )]);
-        block = block.title_bottom(hints.alignment(Alignment::Center));
+        block = block.title_bottom(
+            theme::border_hints::build_hints(
+                &[("Enter", "Confirm"), ("Esc", "Close")],
+                theme::search::HINTS,
+            )
+            .alignment(Alignment::Center),
+        );
     }
 
     let inner_area = block.inner(area);
