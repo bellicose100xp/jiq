@@ -8,7 +8,7 @@ expression: terminal.backend().to_string()
 "                                                                                "
 "                                                                                "
 "  ╭ Suggestions ──────────────────────────────────────────────╮                 "
-"  │► a                                      [field: String]   │                 "
+"  │  a                                      [field: String]   │                 "
 "  │  mediumFieldName                        [field: Number]   │                 "
 "  │  veryLongFieldNameThatShouldBeTruncated [field: Boolean]  │                 "
 "  │  anotherVeryLongFieldNameHere           [field: Array]    │                 "

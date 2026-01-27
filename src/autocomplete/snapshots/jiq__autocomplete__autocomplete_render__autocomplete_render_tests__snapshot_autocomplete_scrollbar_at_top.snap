@@ -6,7 +6,7 @@ expression: output
 "                                                                                "
 "                                                                                "
 "  ╭ Suggestions ───────╮                                                        "
-"  │► .field00 [field]  █                                                        "
+"  │  .field00 [field]  █                                                        "
 "  │  .field01 [field]  █                                                        "
 "  │  .field02 [field]  █                                                        "
 "  │  .field03 [field]  █                                                        "

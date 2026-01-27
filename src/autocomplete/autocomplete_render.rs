@@ -105,7 +105,7 @@ pub fn render_popup(app: &App, frame: &mut Frame, input_area: Rect) -> Option<Re
             let line = if abs_idx == app.autocomplete.selected_index() {
                 Line::from(vec![
                     Span::styled(
-                        format!("► {}{}", truncated_text, padding),
+                        format!("  {}{}", truncated_text, padding),
                         Style::default()
                             .fg(theme::autocomplete::ITEM_SELECTED_FG)
                             .bg(theme::autocomplete::ITEM_SELECTED_BG)

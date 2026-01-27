@@ -1,19 +1,19 @@
 ---
-source: src/syntax/mod.rs
+source: src/syntax_highlight_tests/snapshot_tests.rs
 expression: results
 ---
 - - "0"
   - - content: "0"
-      fg: cyan
+      fg: "rgb(189,147,249)"
 - - "42"
   - - content: "42"
-      fg: cyan
+      fg: "rgb(189,147,249)"
 - - "-123"
   - - content: "-123"
-      fg: cyan
+      fg: "rgb(189,147,249)"
 - - "3.14"
   - - content: "3.14"
-      fg: cyan
+      fg: "rgb(189,147,249)"
 - - "-0.5"
   - - content: "-0.5"
-      fg: cyan
+      fg: "rgb(189,147,249)"

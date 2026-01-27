@@ -1,20 +1,20 @@
 ---
-source: src/syntax/mod.rs
+source: src/syntax_highlight_tests/snapshot_tests.rs
 expression: serialize_spans(&spans)
 ---
 - content: ".items"
 - content: "["
-  fg: magenta
+  fg: "rgb(198,120,221)"
 - content: "]"
-  fg: magenta
+  fg: "rgb(198,120,221)"
 - content: " "
 - content: "|"
-  fg: magenta
+  fg: "rgb(198,120,221)"
 - content: " "
 - content: select
-  fg: blue
+  fg: "rgb(0,217,255)"
 - content: (
-  fg: magenta
+  fg: "rgb(198,120,221)"
 - content: ".active"
 - content: )
-  fg: magenta
+  fg: "rgb(198,120,221)"

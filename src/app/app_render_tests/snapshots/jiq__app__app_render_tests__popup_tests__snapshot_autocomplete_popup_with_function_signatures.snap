@@ -18,7 +18,7 @@ expression: output
 "│                                                                              │"
 "│                                                                              │"
 "│ ╭ Suggestions ───────────────╮                                               │"
-"│ │► select(expr)  [function]  │                                               │"
+"│ │  select(expr)  [function]  │                                               │"
 "│ │  sort          [function]  │                                               │"
 "│ │  sort_by(expr) [function]  │                                               │"
 "╰─╰────────────────────────────╯───────────────────────────────────────────────╯"

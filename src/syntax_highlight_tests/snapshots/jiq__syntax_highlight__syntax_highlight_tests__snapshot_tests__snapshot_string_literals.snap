@@ -1,16 +1,16 @@
 ---
-source: src/syntax/mod.rs
+source: src/syntax_highlight_tests/snapshot_tests.rs
 expression: results
 ---
 - - "\"hello\""
   - - content: "\"hello\""
-      fg: green
+      fg: "rgb(107,203,119)"
 - - "\"hello world\""
   - - content: "\"hello world\""
-      fg: green
+      fg: "rgb(107,203,119)"
 - - "\"hello \\\"escaped\\\" world\""
   - - content: "\"hello \\\"escaped\\\" world\""
-      fg: green
+      fg: "rgb(107,203,119)"
 - - "\"unicode: 世界\""
   - - content: "\"unicode: 世界\""
-      fg: green
+      fg: "rgb(107,203,119)"

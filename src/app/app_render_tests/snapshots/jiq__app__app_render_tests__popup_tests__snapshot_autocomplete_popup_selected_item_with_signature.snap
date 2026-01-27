@@ -19,7 +19,7 @@ expression: output
 "│                                                                              │"
 "│ ╭ Suggestions ──────────────╮                                                │"
 "│ │  map(expr)    [function]  │                                                │"
-"│ │► max          [function]  │                                                │"
+"│ │  max          [function]  │                                                │"
 "│ │  max_by(expr) [function]  │                                                │"
 "╰─╰───────────────────────────╯────────────────────────────────────────────────╯"
 "╭ Query [INSERT] ───────────────────────────────────────── Ctrl+A AI Assistant ╮"

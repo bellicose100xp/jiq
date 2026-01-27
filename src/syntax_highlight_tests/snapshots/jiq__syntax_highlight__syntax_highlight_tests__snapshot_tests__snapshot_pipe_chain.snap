@@ -1,28 +1,28 @@
 ---
-source: src/syntax/mod.rs
+source: src/syntax_highlight_tests/snapshot_tests.rs
 expression: serialize_spans(&spans)
 ---
 - content: ".users"
 - content: " "
 - content: "|"
-  fg: magenta
+  fg: "rgb(198,120,221)"
 - content: " "
 - content: map
-  fg: blue
+  fg: "rgb(0,217,255)"
 - content: (
-  fg: magenta
+  fg: "rgb(198,120,221)"
 - content: ".name"
 - content: )
-  fg: magenta
+  fg: "rgb(198,120,221)"
 - content: " "
 - content: "|"
-  fg: magenta
+  fg: "rgb(198,120,221)"
 - content: " "
 - content: sort
-  fg: blue
+  fg: "rgb(0,217,255)"
 - content: " "
 - content: "|"
-  fg: magenta
+  fg: "rgb(198,120,221)"
 - content: " "
 - content: unique
-  fg: blue
+  fg: "rgb(0,217,255)"

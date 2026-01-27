@@ -1,58 +1,58 @@
 ---
-source: src/syntax/mod.rs
+source: src/syntax_highlight_tests/snapshot_tests.rs
 expression: results
 ---
 - - if
   - - content: if
-      fg: yellow
+      fg: "rgb(255,107,157)"
 - - then
   - - content: then
-      fg: yellow
+      fg: "rgb(255,107,157)"
 - - else
   - - content: else
-      fg: yellow
+      fg: "rgb(255,107,157)"
 - - elif
   - - content: elif
-      fg: yellow
+      fg: "rgb(255,107,157)"
 - - end
   - - content: end
-      fg: yellow
+      fg: "rgb(255,107,157)"
 - - and
   - - content: and
-      fg: yellow
+      fg: "rgb(255,107,157)"
 - - or
   - - content: or
-      fg: yellow
+      fg: "rgb(255,107,157)"
 - - not
   - - content: not
-      fg: yellow
+      fg: "rgb(255,107,157)"
 - - as
   - - content: as
-      fg: yellow
+      fg: "rgb(255,107,157)"
 - - def
   - - content: def
-      fg: yellow
+      fg: "rgb(255,107,157)"
 - - reduce
   - - content: reduce
-      fg: yellow
+      fg: "rgb(255,107,157)"
 - - foreach
   - - content: foreach
-      fg: yellow
+      fg: "rgb(255,107,157)"
 - - try
   - - content: try
-      fg: yellow
+      fg: "rgb(255,107,157)"
 - - catch
   - - content: catch
-      fg: yellow
+      fg: "rgb(255,107,157)"
 - - empty
   - - content: empty
-      fg: yellow
+      fg: "rgb(255,107,157)"
 - - "null"
   - - content: "null"
-      fg: yellow
+      fg: "rgb(255,107,157)"
 - - "true"
   - - content: "true"
-      fg: yellow
+      fg: "rgb(255,107,157)"
 - - "false"
   - - content: "false"
-      fg: yellow
+      fg: "rgb(255,107,157)"

@@ -3,33 +3,33 @@ source: src/syntax_highlight_tests/snapshot_tests.rs
 expression: serialize_spans(&spans)
 ---
 - content: reduce
-  fg: yellow
+  fg: "rgb(255,107,157)"
 - content: " "
 - content: "."
 - content: "["
-  fg: magenta
+  fg: "rgb(198,120,221)"
 - content: "]"
-  fg: magenta
+  fg: "rgb(198,120,221)"
 - content: " "
 - content: as
-  fg: yellow
+  fg: "rgb(255,107,157)"
 - content: " "
 - content: $x
-  fg: red
+  fg: "rgb(255,184,108)"
 - content: " "
 - content: (
-  fg: magenta
+  fg: "rgb(198,120,221)"
 - content: "0"
-  fg: cyan
+  fg: "rgb(189,147,249)"
 - content: ;
-  fg: magenta
+  fg: "rgb(198,120,221)"
 - content: " "
 - content: "."
 - content: " "
 - content: +
-  fg: magenta
+  fg: "rgb(198,120,221)"
 - content: " "
 - content: $x
-  fg: red
+  fg: "rgb(255,184,108)"
 - content: )
-  fg: magenta
+  fg: "rgb(198,120,221)"

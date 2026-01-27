@@ -1,67 +1,67 @@
 ---
-source: src/syntax/mod.rs
+source: src/syntax_highlight_tests/snapshot_tests.rs
 expression: results
 ---
 - - "|"
   - - content: "|"
-      fg: magenta
+      fg: "rgb(198,120,221)"
 - - "=="
   - - content: "=="
-      fg: magenta
+      fg: "rgb(198,120,221)"
 - - "!="
   - - content: "!="
-      fg: magenta
+      fg: "rgb(198,120,221)"
 - - "<="
   - - content: "<="
-      fg: magenta
+      fg: "rgb(198,120,221)"
 - - ">="
   - - content: ">="
-      fg: magenta
+      fg: "rgb(198,120,221)"
 - - //
   - - content: //
-      fg: magenta
+      fg: "rgb(198,120,221)"
 - - +
   - - content: +
-      fg: magenta
+      fg: "rgb(198,120,221)"
 - - "-"
   - - content: "-"
-      fg: magenta
+      fg: "rgb(198,120,221)"
 - - "*"
   - - content: "*"
-      fg: magenta
+      fg: "rgb(198,120,221)"
 - - /
   - - content: /
-      fg: magenta
+      fg: "rgb(198,120,221)"
 - - "%"
   - - content: "%"
-      fg: magenta
+      fg: "rgb(198,120,221)"
 - - (
   - - content: (
-      fg: magenta
+      fg: "rgb(198,120,221)"
 - - )
   - - content: )
-      fg: magenta
+      fg: "rgb(198,120,221)"
 - - "["
   - - content: "["
-      fg: magenta
+      fg: "rgb(198,120,221)"
 - - "]"
   - - content: "]"
-      fg: magenta
+      fg: "rgb(198,120,221)"
 - - "{"
   - - content: "{"
-      fg: magenta
+      fg: "rgb(198,120,221)"
 - - "}"
   - - content: "}"
-      fg: magenta
+      fg: "rgb(198,120,221)"
 - - ","
   - - content: ","
-      fg: magenta
+      fg: "rgb(198,120,221)"
 - - ;
   - - content: ;
-      fg: magenta
+      fg: "rgb(198,120,221)"
 - - ":"
   - - content: ":"
-      fg: magenta
+      fg: "rgb(198,120,221)"
 - - "?"
   - - content: "?"
-      fg: magenta
+      fg: "rgb(198,120,221)"

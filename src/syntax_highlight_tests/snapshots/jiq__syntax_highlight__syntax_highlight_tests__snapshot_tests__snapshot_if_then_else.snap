@@ -1,29 +1,29 @@
 ---
-source: src/syntax/mod.rs
+source: src/syntax_highlight_tests/snapshot_tests.rs
 expression: serialize_spans(&spans)
 ---
 - content: if
-  fg: yellow
+  fg: "rgb(255,107,157)"
 - content: " "
 - content: ".value"
 - content: " "
 - content: ">"
-  fg: magenta
+  fg: "rgb(198,120,221)"
 - content: " "
 - content: "10"
-  fg: cyan
+  fg: "rgb(189,147,249)"
 - content: " "
 - content: then
-  fg: yellow
+  fg: "rgb(255,107,157)"
 - content: " "
 - content: "\"high\""
-  fg: green
+  fg: "rgb(107,203,119)"
 - content: " "
 - content: else
-  fg: yellow
+  fg: "rgb(255,107,157)"
 - content: " "
 - content: "\"low\""
-  fg: green
+  fg: "rgb(107,203,119)"
 - content: " "
 - content: end
-  fg: yellow
+  fg: "rgb(255,107,157)"

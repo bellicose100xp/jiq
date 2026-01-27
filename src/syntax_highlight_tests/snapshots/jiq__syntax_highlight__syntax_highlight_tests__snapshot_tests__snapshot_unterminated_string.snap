@@ -1,6 +1,6 @@
 ---
-source: src/syntax/mod.rs
+source: src/syntax_highlight_tests/snapshot_tests.rs
 expression: serialize_spans(&spans)
 ---
 - content: "\"unterminated"
-  fg: green
+  fg: "rgb(107,203,119)"

@@ -3,7 +3,7 @@ source: src/syntax_highlight/overlay_tests/snapshot_tests.rs
 expression: serialize_spans(&result)
 ---
 - content: "{"
-  fg: yellow
+  fg: "rgb(255,217,61)"
   modifiers:
     - bold
     - underlined
@@ -16,7 +16,7 @@ expression: serialize_spans(&result)
 - content: coun
   fg: cyan
 - content: t
-  fg: yellow
+  fg: "rgb(255,217,61)"
   modifiers:
     - bold
     - underlined

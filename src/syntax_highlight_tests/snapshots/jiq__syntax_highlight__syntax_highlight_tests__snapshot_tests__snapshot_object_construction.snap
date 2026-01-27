@@ -1,33 +1,33 @@
 ---
-source: src/syntax/mod.rs
+source: src/syntax_highlight_tests/snapshot_tests.rs
 expression: serialize_spans(&spans)
 ---
 - content: "{"
-  fg: magenta
+  fg: "rgb(198,120,221)"
 - content: name
-  fg: cyan
+  fg: "rgb(0,217,255)"
 - content: ":"
-  fg: magenta
+  fg: "rgb(198,120,221)"
 - content: " "
 - content: ".name"
 - content: ","
-  fg: magenta
+  fg: "rgb(198,120,221)"
 - content: " "
 - content: age
-  fg: cyan
+  fg: "rgb(0,217,255)"
 - content: ":"
-  fg: magenta
+  fg: "rgb(198,120,221)"
 - content: " "
 - content: ".age"
 - content: ","
-  fg: magenta
+  fg: "rgb(198,120,221)"
 - content: " "
 - content: active
-  fg: cyan
+  fg: "rgb(0,217,255)"
 - content: ":"
-  fg: magenta
+  fg: "rgb(198,120,221)"
 - content: " "
 - content: "true"
-  fg: yellow
+  fg: "rgb(255,107,157)"
 - content: "}"
-  fg: magenta
+  fg: "rgb(198,120,221)"

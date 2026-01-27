@@ -5,14 +5,14 @@ expression: serialize_spans(&result)
 - content: map
   fg: magenta
 - content: (
-  fg: yellow
+  fg: "rgb(255,217,61)"
   modifiers:
     - bold
     - underlined
 - content: "."
   fg: magenta
 - content: )
-  fg: yellow
+  fg: "rgb(255,217,61)"
   modifiers:
     - bold
     - underlined

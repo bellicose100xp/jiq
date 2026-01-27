@@ -1,46 +1,46 @@
 ---
-source: src/syntax/mod.rs
+source: src/syntax_highlight_tests/snapshot_tests.rs
 expression: results
 ---
 - - map
   - - content: map
-      fg: blue
+      fg: "rgb(0,217,255)"
 - - select
   - - content: select
-      fg: blue
+      fg: "rgb(0,217,255)"
 - - sort
   - - content: sort
-      fg: blue
+      fg: "rgb(0,217,255)"
 - - keys
   - - content: keys
-      fg: blue
+      fg: "rgb(0,217,255)"
 - - values
   - - content: values
-      fg: blue
+      fg: "rgb(0,217,255)"
 - - length
   - - content: length
-      fg: blue
+      fg: "rgb(0,217,255)"
 - - type
   - - content: type
-      fg: blue
+      fg: "rgb(0,217,255)"
 - - add
   - - content: add
-      fg: blue
+      fg: "rgb(0,217,255)"
 - - first
   - - content: first
-      fg: blue
+      fg: "rgb(0,217,255)"
 - - last
   - - content: last
-      fg: blue
+      fg: "rgb(0,217,255)"
 - - has
   - - content: has
-      fg: blue
+      fg: "rgb(0,217,255)"
 - - contains
   - - content: contains
-      fg: blue
+      fg: "rgb(0,217,255)"
 - - split
   - - content: split
-      fg: blue
+      fg: "rgb(0,217,255)"
 - - join
   - - content: join
-      fg: blue
+      fg: "rgb(0,217,255)"
