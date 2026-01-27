@@ -8,6 +8,7 @@ use ratatui::{
 
 use super::snippet_state::{SnippetMode, SnippetState};
 use crate::ai::render::text::wrap_text;
+use crate::syntax_highlight::JqHighlighter;
 use crate::theme;
 use crate::widgets::{popup, scrollbar};
 
@@ -351,10 +352,9 @@ fn build_preview_content(
     wrapped_query
         .into_iter()
         .map(|line| {
-            Line::from(Span::styled(
-                format!(" {}", line),
-                Style::default().fg(theme::snippets::FIELD_TEXT),
-            ))
+            let mut spans = vec![Span::raw(" ")];
+            spans.extend(JqHighlighter::highlight(&line));
+            Line::from(spans)
         })
         .collect()
 }
@@ -1010,10 +1010,9 @@ fn render_confirm_update_mode(state: &SnippetState, frame: &mut Frame, area: Rec
     ];
 
     for line in old_wrapped {
-        content.push(Line::from(Span::styled(
-            format!("   {}", line),
-            Style::default().fg(theme::snippets::DESCRIPTION),
-        )));
+        let mut spans = vec![Span::raw("   ")];
+        spans.extend(JqHighlighter::highlight(&line));
+        content.push(Line::from(spans));
     }
 
     content.push(Line::from(""));
@@ -1025,10 +1024,9 @@ fn render_confirm_update_mode(state: &SnippetState, frame: &mut Frame, area: Rec
     )));
 
     for line in new_wrapped {
-        content.push(Line::from(Span::styled(
-            format!("   {}", line),
-            Style::default().fg(theme::snippets::FIELD_TEXT),
-        )));
+        let mut spans = vec![Span::raw("   ")];
+        spans.extend(JqHighlighter::highlight(&line));
+        content.push(Line::from(spans));
     }
 
     content.push(Line::from(""));

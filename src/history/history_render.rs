@@ -9,6 +9,7 @@ use ratatui::{
 use crate::app::App;
 use crate::history::MAX_VISIBLE_HISTORY;
 use crate::scroll::Scrollable;
+use crate::syntax_highlight::JqHighlighter;
 use crate::theme;
 use crate::widgets::{popup, scrollbar};
 
@@ -67,24 +68,32 @@ pub fn render_popup(app: &mut App, frame: &mut Frame, input_area: Rect) -> Optio
                     entry.to_string()
                 };
 
-                let line = if display_idx == app.history.selected_index() {
-                    Line::from(vec![Span::styled(
-                        format!(" ► {} ", display_text),
-                        Style::default()
-                            .fg(theme::history::ITEM_SELECTED_FG)
-                            .bg(theme::history::ITEM_SELECTED_BG)
-                            .add_modifier(theme::history::ITEM_SELECTED_MODIFIER),
-                    )])
+                let is_selected = display_idx == app.history.selected_index();
+                let bg_style = if is_selected {
+                    Style::default().bg(theme::history::ITEM_SELECTED_BG)
                 } else {
-                    Line::from(vec![Span::styled(
-                        format!("   {} ", display_text),
-                        Style::default()
-                            .fg(theme::history::ITEM_NORMAL_FG)
-                            .bg(theme::history::ITEM_NORMAL_BG),
-                    )])
+                    Style::default().bg(theme::history::ITEM_NORMAL_BG)
                 };
 
-                ListItem::new(line)
+                let prefix_span = if is_selected {
+                    Span::styled(
+                        " ► ",
+                        bg_style
+                            .fg(theme::history::ITEM_SELECTED_INDICATOR)
+                            .add_modifier(theme::history::ITEM_SELECTED_MODIFIER),
+                    )
+                } else {
+                    Span::styled("   ", bg_style)
+                };
+
+                let mut spans = vec![prefix_span];
+                let highlighted = JqHighlighter::highlight(&display_text);
+                for span in highlighted {
+                    spans.push(Span::styled(span.content, span.style.patch(bg_style)));
+                }
+                spans.push(Span::styled(" ", bg_style));
+
+                ListItem::new(Line::from(spans))
             })
             .collect()
     };

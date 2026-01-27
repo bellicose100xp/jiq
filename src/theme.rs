@@ -169,8 +169,8 @@ pub mod history {
     // List items
     pub const ITEM_NORMAL_FG: Color = Color::White;
     pub const ITEM_NORMAL_BG: Color = Color::Black;
-    pub const ITEM_SELECTED_FG: Color = Color::Black;
-    pub const ITEM_SELECTED_BG: Color = Color::Cyan;
+    pub const ITEM_SELECTED_BG: Color = Color::Rgb(50, 70, 90);
+    pub const ITEM_SELECTED_INDICATOR: Color = Color::Cyan;
     pub const ITEM_SELECTED_MODIFIER: Modifier = Modifier::BOLD;
 
     // Empty state
