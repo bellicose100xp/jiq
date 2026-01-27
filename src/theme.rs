@@ -169,12 +169,13 @@ pub mod history {
     pub const SCROLLBAR: Color = Color::Cyan;
     pub const BACKGROUND: Color = Color::Black;
 
-    // List items
-    pub const ITEM_NORMAL_FG: Color = Color::White;
-    pub const ITEM_NORMAL_BG: Color = Color::Black;
-    pub const ITEM_SELECTED_BG: Color = Color::Rgb(50, 70, 90);
+    // Selected item - clear highlight with accent indicator
+    pub const ITEM_SELECTED_BG: Color = Color::Rgb(35, 50, 70);
     pub const ITEM_SELECTED_INDICATOR: Color = Color::Cyan;
-    pub const ITEM_SELECTED_MODIFIER: Modifier = Modifier::BOLD;
+
+    // Normal items - clean, readable with uniform background
+    pub const ITEM_NORMAL_BG: Color = Color::Black;
+    pub const ITEM_NORMAL_FG: Color = Color::Rgb(160, 165, 175);
 
     // Empty state
     pub const NO_MATCHES: Color = Color::DarkGray;

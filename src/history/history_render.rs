@@ -20,7 +20,7 @@ pub const HISTORY_SEARCH_HEIGHT: u16 = 3;
 /// Returns the popup area for region tracking.
 pub fn render_popup(app: &mut App, frame: &mut Frame, input_area: Rect) -> Option<Rect> {
     let visible_count = app.history.filtered_count().min(MAX_VISIBLE_HISTORY);
-    let list_height = (visible_count as u16).max(1) + 2; // +2 for borders, min 1 row
+    let list_height = (visible_count as u16).max(1) + 4; // +2 for borders, +2 for top/bottom padding
     let total_height = list_height + HISTORY_SEARCH_HEIGHT;
 
     // Position popup above input (full width)
@@ -53,49 +53,75 @@ pub fn render_popup(app: &mut App, frame: &mut Frame, input_area: Rect) -> Optio
     let max_text_len = (list_area.width as usize).saturating_sub(6);
 
     let items: Vec<ListItem> = if app.history.filtered_count() == 0 {
-        vec![ListItem::new(Line::from(Span::styled(
-            "   No matches",
-            Style::default().fg(theme::history::NO_MATCHES),
-        )))]
+        vec![
+            ListItem::new(Line::from("")),
+            ListItem::new(Line::from(Span::styled(
+                "  No matches",
+                Style::default().fg(theme::history::NO_MATCHES),
+            ))),
+            ListItem::new(Line::from("")),
+        ]
     } else {
-        app.history
-            .visible_entries()
-            .map(|(display_idx, entry)| {
-                let display_text = if entry.chars().count() > max_text_len {
-                    let truncated: String = entry.chars().take(max_text_len).collect();
-                    format!("{}…", truncated)
-                } else {
-                    entry.to_string()
-                };
+        let mut list_items: Vec<ListItem> = Vec::new();
 
-                let is_selected = display_idx == app.history.selected_index();
-                let bg_style = if is_selected {
-                    Style::default().bg(theme::history::ITEM_SELECTED_BG)
-                } else {
-                    Style::default().bg(theme::history::ITEM_NORMAL_BG)
-                };
+        // Top padding
+        list_items.push(ListItem::new(Line::from("")));
 
-                let prefix_span = if is_selected {
-                    Span::styled(
-                        " ► ",
-                        bg_style
+        for (display_idx, entry) in app.history.visible_entries() {
+            let display_text = if entry.chars().count() > max_text_len {
+                let truncated: String = entry.chars().take(max_text_len).collect();
+                format!("{}…", truncated)
+            } else {
+                entry.to_string()
+            };
+
+            let is_selected = display_idx == app.history.selected_index();
+
+            let (bg_color, prefix) = if is_selected {
+                (
+                    theme::history::ITEM_SELECTED_BG,
+                    vec![Span::styled(
+                        " ▌ ",
+                        Style::default()
                             .fg(theme::history::ITEM_SELECTED_INDICATOR)
-                            .add_modifier(theme::history::ITEM_SELECTED_MODIFIER),
-                    )
+                            .bg(theme::history::ITEM_SELECTED_BG),
+                    )],
+                )
+            } else {
+                (
+                    theme::history::ITEM_NORMAL_BG,
+                    vec![Span::styled(
+                        "   ",
+                        Style::default().bg(theme::history::ITEM_NORMAL_BG),
+                    )],
+                )
+            };
+
+            let mut spans = prefix;
+
+            // Syntax highlighting for all items
+            let highlighted = JqHighlighter::highlight(&display_text);
+            for span in highlighted {
+                let style = if is_selected {
+                    // Selected: bright syntax colors
+                    span.style.bg(bg_color)
                 } else {
-                    Span::styled("   ", bg_style)
+                    // Normal: muted foreground color (no syntax colors)
+                    Style::default()
+                        .fg(theme::history::ITEM_NORMAL_FG)
+                        .bg(bg_color)
                 };
+                spans.push(Span::styled(span.content, style));
+            }
+            spans.push(Span::styled(" ", Style::default().bg(bg_color)));
 
-                let mut spans = vec![prefix_span];
-                let highlighted = JqHighlighter::highlight(&display_text);
-                for span in highlighted {
-                    spans.push(Span::styled(span.content, span.style.patch(bg_style)));
-                }
-                spans.push(Span::styled(" ", bg_style));
+            list_items.push(ListItem::new(Line::from(spans)));
+        }
 
-                ListItem::new(Line::from(spans))
-            })
-            .collect()
+        // Bottom padding
+        list_items.push(ListItem::new(Line::from("")));
+
+        list_items
     };
 
     let block = Block::default()
