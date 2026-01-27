@@ -121,17 +121,45 @@ impl HelpPopupState {
     /// Spacing between tabs in the tab bar (must match render)
     const TAB_DIVIDER_WIDTH: u16 = 3;
 
+    /// Calculate the total width of the tab bar content
+    pub fn tab_bar_width(&self) -> u16 {
+        let mut width: u16 = 0;
+        for (i, tab) in HelpTab::all().iter().enumerate() {
+            if i > 0 {
+                width = width.saturating_add(Self::TAB_DIVIDER_WIDTH);
+            }
+            width = width.saturating_add(self.tab_label_width(*tab));
+        }
+        width
+    }
+
     /// Find which tab is at the given X coordinate within the tab bar
     ///
+    /// The `container_width` is the total width of the container (used for centering).
     /// Returns the tab if found, None if X is outside all tabs or in divider space.
-    pub fn tab_at_x(&self, relative_x: u16) -> Option<HelpTab> {
+    pub fn tab_at_x(&self, relative_x: u16, container_width: u16) -> Option<HelpTab> {
+        let tab_bar_width = self.tab_bar_width();
+
+        // Calculate centering offset
+        let centering_offset = if container_width > tab_bar_width {
+            (container_width.saturating_sub(tab_bar_width)) / 2
+        } else {
+            0
+        };
+
+        // Adjust relative_x to account for centering
+        if relative_x < centering_offset {
+            return None;
+        }
+        let adjusted_x = relative_x.saturating_sub(centering_offset);
+
         let mut x_pos: u16 = 0;
 
         for tab in HelpTab::all() {
             let label_width = self.tab_label_width(*tab);
             let tab_end = x_pos.saturating_add(label_width);
 
-            if relative_x >= x_pos && relative_x < tab_end {
+            if adjusted_x >= x_pos && adjusted_x < tab_end {
                 return Some(*tab);
             }
 

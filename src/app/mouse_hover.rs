@@ -171,7 +171,7 @@ fn hover_help_popup(app: &mut App, mouse: MouseEvent) {
     }
 
     let relative_x = mouse.column.saturating_sub(inner_x);
-    let hovered_tab = app.help.tab_at_x(relative_x);
+    let hovered_tab = app.help.tab_at_x(relative_x, tab_bar_width);
     app.help.set_hovered_tab(hovered_tab);
 }
 

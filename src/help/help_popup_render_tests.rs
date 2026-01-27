@@ -3,10 +3,12 @@
 use super::*;
 use crate::help::HelpTab;
 
+const TEST_WIDTH: u16 = 80;
+
 #[test]
 fn test_render_help_sections_global() {
     let content = get_tab_content(HelpTab::Global);
-    let lines = render_help_sections(content.sections);
+    let lines = render_help_sections(content.sections, TEST_WIDTH);
 
     assert!(!lines.is_empty(), "Should render some lines");
 
@@ -21,7 +23,7 @@ fn test_render_help_sections_global() {
 #[test]
 fn test_render_help_sections_with_subsections() {
     let content = get_tab_content(HelpTab::Input);
-    let lines = render_help_sections(content.sections);
+    let lines = render_help_sections(content.sections, TEST_WIDTH);
 
     let line_strings: Vec<String> = lines.iter().map(|l| l.to_string()).collect();
 
@@ -38,7 +40,7 @@ fn test_render_help_sections_with_subsections() {
 
 #[test]
 fn test_render_tab_bar_highlights_active() {
-    let line = render_tab_bar(HelpTab::Global, None);
+    let line = render_tab_bar(HelpTab::Global, None, TEST_WIDTH);
     let content = line.to_string();
     assert!(content.contains("[1:Global]"));
 }
@@ -46,20 +48,20 @@ fn test_render_tab_bar_highlights_active() {
 #[test]
 fn test_render_tab_bar_all_tabs() {
     for tab in HelpTab::all() {
-        let line = render_tab_bar(*tab, None);
+        let line = render_tab_bar(*tab, None, TEST_WIDTH);
         assert!(!line.spans.is_empty());
     }
 }
 
 #[test]
 fn test_render_tab_bar_with_hover() {
-    let line = render_tab_bar(HelpTab::Global, Some(HelpTab::Input));
+    let line = render_tab_bar(HelpTab::Global, Some(HelpTab::Input), TEST_WIDTH);
     assert!(!line.spans.is_empty());
 }
 
 #[test]
 fn test_render_tab_bar_hover_same_as_active() {
-    let line = render_tab_bar(HelpTab::Global, Some(HelpTab::Global));
+    let line = render_tab_bar(HelpTab::Global, Some(HelpTab::Global), TEST_WIDTH);
     let content = line.to_string();
     assert!(content.contains("[1:Global]"));
 }

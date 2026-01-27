@@ -132,6 +132,9 @@ fn test_help_popup_hovered_tab() {
 #[test]
 fn test_tab_at_x_global_active() {
     let state = HelpPopupState::new(); // Global is active
+    // Use container width equal to tab bar width (no centering)
+    let width = state.tab_bar_width();
+
     // Active Global has [1:Global] = 10 chars
     // Tab positions with Global active (3-char divider):
     // [1:Global] = 10 chars, divider = 3
@@ -139,50 +142,70 @@ fn test_tab_at_x_global_active() {
     // 3:Result = 8 chars, ...
 
     // Position 0-9: [1:Global]
-    assert_eq!(state.tab_at_x(0), Some(HelpTab::Global));
-    assert_eq!(state.tab_at_x(9), Some(HelpTab::Global));
+    assert_eq!(state.tab_at_x(0, width), Some(HelpTab::Global));
+    assert_eq!(state.tab_at_x(9, width), Some(HelpTab::Global));
 
     // Position 10-12 is divider (3 chars)
-    assert_eq!(state.tab_at_x(10), None);
-    assert_eq!(state.tab_at_x(12), None);
+    assert_eq!(state.tab_at_x(10, width), None);
+    assert_eq!(state.tab_at_x(12, width), None);
 
     // Position 13-19: 2:Input (7 chars)
-    assert_eq!(state.tab_at_x(13), Some(HelpTab::Input));
-    assert_eq!(state.tab_at_x(19), Some(HelpTab::Input));
+    assert_eq!(state.tab_at_x(13, width), Some(HelpTab::Input));
+    assert_eq!(state.tab_at_x(19, width), Some(HelpTab::Input));
 
     // Position 20-22 is divider
-    assert_eq!(state.tab_at_x(20), None);
+    assert_eq!(state.tab_at_x(20, width), None);
 
     // Position 23-30: 3:Result (8 chars)
-    assert_eq!(state.tab_at_x(23), Some(HelpTab::Result));
+    assert_eq!(state.tab_at_x(23, width), Some(HelpTab::Result));
 }
 
 #[test]
 fn test_tab_at_x_input_active() {
     let mut state = HelpPopupState::new();
     state.active_tab = HelpTab::Input;
+    // Use container width equal to tab bar width (no centering)
+    let width = state.tab_bar_width();
+
     // With Input active (3-char divider):
     // 1:Global = 8 chars, divider = 3
     // [2:Input] = 9 chars, divider = 3
     // 3:Result = 8 chars, ...
 
     // Position 0-7: 1:Global (8 chars)
-    assert_eq!(state.tab_at_x(0), Some(HelpTab::Global));
-    assert_eq!(state.tab_at_x(7), Some(HelpTab::Global));
+    assert_eq!(state.tab_at_x(0, width), Some(HelpTab::Global));
+    assert_eq!(state.tab_at_x(7, width), Some(HelpTab::Global));
 
     // Position 8-10 is divider (3 chars)
-    assert_eq!(state.tab_at_x(8), None);
-    assert_eq!(state.tab_at_x(10), None);
+    assert_eq!(state.tab_at_x(8, width), None);
+    assert_eq!(state.tab_at_x(10, width), None);
 
     // Position 11-19: [2:Input] (9 chars)
-    assert_eq!(state.tab_at_x(11), Some(HelpTab::Input));
-    assert_eq!(state.tab_at_x(19), Some(HelpTab::Input));
+    assert_eq!(state.tab_at_x(11, width), Some(HelpTab::Input));
+    assert_eq!(state.tab_at_x(19, width), Some(HelpTab::Input));
 }
 
 #[test]
 fn test_tab_at_x_out_of_bounds() {
     let state = HelpPopupState::new();
+    let width = state.tab_bar_width();
 
     // Way past the end
-    assert_eq!(state.tab_at_x(200), None);
+    assert_eq!(state.tab_at_x(200, width), None);
+}
+
+#[test]
+fn test_tab_at_x_with_centering() {
+    let state = HelpPopupState::new();
+    let tab_bar_width = state.tab_bar_width();
+    // Use a wider container to test centering
+    let container_width = tab_bar_width + 20; // 10 chars padding on each side
+
+    // Clicking before the centered content should return None
+    assert_eq!(state.tab_at_x(0, container_width), None);
+    assert_eq!(state.tab_at_x(9, container_width), None);
+
+    // Position 10 is now the start of [1:Global]
+    assert_eq!(state.tab_at_x(10, container_width), Some(HelpTab::Global));
+    assert_eq!(state.tab_at_x(19, container_width), Some(HelpTab::Global));
 }

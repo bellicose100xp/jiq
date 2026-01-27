@@ -1,6 +1,6 @@
 use ratatui::{
     Frame,
-    layout::{Constraint, Direction, Layout, Rect},
+    layout::{Alignment, Constraint, Direction, Layout, Rect},
     style::Style,
     text::{Line, Span, Text},
     widgets::{Block, BorderType, Borders, Paragraph},
@@ -10,6 +10,9 @@ use crate::app::App;
 use crate::help::{HelpSection, HelpTab, get_tab_content};
 use crate::theme;
 use crate::widgets::{popup, scrollbar};
+
+const HORIZONTAL_PADDING: u16 = 1;
+const VERTICAL_PADDING: u16 = 1;
 
 /// Render the help popup
 ///
@@ -66,9 +69,16 @@ pub fn render_popup(app: &mut App, frame: &mut Frame) -> Option<Rect> {
         ])
         .split(inner_area);
 
-    // Render tab bar
-    let tab_line = render_tab_bar(app.help.active_tab, app.help.get_hovered_tab());
-    frame.render_widget(Paragraph::new(tab_line), chunks[0]);
+    // Render tab bar (centered)
+    let tab_line = render_tab_bar(
+        app.help.active_tab,
+        app.help.get_hovered_tab(),
+        chunks[0].width,
+    );
+    frame.render_widget(
+        Paragraph::new(tab_line).alignment(Alignment::Center),
+        chunks[0],
+    );
 
     // Render separator line
     let separator = Line::from(Span::styled(
@@ -77,19 +87,22 @@ pub fn render_popup(app: &mut App, frame: &mut Frame) -> Option<Rect> {
     ));
     frame.render_widget(Paragraph::new(separator), chunks[1]);
 
+    // Apply padding to content area
+    let content_area = popup::inset_rect(chunks[2], HORIZONTAL_PADDING, VERTICAL_PADDING);
+
     // Render content for active tab
     let content = get_tab_content(app.help.active_tab);
-    let lines = render_help_sections(content.sections);
+    let lines = render_help_sections(content.sections, content_area.width);
 
     // Update scroll bounds for current tab
     let content_height = lines.len() as u32;
-    let visible_height = chunks[2].height;
+    let visible_height = content_area.height;
     app.help
         .current_scroll_mut()
         .update_bounds(content_height, visible_height);
 
     let paragraph = Paragraph::new(Text::from(lines)).scroll((app.help.current_scroll().offset, 0));
-    frame.render_widget(paragraph, chunks[2]);
+    frame.render_widget(paragraph, content_area);
 
     // Render scrollbar on outer border (excluding corners), matching border color
     let scrollbar_area = Rect {
@@ -117,7 +130,7 @@ pub fn render_popup(app: &mut App, frame: &mut Frame) -> Option<Rect> {
 /// Spacing between tabs in the tab bar (in characters)
 pub const TAB_DIVIDER_WIDTH: u16 = 3;
 
-fn render_tab_bar(active_tab: HelpTab, hovered_tab: Option<HelpTab>) -> Line<'static> {
+fn render_tab_bar(active_tab: HelpTab, hovered_tab: Option<HelpTab>, _width: u16) -> Line<'static> {
     let mut spans = Vec::new();
     let divider = " ".repeat(TAB_DIVIDER_WIDTH as usize);
 
@@ -140,7 +153,8 @@ fn render_tab_bar(active_tab: HelpTab, hovered_tab: Option<HelpTab>) -> Line<'st
                 label,
                 Style::default()
                     .fg(theme::help::TAB_HOVER_FG)
-                    .bg(theme::help::TAB_HOVER_BG),
+                    .bg(theme::help::TAB_HOVER_BG)
+                    .add_modifier(ratatui::style::Modifier::BOLD),
             ));
         } else {
             spans.push(Span::styled(label, theme::help::TAB_INACTIVE));
@@ -150,8 +164,18 @@ fn render_tab_bar(active_tab: HelpTab, hovered_tab: Option<HelpTab>) -> Line<'st
     Line::from(spans)
 }
 
-fn render_help_sections(sections: &[HelpSection]) -> Vec<Line<'static>> {
+fn render_help_sections(sections: &[HelpSection], width: u16) -> Vec<Line<'static>> {
     let mut lines = Vec::new();
+
+    // Calculate centering: key(15) + spacing(2) + desc(~40) = ~57 chars typical
+    // We want to center this content in the available width
+    let content_width = 57u16;
+    let left_padding = if width > content_width {
+        (width.saturating_sub(content_width)) / 2
+    } else {
+        0
+    };
+    let padding = " ".repeat(left_padding as usize);
 
     for (section_idx, section) in sections.iter().enumerate() {
         // Add section header if present
@@ -159,15 +183,17 @@ fn render_help_sections(sections: &[HelpSection]) -> Vec<Line<'static>> {
             if section_idx > 0 {
                 lines.push(Line::from(""));
             }
-            lines.push(Line::from(vec![
-                Span::raw("  "),
-                Span::styled(format!("── {} ──", title), theme::help::SECTION_HEADER),
-            ]));
+            // Left-align section header with same padding as content
+            let header_text = format!("{}── {} ──", padding, title);
+            lines.push(Line::from(Span::styled(
+                header_text,
+                theme::help::SECTION_HEADER,
+            )));
         }
 
         // Add entries
         for (key, desc) in section.entries {
-            let key_span = Span::styled(format!("  {:<15}", key), theme::help::KEY);
+            let key_span = Span::styled(format!("{}{:<15}", padding, key), theme::help::KEY);
             let desc_span = Span::styled(*desc, Style::default().fg(theme::help::DESCRIPTION));
             lines.push(Line::from(vec![key_span, desc_span]));
         }

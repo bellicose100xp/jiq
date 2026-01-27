@@ -196,7 +196,7 @@ fn click_help_popup(app: &mut App, mouse: MouseEvent) {
     }
 
     let relative_x = mouse.column.saturating_sub(inner_x);
-    if let Some(tab) = app.help.tab_at_x(relative_x) {
+    if let Some(tab) = app.help.tab_at_x(relative_x, tab_bar_width) {
         app.help.active_tab = tab;
     }
 }

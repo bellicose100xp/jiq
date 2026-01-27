@@ -147,9 +147,9 @@ pub mod help {
 
     // Tab bar
     pub const TAB_ACTIVE: Style = Style::new().fg(Color::Cyan).add_modifier(Modifier::BOLD);
-    pub const TAB_INACTIVE: Style = Style::new().fg(Color::DarkGray);
-    pub const TAB_HOVER_FG: Color = Color::White;
-    pub const TAB_HOVER_BG: Color = Color::Indexed(236);
+    pub const TAB_INACTIVE: Style = Style::new().fg(Color::Cyan).add_modifier(Modifier::DIM);
+    pub const TAB_HOVER_FG: Color = Color::Cyan;
+    pub const TAB_HOVER_BG: Color = Color::Indexed(23); // Subtle dark cyan
 
     // Content
     pub const SECTION_HEADER: Style = Style::new().fg(Color::Cyan).add_modifier(Modifier::BOLD);
