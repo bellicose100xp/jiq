@@ -313,6 +313,29 @@ impl App {
     pub fn should_render(&self) -> bool {
         self.needs_render || self.needs_animation()
     }
+
+    /// Switch focus to the results pane, saving and hiding AI/tooltip/autocomplete visibility
+    pub fn focus_results_pane(&mut self) {
+        if self.focus == Focus::ResultsPane {
+            return;
+        }
+        self.saved_ai_visibility_for_results = self.ai.visible;
+        self.saved_tooltip_visibility_for_results = self.tooltip.enabled;
+        self.ai.visible = false;
+        self.tooltip.enabled = false;
+        self.autocomplete.hide();
+        self.focus = Focus::ResultsPane;
+    }
+
+    /// Switch focus to the input field, restoring AI/tooltip visibility
+    pub fn focus_input_field(&mut self) {
+        if self.focus == Focus::InputField {
+            return;
+        }
+        self.ai.visible = self.saved_ai_visibility_for_results;
+        self.tooltip.enabled = self.saved_tooltip_visibility_for_results;
+        self.focus = Focus::InputField;
+    }
 }
 
 #[cfg(test)]

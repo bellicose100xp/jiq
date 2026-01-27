@@ -38,9 +38,7 @@ pub fn handle_click(app: &mut App, region: Option<Region>, mouse: MouseEvent) {
 }
 
 fn click_results_pane(app: &mut App, mouse: MouseEvent) {
-    if app.focus != Focus::ResultsPane {
-        app.focus = Focus::ResultsPane;
-    }
+    app.focus_results_pane();
     if app.search.is_visible() && !app.search.is_confirmed() {
         app.search.confirm();
     }
@@ -67,7 +65,7 @@ fn click_results_pane(app: &mut App, mouse: MouseEvent) {
 fn click_input_field(app: &mut App, mouse: MouseEvent) {
     // If unfocused, just focus and return (don't move cursor)
     if app.focus != Focus::InputField {
-        app.focus = Focus::InputField;
+        app.focus_input_field();
         app.input.editor_mode = EditorMode::Insert;
         return;
     }
