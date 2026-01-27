@@ -1,6 +1,6 @@
 use ratatui::crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 
-use crate::app::{App, Focus};
+use crate::app::App;
 use crate::clipboard;
 use crate::editor::EditorMode;
 use crate::help::HelpTab;
@@ -158,9 +158,7 @@ fn move_cursor_down(app: &mut App, lines: u32) {
 }
 
 fn exit_results_pane(app: &mut App) {
-    app.focus = Focus::InputField;
-    app.ai.visible = app.saved_ai_visibility_for_results;
-    app.tooltip.enabled = app.saved_tooltip_visibility_for_results;
+    app.focus_input_field();
     app.results_cursor.exit_visual_mode();
 }
 
