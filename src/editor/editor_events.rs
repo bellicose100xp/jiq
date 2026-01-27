@@ -138,6 +138,10 @@ pub fn handle_normal_mode_key(app: &mut App, key: KeyEvent) {
             repeat_last_char_search(app, true);
         }
 
+        KeyCode::Char('/') => {
+            crate::search::search_events::open_search(app);
+        }
+
         KeyCode::Char('u') => {
             app.input.textarea.undo();
             execute_query(app);
