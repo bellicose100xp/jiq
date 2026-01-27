@@ -169,17 +169,13 @@ pub mod history {
     pub const SCROLLBAR: Color = Color::Cyan;
     pub const BACKGROUND: Color = Color::Black;
 
-    // Selected item - prominent "hero" state
-    pub const ITEM_SELECTED_BG: Color = Color::Rgb(30, 45, 65);
-    pub const ITEM_SELECTED_FG: Color = Color::White;
-    pub const ITEM_SELECTED_BAR: Color = Color::Cyan;
-    pub const ITEM_SELECTED_MODIFIER: Modifier = Modifier::BOLD;
+    // Selected item - clear highlight with accent indicator
+    pub const ITEM_SELECTED_BG: Color = Color::Rgb(35, 50, 70);
+    pub const ITEM_SELECTED_INDICATOR: Color = Color::Cyan;
 
-    // Normal items - recede visually with alternating backgrounds
-    pub const ITEM_NORMAL_FG: Color = Color::Rgb(140, 145, 155);
-    pub const ITEM_NORMAL_BG_ODD: Color = Color::Black;
-    pub const ITEM_NORMAL_BG_EVEN: Color = Color::Rgb(18, 22, 28);
-    pub const SYNTAX_DIM_MODIFIER: Modifier = Modifier::DIM;
+    // Normal items - clean, readable with uniform background
+    pub const ITEM_NORMAL_BG: Color = Color::Black;
+    pub const ITEM_NORMAL_FG: Color = Color::Rgb(160, 165, 175);
 
     // Empty state
     pub const NO_MATCHES: Color = Color::DarkGray;

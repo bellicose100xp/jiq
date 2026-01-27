@@ -56,7 +56,7 @@ pub fn render_popup(app: &mut App, frame: &mut Frame, input_area: Rect) -> Optio
         vec![
             ListItem::new(Line::from("")),
             ListItem::new(Line::from(Span::styled(
-                "     No matches",
+                "  No matches",
                 Style::default().fg(theme::history::NO_MATCHES),
             ))),
             ListItem::new(Line::from("")),
@@ -76,32 +76,24 @@ pub fn render_popup(app: &mut App, frame: &mut Frame, input_area: Rect) -> Optio
             };
 
             let is_selected = display_idx == app.history.selected_index();
-            let is_even = display_idx % 2 == 0;
 
-            let (bg_color, bg_style, prefix) = if is_selected {
+            let (bg_color, prefix) = if is_selected {
                 (
                     theme::history::ITEM_SELECTED_BG,
-                    Style::default().bg(theme::history::ITEM_SELECTED_BG),
-                    vec![
-                        Span::styled(
-                            " ┃",
-                            Style::default()
-                                .fg(theme::history::ITEM_SELECTED_BAR)
-                                .bg(theme::history::ITEM_SELECTED_BG),
-                        ),
-                        Span::styled("  ", Style::default().bg(theme::history::ITEM_SELECTED_BG)),
-                    ],
+                    vec![Span::styled(
+                        " ▌ ",
+                        Style::default()
+                            .fg(theme::history::ITEM_SELECTED_INDICATOR)
+                            .bg(theme::history::ITEM_SELECTED_BG),
+                    )],
                 )
             } else {
-                let bg = if is_even {
-                    theme::history::ITEM_NORMAL_BG_EVEN
-                } else {
-                    theme::history::ITEM_NORMAL_BG_ODD
-                };
                 (
-                    bg,
-                    Style::default().bg(bg),
-                    vec![Span::styled("     ", Style::default().bg(bg))],
+                    theme::history::ITEM_NORMAL_BG,
+                    vec![Span::styled(
+                        "   ",
+                        Style::default().bg(theme::history::ITEM_NORMAL_BG),
+                    )],
                 )
             };
 
@@ -111,19 +103,17 @@ pub fn render_popup(app: &mut App, frame: &mut Frame, input_area: Rect) -> Optio
             let highlighted = JqHighlighter::highlight(&display_text);
             for span in highlighted {
                 let style = if is_selected {
-                    // Selected: bright syntax colors with bold
-                    span.style
-                        .bg(bg_color)
-                        .add_modifier(theme::history::ITEM_SELECTED_MODIFIER)
+                    // Selected: bright syntax colors
+                    span.style.bg(bg_color)
                 } else {
-                    // Normal: dimmed syntax colors
-                    span.style
+                    // Normal: muted foreground color (no syntax colors)
+                    Style::default()
+                        .fg(theme::history::ITEM_NORMAL_FG)
                         .bg(bg_color)
-                        .add_modifier(theme::history::SYNTAX_DIM_MODIFIER)
                 };
                 spans.push(Span::styled(span.content, style));
             }
-            spans.push(Span::styled(" ", bg_style));
+            spans.push(Span::styled(" ", Style::default().bg(bg_color)));
 
             list_items.push(ListItem::new(Line::from(spans)));
         }
