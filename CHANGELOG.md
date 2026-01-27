@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.18.4] - 2026-01-26
+
+### Fixed
+- **Improved help popup styling and mouse hover accuracy** - Enhanced visual appearance and more precise mouse interaction detection
+- **AI Assistant popup padding** - Added padding for better visual spacing
+- **AI Assistant hint styling** - Matched hint color to input border and hide hint when input is unfocused
+
 ## [3.18.3] - 2026-01-26
 
 ### Changed
