@@ -31,7 +31,11 @@ pub fn render_field(app: &mut App, frame: &mut Frame, area: Rect) -> Rect {
         EditorMode::TextObject(_, _) => theme::input::MODE_OPERATOR,
     };
 
-    let border_color = if app.focus == Focus::InputField {
+    let has_error = app.query.as_ref().is_some_and(|q| q.result.is_err());
+
+    let border_color = if has_error {
+        theme::input::BORDER_ERROR
+    } else if app.focus == Focus::InputField {
         mode_color
     } else {
         theme::input::BORDER_UNFOCUSED
@@ -45,7 +49,7 @@ pub fn render_field(app: &mut App, frame: &mut Frame, area: Rect) -> Rect {
     };
 
     let mode_text = app.input.editor_mode.display();
-    let mut title_spans = match app.input.editor_mode {
+    let title_spans = match app.input.editor_mode {
         EditorMode::Normal => {
             vec![
                 Span::raw(" Query ["),
@@ -61,15 +65,6 @@ pub fn render_field(app: &mut App, frame: &mut Frame, area: Rect) -> Rect {
             ]
         }
     };
-
-    if let Some(query) = &app.query
-        && query.result.is_err()
-    {
-        title_spans.push(Span::styled(
-            "⚠ Syntax Error (Ctrl+E to view)",
-            Style::default().fg(theme::input::SYNTAX_ERROR_WARNING),
-        ));
-    }
 
     let title = Line::from(title_spans);
 
@@ -104,7 +99,15 @@ pub fn render_field(app: &mut App, frame: &mut Frame, area: Rect) -> Rect {
     }
 
     if is_focused {
-        if !app.query().is_empty() {
+        if has_error {
+            block = block.title_bottom(
+                theme::border_hints::build_hints(
+                    &[("Ctrl+E", "Show Error")],
+                    theme::input::BORDER_ERROR,
+                )
+                .alignment(Alignment::Center),
+            );
+        } else if !app.query().is_empty() {
             block = block.title_bottom(
                 theme::border_hints::build_hints(
                     &[("Enter", "Output Result"), ("Ctrl+Q", "Output Query")],

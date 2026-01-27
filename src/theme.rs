@@ -44,6 +44,7 @@ pub mod input {
 
     // Border colors (focused border uses mode color)
     pub const BORDER_UNFOCUSED: Color = Color::DarkGray;
+    pub const BORDER_ERROR: Color = Color::Red;
 
     // Title hints
     pub const SYNTAX_ERROR_WARNING: Color = Color::Yellow;
