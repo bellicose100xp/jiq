@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.20.2] - 2026-01-27
+
+### Added
+- **Modern badge styling for status indicators** - Enhanced visual appearance of status badges in the UI with improved styling and consistency
+
 ## [3.20.1] - 2026-01-27
 
 ### Fixed
