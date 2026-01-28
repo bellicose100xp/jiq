@@ -822,3 +822,168 @@ mod analyze_value_tests {
         assert_eq!(suggestions[0].text, ".field");
     }
 }
+
+// ============================================================================
+// Nonsimple Field Name Quoting Tests
+// ============================================================================
+
+#[test]
+fn test_field_starting_with_digit_gets_quoted() {
+    let json: Value = serde_json::from_str(r#"{"1numeric_key": "value"}"#).unwrap();
+    let suggestions = ResultAnalyzer::analyze_value(&json, true, false);
+
+    assert_eq!(suggestions.len(), 1);
+    assert_eq!(suggestions[0].text, r#"."1numeric_key""#);
+}
+
+#[test]
+fn test_field_with_hyphen_gets_quoted() {
+    let json: Value = serde_json::from_str(r#"{"my-field": "value"}"#).unwrap();
+    let suggestions = ResultAnalyzer::analyze_value(&json, true, false);
+
+    assert_eq!(suggestions.len(), 1);
+    assert_eq!(suggestions[0].text, r#"."my-field""#);
+}
+
+#[test]
+fn test_valid_field_name_not_quoted() {
+    let json: Value = serde_json::from_str(r#"{"simple_key": "value"}"#).unwrap();
+    let suggestions = ResultAnalyzer::analyze_value(&json, true, false);
+
+    assert_eq!(suggestions.len(), 1);
+    assert_eq!(suggestions[0].text, ".simple_key");
+}
+
+#[test]
+fn test_multiple_fields_with_mixed_identifier_types() {
+    let json: Value =
+        serde_json::from_str(r#"{"simple_key": 1, "1numeric_key": 2, "hyphen-key": 3}"#).unwrap();
+    let suggestions = ResultAnalyzer::analyze_value(&json, true, false);
+
+    assert_eq!(suggestions.len(), 3);
+    let suggestion_texts: Vec<_> = suggestions.iter().map(|s| s.text.as_str()).collect();
+    assert!(suggestion_texts.contains(&".simple_key"));
+    assert!(suggestion_texts.contains(&r#"."1numeric_key""#));
+    assert!(suggestion_texts.contains(&r#"."hyphen-key""#));
+}
+
+#[test]
+fn test_array_of_objects_with_nonsimple_field_names() {
+    let json: Value = serde_json::from_str(
+        r#"[{"1numeric_key": "value1", "simple_key": "value2"}, {"1numeric_key": "value3", "simple_key": "value4"}]"#,
+    )
+    .unwrap();
+    let suggestions = ResultAnalyzer::analyze_value(&json, true, false);
+
+    assert_eq!(suggestions.len(), 3); // .[], .[].1numeric_key, .[].simple_key
+    let suggestion_texts: Vec<_> = suggestions.iter().map(|s| s.text.as_str()).collect();
+    assert!(suggestion_texts.contains(&".[]"));
+    assert!(suggestion_texts.contains(&r#".[]."1numeric_key""#));
+    assert!(suggestion_texts.contains(&".[].simple_key"));
+}
+
+#[test]
+fn test_no_leading_dot_with_nonsimple_field() {
+    let json: Value = serde_json::from_str(r#"{"1numeric_key": "value"}"#).unwrap();
+    let suggestions = ResultAnalyzer::analyze_value(&json, false, false);
+
+    assert_eq!(suggestions.len(), 1);
+    assert_eq!(suggestions[0].text, r#""1numeric_key""#);
+}
+
+// ============================================================================
+// Complex Nested Scenarios Tests
+// ============================================================================
+
+#[test]
+fn test_nested_array_name_quoting_across_levels() {
+    // Scenario: ."hyphen-array"[]."nested-items"[] with nested array names
+    let json: Value = serde_json::from_str(
+        r#"{
+            "hyphen-array": [
+                {
+                    "nested-items": [
+                        {"simple_key": "value"}
+                    ]
+                }
+            ]
+        }"#,
+    )
+    .unwrap();
+
+    let top_level = ResultAnalyzer::analyze_value(&json, true, false);
+    assert!(top_level.iter().any(|s| s.text == r#"."hyphen-array""#));
+    assert!(!top_level.iter().any(|s| s.text == ".hyphen-array"));
+
+    let outer_array = json
+        .get("hyphen-array")
+        .and_then(Value::as_array)
+        .expect("outer array should exist");
+    let outer_obj = outer_array
+        .first()
+        .and_then(Value::as_object)
+        .expect("outer array should contain object");
+    let outer_obj_value = Value::Object(outer_obj.clone());
+    let nested_level = ResultAnalyzer::analyze_value(&outer_obj_value, true, false);
+    assert!(nested_level.iter().any(|s| s.text == r#"."nested-items""#));
+    assert!(!nested_level.iter().any(|s| s.text == ".nested-items"));
+}
+
+#[test]
+fn test_nested_field_quoting_with_iteration() {
+    // Scenario: .outer[]."inner-array"[]."hyphen-key" and .[]."1numeric_key"
+    let json: Value = serde_json::from_str(
+        r#"{
+            "outer": [
+                {
+                    "inner-array": [
+                        {"hyphen-key": "v1", "1numeric_key": "v2", "simple_key": "v3"}
+                    ]
+                }
+            ]
+        }"#,
+    )
+    .unwrap();
+
+    let outer_array = json
+        .get("outer")
+        .and_then(Value::as_array)
+        .expect("outer array should exist");
+    let outer_obj = outer_array
+        .first()
+        .and_then(Value::as_object)
+        .expect("outer array should contain object");
+    let outer_obj_value = Value::Object(outer_obj.clone());
+    let outer_suggestions = ResultAnalyzer::analyze_value(&outer_obj_value, true, false);
+    assert!(
+        outer_suggestions
+            .iter()
+            .any(|s| s.text == r#"."inner-array""#)
+    );
+
+    let inner_array = outer_obj_value
+        .get("inner-array")
+        .and_then(Value::as_array)
+        .expect("inner array should exist");
+    let inner_array_value = Value::Array(inner_array.clone());
+    let inner_suggestions = ResultAnalyzer::analyze_value(&inner_array_value, true, false);
+
+    assert!(inner_suggestions.iter().any(|s| s.text == ".[]"));
+    assert!(
+        inner_suggestions
+            .iter()
+            .any(|s| s.text == r#".[]."hyphen-key""#)
+    );
+    assert!(
+        inner_suggestions
+            .iter()
+            .any(|s| s.text == r#".[]."1numeric_key""#)
+    );
+    assert!(inner_suggestions.iter().any(|s| s.text == ".[].simple_key"));
+    assert!(!inner_suggestions.iter().any(|s| s.text == ".[].hyphen-key"));
+    assert!(
+        !inner_suggestions
+            .iter()
+            .any(|s| s.text == ".[].1numeric_key")
+    );
+}

@@ -11,6 +11,28 @@ fn dot_prefix(needs_leading_dot: bool) -> &'static str {
 }
 
 impl ResultAnalyzer {
+    /// Check if a field name can use jq's simple dot syntax (e.g., .foo)
+    /// According to jq manual: "The .foo syntax only works for simple, identifier-like keys,
+    /// that is, keys that are all made of alphanumeric characters and underscore,
+    /// and which do not start with a digit."
+    /// (https://jqlang.org/manual/#object-identifier-index)
+    /// Names that don't fit require quoted access: ."field-name"
+    fn is_simple_jq_identifier(name: &str) -> bool {
+        if name.is_empty() {
+            return false;
+        }
+        let first_char = name.chars().next().unwrap();
+        !first_char.is_numeric() && name.chars().all(|c| c.is_alphanumeric() || c == '_')
+    }
+
+    /// Format a field name for jq syntax, quoting if it doesn't fit simple dot syntax
+    fn format_field_name(prefix: &str, name: &str) -> String {
+        if Self::is_simple_jq_identifier(name) {
+            format!("{}{}", prefix, name)
+        } else {
+            format!("{}\"{}\"", prefix, name)
+        }
+    }
     fn extract_object_fields(
         map: &serde_json::Map<String, Value>,
         prefix: &str,
@@ -18,8 +40,9 @@ impl ResultAnalyzer {
     ) {
         for (key, val) in map {
             let field_type = Self::detect_json_type(val);
+            let field_text = Self::format_field_name(prefix, key);
             suggestions.push(Suggestion::new_with_type(
-                format!("{}{}", prefix, key),
+                field_text,
                 SuggestionType::Field,
                 Some(field_type),
             ));
@@ -67,9 +90,16 @@ impl ResultAnalyzer {
                     for (key, val) in map {
                         let field_type = Self::detect_json_type(val);
                         let field_text = if suppress_array_brackets {
-                            format!("{}{}", prefix, key)
+                            Self::format_field_name(prefix, key)
                         } else {
-                            format!("{}[].{}", prefix, key)
+                            // For array iteration syntax, quote non-simple identifiers
+                            if Self::is_simple_jq_identifier(key) {
+                                // Simple identifier: .[].fieldname
+                                format!("{}[].{}", prefix, key)
+                            } else {
+                                // Non-simple identifier (starts with digit, contains special chars): .[]."fieldname"
+                                format!("{}[].\"{}\"", prefix, key)
+                            }
                         };
                         suggestions.push(Suggestion::new_with_type(
                             field_text,
@@ -135,11 +165,16 @@ impl ResultAnalyzer {
                     for (key, val) in map {
                         let field_type = Self::detect_json_type(val);
                         // When suppressing brackets, suggest ".field"
-                        // Otherwise, suggest ".[].field"
+                        // Otherwise, suggest ".[].field" with quoting if needed
                         let field_text = if suppress_array_brackets {
-                            format!("{}{}", prefix, key)
+                            Self::format_field_name(prefix, key)
                         } else {
-                            format!("{}[].{}", prefix, key)
+                            // Apply quoting logic for array iteration
+                            if Self::is_simple_jq_identifier(key) {
+                                format!("{}[].{}", prefix, key)
+                            } else {
+                                format!("{}[].\"{}\"", prefix, key)
+                            }
                         };
                         suggestions.push(Suggestion::new_with_type(
                             field_text,
