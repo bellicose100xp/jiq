@@ -2,7 +2,7 @@
 source: src/app/app_render_tests/basic_ui_tests.rs
 expression: output
 ---
-"╭ ⚠ Syntax Error | Number | Showing last successful result ─────── L1-1/1 (0%) ╮"
+"╭   ⚠ Syntax Error   Number | Showing last successful result ───── L1-1/1 (0%) ╮"
 "│5                                                                             │"
 "│                                                                              │"
 "│                                                                              │"
@@ -16,11 +16,11 @@ expression: output
 "│                                                                              │"
 "│                                                                              │"
 "│                                                                              │"
-"│                                                                              │"
-"│                                                                              │"
-"│ ╭ Syntax Error (Ctrl+E to close) ──────────────────────────────────────────╮ │"
-"│ │jq: error (at <stdin>:0): Cannot index number with string "foo"           │ │"
-"│ ╰──────────────────────────────────────────────────────────────────────────╯ │"
+"│ ╭ Syntax Error ────────────────────────────────────────────────────────────╮ │"
+"│ │                                                                          │ │"
+"│ │ jq: error (at <stdin>:0): Cannot index number with string "foo"          │ │"
+"│ │                                                                          │ │"
+"│ ╰────────────────────────────── Ctrl+E Close ──────────────────────────────╯ │"
 "╰──────────────────────────────────────────────────────────────────────────────╯"
 "╭ Query [INSERT] ───────────────────────────────────────── Ctrl+A AI Assistant ╮"
 "│.foo                                                                          │"

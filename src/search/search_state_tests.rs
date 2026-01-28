@@ -58,7 +58,7 @@ fn test_close_resets_state() {
 #[test]
 fn test_match_count_display_empty() {
     let state = SearchState::new();
-    assert_eq!(state.match_count_display(), "(0/0)");
+    assert_eq!(state.match_count_display(), "0/0");
 }
 
 #[test]
@@ -82,10 +82,10 @@ fn test_match_count_display_with_matches() {
         },
     ];
     state.current_index = 0;
-    assert_eq!(state.match_count_display(), "(1/3)");
+    assert_eq!(state.match_count_display(), "1/3");
 
     state.current_index = 2;
-    assert_eq!(state.match_count_display(), "(3/3)");
+    assert_eq!(state.match_count_display(), "3/3");
 }
 
 #[test]
@@ -297,15 +297,15 @@ proptest! {
         let display = state.match_count_display();
 
         if num_matches == 0 {
-            // When no matches, should show "(0/0)"
+            // When no matches, should show "0/0"
             prop_assert_eq!(
-                display, "(0/0)",
-                "Empty matches should display (0/0)"
+                display, "0/0",
+                "Empty matches should display 0/0"
             );
         } else {
             // Parse the display string to verify accuracy
             let expected_current = (current_index % num_matches) + 1; // 1-indexed
-            let expected = format!("({}/{})", expected_current, num_matches);
+            let expected = format!("{}/{}", expected_current, num_matches);
             prop_assert_eq!(
                 display, expected,
                 "Match count display should be accurate"

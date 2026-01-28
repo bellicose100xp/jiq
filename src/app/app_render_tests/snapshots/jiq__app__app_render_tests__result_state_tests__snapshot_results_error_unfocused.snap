@@ -2,7 +2,7 @@
 source: src/app/app_render_tests/result_state_tests.rs
 expression: output
 ---
-"╭ ⚠ Syntax Error | Object | Showing last successful result ─────────────────────────────────────────────── L1-3/3 (0%) ╮"
+"╭   ⚠ Syntax Error   Object | Showing last successful result ───────────────────────────────────────────── L1-3/3 (0%) ╮"
 "│{                                                                                                                     │"
 "│  "test": true                                                                                                        │"
 "│}                                                                                                                     │"

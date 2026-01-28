@@ -97,6 +97,15 @@ pub mod results {
     pub const RESULT_ERROR: Color = Color::Rgb(224, 108, 117);
     pub const RESULT_PENDING: Color = Color::Rgb(130, 133, 158);
 
+    // Status badge styles - bright background with contrasting text for modern glow effect
+    pub const BADGE_SYNTAX_ERROR: Style = Style::new()
+        .fg(Color::Rgb(35, 30, 10)) // Deep dark yellow-tinted
+        .bg(Color::Rgb(255, 217, 61)); // Golden yellow
+
+    pub const BADGE_EMPTY_RESULT: Style = Style::new()
+        .fg(Color::Rgb(20, 25, 40)) // Deep dark blue-tinted
+        .bg(Color::Rgb(130, 140, 170)); // Brighter steel blue
+
     // Search match highlighting
     pub const MATCH_HIGHLIGHT_BG: Color = Color::Rgb(85, 85, 115);
     pub const MATCH_HIGHLIGHT_FG: Color = Color::Rgb(236, 236, 244);
@@ -143,10 +152,23 @@ pub mod search {
     pub const TEXT_ACTIVE: Color = Color::Rgb(236, 236, 244);
     pub const TEXT_INACTIVE: Color = Color::Rgb(90, 92, 119);
 
-    // Match count display
+    // Match count display (legacy colors)
     pub const NO_MATCHES: Color = Color::Rgb(224, 108, 117);
     pub const MATCH_COUNT: Color = Color::Rgb(130, 133, 158);
     pub const MATCH_COUNT_CONFIRMED: Color = Color::Rgb(90, 92, 119);
+
+    // Match count badge styles - pill-shaped badges with glow effect
+    pub const BADGE_NO_MATCHES: Style = Style::new()
+        .fg(Color::Rgb(45, 15, 20)) // Deep dark red-tinted
+        .bg(Color::Rgb(224, 108, 117)); // Error red
+
+    pub const BADGE_MATCH_COUNT: Style = Style::new()
+        .fg(Color::Rgb(35, 15, 30)) // Deep dark pink-tinted
+        .bg(Color::Rgb(255, 107, 157)); // Hot pink (matches search border)
+
+    pub const BADGE_MATCH_COUNT_CONFIRMED: Style = Style::new()
+        .fg(Color::Rgb(200, 205, 220)) // Light text
+        .bg(Color::Rgb(70, 72, 95)); // Muted surface
 
     // Hints at bottom
     pub const HINTS: Color = Color::Rgb(255, 107, 157);

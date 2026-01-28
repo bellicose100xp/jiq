@@ -2,7 +2,7 @@
 source: src/app/app_render_tests/basic_ui_tests.rs
 expression: output
 ---
-"╭ ⚠ Syntax Error | Object | Showing last successful result ─────── L1-3/3 (0%) ╮"
+"╭   ⚠ Syntax Error   Object | Showing last successful result ───── L1-3/3 (0%) ╮"
 "│{                                                                             │"
 "│  "test": true                                                                │"
 "│}                                                                             │"
@@ -16,11 +16,11 @@ expression: output
 "│                                                                              │"
 "│                                                                              │"
 "│                                                                              │"
-"│                                                                              │"
-"│                                                                              │"
-"│ ╭ Syntax Error (Ctrl+E to close) ──────────────────────────────────────────╮ │"
-"│ │jq: compile error: syntax error at line 1                                 │ │"
-"│ ╰──────────────────────────────────────────────────────────────────────────╯ │"
+"│ ╭ Syntax Error ────────────────────────────────────────────────────────────╮ │"
+"│ │                                                                          │ │"
+"│ │ jq: compile error: syntax error at line 1                                │ │"
+"│ │                                                                          │ │"
+"│ ╰────────────────────────────── Ctrl+E Close ──────────────────────────────╯ │"
 "╰──────────────────────────────────────────────────────────────────────────────╯"
 "╭ Query [INSERT] ───────────────────────────────────────── Ctrl+A AI Assistant ╮"
 "│                                                                              │"

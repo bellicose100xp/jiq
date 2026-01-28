@@ -123,12 +123,12 @@ impl SearchState {
         &self.matches
     }
 
-    /// Get match count display string "(current/total)"
+    /// Get match count display string "current/total"
     pub fn match_count_display(&self) -> String {
         if self.matches.is_empty() {
-            "(0/0)".to_string()
+            "0/0".to_string()
         } else {
-            format!("({}/{})", self.current_index + 1, self.matches.len())
+            format!("{}/{}", self.current_index + 1, self.matches.len())
         }
     }
 

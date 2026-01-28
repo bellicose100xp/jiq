@@ -12,7 +12,6 @@ use crate::theme;
 pub const SEARCH_BAR_HEIGHT: u16 = 3;
 
 pub fn render_bar(app: &mut App, frame: &mut Frame, area: Rect) {
-    let match_count = app.search.match_count_display();
     let is_confirmed = app.search.is_confirmed();
 
     // When confirmed (inactive), search bar is gray; when editing (active), it's purple
@@ -29,35 +28,33 @@ pub fn render_bar(app: &mut App, frame: &mut Frame, area: Rect) {
         theme::search::TEXT_ACTIVE
     };
 
-    let match_count_style = if app.search.matches().is_empty() && !app.search.query().is_empty() {
-        Style::default().fg(theme::search::NO_MATCHES)
-    } else if is_confirmed {
-        Style::default().fg(theme::search::MATCH_COUNT_CONFIRMED)
-    } else {
-        Style::default().fg(theme::search::MATCH_COUNT)
-    };
-
-    let title = if is_confirmed {
-        " Search (press / to edit): "
-    } else {
-        " Search: "
-    };
+    let title = " Search ";
 
     let mut block = Block::default()
         .borders(Borders::ALL)
         .border_type(BorderType::Rounded)
         .title(title)
-        .title_top(
-            Line::from(Span::styled(
-                format!(" {} ", match_count),
-                match_count_style,
-            ))
-            .alignment(Alignment::Right),
-        )
         .border_style(Style::default().fg(border_color))
         .style(Style::default().bg(theme::search::BACKGROUND));
 
+    // Only show badge on search input when not confirmed (editing mode)
+    // When confirmed, the badge moves to the results pane
     if !is_confirmed {
+        let match_count = app.search.match_count_display();
+        let match_count_style = if app.search.matches().is_empty() && !app.search.query().is_empty()
+        {
+            theme::search::BADGE_NO_MATCHES
+        } else {
+            theme::search::BADGE_MATCH_COUNT
+        };
+        block = block.title_top(
+            Line::from(vec![
+                Span::raw(" "),
+                Span::styled(format!("  {}  ", match_count), match_count_style),
+                Span::raw(" "),
+            ])
+            .alignment(Alignment::Right),
+        );
         block = block.title_bottom(
             theme::border_hints::build_hints(
                 &[("Enter", "Confirm"), ("Esc", "Close")],

@@ -176,13 +176,14 @@ pub fn render_pane(app: &mut App, frame: &mut Frame, area: Rect) -> (Rect, Optio
                 Style::default().fg(spinner_color),
             ));
         }
+        spans.push(Span::raw(" "));
         spans.push(Span::styled(
-            " ⚠ Syntax Error ",
-            Style::default().fg(text_color),
+            "  ⚠ Syntax Error  ",
+            theme::results::BADGE_SYNTAX_ERROR,
         ));
         if !stats_info.is_empty() {
             spans.push(Span::styled(
-                format!("| {} | Showing last successful result ", stats_info),
+                format!(" {} | Showing last successful result ", stats_info),
                 Style::default().fg(text_color),
             ));
         }
@@ -202,11 +203,13 @@ pub fn render_pane(app: &mut App, frame: &mut Frame, area: Rect) -> (Rect, Optio
                 Style::default().fg(spinner_color),
             ));
         }
+        spans.push(Span::raw(" "));
         spans.push(Span::styled(
-            format!(
-                " ∅ No Results | {} | Showing last non-empty result ",
-                stats_info
-            ),
+            "  ∅ No Results  ",
+            theme::results::BADGE_EMPTY_RESULT,
+        ));
+        spans.push(Span::styled(
+            format!(" {} | Showing last non-empty result ", stats_info),
             Style::default().fg(text_color),
         ));
         (Line::from(spans), theme::results::BORDER_UNFOCUSED)
@@ -283,6 +286,16 @@ pub fn render_pane(app: &mut App, frame: &mut Frame, area: Rect) -> (Rect, Optio
         }
         if search_visible && app.search.is_confirmed() {
             block = block.title_bottom(build_search_hints().alignment(Alignment::Center));
+            let match_count = app.search.match_count_display();
+            let match_count_badge = Line::from(vec![
+                Span::raw(" "),
+                Span::styled(
+                    format!("  {}  ", match_count),
+                    theme::search::BADGE_MATCH_COUNT,
+                ),
+                Span::raw(" "),
+            ]);
+            block = block.title_bottom(match_count_badge.alignment(Alignment::Right));
         }
 
         // Add navigation hints when results pane is focused and search is not visible
@@ -374,6 +387,16 @@ pub fn render_pane(app: &mut App, frame: &mut Frame, area: Rect) -> (Rect, Optio
         }
         if search_visible && app.search.is_confirmed() {
             block = block.title_bottom(build_search_hints().alignment(Alignment::Center));
+            let match_count = app.search.match_count_display();
+            let match_count_badge = Line::from(vec![
+                Span::raw(" "),
+                Span::styled(
+                    format!("  {}  ", match_count),
+                    theme::search::BADGE_MATCH_COUNT,
+                ),
+                Span::raw(" "),
+            ]);
+            block = block.title_bottom(match_count_badge.alignment(Alignment::Right));
         } else if !search_visible && app.focus == crate::app::Focus::ResultsPane {
             block = block.title_bottom(build_results_pane_hints().alignment(Alignment::Center));
         }
@@ -457,7 +480,8 @@ pub fn render_error_overlay(app: &App, frame: &mut Frame, results_area: Rect) ->
         } else {
             error_lines.len()
         };
-        let overlay_height = (content_lines as u16 + 2).clamp(3, 7);
+        // +2 for borders, +2 for top/bottom padding
+        let overlay_height = (content_lines as u16 + 4).clamp(5, 9);
 
         let overlay_y = results_area.bottom().saturating_sub(overlay_height + 1);
 
@@ -470,12 +494,16 @@ pub fn render_error_overlay(app: &App, frame: &mut Frame, results_area: Rect) ->
         };
 
         popup::clear_area(frame, overlay_area);
+        let close_hint =
+            theme::border_hints::build_hints(&[("Ctrl+E", "Close")], theme::results::BORDER_ERROR);
         let error_block = Block::default()
             .borders(Borders::ALL)
             .border_type(BorderType::Rounded)
-            .title(" Syntax Error (Ctrl+E to close) ")
+            .title(" Syntax Error ")
+            .title_bottom(close_hint.alignment(Alignment::Center))
             .border_style(Style::default().fg(theme::results::BORDER_ERROR))
-            .style(Style::default().bg(theme::results::BACKGROUND));
+            .style(Style::default().bg(theme::results::BACKGROUND))
+            .padding(Padding::new(1, 1, 1, 1));
 
         let error_widget = Paragraph::new(display_error.as_str())
             .block(error_block)
