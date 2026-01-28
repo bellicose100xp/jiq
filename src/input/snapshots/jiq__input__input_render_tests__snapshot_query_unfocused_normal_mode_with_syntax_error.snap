@@ -2,10 +2,10 @@
 source: src/input/input_render_tests.rs
 expression: output
 ---
-"╭ Object ───────────────────────────────────────────────────────── L1-1/1 (0%) ╮"
-"▌"Alice"                                                                       │"
-"│                                                                              │"
-"│                                                                              │"
+"╭ ⚠ Syntax Error | Object | Showing last successful result ─────── L1-3/3 (0%) ╮"
+"▌{                                                                             │"
+"│  "name": "Alice"                                                             │"
+"│}                                                                             │"
 "│                                                                              │"
 "│                                                                              │"
 "│                                                                              │"
@@ -23,6 +23,6 @@ expression: output
 "│                                                                              │"
 "╰─────────────────────── Tab Edit Query • i Edit Query ────────────────────────╯"
 "╭ Query [NORMAL] (press 'i' to edit) ───────────────────── Ctrl+A AI Assistant ╮"
-"│.name                                                                         │"
+"│.invalid[                                                                     │"
 "╰──────────────────────────────────────────────────────────────────────────────╯"
 " F1/? Help • Shift+Tab Edit Query • Ctrl+S Snippets • Ctrl+F Search • Ctrl+C Qui"

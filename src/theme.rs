@@ -360,7 +360,6 @@ pub mod tooltip {
     pub const EXAMPLE_DESC: Color = Color::Rgb(130, 133, 158);
     pub const TIP: Color = Color::Rgb(255, 217, 61);
     pub const SEPARATOR: Color = Color::Rgb(90, 92, 119);
-    pub const DISMISS_HINT: Color = Color::Rgb(90, 92, 119);
 }
 
 /// Notification styles

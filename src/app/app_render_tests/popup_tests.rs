@@ -349,3 +349,51 @@ fn snapshot_history_popup_scrolled_bottom() {
     let output = render_to_string(&mut app, TEST_WIDTH, TEST_HEIGHT);
     assert_snapshot!(output);
 }
+
+#[test]
+fn snapshot_input_both_hints_when_tooltip_available() {
+    let json = r#"{"name": "Alice", "age": 30}"#;
+    let mut app = test_app(json);
+
+    // Tooltip available (function detected) but not active - should show both hints
+    app.ai.visible = false;
+    app.tooltip.enabled = false;
+    app.tooltip.set_current_function(Some("select".to_string()));
+
+    let output = render_to_string(&mut app, TEST_WIDTH, TEST_HEIGHT);
+    assert_snapshot!(output);
+}
+
+#[test]
+fn snapshot_input_only_ai_hint_when_tooltip_active() {
+    use crate::app::Focus;
+
+    let json = r#"{"name": "Alice", "age": 30}"#;
+    let mut app = test_app(json);
+
+    // Tooltip active - should show only AI hint, not tooltip hint
+    app.focus = Focus::InputField;
+    app.ai.visible = false;
+    app.tooltip.enabled = true;
+    app.tooltip.set_current_function(Some("select".to_string()));
+
+    let output = render_to_string(&mut app, TEST_WIDTH, TEST_HEIGHT);
+    assert_snapshot!(output);
+}
+
+#[test]
+fn snapshot_input_no_hints_when_ai_visible() {
+    use crate::app::Focus;
+
+    let json = r#"{"name": "Alice", "age": 30}"#;
+    let mut app = test_app(json);
+
+    // AI visible - should show no hints regardless of tooltip state
+    app.focus = Focus::InputField;
+    app.ai.visible = true;
+    app.tooltip.enabled = false;
+    app.tooltip.set_current_function(Some("select".to_string()));
+
+    let output = render_to_string(&mut app, TEST_WIDTH, TEST_HEIGHT);
+    assert_snapshot!(output);
+}

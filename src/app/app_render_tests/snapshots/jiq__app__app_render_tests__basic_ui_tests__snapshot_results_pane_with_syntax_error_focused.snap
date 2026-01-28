@@ -22,7 +22,7 @@ expression: output
 "│                                                                              │"
 "│                                                                              │"
 "╰─────────────────────── Tab Edit Query • i Edit Query ────────────────────────╯"
-"╭ Query [INSERT] ──────────────────────────────────────────────────────────────╮"
+"╭ Query [INSERT] ───────────────────────────────────────── Ctrl+A AI Assistant ╮"
 "│.invalid[                                                                     │"
 "╰──────────────────────────────────────────────────────────────────────────────╯"
 " F1/? Help • Shift+Tab Edit Query • Ctrl+S Snippets • Ctrl+F Search • Ctrl+C Qui"

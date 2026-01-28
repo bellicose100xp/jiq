@@ -1,9 +1,9 @@
 use ratatui::{
     Frame,
-    layout::Rect,
+    layout::{Alignment, Rect},
     style::Style,
     text::{Line, Span, Text},
-    widgets::{Block, BorderType, Borders, Paragraph},
+    widgets::{Block, BorderType, Borders, Padding, Paragraph},
 };
 
 use crate::app::App;
@@ -13,8 +13,8 @@ use crate::widgets::popup;
 
 const TOOLTIP_MIN_WIDTH: u16 = 40;
 const TOOLTIP_MAX_WIDTH: u16 = 90;
-const TOOLTIP_BORDER_HEIGHT: u16 = 2;
-const TOOLTIP_BORDER_WIDTH: u16 = 4; // left border + padding + right border + padding
+const TOOLTIP_BORDER_HEIGHT: u16 = 4; // top border (1) + padding (1) + bottom border (1) + padding (1)
+const TOOLTIP_BORDER_WIDTH: u16 = 6; // left border (1) + padding (2) + right border (1) + padding (2)
 const TOOLTIP_MIN_HEIGHT: u16 = 8;
 const TOOLTIP_MAX_HEIGHT: u16 = 18;
 
@@ -105,9 +105,8 @@ pub fn render_popup(app: &App, frame: &mut Frame, input_area: Rect) -> Option<Re
         .max()
         .unwrap_or(0);
     // Don't let tip width drive popup width - tips will wrap
-    let dismiss_hint_len = 19; // "Ctrl+T to dismiss"
     // Title format: "fn: name" or "operator: op"
-    let title_width = title_prefix.len() + 2 + name.len() + dismiss_hint_len + 4; // prefix + ": " + name + dismiss + spacing
+    let title_width = title_prefix.len() + 2 + name.len() + 2; // prefix + ": " + name + spacing
 
     let content_width = description_width.max(max_example_width).max(title_width);
 
@@ -218,22 +217,21 @@ pub fn render_popup(app: &App, frame: &mut Frame, input_area: Rect) -> Option<Re
         Span::raw(" "),
     ]);
 
-    // Build dismiss hint for top-right of border
-    let dismiss_hint = Line::from(vec![Span::styled(
-        " Ctrl+T to dismiss ",
-        Style::default().fg(theme::tooltip::DISMISS_HINT),
-    )]);
+    // Build dismiss hint for bottom-center of border
+    let dismiss_hint =
+        theme::border_hints::build_hints(&[("Ctrl+T", "Dismiss")], theme::tooltip::BORDER);
 
     // Create the popup widget with purple border
-    // Title on top-left, dismiss hint on top-right
+    // Title on top-left, dismiss hint on bottom-center, padding inside
     let popup_widget = Paragraph::new(text).block(
         Block::default()
             .borders(Borders::ALL)
             .border_type(BorderType::Rounded)
             .title(title)
-            .title_top(dismiss_hint.alignment(ratatui::layout::Alignment::Right))
+            .title_bottom(dismiss_hint.alignment(Alignment::Center))
             .border_style(Style::default().fg(theme::tooltip::BORDER))
-            .style(Style::default().bg(theme::tooltip::BACKGROUND)),
+            .style(Style::default().bg(theme::tooltip::BACKGROUND))
+            .padding(Padding::uniform(1)),
     );
 
     frame.render_widget(popup_widget, popup_area);

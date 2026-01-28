@@ -118,3 +118,31 @@ fn snapshot_query_focused_with_syntax_error() {
     let output = render_to_string(&mut app, TEST_WIDTH, TEST_HEIGHT);
     assert_snapshot!(output);
 }
+
+#[test]
+fn snapshot_query_unfocused_with_syntax_error_mode_text_red() {
+    let json = r#"{"name": "Alice"}"#;
+    let mut app = test_app(json);
+    app.input.textarea.insert_str(".invalid[");
+    app.query.as_mut().unwrap().execute(".invalid[");
+    app.focus = Focus::ResultsPane;
+    app.input.editor_mode = EditorMode::Insert;
+
+    // Mode text should be red to match border when there's an error
+    let output = render_to_string(&mut app, TEST_WIDTH, TEST_HEIGHT);
+    assert_snapshot!(output);
+}
+
+#[test]
+fn snapshot_query_unfocused_normal_mode_with_syntax_error() {
+    let json = r#"{"name": "Alice"}"#;
+    let mut app = test_app(json);
+    app.input.textarea.insert_str(".invalid[");
+    app.query.as_mut().unwrap().execute(".invalid[");
+    app.focus = Focus::ResultsPane;
+    app.input.editor_mode = EditorMode::Normal;
+
+    // Mode text should be red to match border when there's an error
+    let output = render_to_string(&mut app, TEST_WIDTH, TEST_HEIGHT);
+    assert_snapshot!(output);
+}

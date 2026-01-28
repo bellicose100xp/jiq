@@ -42,7 +42,7 @@ pub fn render_field(app: &mut App, frame: &mut Frame, area: Rect) -> Rect {
     };
 
     let is_focused = app.focus == Focus::InputField;
-    let mode_display_color = if has_error && is_focused {
+    let mode_display_color = if has_error {
         theme::input::BORDER_ERROR
     } else if is_focused {
         mode_color
@@ -70,34 +70,34 @@ pub fn render_field(app: &mut App, frame: &mut Frame, area: Rect) -> Rect {
 
     let title = Line::from(title_spans);
 
-    let tooltip_hint = if !app.tooltip.enabled && app.tooltip.current_function.is_some() {
-        Some(Line::from(vec![Span::styled(
-            " Ctrl+T for tooltip ",
-            Style::default().fg(theme::input::TOOLTIP_HINT),
-        )]))
-    } else {
-        None
-    };
-
-    let ai_hint = if is_focused && !app.ai.visible {
-        Some(theme::border_hints::build_hints(
-            &[("Ctrl+A", "AI Assistant")],
-            mode_color,
-        ))
-    } else {
-        None
-    };
-
     let mut block = Block::default()
         .borders(Borders::ALL)
         .border_type(BorderType::Rounded)
         .title(title)
         .border_style(Style::default().fg(border_color));
 
-    if let Some(hint) = tooltip_hint {
-        block = block.title_top(hint.alignment(Alignment::Right));
-    } else if let Some(hint) = ai_hint {
-        block = block.title_top(hint.alignment(Alignment::Right));
+    // Determine what hints to show based on state
+    let has_tooltip_available = app.tooltip.current_function.is_some();
+    let tooltip_active = app.tooltip.enabled;
+    let ai_active = app.ai.visible;
+
+    if ai_active {
+        // AI active: show nothing
+    } else if tooltip_active {
+        // Tooltip active: show only AI hint
+        let ai_hint = theme::border_hints::build_hints(&[("Ctrl+A", "AI Assistant")], border_color);
+        block = block.title_top(ai_hint.alignment(Alignment::Right));
+    } else if has_tooltip_available {
+        // Neither active, tooltip available: show both hints
+        let combined = theme::border_hints::build_hints(
+            &[("Ctrl+T", "Tooltip"), ("Ctrl+A", "AI Assistant")],
+            border_color,
+        );
+        block = block.title_top(combined.alignment(Alignment::Right));
+    } else if is_focused {
+        // Neither active, no tooltip: show only AI hint
+        let ai_hint = theme::border_hints::build_hints(&[("Ctrl+A", "AI Assistant")], border_color);
+        block = block.title_top(ai_hint.alignment(Alignment::Right));
     }
 
     if is_focused {
