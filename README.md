@@ -449,7 +449,7 @@ profile = "default"  # Optional: AWS profile name (uses default credential chain
 
 ## Known Limitations
 
-- **Autocomplete** - Editing in the middle of a query falls back to root-level suggestions.
+- **Autocomplete** - Editing in the middle of a query falls back to root-level suggestions; for arrays, only the first element is used for field autocomplete, so fields missing from the first element or present only in other elements of a heterogeneous array will not appear as suggestions.
 - **Syntax highlighting** - Basic keyword-based only, does not analyze structure like tree-sitter.
 
 ## Contributing
