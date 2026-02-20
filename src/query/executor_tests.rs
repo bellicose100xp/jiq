@@ -302,3 +302,28 @@ fn test_all_field_names_deep_heterogeneous_inner_arrays() {
         "Should contain 'memory' from second service's task"
     );
 }
+
+#[test]
+fn test_all_field_names_respects_sample_limit() {
+    // Build array with 20 objects, each with a unique key
+    let objects: Vec<String> = (0..20)
+        .map(|i| format!(r#"{{"key_{}": {}}}"#, i, i))
+        .collect();
+    let json = format!("[{}]", objects.join(","));
+    let executor = JqExecutor::new(json);
+    let fields = executor.all_field_names();
+
+    // First 10 should be present (ARRAY_SAMPLE_SIZE = 10)
+    for i in 0..10 {
+        assert!(
+            fields.contains(&format!("key_{}", i)),
+            "Should contain 'key_{}' within sample limit",
+            i
+        );
+    }
+    // 11th and beyond should NOT be present
+    assert!(
+        !fields.contains("key_10"),
+        "Should NOT contain 'key_10' beyond sample limit"
+    );
+}

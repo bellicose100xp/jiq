@@ -615,3 +615,94 @@ fn test_single_array_unchanged() {
     let elements = arr.as_array().unwrap();
     assert_eq!(elements.len(), 2, "Single array should be unchanged");
 }
+
+#[test]
+fn test_stream_merge_objects_with_non_object_in_stream() {
+    // Stream has objects interleaved with non-objects — non-objects should be skipped
+    let input = "{\"a\": 1}\n42\n{\"b\": 2}";
+    let (parsed, result_type) = parse_and_detect_type(input);
+
+    assert_eq!(result_type, ResultType::DestructuredObjects);
+    let obj = parsed.unwrap();
+    let map = obj.as_object().unwrap();
+    assert!(map.contains_key("a"), "Should have 'a' from first object");
+    assert!(map.contains_key("b"), "Should have 'b' from third object");
+}
+
+#[test]
+fn test_destructured_arrays_with_non_array_in_stream() {
+    // Stream has arrays interleaved with non-arrays — non-arrays should be skipped
+    let input = "[{\"x\": 1}]\n42\n[{\"y\": 2}]";
+    let (parsed, result_type) = parse_and_detect_type(input);
+
+    assert_eq!(result_type, ResultType::ArrayOfObjects);
+    let arr = parsed.unwrap();
+    let elements = arr.as_array().unwrap();
+
+    assert!(
+        elements.len() >= 2,
+        "Should merge elements from both arrays, skipping non-array"
+    );
+    assert!(
+        elements.iter().any(|e| e.get("x").is_some()),
+        "Should have x from first array"
+    );
+    assert!(
+        elements.iter().any(|e| e.get("y").is_some()),
+        "Should have y from third value"
+    );
+}
+
+#[test]
+fn test_stream_merge_objects_beyond_sample_limit() {
+    // 15 streaming objects — only first ARRAY_SAMPLE_SIZE should be merged
+    let objects: Vec<String> = (0..15)
+        .map(|i| format!(r#"{{"key_{}": {}}}"#, i, i))
+        .collect();
+    let input = objects.join("\n");
+    let (parsed, result_type) = parse_and_detect_type(&input);
+
+    assert_eq!(result_type, ResultType::DestructuredObjects);
+    let obj = parsed.unwrap();
+    let map = obj.as_object().unwrap();
+
+    for i in 0..10 {
+        assert!(
+            map.contains_key(&format!("key_{}", i)),
+            "Should have 'key_{}' within sample limit",
+            i
+        );
+    }
+    assert!(
+        !map.contains_key("key_10"),
+        "Should NOT have 'key_10' beyond sample limit"
+    );
+}
+
+#[test]
+fn test_destructured_arrays_beyond_sample_limit_verify_keys() {
+    // 15 streamed arrays — verify objects from arrays beyond limit are absent
+    let arrays: Vec<String> = (0..15)
+        .map(|i| format!(r#"[{{"key_{}": {}}}]"#, i, i))
+        .collect();
+    let input = arrays.join("\n");
+    let (parsed, _) = parse_and_detect_type(&input);
+
+    let arr = parsed.unwrap();
+    let elements = arr.as_array().unwrap();
+
+    // First 10 arrays' elements should be present
+    assert!(
+        elements.iter().any(|e| e.get("key_0").is_some()),
+        "Should have element from first array"
+    );
+    assert!(
+        elements.iter().any(|e| e.get("key_9").is_some()),
+        "Should have element from 10th array"
+    );
+    // 11th array's element should NOT be present
+    assert!(
+        !elements.iter().any(|e| e.get("key_10").is_some()),
+        "Should NOT have element from 11th array"
+    );
+}

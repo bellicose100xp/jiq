@@ -1069,3 +1069,70 @@ fn test_analyze_multi_values_mixed_object_and_array() {
     assert!(suggestions.iter().any(|s| s.text == ".[]"));
     assert!(suggestions.iter().any(|s| s.text.contains("unique")));
 }
+
+#[test]
+fn test_analyze_multi_values_empty_slice() {
+    let suggestions = ResultAnalyzer::analyze_multi_values(&[], true, false);
+    assert!(
+        suggestions.is_empty(),
+        "Empty values slice should produce no suggestions"
+    );
+}
+
+#[test]
+fn test_analyze_multi_values_scalars_only() {
+    let n = serde_json::json!(42);
+    let s = serde_json::json!("hello");
+    let b = serde_json::json!(true);
+    let suggestions = ResultAnalyzer::analyze_multi_values(&[&n, &s, &b], true, false);
+    assert!(
+        suggestions.is_empty(),
+        "Scalar-only values should produce no suggestions"
+    );
+}
+
+#[test]
+fn test_analyze_multi_values_multiple_arrays_single_bracket_suggestion() {
+    let a1: Value = serde_json::from_str(r#"[{"x": 1}]"#).unwrap();
+    let a2: Value = serde_json::from_str(r#"[{"y": 2}]"#).unwrap();
+    let a3: Value = serde_json::from_str(r#"[{"z": 3}]"#).unwrap();
+    let suggestions = ResultAnalyzer::analyze_multi_values(&[&a1, &a2, &a3], true, false);
+
+    let bracket_count = suggestions.iter().filter(|s| s.text == ".[]").count();
+    assert_eq!(
+        bracket_count, 1,
+        "Multiple arrays should produce only one .[] suggestion"
+    );
+    assert!(suggestions.iter().any(|s| s.text.contains("x")));
+    assert!(suggestions.iter().any(|s| s.text.contains("y")));
+    assert!(suggestions.iter().any(|s| s.text.contains("z")));
+}
+
+#[test]
+fn test_analyze_multi_values_array_with_suppress_brackets() {
+    let arr: Value = serde_json::from_str(r#"[{"a": 1}, {"b": 2}]"#).unwrap();
+    let suggestions = ResultAnalyzer::analyze_multi_values(&[&arr], true, true);
+
+    assert!(
+        !suggestions.iter().any(|s| s.text == ".[]"),
+        "Should NOT suggest .[] when suppress_array_brackets=true"
+    );
+    assert!(suggestions.iter().any(|s| s.text == ".a"));
+    assert!(suggestions.iter().any(|s| s.text == ".b"));
+}
+
+#[test]
+fn test_analyze_multi_values_array_of_only_scalars() {
+    let arr: Value = serde_json::from_str(r#"[1, 2, 3]"#).unwrap();
+    let suggestions = ResultAnalyzer::analyze_multi_values(&[&arr], true, false);
+
+    assert!(
+        suggestions.iter().any(|s| s.text == ".[]"),
+        "Scalar array should still suggest .[]"
+    );
+    assert_eq!(
+        suggestions.len(),
+        1,
+        "Scalar array should only produce .[] with no field suggestions"
+    );
+}

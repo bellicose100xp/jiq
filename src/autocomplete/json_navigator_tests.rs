@@ -619,4 +619,63 @@ mod navigate_multi_tests {
             result.len()
         );
     }
+
+    #[test]
+    fn test_field_on_non_object_values_skipped() {
+        // Mixed array: some objects, some scalars — Field should skip non-objects
+        let json = json!([{"name": "Alice"}, "string", 42, {"name": "Bob"}]);
+        let segments = vec![
+            PathSegment::ArrayIterator,
+            PathSegment::Field("name".into()),
+        ];
+        let result = navigate_multi(&json, &segments, ARRAY_SAMPLE_SIZE);
+
+        assert_eq!(result.len(), 2);
+        assert_eq!(result[0], &json!("Alice"));
+        assert_eq!(result[1], &json!("Bob"));
+    }
+
+    #[test]
+    fn test_negative_index_underflow_skipped() {
+        let json = json!([[{"a": 1}], [{"b": 2}]]);
+        let segments = vec![PathSegment::ArrayIterator, PathSegment::ArrayIndex(-1000)];
+        let result = navigate_multi(&json, &segments, ARRAY_SAMPLE_SIZE);
+
+        assert!(
+            result.is_empty(),
+            "Negative index underflow should produce empty results"
+        );
+    }
+
+    #[test]
+    fn test_iterator_on_non_array_skipped() {
+        // ArrayIterator on non-array values should skip them
+        let json = json!([{"items": [1, 2]}, {"items": "not_array"}]);
+        let segments = vec![
+            PathSegment::ArrayIterator,
+            PathSegment::Field("items".into()),
+            PathSegment::ArrayIterator,
+        ];
+        let result = navigate_multi(&json, &segments, ARRAY_SAMPLE_SIZE);
+
+        // Only the first element's items array is iterated
+        assert_eq!(result.len(), 2);
+        assert_eq!(result[0], &json!(1));
+        assert_eq!(result[1], &json!(2));
+    }
+
+    #[test]
+    fn test_intermediate_empty_returns_empty() {
+        // If an intermediate segment produces no matches, result is empty
+        let json = json!({"users": [{"name": "Alice"}]});
+        let segments = vec![
+            PathSegment::Field("users".into()),
+            PathSegment::ArrayIterator,
+            PathSegment::Field("nonexistent".into()),
+            PathSegment::Field("deep".into()),
+        ];
+        let result = navigate_multi(&json, &segments, ARRAY_SAMPLE_SIZE);
+
+        assert!(result.is_empty());
+    }
 }
