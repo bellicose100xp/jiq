@@ -231,14 +231,32 @@ pub fn parse_and_detect_type(text: &str, array_sample_size: usize) -> (Option<Va
     // Check for multiple values (destructured output)
     let second_value = deserializer.next();
     let has_multiple = second_value.is_some();
-    let result_type = value_to_result_type(&first_value, has_multiple);
+    let mut result_type = value_to_result_type(&first_value, has_multiple);
+
+    // When the first value is null/scalar but subsequent values are objects or
+    // arrays-of-objects, reclassify so autocomplete can extract field suggestions
+    if has_multiple
+        && !matches!(
+            result_type,
+            ResultType::DestructuredObjects | ResultType::ArrayOfObjects
+        )
+        && let Some(Ok(ref second)) = second_value
+    {
+        match second {
+            Value::Object(_) => result_type = ResultType::DestructuredObjects,
+            Value::Array(arr) if matches!(arr.first(), Some(Value::Object(_))) => {
+                result_type = ResultType::ArrayOfObjects;
+            }
+            _ => {}
+        }
+    }
 
     // For destructured objects, merge keys from first N streamed objects
     // into a synthetic combined object so autocomplete sees all fields
     if result_type == ResultType::DestructuredObjects {
         let mut merged = match first_value {
             Value::Object(map) => map,
-            other => return (Some(other), result_type),
+            _ => serde_json::Map::new(),
         };
 
         if let Some(Ok(Value::Object(map))) = second_value {
@@ -265,7 +283,7 @@ pub fn parse_and_detect_type(text: &str, array_sample_size: usize) -> (Option<Va
     if has_multiple && result_type == ResultType::ArrayOfObjects {
         let mut merged = match first_value {
             Value::Array(arr) => arr,
-            other => return (Some(other), result_type),
+            _ => Vec::new(),
         };
 
         if let Some(Ok(Value::Array(arr))) = second_value {

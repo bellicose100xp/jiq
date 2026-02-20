@@ -739,3 +739,139 @@ fn test_destructured_arrays_beyond_sample_limit_verify_keys() {
         "Should NOT have element from 11th array"
     );
 }
+
+// ============================================================================
+// Null/Scalar-First Reclassification Tests
+// ============================================================================
+
+#[test]
+fn test_null_first_then_objects_merges_keys() {
+    let input = "null\n{\"a\": 1}\n{\"b\": 2}";
+    let (parsed, result_type) = parse_and_detect_type(input, DEFAULT_ARRAY_SAMPLE_SIZE);
+
+    assert_eq!(result_type, ResultType::DestructuredObjects);
+    let obj = parsed.unwrap();
+    let map = obj.as_object().unwrap();
+    assert!(map.contains_key("a"), "Should have 'a' from second value");
+    assert!(map.contains_key("b"), "Should have 'b' from third value");
+}
+
+#[test]
+fn test_null_first_then_single_object_merges() {
+    let input = "null\n{\"data\": \"test\"}";
+    let (parsed, result_type) = parse_and_detect_type(input, DEFAULT_ARRAY_SAMPLE_SIZE);
+
+    assert_eq!(result_type, ResultType::DestructuredObjects);
+    let obj = parsed.unwrap();
+    let map = obj.as_object().unwrap();
+    assert!(
+        map.contains_key("data"),
+        "Should have 'data' from second value"
+    );
+}
+
+#[test]
+fn test_scalar_first_then_objects_reclassifies() {
+    let input = "42\n{\"a\": 1}";
+    let (parsed, result_type) = parse_and_detect_type(input, DEFAULT_ARRAY_SAMPLE_SIZE);
+
+    assert_eq!(result_type, ResultType::DestructuredObjects);
+    let obj = parsed.unwrap();
+    let map = obj.as_object().unwrap();
+    assert!(map.contains_key("a"), "Should have 'a' from second value");
+}
+
+#[test]
+fn test_bool_first_then_objects_reclassifies() {
+    let input = "true\n{\"a\": 1}";
+    let (parsed, result_type) = parse_and_detect_type(input, DEFAULT_ARRAY_SAMPLE_SIZE);
+
+    assert_eq!(result_type, ResultType::DestructuredObjects);
+    let obj = parsed.unwrap();
+    let map = obj.as_object().unwrap();
+    assert!(map.contains_key("a"), "Should have 'a' from second value");
+}
+
+#[test]
+fn test_string_first_then_objects_reclassifies() {
+    let input = "\"hi\"\n{\"a\": 1}";
+    let (parsed, result_type) = parse_and_detect_type(input, DEFAULT_ARRAY_SAMPLE_SIZE);
+
+    assert_eq!(result_type, ResultType::DestructuredObjects);
+    let obj = parsed.unwrap();
+    let map = obj.as_object().unwrap();
+    assert!(map.contains_key("a"), "Should have 'a' from second value");
+}
+
+#[test]
+fn test_null_first_then_array_of_objects_reclassifies() {
+    let input = "null\n[{\"a\": 1}]";
+    let (parsed, result_type) = parse_and_detect_type(input, DEFAULT_ARRAY_SAMPLE_SIZE);
+
+    assert_eq!(result_type, ResultType::ArrayOfObjects);
+    let arr = parsed.unwrap();
+    let elements = arr.as_array().unwrap();
+    assert!(
+        elements.iter().any(|e| e.get("a").is_some()),
+        "Should have element with 'a'"
+    );
+}
+
+#[test]
+fn test_all_nulls_stays_null() {
+    let input = "null\nnull\nnull";
+    let (parsed, result_type) = parse_and_detect_type(input, DEFAULT_ARRAY_SAMPLE_SIZE);
+
+    assert_eq!(result_type, ResultType::Null);
+    assert!(parsed.is_some());
+}
+
+#[test]
+fn test_null_then_scalar_no_reclassify() {
+    let input = "null\n42";
+    let (parsed, result_type) = parse_and_detect_type(input, DEFAULT_ARRAY_SAMPLE_SIZE);
+
+    assert_ne!(result_type, ResultType::DestructuredObjects);
+    assert_ne!(result_type, ResultType::ArrayOfObjects);
+    assert!(parsed.is_some());
+}
+
+#[test]
+fn test_null_first_then_many_objects_respects_sample_limit() {
+    let mut parts = vec!["null".to_string()];
+    for i in 0..15 {
+        parts.push(format!(r#"{{"key_{}": {}}}"#, i, i));
+    }
+    let input = parts.join("\n");
+    let (parsed, result_type) = parse_and_detect_type(&input, DEFAULT_ARRAY_SAMPLE_SIZE);
+
+    assert_eq!(result_type, ResultType::DestructuredObjects);
+    let obj = parsed.unwrap();
+    let map = obj.as_object().unwrap();
+
+    // Second value through 10th value (indices 0..9) should be merged
+    for i in 0..9 {
+        assert!(
+            map.contains_key(&format!("key_{}", i)),
+            "Should have 'key_{}' within sample limit",
+            i
+        );
+    }
+    // Beyond sample limit should NOT be present
+    assert!(
+        !map.contains_key("key_10"),
+        "Should NOT have 'key_10' beyond sample limit"
+    );
+}
+
+#[test]
+fn test_multiple_nulls_interspersed_with_objects() {
+    let input = "null\n{\"a\": 1}\nnull\n{\"b\": 2}";
+    let (parsed, result_type) = parse_and_detect_type(input, DEFAULT_ARRAY_SAMPLE_SIZE);
+
+    assert_eq!(result_type, ResultType::DestructuredObjects);
+    let obj = parsed.unwrap();
+    let map = obj.as_object().unwrap();
+    assert!(map.contains_key("a"), "Should have 'a'");
+    assert!(map.contains_key("b"), "Should have 'b'");
+}
