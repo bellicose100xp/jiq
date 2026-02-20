@@ -12,6 +12,7 @@ use serde_json::Value;
 use tokio_util::sync::CancellationToken;
 
 use super::types::{ProcessedResult, QueryError, RenderedLine, RenderedSpan};
+use crate::autocomplete::json_navigator::ARRAY_SAMPLE_SIZE;
 use crate::query::query_state::ResultType;
 
 /// Preprocess query result by performing all expensive operations
@@ -228,8 +229,35 @@ pub fn parse_and_detect_type(text: &str) -> (Option<Value>, ResultType) {
     };
 
     // Check for multiple values (destructured output)
-    let has_multiple = deserializer.next().is_some();
+    let second_value = deserializer.next();
+    let has_multiple = second_value.is_some();
     let result_type = value_to_result_type(&first_value, has_multiple);
+
+    // For destructured objects, merge keys from first N streamed objects
+    // into a synthetic combined object so autocomplete sees all fields
+    if result_type == ResultType::DestructuredObjects {
+        let mut merged = match first_value {
+            Value::Object(map) => map,
+            other => return (Some(other), result_type),
+        };
+
+        if let Some(Ok(Value::Object(map))) = second_value {
+            for (key, val) in map {
+                merged.entry(key).or_insert(val);
+            }
+        }
+
+        let remaining = ARRAY_SAMPLE_SIZE.saturating_sub(2);
+        for result in deserializer.take(remaining) {
+            if let Ok(Value::Object(map)) = result {
+                for (key, val) in map {
+                    merged.entry(key).or_insert(val);
+                }
+            }
+        }
+
+        return (Some(Value::Object(merged)), result_type);
+    }
 
     (Some(first_value), result_type)
 }

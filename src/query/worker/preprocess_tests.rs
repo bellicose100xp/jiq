@@ -472,3 +472,87 @@ fn test_parse_and_detect_type_pretty_printed_destructured() {
     assert!(parsed.is_some());
     assert_eq!(result_type, ResultType::DestructuredObjects);
 }
+
+// ============================================================================
+// Stream Merge Tests (Phase 5)
+// ============================================================================
+
+#[test]
+fn test_stream_merge_different_keys() {
+    let input = r#"{"a": 1}
+{"b": 2}
+{"c": 3}"#;
+    let (parsed, result_type) = parse_and_detect_type(input);
+
+    assert_eq!(result_type, ResultType::DestructuredObjects);
+    let obj = parsed.unwrap();
+    assert!(obj.is_object());
+    let map = obj.as_object().unwrap();
+    assert!(map.contains_key("a"), "Should have 'a' from first object");
+    assert!(map.contains_key("b"), "Should have 'b' from second object");
+    assert!(map.contains_key("c"), "Should have 'c' from third object");
+}
+
+#[test]
+fn test_stream_merge_first_occurrence_wins() {
+    let input = r#"{"x": 42}
+{"x": "string"}"#;
+    let (parsed, _) = parse_and_detect_type(input);
+
+    let obj = parsed.unwrap();
+    let map = obj.as_object().unwrap();
+    assert_eq!(
+        map["x"], 42,
+        "First occurrence of 'x' should win (number, not string)"
+    );
+}
+
+#[test]
+fn test_stream_merge_respects_sample_limit() {
+    // Build 15 streaming objects — only first ARRAY_SAMPLE_SIZE should be merged
+    let objects: Vec<String> = (0..15)
+        .map(|i| format!(r#"{{"key_{}": {}}}"#, i, i))
+        .collect();
+    let input = objects.join("\n");
+    let (parsed, result_type) = parse_and_detect_type(&input);
+
+    assert_eq!(result_type, ResultType::DestructuredObjects);
+    let obj = parsed.unwrap();
+    let map = obj.as_object().unwrap();
+
+    // First 10 keys should be present
+    for i in 0..10 {
+        assert!(
+            map.contains_key(&format!("key_{}", i)),
+            "Should have 'key_{}' (within sample limit)",
+            i
+        );
+    }
+    // Keys beyond sample limit should NOT be present
+    assert!(
+        !map.contains_key("key_10"),
+        "Should NOT have 'key_10' (beyond sample limit)"
+    );
+}
+
+#[test]
+fn test_stream_merge_non_destructured_unchanged() {
+    // Single value (not destructured) should not be affected
+    let input = r#"{"name": "test"}"#;
+    let (parsed, result_type) = parse_and_detect_type(input);
+
+    assert_eq!(result_type, ResultType::Object);
+    let obj = parsed.unwrap();
+    assert_eq!(obj["name"], "test");
+}
+
+#[test]
+fn test_stream_merge_mixed_types_handled() {
+    // If stream has a non-object value, it's gracefully skipped
+    let input = "42\n\"hello\"";
+    let (parsed, result_type) = parse_and_detect_type(input);
+
+    // First value is a number, second is string — not DestructuredObjects
+    assert!(parsed.is_some());
+    assert_ne!(result_type, ResultType::DestructuredObjects);
+}
