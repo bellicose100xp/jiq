@@ -454,7 +454,7 @@ profile = "default"  # Optional: AWS profile name (uses default credential chain
 
 ## Known Limitations
 
-- **Autocomplete** - Editing in the middle of a query falls back to root-level suggestions; for arrays, a configurable number of elements are sampled to build field suggestions (default: 10, configurable via `array_sample_size` in `[autocomplete]` config section), so fields present only beyond the sampled elements will not appear.
+- **Autocomplete** - Editing in the middle of a query falls back to root-level suggestions; for arrays, a configurable number of elements are sampled to build field suggestions (default: 10, configurable via `array_sample_size` in `[autocomplete]` config section).
 - **Syntax highlighting** - Basic keyword-based only, does not analyze structure like tree-sitter.
 
 ## Contributing

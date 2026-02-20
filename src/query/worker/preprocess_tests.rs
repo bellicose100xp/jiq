@@ -875,3 +875,72 @@ fn test_multiple_nulls_interspersed_with_objects() {
     assert!(map.contains_key("a"), "Should have 'a'");
     assert!(map.contains_key("b"), "Should have 'b'");
 }
+
+// ============================================================================
+// Custom Sample Size Tests
+// ============================================================================
+
+#[test]
+fn test_custom_sample_size_limits_destructured_objects() {
+    let objects: Vec<String> = (0..10)
+        .map(|i| format!(r#"{{"key_{}": {}}}"#, i, i))
+        .collect();
+    let input = objects.join("\n");
+    let (parsed, result_type) = parse_and_detect_type(&input, 5);
+
+    assert_eq!(result_type, ResultType::DestructuredObjects);
+    let obj = parsed.unwrap();
+    let map = obj.as_object().unwrap();
+
+    for i in 0..5 {
+        assert!(
+            map.contains_key(&format!("key_{}", i)),
+            "Should have 'key_{}' within custom sample limit of 5",
+            i
+        );
+    }
+    assert!(
+        !map.contains_key("key_5"),
+        "Should NOT have 'key_5' beyond custom sample limit of 5"
+    );
+}
+
+#[test]
+fn test_custom_sample_size_limits_destructured_arrays() {
+    let arrays: Vec<String> = (0..10)
+        .map(|i| format!(r#"[{{"key_{}": {}}}]"#, i, i))
+        .collect();
+    let input = arrays.join("\n");
+    let (parsed, result_type) = parse_and_detect_type(&input, 5);
+
+    assert_eq!(result_type, ResultType::ArrayOfObjects);
+    let arr = parsed.unwrap();
+    let elements = arr.as_array().unwrap();
+
+    assert_eq!(
+        elements.len(),
+        5,
+        "Should merge elements from first 5 arrays only"
+    );
+    assert!(
+        !elements.iter().any(|e| e.get("key_5").is_some()),
+        "Should NOT have element from 6th array"
+    );
+}
+
+#[test]
+fn test_sample_size_two_takes_first_two() {
+    let input = "{\"a\": 1}\n{\"b\": 2}\n{\"c\": 3}";
+    let (parsed, result_type) = parse_and_detect_type(input, 2);
+
+    assert_eq!(result_type, ResultType::DestructuredObjects);
+    let obj = parsed.unwrap();
+    let map = obj.as_object().unwrap();
+
+    assert!(map.contains_key("a"), "Should have 'a' from first object");
+    assert!(map.contains_key("b"), "Should have 'b' from second object");
+    assert!(
+        !map.contains_key("c"),
+        "Should NOT have 'c' with sample size 2"
+    );
+}

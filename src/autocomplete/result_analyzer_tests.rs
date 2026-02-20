@@ -1306,3 +1306,87 @@ fn test_analyze_multi_values_array_of_only_scalars() {
         "Scalar array should only produce .[] with no field suggestions"
     );
 }
+
+// ============================================================================
+// Custom Sample Size Tests
+// ============================================================================
+
+#[test]
+fn test_custom_sample_size_limits_array_field_suggestions() {
+    // 10 objects with unique keys, but sample size of 5
+    let elements: Vec<String> = (0..10)
+        .map(|i| format!(r#"{{"key_{}": {}}}"#, i, i))
+        .collect();
+    let json_str = format!("[{}]", elements.join(", "));
+    let parsed = parse_json(&json_str);
+
+    let suggestions =
+        ResultAnalyzer::analyze_parsed_result(&parsed, ResultType::ArrayOfObjects, true, false, 5);
+
+    for i in 0..5 {
+        assert!(
+            suggestions
+                .iter()
+                .any(|s| s.text == format!(".[].key_{}", i)),
+            "Should suggest key_{} within custom sample limit of 5",
+            i
+        );
+    }
+    assert!(
+        !suggestions.iter().any(|s| s.text == ".[].key_5"),
+        "Should NOT suggest key_5 beyond custom sample limit of 5"
+    );
+}
+
+#[test]
+fn test_default_sample_size_includes_first_10_elements() {
+    let elements: Vec<String> = (0..15)
+        .map(|i| format!(r#"{{"key_{}": {}}}"#, i, i))
+        .collect();
+    let json_str = format!("[{}]", elements.join(", "));
+    let parsed = parse_json(&json_str);
+
+    let suggestions = ResultAnalyzer::analyze_parsed_result(
+        &parsed,
+        ResultType::ArrayOfObjects,
+        true,
+        false,
+        DEFAULT_ARRAY_SAMPLE_SIZE,
+    );
+
+    for i in 0..10 {
+        assert!(
+            suggestions
+                .iter()
+                .any(|s| s.text == format!(".[].key_{}", i)),
+            "Should suggest key_{} within default sample limit of 10",
+            i
+        );
+    }
+    assert!(
+        !suggestions.iter().any(|s| s.text == ".[].key_10"),
+        "Should NOT suggest key_10 beyond default sample limit of 10"
+    );
+}
+
+#[test]
+fn test_sample_size_one_suggests_only_first_element_fields() {
+    let json_str = r#"[{"a": 1}, {"b": 2}, {"c": 3}]"#;
+    let parsed = parse_json(json_str);
+
+    let suggestions =
+        ResultAnalyzer::analyze_parsed_result(&parsed, ResultType::ArrayOfObjects, true, false, 1);
+
+    assert!(
+        suggestions.iter().any(|s| s.text == ".[].a"),
+        "Should suggest 'a' from first element"
+    );
+    assert!(
+        !suggestions.iter().any(|s| s.text == ".[].b"),
+        "Should NOT suggest 'b' with sample size 1"
+    );
+    assert!(
+        !suggestions.iter().any(|s| s.text == ".[].c"),
+        "Should NOT suggest 'c' with sample size 1"
+    );
+}
