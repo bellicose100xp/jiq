@@ -556,3 +556,62 @@ fn test_stream_merge_mixed_types_handled() {
     assert!(parsed.is_some());
     assert_ne!(result_type, ResultType::DestructuredObjects);
 }
+
+// ============================================================================
+// Destructured Array Merge Tests
+// ============================================================================
+
+#[test]
+fn test_destructured_arrays_merge_elements() {
+    // Simulates .services[].tasks producing multiple arrays
+    let input = r#"[{"taskArn": "arn:1", "cpu": 256}]
+[{"taskArn": "arn:2", "payload": {"data": "test"}}]"#;
+    let (parsed, result_type) = parse_and_detect_type(input);
+
+    assert_eq!(result_type, ResultType::ArrayOfObjects);
+    let arr = parsed.unwrap();
+    let elements = arr.as_array().unwrap();
+
+    assert_eq!(
+        elements.len(),
+        2,
+        "Should merge elements from both streamed arrays"
+    );
+    assert!(elements[0].get("cpu").is_some(), "First element has cpu");
+    assert!(
+        elements[1].get("payload").is_some(),
+        "Second element has payload"
+    );
+}
+
+#[test]
+fn test_destructured_arrays_respects_sample_limit() {
+    // Build 15 streamed arrays — only first ARRAY_SAMPLE_SIZE should be merged
+    let arrays: Vec<String> = (0..15)
+        .map(|i| format!(r#"[{{"key_{}": {}}}]"#, i, i))
+        .collect();
+    let input = arrays.join("\n");
+    let (parsed, result_type) = parse_and_detect_type(&input);
+
+    assert_eq!(result_type, ResultType::ArrayOfObjects);
+    let arr = parsed.unwrap();
+    let elements = arr.as_array().unwrap();
+
+    assert_eq!(
+        elements.len(),
+        10,
+        "Should merge elements from first 10 arrays only"
+    );
+}
+
+#[test]
+fn test_single_array_unchanged() {
+    // Single array (not destructured) should not be affected
+    let input = r#"[{"a": 1}, {"b": 2}]"#;
+    let (parsed, result_type) = parse_and_detect_type(input);
+
+    assert_eq!(result_type, ResultType::ArrayOfObjects);
+    let arr = parsed.unwrap();
+    let elements = arr.as_array().unwrap();
+    assert_eq!(elements.len(), 2, "Single array should be unchanged");
+}

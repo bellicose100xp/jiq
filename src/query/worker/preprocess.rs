@@ -259,6 +259,29 @@ pub fn parse_and_detect_type(text: &str) -> (Option<Value>, ResultType) {
         return (Some(Value::Object(merged)), result_type);
     }
 
+    // For destructured arrays of objects (e.g., .services[].tasks produces
+    // [{...}]\n[{...}]), merge elements from subsequent arrays into the first
+    // so autocomplete sees fields from all streamed arrays
+    if has_multiple && result_type == ResultType::ArrayOfObjects {
+        let mut merged = match first_value {
+            Value::Array(arr) => arr,
+            other => return (Some(other), result_type),
+        };
+
+        if let Some(Ok(Value::Array(arr))) = second_value {
+            merged.extend(arr);
+        }
+
+        let remaining = ARRAY_SAMPLE_SIZE.saturating_sub(2);
+        for result in deserializer.take(remaining) {
+            if let Ok(Value::Array(arr)) = result {
+                merged.extend(arr);
+            }
+        }
+
+        return (Some(Value::Array(merged)), result_type);
+    }
+
     (Some(first_value), result_type)
 }
 
