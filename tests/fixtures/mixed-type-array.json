@@ -1,0 +1,52 @@
+{
+  "services": [
+    {
+      "serviceName": "inventory-manager",
+      "serviceArn": "arn:aws:ecs:us-east-1:111:service/svc1",
+      "status": "ACTIVE",
+      "strategy": "ROLLING",
+      "deployments": [
+        {
+          "id": "deploy-1",
+          "tasks": [
+            {
+              "taskArn": "arn:task:1",
+              "cpu": 256
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "serviceName": "order-processor",
+      "serviceArn": "arn:aws:ecs:us-east-1:111:service/svc2",
+      "status": "ACTIVE",
+      "strategy": "BLUE_GREEN",
+      "extra_service_key": "special_value",
+      "deployments": [
+        {
+          "id": "deploy-2",
+          "tasks": [
+            {
+              "taskArn": "arn:task:2",
+              "payload": {
+                "data": "test"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "serviceName": "notification-service",
+      "serviceArn": "arn:aws:ecs:us-east-1:111:service/svc3",
+      "status": "DRAINING",
+      "strategy": "ROLLING",
+      "region": "us-west-2",
+      "tags": {
+        "env": "staging",
+        "team": "platform"
+      }
+    }
+  ]
+}
