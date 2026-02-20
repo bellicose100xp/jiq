@@ -6,6 +6,11 @@ use serde_json::Value;
 
 use super::path_parser::PathSegment;
 
+/// Maximum number of array elements to sample when collecting field names.
+/// Unions keys from the first N elements to surface fields that only
+/// appear in non-first elements of heterogeneous arrays.
+pub const ARRAY_SAMPLE_SIZE: usize = 10;
+
 /// Navigate a JSON tree following path segments.
 ///
 /// Returns a borrowed reference to the nested value, or None if the path

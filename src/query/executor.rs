@@ -7,6 +7,7 @@ use std::time::Duration;
 use serde_json::Value;
 use tokio_util::sync::CancellationToken;
 
+use crate::autocomplete::json_navigator::ARRAY_SAMPLE_SIZE;
 use crate::query::worker::types::QueryError;
 
 /// Execute jq queries against JSON input
@@ -78,8 +79,8 @@ impl JqExecutor {
                 }
             }
             Value::Array(arr) => {
-                if let Some(first) = arr.first() {
-                    Self::collect_fields_recursive(first, fields);
+                for element in arr.iter().take(ARRAY_SAMPLE_SIZE) {
+                    Self::collect_fields_recursive(element, fields);
                 }
             }
             _ => {}
