@@ -29,6 +29,7 @@ pub const ARRAY_SAMPLE_SIZE: usize = 10;
 /// // Given: [{"id": 1}, {"id": 2}]
 /// // navigate(json, &[ArrayIterator, Field("id")]) → Some(1)
 /// ```
+#[allow(dead_code)]
 pub fn navigate<'a>(root: &'a Value, segments: &[PathSegment]) -> Option<&'a Value> {
     let mut current = root;
 

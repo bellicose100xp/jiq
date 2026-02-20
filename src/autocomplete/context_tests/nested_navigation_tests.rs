@@ -766,3 +766,150 @@ mod multi_element_navigation {
         );
     }
 }
+
+/// Integration tests for the canonical issue #145 scenarios
+mod issue_145_integration {
+    use super::*;
+
+    fn create_canonical_json() -> (Arc<Value>, ResultType) {
+        let json = r#"{
+            "services": [
+                {
+                    "serviceName": "inventory-manager",
+                    "status": "ACTIVE",
+                    "deployments": [
+                        {
+                            "id": "deploy-1",
+                            "tasks": [
+                                {"taskArn": "arn:task:1", "cpu": 256}
+                            ]
+                        }
+                    ]
+                },
+                {
+                    "serviceName": "order-processor",
+                    "status": "ACTIVE",
+                    "extra_service_key": "special_value",
+                    "deployments": [
+                        {
+                            "id": "deploy-2",
+                            "tasks": [
+                                {"taskArn": "arn:task:2", "payload": {"data": "test"}}
+                            ]
+                        }
+                    ]
+                }
+            ]
+        }"#;
+        let parsed = serde_json::from_str::<Value>(json).unwrap();
+        (Arc::new(parsed), ResultType::Object)
+    }
+
+    #[test]
+    fn test_services_iterator_includes_extra_service_key() {
+        let (parsed, result_type) = create_canonical_json();
+        let query = "[.services[].";
+        let tracker = tracker_for(query);
+
+        let suggestions = get_suggestions(
+            query,
+            query.len(),
+            Some(parsed.clone()),
+            Some(result_type),
+            Some(parsed),
+            empty_field_names(),
+            &tracker,
+        );
+
+        assert!(
+            suggestions
+                .iter()
+                .any(|s| s.text.contains("extra_service_key")),
+            ".services[]. should include extra_service_key. Got: {:?}",
+            suggestions.iter().map(|s| &s.text).collect::<Vec<_>>()
+        );
+        assert!(
+            suggestions.iter().any(|s| s.text.contains("serviceName")),
+            "Should also include serviceName from first element"
+        );
+    }
+
+    #[test]
+    fn test_select_with_services_includes_extra_key() {
+        let (parsed, result_type) = create_canonical_json();
+        let all_fields = field_names_from(&parsed);
+
+        let query = "[.services[] | select(.";
+        let tracker = tracker_for(query);
+        let suggestions = get_suggestions(
+            query,
+            query.len(),
+            Some(parsed.clone()),
+            Some(result_type),
+            Some(parsed),
+            all_fields,
+            &tracker,
+        );
+
+        assert!(
+            suggestions
+                .iter()
+                .any(|s| s.text.contains("extra_service_key")),
+            "select() should include extra_service_key from second service. Got: {:?}",
+            suggestions.iter().map(|s| &s.text).collect::<Vec<_>>()
+        );
+        assert!(
+            suggestions.iter().any(|s| s.text.contains("serviceName")),
+            "select() should include serviceName from first service"
+        );
+    }
+
+    #[test]
+    fn test_nested_array_path_surfaces_non_first_keys() {
+        let (parsed, result_type) = create_canonical_json();
+        let all_fields = field_names_from(&parsed);
+        let query = "[.services[].deployments[].tasks[].";
+        let tracker = tracker_for(query);
+
+        let suggestions = get_suggestions(
+            query,
+            query.len(),
+            Some(parsed.clone()),
+            Some(result_type),
+            Some(parsed),
+            all_fields,
+            &tracker,
+        );
+
+        assert!(
+            suggestions.iter().any(|s| s.text.contains("taskArn")),
+            "Should include taskArn from first task. Got: {:?}",
+            suggestions.iter().map(|s| &s.text).collect::<Vec<_>>()
+        );
+        assert!(
+            suggestions.iter().any(|s| s.text.contains("payload")),
+            "Should include payload from second service's task"
+        );
+    }
+
+    #[test]
+    fn test_invalid_path_falls_back_cleanly() {
+        let (parsed, result_type) = create_canonical_json();
+        let all_fields = field_names_from(&parsed);
+        let query = "[.nonexistent[].";
+        let tracker = tracker_for(query);
+
+        let suggestions = get_suggestions(
+            query,
+            query.len(),
+            Some(parsed.clone()),
+            Some(result_type),
+            Some(parsed),
+            all_fields,
+            &tracker,
+        );
+
+        // Should not panic; may return fallback or empty suggestions
+        let _ = suggestions;
+    }
+}

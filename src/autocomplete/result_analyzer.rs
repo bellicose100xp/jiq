@@ -140,6 +140,7 @@ impl ResultAnalyzer {
     /// Analyze a JSON value for field suggestions, inferring type from the value itself.
     ///
     /// Delegates to `analyze_multi_values` with a single-element slice.
+    #[allow(dead_code)]
     pub fn analyze_value(
         value: &Value,
         needs_leading_dot: bool,
