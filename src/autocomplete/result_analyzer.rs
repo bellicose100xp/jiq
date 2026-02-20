@@ -1,6 +1,8 @@
 use crate::autocomplete::autocomplete_state::{JsonFieldType, Suggestion, SuggestionType};
+use crate::autocomplete::json_navigator::ARRAY_SAMPLE_SIZE;
 use crate::query::ResultType;
 use serde_json::Value;
+use std::collections::HashSet;
 use std::sync::Arc;
 
 pub struct ResultAnalyzer;
@@ -33,6 +35,7 @@ impl ResultAnalyzer {
             format!("{}\"{}\"", prefix, name)
         }
     }
+
     fn extract_object_fields(
         map: &serde_json::Map<String, Value>,
         prefix: &str,
@@ -49,57 +52,27 @@ impl ResultAnalyzer {
         }
     }
 
-    /// Analyze a JSON value for field suggestions, inferring type from the value itself.
-    ///
-    /// Unlike `analyze_parsed_result`, this method does not require an external `ResultType`.
-    /// It infers the appropriate suggestion strategy directly from the JSON structure.
-    /// This is essential for nested navigation where the original `ResultType` doesn't
-    /// apply to navigated sub-values.
-    ///
-    /// # Parameters
-    /// - `value`: The JSON value to analyze (can be a navigated nested value)
-    /// - `needs_leading_dot`: Whether suggestions should include leading dot
-    /// - `suppress_array_brackets`: Whether to suppress .[] suggestions
-    pub fn analyze_value(
-        value: &Value,
-        needs_leading_dot: bool,
+    /// Extract field suggestions from multiple array elements, deduplicating by key name.
+    /// Type detection uses the first occurrence of each key (first-occurrence-wins).
+    fn extract_union_fields_from_array(
+        arr: &[Value],
+        sample_size: usize,
+        prefix: &str,
         suppress_array_brackets: bool,
-    ) -> Vec<Suggestion> {
-        let prefix = dot_prefix(needs_leading_dot);
-
-        match value {
-            Value::Object(map) => {
-                let mut suggestions = Vec::new();
-                Self::extract_object_fields(map, prefix, &mut suggestions);
-                suggestions
-            }
-            Value::Array(arr) => {
-                let mut suggestions = Vec::new();
-
-                // Only suggest .[] when not suppressing array brackets
-                if !suppress_array_brackets {
-                    suggestions.push(Suggestion::new_with_type(
-                        format!("{}[]", prefix),
-                        SuggestionType::Pattern,
-                        None,
-                    ));
-                }
-
-                // If array contains objects, suggest their fields
-                if let Some(Value::Object(map)) = arr.first() {
-                    for (key, val) in map {
+        seen_keys: &mut HashSet<String>,
+        suggestions: &mut Vec<Suggestion>,
+    ) {
+        for element in arr.iter().take(sample_size) {
+            if let Value::Object(map) = element {
+                for (key, val) in map {
+                    if seen_keys.insert(key.clone()) {
                         let field_type = Self::detect_json_type(val);
                         let field_text = if suppress_array_brackets {
                             Self::format_field_name(prefix, key)
+                        } else if Self::is_simple_jq_identifier(key) {
+                            format!("{}[].{}", prefix, key)
                         } else {
-                            // For array iteration syntax, quote non-simple identifiers
-                            if Self::is_simple_jq_identifier(key) {
-                                // Simple identifier: .[].fieldname
-                                format!("{}[].{}", prefix, key)
-                            } else {
-                                // Non-simple identifier (starts with digit, contains special chars): .[]."fieldname"
-                                format!("{}[].\"{}\"", prefix, key)
-                            }
+                            format!("{}[].\"{}\"", prefix, key)
                         };
                         suggestions.push(Suggestion::new_with_type(
                             field_text,
@@ -108,12 +81,71 @@ impl ResultAnalyzer {
                         ));
                     }
                 }
-
-                suggestions
             }
-            // Scalars (null, bool, number, string) have no field suggestions
-            _ => Vec::new(),
         }
+    }
+
+    /// Analyze multiple JSON values for field suggestions, deduplicating across all values.
+    /// Used when navigate_multi returns multiple values from fan-out array traversal.
+    pub fn analyze_multi_values(
+        values: &[&Value],
+        needs_leading_dot: bool,
+        suppress_array_brackets: bool,
+    ) -> Vec<Suggestion> {
+        let prefix = dot_prefix(needs_leading_dot);
+        let mut suggestions = Vec::new();
+        let mut seen_keys = HashSet::new();
+        let mut has_array = false;
+
+        for &value in values {
+            match value {
+                Value::Object(map) => {
+                    for (key, val) in map {
+                        if seen_keys.insert(key.clone()) {
+                            let field_type = Self::detect_json_type(val);
+                            let field_text = Self::format_field_name(prefix, key);
+                            suggestions.push(Suggestion::new_with_type(
+                                field_text,
+                                SuggestionType::Field,
+                                Some(field_type),
+                            ));
+                        }
+                    }
+                }
+                Value::Array(arr) => {
+                    if !has_array && !suppress_array_brackets {
+                        suggestions.push(Suggestion::new_with_type(
+                            format!("{}[]", prefix),
+                            SuggestionType::Pattern,
+                            None,
+                        ));
+                        has_array = true;
+                    }
+                    Self::extract_union_fields_from_array(
+                        arr,
+                        ARRAY_SAMPLE_SIZE,
+                        prefix,
+                        suppress_array_brackets,
+                        &mut seen_keys,
+                        &mut suggestions,
+                    );
+                }
+                _ => {}
+            }
+        }
+
+        suggestions
+    }
+
+    /// Analyze a JSON value for field suggestions, inferring type from the value itself.
+    ///
+    /// Delegates to `analyze_multi_values` with a single-element slice.
+    pub fn analyze_value(
+        value: &Value,
+        needs_leading_dot: bool,
+        suppress_array_brackets: bool,
+    ) -> Vec<Suggestion> {
+        Self::analyze_multi_values(&[value], needs_leading_dot, suppress_array_brackets)
     }
 
     /// Analyze pre-parsed JSON value for field suggestions
@@ -150,7 +182,6 @@ impl ResultAnalyzer {
                 let prefix = dot_prefix(needs_leading_dot);
                 let mut suggestions = Vec::new();
 
-                // Only suggest .[] when not suppressing array brackets
                 if !suppress_array_brackets {
                     suggestions.push(Suggestion::new_with_type(
                         format!("{}[]", prefix),
@@ -159,29 +190,16 @@ impl ResultAnalyzer {
                     ));
                 }
 
-                if let Value::Array(arr) = value
-                    && let Some(Value::Object(map)) = arr.first()
-                {
-                    for (key, val) in map {
-                        let field_type = Self::detect_json_type(val);
-                        // When suppressing brackets, suggest ".field"
-                        // Otherwise, suggest ".[].field" with quoting if needed
-                        let field_text = if suppress_array_brackets {
-                            Self::format_field_name(prefix, key)
-                        } else {
-                            // Apply quoting logic for array iteration
-                            if Self::is_simple_jq_identifier(key) {
-                                format!("{}[].{}", prefix, key)
-                            } else {
-                                format!("{}[].\"{}\"", prefix, key)
-                            }
-                        };
-                        suggestions.push(Suggestion::new_with_type(
-                            field_text,
-                            SuggestionType::Field,
-                            Some(field_type),
-                        ));
-                    }
+                if let Value::Array(arr) = value {
+                    let mut seen_keys = HashSet::new();
+                    Self::extract_union_fields_from_array(
+                        arr,
+                        ARRAY_SAMPLE_SIZE,
+                        prefix,
+                        suppress_array_brackets,
+                        &mut seen_keys,
+                        &mut suggestions,
+                    );
                 }
 
                 suggestions

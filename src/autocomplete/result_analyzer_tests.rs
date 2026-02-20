@@ -365,29 +365,31 @@ fn test_very_large_result() {
 #[test]
 fn test_array_with_nulls_in_result() {
     // Array with nulls from optional chaining, after operator
+    // Multi-element sampling now looks past nulls to find objects
     let result = r#"[null, null, {"field": "value"}]"#;
     let parsed = parse_json(result);
     let suggestions =
         ResultAnalyzer::analyze_parsed_result(&parsed, ResultType::ArrayOfObjects, true, false);
 
-    // Should suggest based on first element (null has no fields)
     assert!(suggestions.iter().any(|s| s.text == ".[]"));
-    assert_eq!(suggestions.len(), 1); // Only .[] since first element is null
+    assert!(
+        suggestions.iter().any(|s| s.text == ".[].field"),
+        "Should find 'field' from third element past nulls"
+    );
 }
 
 #[test]
 fn test_bounded_scan_in_results() {
-    // Test that we only look at the first element, not all elements
+    // Multi-element sampling unions keys from first N elements
     let result = r#"[{"a": 1}, {"b": 2}, {"c": 3}]"#;
     let parsed = parse_json(result);
     let suggestions =
         ResultAnalyzer::analyze_parsed_result(&parsed, ResultType::ArrayOfObjects, true, false);
 
-    // Should only have fields from first element with leading dot
     assert!(suggestions.iter().any(|s| s.text == ".[]"));
     assert!(suggestions.iter().any(|s| s.text == ".[].a"));
-    assert!(!suggestions.iter().any(|s| s.text == ".[].b"));
-    assert!(!suggestions.iter().any(|s| s.text == ".[].c"));
+    assert!(suggestions.iter().any(|s| s.text == ".[].b"));
+    assert!(suggestions.iter().any(|s| s.text == ".[].c"));
 }
 
 // ============================================================================
@@ -986,4 +988,84 @@ fn test_nested_field_quoting_with_iteration() {
             .iter()
             .any(|s| s.text == ".[].1numeric_key")
     );
+}
+
+// ============================================================================
+// Multi-Element Array Union Tests
+// ============================================================================
+
+#[test]
+fn test_heterogeneous_array_union_keys() {
+    let json: Value = serde_json::from_str(r#"[{"a": 1}, {"b": 2}, {"c": 3}]"#).unwrap();
+    let suggestions = ResultAnalyzer::analyze_value(&json, true, true);
+
+    assert!(suggestions.iter().any(|s| s.text == ".a"));
+    assert!(suggestions.iter().any(|s| s.text == ".b"));
+    assert!(suggestions.iter().any(|s| s.text == ".c"));
+}
+
+#[test]
+fn test_overlapping_keys_no_duplicates() {
+    let json: Value = serde_json::from_str(r#"[{"a": 1, "b": 2}, {"a": 3, "c": 4}]"#).unwrap();
+    let suggestions = ResultAnalyzer::analyze_value(&json, true, true);
+
+    assert_eq!(
+        suggestions.iter().filter(|s| s.text == ".a").count(),
+        1,
+        "Key 'a' should appear exactly once despite being in multiple elements"
+    );
+    assert!(suggestions.iter().any(|s| s.text == ".b"));
+    assert!(suggestions.iter().any(|s| s.text == ".c"));
+}
+
+#[test]
+fn test_overlapping_keys_type_from_first_occurrence() {
+    let json: Value = serde_json::from_str(r#"[{"x": 42}, {"x": "string"}]"#).unwrap();
+    let suggestions = ResultAnalyzer::analyze_value(&json, true, true);
+
+    let x_field = suggestions.iter().find(|s| s.text == ".x").unwrap();
+    assert!(
+        matches!(x_field.field_type, Some(JsonFieldType::Number)),
+        "Type for 'x' should be Number from first occurrence, got {:?}",
+        x_field.field_type
+    );
+}
+
+#[test]
+fn test_mixed_types_in_array() {
+    let json: Value = serde_json::from_str(r#"[{"a": 1}, "string", {"b": 2}]"#).unwrap();
+    let suggestions = ResultAnalyzer::analyze_value(&json, true, true);
+
+    assert!(suggestions.iter().any(|s| s.text == ".a"));
+    assert!(suggestions.iter().any(|s| s.text == ".b"));
+}
+
+#[test]
+fn test_analyze_multi_values_dedup_across_objects() {
+    let v1: Value = serde_json::from_str(r#"{"name": "Alice", "age": 30}"#).unwrap();
+    let v2: Value = serde_json::from_str(r#"{"name": "Bob", "role": "admin"}"#).unwrap();
+    let suggestions = ResultAnalyzer::analyze_multi_values(&[&v1, &v2], true, false);
+
+    assert_eq!(
+        suggestions.iter().filter(|s| s.text == ".name").count(),
+        1,
+        "Should deduplicate 'name' across multiple values"
+    );
+    assert!(suggestions.iter().any(|s| s.text == ".age"));
+    assert!(suggestions.iter().any(|s| s.text == ".role"));
+}
+
+#[test]
+fn test_analyze_multi_values_mixed_object_and_array() {
+    let obj: Value = serde_json::from_str(r#"{"shared": 1}"#).unwrap();
+    let arr: Value = serde_json::from_str(r#"[{"shared": "str", "unique": 2}]"#).unwrap();
+    let suggestions = ResultAnalyzer::analyze_multi_values(&[&obj, &arr], true, false);
+
+    assert_eq!(
+        suggestions.iter().filter(|s| s.text == ".shared").count(),
+        1,
+        "Shared key should appear once, deduped across Object and Array values"
+    );
+    assert!(suggestions.iter().any(|s| s.text == ".[]"));
+    assert!(suggestions.iter().any(|s| s.text.contains("unique")));
 }
