@@ -1,4 +1,4 @@
-use super::json_navigator::navigate;
+use super::json_navigator::{ARRAY_SAMPLE_SIZE, navigate, navigate_multi};
 use super::path_parser::PathSegment;
 use serde_json::{Value, json};
 
@@ -499,5 +499,124 @@ mod complex_path_tests {
         let result = navigate(&json, &segments);
 
         assert_eq!(result, Some(&json!(3)));
+    }
+}
+
+mod navigate_multi_tests {
+    use super::*;
+
+    #[test]
+    fn test_empty_segments_returns_root() {
+        let json = json!({"name": "Alice"});
+        let result = navigate_multi(&json, &[], ARRAY_SAMPLE_SIZE);
+        assert_eq!(result, vec![&json]);
+    }
+
+    #[test]
+    fn test_fan_out_returns_n_elements() {
+        let json = json!([{"a": 1}, {"b": 2}, {"c": 3}]);
+        let result = navigate_multi(&json, &[PathSegment::ArrayIterator], ARRAY_SAMPLE_SIZE);
+
+        assert_eq!(result.len(), 3);
+        assert_eq!(result[0], &json!({"a": 1}));
+        assert_eq!(result[1], &json!({"b": 2}));
+        assert_eq!(result[2], &json!({"c": 3}));
+    }
+
+    #[test]
+    fn test_field_then_array_iterator() {
+        let json = json!({"users": [{"id": 1}, {"id": 2}]});
+        let segments = vec![
+            PathSegment::Field("users".into()),
+            PathSegment::ArrayIterator,
+        ];
+        let result = navigate_multi(&json, &segments, ARRAY_SAMPLE_SIZE);
+
+        assert_eq!(result.len(), 2);
+        assert_eq!(result[0], &json!({"id": 1}));
+        assert_eq!(result[1], &json!({"id": 2}));
+    }
+
+    #[test]
+    fn test_nested_iterators_fan_out() {
+        let json = json!([[{"a": 1}, {"b": 2}], [{"c": 3}]]);
+        let segments = vec![PathSegment::ArrayIterator, PathSegment::ArrayIterator];
+        let result = navigate_multi(&json, &segments, ARRAY_SAMPLE_SIZE);
+
+        assert_eq!(result.len(), 3);
+        assert_eq!(result[0], &json!({"a": 1}));
+        assert_eq!(result[1], &json!({"b": 2}));
+        assert_eq!(result[2], &json!({"c": 3}));
+    }
+
+    #[test]
+    fn test_sample_size_limits_elements() {
+        let json = json!([{"a": 1}, {"b": 2}, {"c": 3}, {"d": 4}, {"e": 5}]);
+        let result = navigate_multi(&json, &[PathSegment::ArrayIterator], 2);
+
+        assert_eq!(result.len(), 2);
+        assert_eq!(result[0], &json!({"a": 1}));
+        assert_eq!(result[1], &json!({"b": 2}));
+    }
+
+    #[test]
+    fn test_array_index_does_not_fan_out() {
+        let json = json!([{"id": 1}, {"id": 2}]);
+        let result = navigate_multi(&json, &[PathSegment::ArrayIndex(1)], ARRAY_SAMPLE_SIZE);
+
+        assert_eq!(result.len(), 1);
+        assert_eq!(result[0], &json!({"id": 2}));
+    }
+
+    #[test]
+    fn test_empty_array_returns_empty() {
+        let json = json!([]);
+        let result = navigate_multi(&json, &[PathSegment::ArrayIterator], ARRAY_SAMPLE_SIZE);
+
+        assert!(result.is_empty());
+    }
+
+    #[test]
+    fn test_type_mismatch_returns_empty() {
+        let json = json!("not an object");
+        let segments = vec![PathSegment::Field("name".into())];
+        let result = navigate_multi(&json, &segments, ARRAY_SAMPLE_SIZE);
+
+        assert!(result.is_empty());
+    }
+
+    #[test]
+    fn test_field_after_fan_out_filters_to_matching() {
+        let json = json!([
+            {"profile": {"name": "Alice"}},
+            {"profile": {"name": "Bob"}}
+        ]);
+        let segments = vec![
+            PathSegment::ArrayIterator,
+            PathSegment::Field("profile".into()),
+        ];
+        let result = navigate_multi(&json, &segments, ARRAY_SAMPLE_SIZE);
+
+        assert_eq!(result.len(), 2);
+        assert_eq!(result[0], &json!({"name": "Alice"}));
+        assert_eq!(result[1], &json!({"name": "Bob"}));
+    }
+
+    #[test]
+    fn test_max_navigated_values_caps_total() {
+        // Build a large nested structure that would produce >100 values
+        // 15 outer * 15 inner = 225 uncapped, should cap at 100
+        let inner: Vec<Value> = (0..15).map(|i| json!({"v": i})).collect();
+        let outer: Vec<Value> = (0..15).map(|_| Value::Array(inner.clone())).collect();
+        let json = Value::Array(outer);
+
+        let segments = vec![PathSegment::ArrayIterator, PathSegment::ArrayIterator];
+        let result = navigate_multi(&json, &segments, 15);
+
+        assert!(
+            result.len() <= 100,
+            "Should cap at MAX_NAVIGATED_VALUES, got {}",
+            result.len()
+        );
     }
 }
