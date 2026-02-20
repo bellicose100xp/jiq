@@ -32,6 +32,7 @@ pub fn update_suggestions_from_app(app: &mut App) {
         original_json,
         all_field_names,
         &app.input.brace_tracker,
+        app.array_sample_size,
     );
 }
 

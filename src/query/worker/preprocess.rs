@@ -12,7 +12,6 @@ use serde_json::Value;
 use tokio_util::sync::CancellationToken;
 
 use super::types::{ProcessedResult, QueryError, RenderedLine, RenderedSpan};
-use crate::autocomplete::json_navigator::ARRAY_SAMPLE_SIZE;
 use crate::query::query_state::ResultType;
 
 /// Preprocess query result by performing all expensive operations
@@ -28,6 +27,7 @@ pub fn preprocess_result(
     output: String,
     query: &str,
     cancel_token: &CancellationToken,
+    array_sample_size: usize,
 ) -> Result<ProcessedResult, QueryError> {
     // Strip ANSI codes
     if cancel_token.is_cancelled() {
@@ -51,7 +51,7 @@ pub fn preprocess_result(
     if cancel_token.is_cancelled() {
         return Err(QueryError::Cancelled);
     }
-    let (parsed, result_type) = parse_and_detect_type(&unformatted);
+    let (parsed, result_type) = parse_and_detect_type(&unformatted, array_sample_size);
     let parsed = parsed.map(Arc::new);
 
     let base_query = normalize_base_query(query);
@@ -207,7 +207,7 @@ fn skip_csi_sequence(bytes: &[u8], start: usize) -> usize {
 ///
 /// Uses fast-path `from_str` for single values (common case), falling back to
 /// streaming parser for destructured output like `{"a":1}\n{"b":2}`.
-pub fn parse_and_detect_type(text: &str) -> (Option<Value>, ResultType) {
+pub fn parse_and_detect_type(text: &str, array_sample_size: usize) -> (Option<Value>, ResultType) {
     let text = text.trim();
     if text.is_empty() {
         return (None, ResultType::Null);
@@ -247,7 +247,7 @@ pub fn parse_and_detect_type(text: &str) -> (Option<Value>, ResultType) {
             }
         }
 
-        let remaining = ARRAY_SAMPLE_SIZE.saturating_sub(2);
+        let remaining = array_sample_size.saturating_sub(2);
         for result in deserializer.take(remaining) {
             if let Ok(Value::Object(map)) = result {
                 for (key, val) in map {
@@ -272,7 +272,7 @@ pub fn parse_and_detect_type(text: &str) -> (Option<Value>, ResultType) {
             merged.extend(arr);
         }
 
-        let remaining = ARRAY_SAMPLE_SIZE.saturating_sub(2);
+        let remaining = array_sample_size.saturating_sub(2);
         for result in deserializer.take(remaining) {
             if let Ok(Value::Array(arr)) = result {
                 merged.extend(arr);

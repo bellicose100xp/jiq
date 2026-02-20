@@ -1,7 +1,7 @@
 use super::autocomplete_state::{JsonFieldType, Suggestion, SuggestionType};
 use super::brace_tracker::{BraceTracker, BraceType};
 use super::jq_functions::filter_builtins;
-use super::json_navigator::{ARRAY_SAMPLE_SIZE, navigate_multi};
+use super::json_navigator::navigate_multi;
 use super::path_parser::{PathSegment, parse_path};
 use super::result_analyzer::ResultAnalyzer;
 use super::scan_state::ScanState;
@@ -206,6 +206,7 @@ fn get_field_suggestions(
     result_type: Option<ResultType>,
     needs_leading_dot: bool,
     suppress_array_brackets: bool,
+    array_sample_size: usize,
 ) -> Vec<Suggestion> {
     if let (Some(result), Some(typ)) = (result_parsed, result_type) {
         ResultAnalyzer::analyze_parsed_result(
@@ -213,6 +214,7 @@ fn get_field_suggestions(
             typ,
             needs_leading_dot,
             suppress_array_brackets,
+            array_sample_size,
         )
     } else {
         Vec::new()
@@ -611,6 +613,7 @@ fn inject_entry_field_suggestions(suggestions: &mut Vec<Suggestion>, needs_leadi
     );
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn get_suggestions(
     query: &str,
     cursor_pos: usize,
@@ -619,6 +622,7 @@ pub fn get_suggestions(
     original_json: Option<Arc<Value>>,
     all_field_names: Arc<HashSet<String>>,
     brace_tracker: &BraceTracker,
+    array_sample_size: usize,
 ) -> Vec<Suggestion> {
     let before_cursor = &query[..cursor_pos.min(query.len())];
     let (context, partial) = analyze_context(before_cursor, brace_tracker);
@@ -659,6 +663,7 @@ pub fn get_suggestions(
                         suppress_array_brackets, // is_in_element_context == suppress_array_brackets
                         is_after_pipe,
                         result_type.as_ref(),
+                        array_sample_size,
                     ) {
                         nested_suggestions
                     } else if let Some(ref orig) = original_json {
@@ -671,6 +676,7 @@ pub fn get_suggestions(
                             suppress_array_brackets,
                             is_after_pipe,
                             result_type.as_ref(),
+                            array_sample_size,
                         )
                         .unwrap_or_else(|| {
                             // Non-deterministic: show all fields from original JSON
@@ -697,6 +703,7 @@ pub fn get_suggestions(
                         suppress_array_brackets,
                         is_after_pipe,
                         result_type.as_ref(),
+                        array_sample_size,
                     )
                     .unwrap_or_else(|| {
                         // Non-deterministic: show all fields from original JSON
@@ -714,6 +721,7 @@ pub fn get_suggestions(
                     result_type.clone(),
                     needs_dot,
                     suppress_array_brackets,
+                    array_sample_size,
                 )
             };
 
@@ -736,7 +744,8 @@ pub fn get_suggestions(
                 return Vec::new();
             }
 
-            let suggestions = get_field_suggestions(result_parsed, result_type, false, true);
+            let suggestions =
+                get_field_suggestions(result_parsed, result_type, false, true, array_sample_size);
             filter_suggestions_by_partial(suggestions, &partial)
         }
         SuggestionContext::VariableContext => {
@@ -921,6 +930,7 @@ fn extract_path_context_with_pipe_info(
 
 /// Get nested field suggestions by navigating the JSON tree.
 /// This is the core Phase 3 integration point.
+#[allow(clippy::too_many_arguments)]
 fn get_nested_field_suggestions(
     json: &Value,
     path_context: &str,
@@ -929,6 +939,7 @@ fn get_nested_field_suggestions(
     is_in_element_context: bool,
     is_after_pipe: bool,
     result_type: Option<&ResultType>,
+    array_sample_size: usize,
 ) -> Option<Vec<Suggestion>> {
     let mut parsed_path = parse_path(path_context);
 
@@ -951,7 +962,7 @@ fn get_nested_field_suggestions(
     }
 
     // Navigate with fan-out to collect values from multiple array elements
-    let navigated_values = navigate_multi(json, &parsed_path.segments, ARRAY_SAMPLE_SIZE);
+    let navigated_values = navigate_multi(json, &parsed_path.segments, array_sample_size);
     if navigated_values.is_empty() {
         return None;
     }
@@ -960,6 +971,7 @@ fn get_nested_field_suggestions(
         &navigated_values,
         needs_leading_dot,
         suppress_array_brackets,
+        array_sample_size,
     );
 
     Some(suggestions)

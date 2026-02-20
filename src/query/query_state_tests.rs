@@ -1,6 +1,7 @@
 //! Tests for query_state
 
 use super::*;
+use crate::autocomplete::json_navigator::DEFAULT_ARRAY_SAMPLE_SIZE;
 use crate::query::worker::preprocess::{parse_and_detect_type, strip_ansi_codes};
 
 // Submodules
@@ -279,7 +280,7 @@ fn test_parsed_result_handles_destructured_output() {
 #[test]
 fn test_parse_first_value_handles_single_object() {
     let json = r#"{"name": "test", "value": 42}"#;
-    let (parsed, result_type) = parse_and_detect_type(json);
+    let (parsed, result_type) = parse_and_detect_type(json, DEFAULT_ARRAY_SAMPLE_SIZE);
 
     assert!(parsed.is_some());
     let value = parsed.unwrap();
@@ -291,7 +292,7 @@ fn test_parse_first_value_handles_single_object() {
 #[test]
 fn test_parse_first_value_handles_destructured_objects() {
     let json = "{\"name\": \"first\"}\n{\"name\": \"second\"}\n{\"name\": \"third\"}";
-    let (parsed, result_type) = parse_and_detect_type(json);
+    let (parsed, result_type) = parse_and_detect_type(json, DEFAULT_ARRAY_SAMPLE_SIZE);
 
     assert!(parsed.is_some());
     let value = parsed.unwrap();
@@ -304,7 +305,7 @@ fn test_parse_first_value_handles_destructured_objects() {
 #[test]
 fn test_parse_first_value_handles_array() {
     let json = r#"[{"id": 1}, {"id": 2}]"#;
-    let (parsed, result_type) = parse_and_detect_type(json);
+    let (parsed, result_type) = parse_and_detect_type(json, DEFAULT_ARRAY_SAMPLE_SIZE);
 
     assert!(parsed.is_some());
     let value = parsed.unwrap();
@@ -314,14 +315,30 @@ fn test_parse_first_value_handles_array() {
 
 #[test]
 fn test_parse_first_value_returns_none_for_empty() {
-    assert!(parse_and_detect_type("").0.is_none());
-    assert!(parse_and_detect_type("   ").0.is_none());
+    assert!(
+        parse_and_detect_type("", DEFAULT_ARRAY_SAMPLE_SIZE)
+            .0
+            .is_none()
+    );
+    assert!(
+        parse_and_detect_type("   ", DEFAULT_ARRAY_SAMPLE_SIZE)
+            .0
+            .is_none()
+    );
 }
 
 #[test]
 fn test_parse_first_value_returns_none_for_invalid_json() {
-    assert!(parse_and_detect_type("invalid json {").0.is_none());
-    assert!(parse_and_detect_type("not json at all").0.is_none());
+    assert!(
+        parse_and_detect_type("invalid json {", DEFAULT_ARRAY_SAMPLE_SIZE)
+            .0
+            .is_none()
+    );
+    assert!(
+        parse_and_detect_type("not json at all", DEFAULT_ARRAY_SAMPLE_SIZE)
+            .0
+            .is_none()
+    );
 }
 
 // ============================================================================
@@ -579,25 +596,40 @@ fn test_poll_response_returns_query_for_errors() {
 #[test]
 fn test_detect_array_of_objects() {
     let result = r#"[{"id": 1, "name": "a"}, {"id": 2, "name": "b"}]"#;
-    assert_eq!(parse_and_detect_type(result).1, ResultType::ArrayOfObjects);
+    assert_eq!(
+        parse_and_detect_type(result, DEFAULT_ARRAY_SAMPLE_SIZE).1,
+        ResultType::ArrayOfObjects
+    );
 }
 
 #[test]
 fn test_detect_empty_array() {
     let result = "[]";
-    assert_eq!(parse_and_detect_type(result).1, ResultType::Array);
+    assert_eq!(
+        parse_and_detect_type(result, DEFAULT_ARRAY_SAMPLE_SIZE).1,
+        ResultType::Array
+    );
 }
 
 #[test]
 fn test_detect_array_of_primitives() {
     let result = "[1, 2, 3, 4, 5]";
-    assert_eq!(parse_and_detect_type(result).1, ResultType::Array);
+    assert_eq!(
+        parse_and_detect_type(result, DEFAULT_ARRAY_SAMPLE_SIZE).1,
+        ResultType::Array
+    );
 
     let result = r#"["a", "b", "c"]"#;
-    assert_eq!(parse_and_detect_type(result).1, ResultType::Array);
+    assert_eq!(
+        parse_and_detect_type(result, DEFAULT_ARRAY_SAMPLE_SIZE).1,
+        ResultType::Array
+    );
 
     let result = "[true, false, true]";
-    assert_eq!(parse_and_detect_type(result).1, ResultType::Array);
+    assert_eq!(
+        parse_and_detect_type(result, DEFAULT_ARRAY_SAMPLE_SIZE).1,
+        ResultType::Array
+    );
 }
 
 #[test]
@@ -607,7 +639,7 @@ fn test_detect_destructured_objects() {
 {"id": 2, "name": "b"}
 {"id": 3, "name": "c"}"#;
     assert_eq!(
-        parse_and_detect_type(result).1,
+        parse_and_detect_type(result, DEFAULT_ARRAY_SAMPLE_SIZE).1,
         ResultType::DestructuredObjects
     );
 }
@@ -624,7 +656,7 @@ fn test_detect_destructured_objects_pretty_printed() {
   "name": "b"
 }"#;
     assert_eq!(
-        parse_and_detect_type(result).1,
+        parse_and_detect_type(result, DEFAULT_ARRAY_SAMPLE_SIZE).1,
         ResultType::DestructuredObjects
     );
 }
@@ -632,7 +664,10 @@ fn test_detect_destructured_objects_pretty_printed() {
 #[test]
 fn test_detect_single_object() {
     let result = r#"{"name": "test", "age": 30}"#;
-    assert_eq!(parse_and_detect_type(result).1, ResultType::Object);
+    assert_eq!(
+        parse_and_detect_type(result, DEFAULT_ARRAY_SAMPLE_SIZE).1,
+        ResultType::Object
+    );
 }
 
 #[test]
@@ -641,46 +676,73 @@ fn test_detect_single_object_pretty_printed() {
   "name": "test",
   "age": 30
 }"#;
-    assert_eq!(parse_and_detect_type(result).1, ResultType::Object);
+    assert_eq!(
+        parse_and_detect_type(result, DEFAULT_ARRAY_SAMPLE_SIZE).1,
+        ResultType::Object
+    );
 }
 
 #[test]
 fn test_detect_string() {
     let result = r#""hello world""#;
-    assert_eq!(parse_and_detect_type(result).1, ResultType::String);
+    assert_eq!(
+        parse_and_detect_type(result, DEFAULT_ARRAY_SAMPLE_SIZE).1,
+        ResultType::String
+    );
 }
 
 #[test]
 fn test_detect_number() {
     let result = "42";
-    assert_eq!(parse_and_detect_type(result).1, ResultType::Number);
+    assert_eq!(
+        parse_and_detect_type(result, DEFAULT_ARRAY_SAMPLE_SIZE).1,
+        ResultType::Number
+    );
 
     let result = "3.14159";
-    assert_eq!(parse_and_detect_type(result).1, ResultType::Number);
+    assert_eq!(
+        parse_and_detect_type(result, DEFAULT_ARRAY_SAMPLE_SIZE).1,
+        ResultType::Number
+    );
 
     let result = "-100";
-    assert_eq!(parse_and_detect_type(result).1, ResultType::Number);
+    assert_eq!(
+        parse_and_detect_type(result, DEFAULT_ARRAY_SAMPLE_SIZE).1,
+        ResultType::Number
+    );
 }
 
 #[test]
 fn test_detect_boolean() {
     let result = "true";
-    assert_eq!(parse_and_detect_type(result).1, ResultType::Boolean);
+    assert_eq!(
+        parse_and_detect_type(result, DEFAULT_ARRAY_SAMPLE_SIZE).1,
+        ResultType::Boolean
+    );
 
     let result = "false";
-    assert_eq!(parse_and_detect_type(result).1, ResultType::Boolean);
+    assert_eq!(
+        parse_and_detect_type(result, DEFAULT_ARRAY_SAMPLE_SIZE).1,
+        ResultType::Boolean
+    );
 }
 
 #[test]
 fn test_detect_null() {
     let result = "null";
-    assert_eq!(parse_and_detect_type(result).1, ResultType::Null);
+    assert_eq!(
+        parse_and_detect_type(result, DEFAULT_ARRAY_SAMPLE_SIZE).1,
+        ResultType::Null
+    );
 }
 
 #[test]
 fn test_detect_invalid_json_returns_null() {
     let result = "not valid json";
-    assert_eq!(parse_and_detect_type(result).1, ResultType::Null);
+    assert_eq!(
+        parse_and_detect_type(result, DEFAULT_ARRAY_SAMPLE_SIZE).1,
+        ResultType::Null
+    );
 }
 
 #[test]
@@ -691,7 +753,10 @@ fn test_detect_multiple_primitives() {
 "value3""#;
     // First value is string, has multiple values, but not objects
     // So it's just String (we don't have "DestructuredStrings")
-    assert_eq!(parse_and_detect_type(result).1, ResultType::String);
+    assert_eq!(
+        parse_and_detect_type(result, DEFAULT_ARRAY_SAMPLE_SIZE).1,
+        ResultType::String
+    );
 }
 
 // ============================================================================

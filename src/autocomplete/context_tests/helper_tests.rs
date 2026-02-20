@@ -1,4 +1,4 @@
-use super::common::{empty_field_names, tracker_for};
+use super::common::{DEFAULT_ARRAY_SAMPLE_SIZE, empty_field_names, tracker_for};
 use crate::autocomplete::*;
 use crate::query::ResultType;
 use serde_json::Value;
@@ -17,6 +17,7 @@ fn test_get_suggestions_with_no_result() {
         None,
         empty_field_names(),
         &tracker,
+        DEFAULT_ARRAY_SAMPLE_SIZE,
     );
 
     assert_eq!(
@@ -41,6 +42,7 @@ fn test_get_suggestions_with_result_none_type_none() {
         None,
         empty_field_names(),
         &tracker,
+        DEFAULT_ARRAY_SAMPLE_SIZE,
     );
 
     assert_eq!(
@@ -63,6 +65,7 @@ fn test_get_suggestions_with_result_type_none_result() {
         None,
         empty_field_names(),
         &tracker,
+        DEFAULT_ARRAY_SAMPLE_SIZE,
     );
 
     assert_eq!(

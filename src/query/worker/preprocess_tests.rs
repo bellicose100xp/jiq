@@ -1,5 +1,6 @@
 //! Tests for preprocessing functions
 
+use crate::autocomplete::json_navigator::DEFAULT_ARRAY_SAMPLE_SIZE;
 use crate::query::query_state::ResultType;
 use crate::query::worker::preprocess::{
     parse_and_detect_type, preprocess_result, strip_ansi_codes,
@@ -13,7 +14,12 @@ fn test_preprocess_result_basic() {
     let query = ".";
     let cancel_token = CancellationToken::new();
 
-    let result = preprocess_result(output.clone(), query, &cancel_token);
+    let result = preprocess_result(
+        output.clone(),
+        query,
+        &cancel_token,
+        DEFAULT_ARRAY_SAMPLE_SIZE,
+    );
     assert!(result.is_ok());
 
     let processed = result.unwrap();
@@ -29,7 +35,12 @@ fn test_preprocess_result_strips_ansi() {
     let output_with_ansi = "\x1b[0;32m\"test\"\x1b[0m".to_string();
     let cancel_token = CancellationToken::new();
 
-    let result = preprocess_result(output_with_ansi, ".", &cancel_token);
+    let result = preprocess_result(
+        output_with_ansi,
+        ".",
+        &cancel_token,
+        DEFAULT_ARRAY_SAMPLE_SIZE,
+    );
     assert!(result.is_ok());
 
     let processed = result.unwrap();
@@ -45,7 +56,7 @@ fn test_preprocess_result_computes_line_metrics() {
     let output = "line1\nline2\nline3".to_string();
     let cancel_token = CancellationToken::new();
 
-    let result = preprocess_result(output, ".", &cancel_token);
+    let result = preprocess_result(output, ".", &cancel_token, DEFAULT_ARRAY_SAMPLE_SIZE);
     assert!(result.is_ok());
 
     let processed = result.unwrap();
@@ -62,7 +73,7 @@ fn test_preprocess_result_computes_line_widths_varying_lengths() {
     let output = "a\nbb\nccc\ndddd".to_string();
     let cancel_token = CancellationToken::new();
 
-    let result = preprocess_result(output, ".", &cancel_token);
+    let result = preprocess_result(output, ".", &cancel_token, DEFAULT_ARRAY_SAMPLE_SIZE);
     assert!(result.is_ok());
 
     let processed = result.unwrap();
@@ -80,7 +91,7 @@ fn test_preprocess_result_line_widths_empty_lines() {
     let output = "abc\n\nxyz".to_string();
     let cancel_token = CancellationToken::new();
 
-    let result = preprocess_result(output, ".", &cancel_token);
+    let result = preprocess_result(output, ".", &cancel_token, DEFAULT_ARRAY_SAMPLE_SIZE);
     assert!(result.is_ok());
 
     let processed = result.unwrap();
@@ -99,7 +110,7 @@ fn test_preprocess_result_handles_cancellation() {
     // Cancel before preprocessing
     cancel_token.cancel();
 
-    let result = preprocess_result(output, ".", &cancel_token);
+    let result = preprocess_result(output, ".", &cancel_token, DEFAULT_ARRAY_SAMPLE_SIZE);
     assert!(result.is_err());
 
     match result {
@@ -114,7 +125,12 @@ fn test_preprocess_result_normalizes_query() {
     let cancel_token = CancellationToken::new();
 
     // Query with trailing " | ." should be normalized to ".services"
-    let result = preprocess_result(output, ".services | .", &cancel_token);
+    let result = preprocess_result(
+        output,
+        ".services | .",
+        &cancel_token,
+        DEFAULT_ARRAY_SAMPLE_SIZE,
+    );
     assert!(result.is_ok());
 
     let processed = result.unwrap();
@@ -141,7 +157,12 @@ fn test_preprocess_result_detects_result_types() {
     ];
 
     for (output, expected_type) in cases {
-        let result = preprocess_result(output.to_string(), ".", &cancel_token);
+        let result = preprocess_result(
+            output.to_string(),
+            ".",
+            &cancel_token,
+            DEFAULT_ARRAY_SAMPLE_SIZE,
+        );
         assert!(result.is_ok(), "Failed for output: {}", output);
 
         let processed = result.unwrap();
@@ -158,7 +179,7 @@ fn test_preprocess_result_parses_json() {
     let output = r#"{"name": "Alice", "age": 30}"#.to_string();
     let cancel_token = CancellationToken::new();
 
-    let result = preprocess_result(output, ".", &cancel_token);
+    let result = preprocess_result(output, ".", &cancel_token, DEFAULT_ARRAY_SAMPLE_SIZE);
     assert!(result.is_ok());
 
     let processed = result.unwrap();
@@ -174,7 +195,7 @@ fn test_preprocess_result_handles_invalid_json() {
     let output = "not valid json".to_string();
     let cancel_token = CancellationToken::new();
 
-    let result = preprocess_result(output, ".", &cancel_token);
+    let result = preprocess_result(output, ".", &cancel_token, DEFAULT_ARRAY_SAMPLE_SIZE);
     assert!(result.is_ok(), "Should not error on invalid JSON");
 
     let processed = result.unwrap();
@@ -190,7 +211,12 @@ fn test_rendered_lines_conversion() {
     let output_with_colors = "\x1b[0;32mtest\x1b[0m".to_string();
     let cancel_token = CancellationToken::new();
 
-    let result = preprocess_result(output_with_colors, ".", &cancel_token);
+    let result = preprocess_result(
+        output_with_colors,
+        ".",
+        &cancel_token,
+        DEFAULT_ARRAY_SAMPLE_SIZE,
+    );
     assert!(result.is_ok());
 
     let processed = result.unwrap();
@@ -219,7 +245,7 @@ fn test_preprocess_large_file_computes_correct_width() {
     let output = format!("short\n{}\nshort", long_line);
     let cancel_token = CancellationToken::new();
 
-    let result = preprocess_result(output, ".", &cancel_token);
+    let result = preprocess_result(output, ".", &cancel_token, DEFAULT_ARRAY_SAMPLE_SIZE);
     assert!(result.is_ok());
 
     let processed = result.unwrap();
@@ -233,7 +259,12 @@ fn test_preprocess_max_width_clamped_to_u16_max() {
     let very_long_line = "a".repeat(100_000);
     let cancel_token = CancellationToken::new();
 
-    let result = preprocess_result(very_long_line, ".", &cancel_token);
+    let result = preprocess_result(
+        very_long_line,
+        ".",
+        &cancel_token,
+        DEFAULT_ARRAY_SAMPLE_SIZE,
+    );
     assert!(result.is_ok());
 
     let processed = result.unwrap();
@@ -348,7 +379,8 @@ fn test_strip_ansi_codes_escape_at_boundaries() {
 
 #[test]
 fn test_parse_and_detect_type_single_object() {
-    let (parsed, result_type) = parse_and_detect_type(r#"{"name": "test"}"#);
+    let (parsed, result_type) =
+        parse_and_detect_type(r#"{"name": "test"}"#, DEFAULT_ARRAY_SAMPLE_SIZE);
     assert!(parsed.is_some());
     assert!(parsed.unwrap().is_object());
     assert_eq!(result_type, ResultType::Object);
@@ -357,7 +389,7 @@ fn test_parse_and_detect_type_single_object() {
 #[test]
 fn test_parse_and_detect_type_destructured_objects() {
     let input = "{\"a\": 1}\n{\"b\": 2}";
-    let (parsed, result_type) = parse_and_detect_type(input);
+    let (parsed, result_type) = parse_and_detect_type(input, DEFAULT_ARRAY_SAMPLE_SIZE);
     assert!(parsed.is_some());
     assert!(parsed.unwrap().is_object());
     assert_eq!(result_type, ResultType::DestructuredObjects);
@@ -365,7 +397,8 @@ fn test_parse_and_detect_type_destructured_objects() {
 
 #[test]
 fn test_parse_and_detect_type_array_of_objects() {
-    let (parsed, result_type) = parse_and_detect_type(r#"[{"id": 1}, {"id": 2}]"#);
+    let (parsed, result_type) =
+        parse_and_detect_type(r#"[{"id": 1}, {"id": 2}]"#, DEFAULT_ARRAY_SAMPLE_SIZE);
     assert!(parsed.is_some());
     assert!(parsed.unwrap().is_array());
     assert_eq!(result_type, ResultType::ArrayOfObjects);
@@ -373,78 +406,78 @@ fn test_parse_and_detect_type_array_of_objects() {
 
 #[test]
 fn test_parse_and_detect_type_empty_array() {
-    let (parsed, result_type) = parse_and_detect_type("[]");
+    let (parsed, result_type) = parse_and_detect_type("[]", DEFAULT_ARRAY_SAMPLE_SIZE);
     assert!(parsed.is_some());
     assert_eq!(result_type, ResultType::Array);
 }
 
 #[test]
 fn test_parse_and_detect_type_array_of_primitives() {
-    let (parsed, result_type) = parse_and_detect_type("[1, 2, 3]");
+    let (parsed, result_type) = parse_and_detect_type("[1, 2, 3]", DEFAULT_ARRAY_SAMPLE_SIZE);
     assert!(parsed.is_some());
     assert_eq!(result_type, ResultType::Array);
 }
 
 #[test]
 fn test_parse_and_detect_type_string() {
-    let (parsed, result_type) = parse_and_detect_type(r#""hello""#);
+    let (parsed, result_type) = parse_and_detect_type(r#""hello""#, DEFAULT_ARRAY_SAMPLE_SIZE);
     assert!(parsed.is_some());
     assert_eq!(result_type, ResultType::String);
 }
 
 #[test]
 fn test_parse_and_detect_type_number() {
-    let (parsed, result_type) = parse_and_detect_type("42");
+    let (parsed, result_type) = parse_and_detect_type("42", DEFAULT_ARRAY_SAMPLE_SIZE);
     assert!(parsed.is_some());
     assert_eq!(result_type, ResultType::Number);
 
-    let (parsed, result_type) = parse_and_detect_type("3.14");
+    let (parsed, result_type) = parse_and_detect_type("3.14", DEFAULT_ARRAY_SAMPLE_SIZE);
     assert!(parsed.is_some());
     assert_eq!(result_type, ResultType::Number);
 }
 
 #[test]
 fn test_parse_and_detect_type_boolean() {
-    let (parsed, result_type) = parse_and_detect_type("true");
+    let (parsed, result_type) = parse_and_detect_type("true", DEFAULT_ARRAY_SAMPLE_SIZE);
     assert!(parsed.is_some());
     assert_eq!(result_type, ResultType::Boolean);
 
-    let (parsed, result_type) = parse_and_detect_type("false");
+    let (parsed, result_type) = parse_and_detect_type("false", DEFAULT_ARRAY_SAMPLE_SIZE);
     assert!(parsed.is_some());
     assert_eq!(result_type, ResultType::Boolean);
 }
 
 #[test]
 fn test_parse_and_detect_type_null() {
-    let (parsed, result_type) = parse_and_detect_type("null");
+    let (parsed, result_type) = parse_and_detect_type("null", DEFAULT_ARRAY_SAMPLE_SIZE);
     assert!(parsed.is_some());
     assert_eq!(result_type, ResultType::Null);
 }
 
 #[test]
 fn test_parse_and_detect_type_empty_string() {
-    let (parsed, result_type) = parse_and_detect_type("");
+    let (parsed, result_type) = parse_and_detect_type("", DEFAULT_ARRAY_SAMPLE_SIZE);
     assert!(parsed.is_none());
     assert_eq!(result_type, ResultType::Null);
 }
 
 #[test]
 fn test_parse_and_detect_type_whitespace_only() {
-    let (parsed, result_type) = parse_and_detect_type("   \n\t  ");
+    let (parsed, result_type) = parse_and_detect_type("   \n\t  ", DEFAULT_ARRAY_SAMPLE_SIZE);
     assert!(parsed.is_none());
     assert_eq!(result_type, ResultType::Null);
 }
 
 #[test]
 fn test_parse_and_detect_type_invalid_json() {
-    let (parsed, result_type) = parse_and_detect_type("not valid json");
+    let (parsed, result_type) = parse_and_detect_type("not valid json", DEFAULT_ARRAY_SAMPLE_SIZE);
     assert!(parsed.is_none());
     assert_eq!(result_type, ResultType::Null);
 }
 
 #[test]
 fn test_parse_and_detect_type_trims_whitespace() {
-    let (parsed, result_type) = parse_and_detect_type("  {\"a\": 1}  ");
+    let (parsed, result_type) = parse_and_detect_type("  {\"a\": 1}  ", DEFAULT_ARRAY_SAMPLE_SIZE);
     assert!(parsed.is_some());
     assert_eq!(result_type, ResultType::Object);
 }
@@ -455,7 +488,7 @@ fn test_parse_and_detect_type_pretty_printed_object() {
   "name": "test",
   "value": 42
 }"#;
-    let (parsed, result_type) = parse_and_detect_type(input);
+    let (parsed, result_type) = parse_and_detect_type(input, DEFAULT_ARRAY_SAMPLE_SIZE);
     assert!(parsed.is_some());
     assert_eq!(result_type, ResultType::Object);
 }
@@ -468,7 +501,7 @@ fn test_parse_and_detect_type_pretty_printed_destructured() {
 {
   "id": 2
 }"#;
-    let (parsed, result_type) = parse_and_detect_type(input);
+    let (parsed, result_type) = parse_and_detect_type(input, DEFAULT_ARRAY_SAMPLE_SIZE);
     assert!(parsed.is_some());
     assert_eq!(result_type, ResultType::DestructuredObjects);
 }
@@ -482,7 +515,7 @@ fn test_stream_merge_different_keys() {
     let input = r#"{"a": 1}
 {"b": 2}
 {"c": 3}"#;
-    let (parsed, result_type) = parse_and_detect_type(input);
+    let (parsed, result_type) = parse_and_detect_type(input, DEFAULT_ARRAY_SAMPLE_SIZE);
 
     assert_eq!(result_type, ResultType::DestructuredObjects);
     let obj = parsed.unwrap();
@@ -497,7 +530,7 @@ fn test_stream_merge_different_keys() {
 fn test_stream_merge_first_occurrence_wins() {
     let input = r#"{"x": 42}
 {"x": "string"}"#;
-    let (parsed, _) = parse_and_detect_type(input);
+    let (parsed, _) = parse_and_detect_type(input, DEFAULT_ARRAY_SAMPLE_SIZE);
 
     let obj = parsed.unwrap();
     let map = obj.as_object().unwrap();
@@ -514,7 +547,7 @@ fn test_stream_merge_respects_sample_limit() {
         .map(|i| format!(r#"{{"key_{}": {}}}"#, i, i))
         .collect();
     let input = objects.join("\n");
-    let (parsed, result_type) = parse_and_detect_type(&input);
+    let (parsed, result_type) = parse_and_detect_type(&input, DEFAULT_ARRAY_SAMPLE_SIZE);
 
     assert_eq!(result_type, ResultType::DestructuredObjects);
     let obj = parsed.unwrap();
@@ -539,7 +572,7 @@ fn test_stream_merge_respects_sample_limit() {
 fn test_stream_merge_non_destructured_unchanged() {
     // Single value (not destructured) should not be affected
     let input = r#"{"name": "test"}"#;
-    let (parsed, result_type) = parse_and_detect_type(input);
+    let (parsed, result_type) = parse_and_detect_type(input, DEFAULT_ARRAY_SAMPLE_SIZE);
 
     assert_eq!(result_type, ResultType::Object);
     let obj = parsed.unwrap();
@@ -550,7 +583,7 @@ fn test_stream_merge_non_destructured_unchanged() {
 fn test_stream_merge_mixed_types_handled() {
     // If stream has a non-object value, it's gracefully skipped
     let input = "42\n\"hello\"";
-    let (parsed, result_type) = parse_and_detect_type(input);
+    let (parsed, result_type) = parse_and_detect_type(input, DEFAULT_ARRAY_SAMPLE_SIZE);
 
     // First value is a number, second is string — not DestructuredObjects
     assert!(parsed.is_some());
@@ -566,7 +599,7 @@ fn test_destructured_arrays_merge_elements() {
     // Simulates .services[].tasks producing multiple arrays
     let input = r#"[{"taskArn": "arn:1", "cpu": 256}]
 [{"taskArn": "arn:2", "payload": {"data": "test"}}]"#;
-    let (parsed, result_type) = parse_and_detect_type(input);
+    let (parsed, result_type) = parse_and_detect_type(input, DEFAULT_ARRAY_SAMPLE_SIZE);
 
     assert_eq!(result_type, ResultType::ArrayOfObjects);
     let arr = parsed.unwrap();
@@ -591,7 +624,7 @@ fn test_destructured_arrays_respects_sample_limit() {
         .map(|i| format!(r#"[{{"key_{}": {}}}]"#, i, i))
         .collect();
     let input = arrays.join("\n");
-    let (parsed, result_type) = parse_and_detect_type(&input);
+    let (parsed, result_type) = parse_and_detect_type(&input, DEFAULT_ARRAY_SAMPLE_SIZE);
 
     assert_eq!(result_type, ResultType::ArrayOfObjects);
     let arr = parsed.unwrap();
@@ -608,7 +641,7 @@ fn test_destructured_arrays_respects_sample_limit() {
 fn test_single_array_unchanged() {
     // Single array (not destructured) should not be affected
     let input = r#"[{"a": 1}, {"b": 2}]"#;
-    let (parsed, result_type) = parse_and_detect_type(input);
+    let (parsed, result_type) = parse_and_detect_type(input, DEFAULT_ARRAY_SAMPLE_SIZE);
 
     assert_eq!(result_type, ResultType::ArrayOfObjects);
     let arr = parsed.unwrap();
@@ -620,7 +653,7 @@ fn test_single_array_unchanged() {
 fn test_stream_merge_objects_with_non_object_in_stream() {
     // Stream has objects interleaved with non-objects — non-objects should be skipped
     let input = "{\"a\": 1}\n42\n{\"b\": 2}";
-    let (parsed, result_type) = parse_and_detect_type(input);
+    let (parsed, result_type) = parse_and_detect_type(input, DEFAULT_ARRAY_SAMPLE_SIZE);
 
     assert_eq!(result_type, ResultType::DestructuredObjects);
     let obj = parsed.unwrap();
@@ -633,7 +666,7 @@ fn test_stream_merge_objects_with_non_object_in_stream() {
 fn test_destructured_arrays_with_non_array_in_stream() {
     // Stream has arrays interleaved with non-arrays — non-arrays should be skipped
     let input = "[{\"x\": 1}]\n42\n[{\"y\": 2}]";
-    let (parsed, result_type) = parse_and_detect_type(input);
+    let (parsed, result_type) = parse_and_detect_type(input, DEFAULT_ARRAY_SAMPLE_SIZE);
 
     assert_eq!(result_type, ResultType::ArrayOfObjects);
     let arr = parsed.unwrap();
@@ -660,7 +693,7 @@ fn test_stream_merge_objects_beyond_sample_limit() {
         .map(|i| format!(r#"{{"key_{}": {}}}"#, i, i))
         .collect();
     let input = objects.join("\n");
-    let (parsed, result_type) = parse_and_detect_type(&input);
+    let (parsed, result_type) = parse_and_detect_type(&input, DEFAULT_ARRAY_SAMPLE_SIZE);
 
     assert_eq!(result_type, ResultType::DestructuredObjects);
     let obj = parsed.unwrap();
@@ -686,7 +719,7 @@ fn test_destructured_arrays_beyond_sample_limit_verify_keys() {
         .map(|i| format!(r#"[{{"key_{}": {}}}]"#, i, i))
         .collect();
     let input = arrays.join("\n");
-    let (parsed, _) = parse_and_detect_type(&input);
+    let (parsed, _) = parse_and_detect_type(&input, DEFAULT_ARRAY_SAMPLE_SIZE);
 
     let arr = parsed.unwrap();
     let elements = arr.as_array().unwrap();

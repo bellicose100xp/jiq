@@ -3,7 +3,8 @@
 /// These tests verify that autocomplete correctly suggests nested fields
 /// in non-executing contexts (map, select, array builders, object builders).
 use super::common::{
-    create_array_of_objects_json, empty_field_names, field_names_from, tracker_for,
+    DEFAULT_ARRAY_SAMPLE_SIZE, create_array_of_objects_json, empty_field_names, field_names_from,
+    tracker_for,
 };
 use crate::autocomplete::*;
 use crate::query::ResultType;
@@ -72,6 +73,7 @@ mod nested_field_suggestions {
             Some(parsed),
             empty_field_names(),
             &tracker,
+            DEFAULT_ARRAY_SAMPLE_SIZE,
         );
 
         // Should suggest fields from [].user.profile (name, age)
@@ -100,6 +102,7 @@ mod nested_field_suggestions {
             Some(parsed),
             empty_field_names(),
             &tracker,
+            DEFAULT_ARRAY_SAMPLE_SIZE,
         );
 
         // Should suggest fields from .user.settings (theme, lang)
@@ -127,6 +130,7 @@ mod nested_field_suggestions {
             Some(parsed),
             empty_field_names(),
             &tracker,
+            DEFAULT_ARRAY_SAMPLE_SIZE,
         );
 
         // Should suggest fields from .user.profile
@@ -159,6 +163,7 @@ mod array_navigation {
             Some(parsed),
             empty_field_names(),
             &tracker,
+            DEFAULT_ARRAY_SAMPLE_SIZE,
         );
 
         // Should suggest fields from [].orders[].items[] (sku, qty)
@@ -187,6 +192,7 @@ mod array_navigation {
             Some(parsed),
             empty_field_names(),
             &tracker,
+            DEFAULT_ARRAY_SAMPLE_SIZE,
         );
 
         // Should suggest fields from .orders[0] (id, items, status)
@@ -218,6 +224,7 @@ mod element_context_with_nested_path {
             Some(parsed),
             empty_field_names(),
             &tracker,
+            DEFAULT_ARRAY_SAMPLE_SIZE,
         );
 
         // Should suggest element fields directly (name, age) without .[]
@@ -250,6 +257,7 @@ mod element_context_with_nested_path {
             Some(parsed),
             empty_field_names(),
             &tracker,
+            DEFAULT_ARRAY_SAMPLE_SIZE,
         );
 
         let field_suggestions: Vec<_> = suggestions.iter().filter(|s| s.text != ".[]").collect();
@@ -285,6 +293,7 @@ mod pipe_boundary {
             Some(parsed.clone()),
             field_names_from(&parsed),
             &tracker,
+            DEFAULT_ARRAY_SAMPLE_SIZE,
         );
 
         // After pipe, path extraction should start from the pipe
@@ -313,6 +322,7 @@ mod fallback_behavior {
             Some(parsed),
             empty_field_names(),
             &tracker,
+            DEFAULT_ARRAY_SAMPLE_SIZE,
         );
 
         // Navigation fails, should fall back to standard suggestions
@@ -336,6 +346,7 @@ mod fallback_behavior {
             None, // No original_json
             empty_field_names(),
             &tracker,
+            DEFAULT_ARRAY_SAMPLE_SIZE,
         );
 
         // Should still attempt navigation using result_parsed
@@ -361,6 +372,7 @@ mod regression_tests {
             Some(parsed),
             empty_field_names(),
             &tracker,
+            DEFAULT_ARRAY_SAMPLE_SIZE,
         );
 
         // Executing context at end should use cache directly
@@ -392,6 +404,7 @@ mod regression_tests {
             Some(parsed),
             empty_field_names(),
             &tracker,
+            DEFAULT_ARRAY_SAMPLE_SIZE,
         );
 
         assert!(
@@ -413,6 +426,7 @@ mod regression_tests {
             None,
             empty_field_names(),
             &tracker,
+            DEFAULT_ARRAY_SAMPLE_SIZE,
         );
 
         assert!(
@@ -489,6 +503,7 @@ mod streaming_result_context {
             Some(original),
             empty_field_names(),
             &tracker,
+            DEFAULT_ARRAY_SAMPLE_SIZE,
         );
 
         // Should suggest service element fields
@@ -522,6 +537,7 @@ mod streaming_result_context {
             Some(original),
             empty_field_names(),
             &tracker,
+            DEFAULT_ARRAY_SAMPLE_SIZE,
         );
 
         // Should filter to only 'strategy' field
@@ -552,6 +568,7 @@ mod streaming_result_context {
             Some(original),
             empty_field_names(),
             &tracker,
+            DEFAULT_ARRAY_SAMPLE_SIZE,
         );
 
         // Should suggest fields from deploymentConfiguration
@@ -588,6 +605,7 @@ mod streaming_result_context {
             Some(original),
             empty_field_names(),
             &tracker,
+            DEFAULT_ARRAY_SAMPLE_SIZE,
         );
 
         // Should suggest element fields (prepended ArrayIterator works)
@@ -613,6 +631,7 @@ mod streaming_result_context {
             Some(original),
             empty_field_names(),
             &tracker,
+            DEFAULT_ARRAY_SAMPLE_SIZE,
         );
 
         // Should suggest service element fields
@@ -667,6 +686,7 @@ mod multi_element_navigation {
             Some(parsed),
             empty_field_names(),
             &tracker,
+            DEFAULT_ARRAY_SAMPLE_SIZE,
         );
 
         assert!(
@@ -698,6 +718,7 @@ mod multi_element_navigation {
             Some(parsed),
             empty_field_names(),
             &tracker,
+            DEFAULT_ARRAY_SAMPLE_SIZE,
         );
 
         assert!(
@@ -725,6 +746,7 @@ mod multi_element_navigation {
             Some(parsed),
             empty_field_names(),
             &tracker,
+            DEFAULT_ARRAY_SAMPLE_SIZE,
         );
 
         assert!(
@@ -755,6 +777,7 @@ mod multi_element_navigation {
             Some(parsed),
             all_fields,
             &tracker,
+            DEFAULT_ARRAY_SAMPLE_SIZE,
         );
 
         assert!(
@@ -819,6 +842,7 @@ mod issue_145_integration {
             Some(parsed),
             empty_field_names(),
             &tracker,
+            DEFAULT_ARRAY_SAMPLE_SIZE,
         );
 
         assert!(
@@ -849,6 +873,7 @@ mod issue_145_integration {
             Some(parsed),
             all_fields,
             &tracker,
+            DEFAULT_ARRAY_SAMPLE_SIZE,
         );
 
         assert!(
@@ -879,6 +904,7 @@ mod issue_145_integration {
             Some(parsed),
             all_fields,
             &tracker,
+            DEFAULT_ARRAY_SAMPLE_SIZE,
         );
 
         assert!(
@@ -907,6 +933,7 @@ mod issue_145_integration {
             Some(parsed),
             all_fields,
             &tracker,
+            DEFAULT_ARRAY_SAMPLE_SIZE,
         );
 
         // Should not panic; may return fallback or empty suggestions

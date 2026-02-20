@@ -1,4 +1,6 @@
-use super::common::{create_array_of_objects_json, empty_field_names, tracker_for};
+use super::common::{
+    DEFAULT_ARRAY_SAMPLE_SIZE, create_array_of_objects_json, empty_field_names, tracker_for,
+};
 use crate::autocomplete::*;
 use crate::query::ResultType;
 use serde_json::Value;
@@ -18,6 +20,7 @@ fn test_suggestions_inside_map_returns_element_fields() {
         None,
         empty_field_names(),
         &tracker,
+        DEFAULT_ARRAY_SAMPLE_SIZE,
     );
 
     let field_suggestions: Vec<_> = suggestions.iter().filter(|s| s.text != ".[]").collect();
@@ -55,6 +58,7 @@ fn test_suggestions_inside_select_returns_element_fields() {
         None,
         empty_field_names(),
         &tracker,
+        DEFAULT_ARRAY_SAMPLE_SIZE,
     );
 
     let field_suggestions: Vec<_> = suggestions.iter().filter(|s| s.text != ".[]").collect();
@@ -87,6 +91,7 @@ fn test_suggestions_outside_function_returns_array_fields() {
         None,
         empty_field_names(),
         &tracker,
+        DEFAULT_ARRAY_SAMPLE_SIZE,
     );
 
     let field_suggestions: Vec<_> = suggestions.iter().filter(|s| s.text != ".[]").collect();
@@ -119,6 +124,7 @@ fn test_suggestions_inside_nested_element_functions() {
         None,
         empty_field_names(),
         &tracker,
+        DEFAULT_ARRAY_SAMPLE_SIZE,
     );
 
     let field_suggestions: Vec<_> = suggestions.iter().filter(|s| s.text != ".[]").collect();
@@ -146,6 +152,7 @@ fn test_suggestions_inside_map_with_object_construction() {
         None,
         empty_field_names(),
         &tracker,
+        DEFAULT_ARRAY_SAMPLE_SIZE,
     );
 
     let field_suggestions: Vec<_> = suggestions.iter().filter(|s| s.text != ".[]").collect();
@@ -173,6 +180,7 @@ fn test_suggestions_partial_field_filtering_in_element_context() {
         None,
         empty_field_names(),
         &tracker,
+        DEFAULT_ARRAY_SAMPLE_SIZE,
     );
 
     assert!(
@@ -200,6 +208,7 @@ fn test_suggestions_after_pipe_in_element_context() {
         None,
         empty_field_names(),
         &tracker,
+        DEFAULT_ARRAY_SAMPLE_SIZE,
     );
 
     let field_suggestions: Vec<_> = suggestions.iter().filter(|s| s.text != ".[]").collect();
@@ -240,6 +249,7 @@ fn test_suggestions_all_element_functions() {
             None,
             empty_field_names(),
             &tracker,
+            DEFAULT_ARRAY_SAMPLE_SIZE,
         );
 
         let field_suggestions: Vec<_> = suggestions.iter().filter(|s| s.text != ".[]").collect();
@@ -272,6 +282,7 @@ fn test_suggestions_non_element_functions_have_brackets() {
             None,
             empty_field_names(),
             &tracker,
+            DEFAULT_ARRAY_SAMPLE_SIZE,
         );
 
         let field_suggestions: Vec<_> = suggestions.iter().filter(|s| s.text != ".[]").collect();
@@ -302,6 +313,7 @@ fn test_regression_existing_field_suggestions_unchanged() {
         None,
         empty_field_names(),
         &tracker,
+        DEFAULT_ARRAY_SAMPLE_SIZE,
     );
 
     assert!(
@@ -329,6 +341,7 @@ fn test_regression_object_key_context_unchanged() {
         None,
         empty_field_names(),
         &tracker,
+        DEFAULT_ARRAY_SAMPLE_SIZE,
     );
 
     for suggestion in &suggestions {
@@ -355,6 +368,7 @@ fn test_regression_function_context_unchanged() {
         None,
         empty_field_names(),
         &tracker,
+        DEFAULT_ARRAY_SAMPLE_SIZE,
     );
 
     assert!(
@@ -378,6 +392,7 @@ fn test_object_key_context_does_not_suggest_iterator() {
         None,
         empty_field_names(),
         &tracker,
+        DEFAULT_ARRAY_SAMPLE_SIZE,
     );
 
     assert!(
@@ -403,6 +418,7 @@ fn test_field_context_inside_object_suggests_array_fields() {
         None,
         empty_field_names(),
         &tracker,
+        DEFAULT_ARRAY_SAMPLE_SIZE,
     );
 
     assert!(

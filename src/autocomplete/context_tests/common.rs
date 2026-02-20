@@ -1,3 +1,4 @@
+pub use crate::autocomplete::json_navigator::DEFAULT_ARRAY_SAMPLE_SIZE;
 use crate::autocomplete::*;
 use crate::query::ResultType;
 use serde_json::Value;

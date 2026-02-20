@@ -92,3 +92,44 @@ fn test_missing_backend_field_uses_default() {
     let config: Config = toml::from_str(toml).unwrap();
     assert_eq!(config.clipboard.backend, ClipboardBackend::Auto);
 }
+
+#[test]
+fn test_autocomplete_config_default() {
+    let config = AutocompleteConfig::default();
+    assert_eq!(config.array_sample_size, 10);
+}
+
+#[test]
+fn test_parse_autocomplete_array_sample_size() {
+    let toml = r#"
+[autocomplete]
+array_sample_size = 50
+"#;
+    let config: Config = toml::from_str(toml).unwrap();
+    assert_eq!(config.autocomplete.array_sample_size, 50);
+}
+
+#[test]
+fn test_missing_autocomplete_section_uses_default() {
+    let toml = r#"
+[clipboard]
+backend = "auto"
+"#;
+    let config: Config = toml::from_str(toml).unwrap();
+    assert_eq!(config.autocomplete.array_sample_size, 10);
+}
+
+#[test]
+fn test_empty_autocomplete_section_uses_default() {
+    let toml = r#"
+[autocomplete]
+"#;
+    let config: Config = toml::from_str(toml).unwrap();
+    assert_eq!(config.autocomplete.array_sample_size, 10);
+}
+
+#[test]
+fn test_empty_config_includes_autocomplete_default() {
+    let config: Config = toml::from_str("").unwrap();
+    assert_eq!(config.autocomplete.array_sample_size, 10);
+}

@@ -5,6 +5,8 @@ use super::*;
 use std::sync::mpsc::channel;
 use tokio_util::sync::CancellationToken;
 
+use crate::autocomplete::json_navigator::DEFAULT_ARRAY_SAMPLE_SIZE;
+
 #[test]
 fn test_worker_spawns_successfully() {
     let json_input = r#"{"test": "data"}"#.to_string();
@@ -12,7 +14,12 @@ fn test_worker_spawns_successfully() {
     let (response_tx, response_rx) = channel();
 
     // Spawn worker - should not panic
-    spawn_worker(json_input, request_rx, response_tx);
+    spawn_worker(
+        json_input,
+        request_rx,
+        response_tx,
+        DEFAULT_ARRAY_SAMPLE_SIZE,
+    );
 
     // Send a simple query
     let cancel_token = CancellationToken::new();
@@ -40,7 +47,12 @@ fn test_worker_handles_invalid_query() {
     let (request_tx, request_rx) = channel();
     let (response_tx, response_rx) = channel();
 
-    spawn_worker(json_input, request_rx, response_tx);
+    spawn_worker(
+        json_input,
+        request_rx,
+        response_tx,
+        DEFAULT_ARRAY_SAMPLE_SIZE,
+    );
 
     // Send an invalid query
     let cancel_token = CancellationToken::new();
@@ -68,7 +80,12 @@ fn test_worker_handles_pre_cancelled_request() {
     let (request_tx, request_rx) = channel();
     let (response_tx, response_rx) = channel();
 
-    spawn_worker(json_input, request_rx, response_tx);
+    spawn_worker(
+        json_input,
+        request_rx,
+        response_tx,
+        DEFAULT_ARRAY_SAMPLE_SIZE,
+    );
 
     // Cancel before sending
     let cancel_token = CancellationToken::new();
@@ -98,7 +115,12 @@ fn test_worker_sends_error_response_for_jq_failure() {
     let (request_tx, request_rx) = channel();
     let (response_tx, response_rx) = channel();
 
-    spawn_worker(json_input, request_rx, response_tx);
+    spawn_worker(
+        json_input,
+        request_rx,
+        response_tx,
+        DEFAULT_ARRAY_SAMPLE_SIZE,
+    );
 
     // Send query with invalid syntax
     let cancel_token = CancellationToken::new();
@@ -132,7 +154,12 @@ fn test_worker_handles_multiple_rapid_queries() {
     let (request_tx, request_rx) = channel();
     let (response_tx, response_rx) = channel();
 
-    spawn_worker(json_input, request_rx, response_tx);
+    spawn_worker(
+        json_input,
+        request_rx,
+        response_tx,
+        DEFAULT_ARRAY_SAMPLE_SIZE,
+    );
 
     // Send multiple queries rapidly
     for i in 1..=5 {
@@ -170,7 +197,12 @@ fn test_worker_response_includes_original_query() {
     let (request_tx, request_rx) = channel();
     let (response_tx, response_rx) = channel();
 
-    spawn_worker(json_input, request_rx, response_tx);
+    spawn_worker(
+        json_input,
+        request_rx,
+        response_tx,
+        DEFAULT_ARRAY_SAMPLE_SIZE,
+    );
 
     let original_query = ".test";
     let cancel_token = CancellationToken::new();
@@ -205,7 +237,12 @@ fn test_worker_error_response_includes_original_query() {
     let (request_tx, request_rx) = channel();
     let (response_tx, response_rx) = channel();
 
-    spawn_worker(json_input, request_rx, response_tx);
+    spawn_worker(
+        json_input,
+        request_rx,
+        response_tx,
+        DEFAULT_ARRAY_SAMPLE_SIZE,
+    );
 
     let original_query = ".invalid syntax [";
     let cancel_token = CancellationToken::new();

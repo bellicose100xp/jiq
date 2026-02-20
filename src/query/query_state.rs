@@ -5,6 +5,8 @@ use tokio_util::sync::CancellationToken;
 use ansi_to_tui::IntoText;
 use ratatui::text::{Line, Span, Text};
 
+#[cfg(test)]
+use crate::autocomplete::json_navigator::DEFAULT_ARRAY_SAMPLE_SIZE;
 use crate::query::executor::JqExecutor;
 use crate::query::worker::preprocess::{parse_and_detect_type, strip_ansi_codes};
 use crate::query::worker::types::RenderedLine;
@@ -78,14 +80,19 @@ pub struct QueryState {
     in_flight_request_id: Option<u64>,
     /// Cancellation token for current request
     current_cancel_token: Option<CancellationToken>,
+    /// Array sample size for autocomplete
+    array_sample_size: usize,
 }
 
 impl QueryState {
-    /// Create a new QueryState with the given JSON input
-    ///
-    /// Spawns a background worker thread for async query execution.
+    /// Create a new QueryState with default sample size
+    #[cfg(test)]
     pub fn new(json_input: String) -> Self {
-        let executor = JqExecutor::new(json_input.clone());
+        Self::new_with_sample_size(json_input, DEFAULT_ARRAY_SAMPLE_SIZE)
+    }
+
+    pub fn new_with_sample_size(json_input: String, array_sample_size: usize) -> Self {
+        let executor = JqExecutor::new_with_sample_size(json_input.clone(), array_sample_size);
         let cancel_token = CancellationToken::new();
         let result = executor
             .execute_with_cancel(".", &cancel_token)
@@ -111,7 +118,7 @@ impl QueryState {
             last_successful_result_unformatted
                 .as_ref()
                 .map(|s| {
-                    let (parsed, result_type) = parse_and_detect_type(s);
+                    let (parsed, result_type) = parse_and_detect_type(s, array_sample_size);
                     (parsed.map(Arc::new), Some(result_type))
                 })
                 .unwrap_or((None, None));
@@ -151,7 +158,7 @@ impl QueryState {
         let (request_tx, request_rx) = channel();
         let (response_tx, response_rx) = channel();
 
-        spawn_worker(json_input, request_rx, response_tx);
+        spawn_worker(json_input, request_rx, response_tx, array_sample_size);
 
         Self {
             executor,
@@ -173,6 +180,7 @@ impl QueryState {
             next_request_id: 1, // Reserve 0 for worker errors
             in_flight_request_id: None,
             current_cancel_token: None,
+            array_sample_size,
         }
     }
 
@@ -242,7 +250,7 @@ impl QueryState {
                 )));
 
             // Parse JSON and detect type in single pass (avoids duplicate parsing)
-            let (parsed, result_type) = parse_and_detect_type(&unformatted);
+            let (parsed, result_type) = parse_and_detect_type(&unformatted, self.array_sample_size);
             self.last_successful_result_parsed = parsed.map(Arc::new);
             self.base_type_for_suggestions = Some(result_type);
 

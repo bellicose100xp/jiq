@@ -7,7 +7,7 @@ use std::time::Duration;
 use serde_json::Value;
 use tokio_util::sync::CancellationToken;
 
-use crate::autocomplete::json_navigator::ARRAY_SAMPLE_SIZE;
+use crate::autocomplete::json_navigator::DEFAULT_ARRAY_SAMPLE_SIZE;
 use crate::query::worker::types::QueryError;
 
 /// Execute jq queries against JSON input
@@ -24,15 +24,22 @@ pub struct JqExecutor {
     /// All unique field names from the JSON, collected recursively.
     /// Cached for non-deterministic autocomplete fallback.
     all_field_names: OnceLock<Arc<HashSet<String>>>,
+    array_sample_size: usize,
 }
 
 impl JqExecutor {
-    /// Create a new JQ executor with JSON input
+    /// Create a new JQ executor with JSON input and default sample size
     pub fn new(json_input: String) -> Self {
+        Self::new_with_sample_size(json_input, DEFAULT_ARRAY_SAMPLE_SIZE)
+    }
+
+    /// Create a new JQ executor with JSON input and custom array sample size
+    pub fn new_with_sample_size(json_input: String, array_sample_size: usize) -> Self {
         Self {
             json_input: Arc::new(json_input),
             json_input_parsed: OnceLock::new(),
             all_field_names: OnceLock::new(),
+            array_sample_size,
         }
     }
 
@@ -59,28 +66,33 @@ impl JqExecutor {
     /// Returns a cached set of all field names found anywhere in the JSON tree.
     /// Used for non-deterministic autocomplete fallback when path navigation fails.
     pub fn all_field_names(&self) -> Arc<HashSet<String>> {
+        let sample_size = self.array_sample_size;
         self.all_field_names
             .get_or_init(|| {
                 let mut fields = HashSet::new();
                 if let Some(parsed) = self.json_input_parsed() {
-                    Self::collect_fields_recursive(&parsed, &mut fields);
+                    Self::collect_fields_recursive(&parsed, &mut fields, sample_size);
                 }
                 Arc::new(fields)
             })
             .clone()
     }
 
-    fn collect_fields_recursive(value: &Value, fields: &mut HashSet<String>) {
+    fn collect_fields_recursive(
+        value: &Value,
+        fields: &mut HashSet<String>,
+        array_sample_size: usize,
+    ) {
         match value {
             Value::Object(map) => {
                 for (key, val) in map {
                     fields.insert(key.clone());
-                    Self::collect_fields_recursive(val, fields);
+                    Self::collect_fields_recursive(val, fields, array_sample_size);
                 }
             }
             Value::Array(arr) => {
-                for element in arr.iter().take(ARRAY_SAMPLE_SIZE) {
-                    Self::collect_fields_recursive(element, fields);
+                for element in arr.iter().take(array_sample_size) {
+                    Self::collect_fields_recursive(element, fields, array_sample_size);
                 }
             }
             _ => {}

@@ -29,6 +29,7 @@ pub fn spawn_worker(
     json_input: String,
     request_rx: Receiver<QueryRequest>,
     response_tx: Sender<QueryResponse>,
+    array_sample_size: usize,
 ) {
     std::thread::spawn(move || {
         // Set panic hook to prevent TUI corruption
@@ -60,7 +61,7 @@ pub fn spawn_worker(
 
         // Wrap worker in catch_unwind
         let result = panic::catch_unwind(AssertUnwindSafe(|| {
-            worker_loop(&json_input, request_rx, response_tx);
+            worker_loop(&json_input, request_rx, response_tx, array_sample_size);
         }));
 
         // Restore panic hook
@@ -86,12 +87,13 @@ fn worker_loop(
     json_input: &str,
     request_rx: Receiver<QueryRequest>,
     response_tx: Sender<QueryResponse>,
+    array_sample_size: usize,
 ) {
-    let executor = JqExecutor::new(json_input.to_string());
+    let executor = JqExecutor::new_with_sample_size(json_input.to_string(), array_sample_size);
 
     // Process requests until channel closes
     while let Ok(request) = request_rx.recv() {
-        handle_request(&executor, request, &response_tx);
+        handle_request(&executor, request, &response_tx, array_sample_size);
     }
 }
 
@@ -100,6 +102,7 @@ fn handle_request(
     executor: &JqExecutor,
     request: QueryRequest,
     response_tx: &Sender<QueryResponse>,
+    array_sample_size: usize,
 ) {
     // Check if already cancelled
     if request.cancel_token.is_cancelled() {
@@ -116,7 +119,7 @@ fn handle_request(
     match executor.execute_with_cancel(&request.query, &request.cancel_token) {
         Ok(output) => {
             // Preprocess result (expensive operations done in worker thread)
-            match preprocess_result(output, &query, &request.cancel_token) {
+            match preprocess_result(output, &query, &request.cancel_token, array_sample_size) {
                 Ok(mut processed) => {
                     processed.execution_time_ms = Some(start.elapsed().as_millis() as u64);
                     let _ = response_tx.send(QueryResponse::ProcessedSuccess {

@@ -1,4 +1,4 @@
-use super::common::{empty_field_names, tracker_for};
+use super::common::{DEFAULT_ARRAY_SAMPLE_SIZE, empty_field_names, tracker_for};
 use crate::autocomplete::*;
 use crate::query::ResultType;
 use proptest::prelude::*;
@@ -29,6 +29,7 @@ proptest! {
             None,
             empty_field_names(),
             &tracker,
+            DEFAULT_ARRAY_SAMPLE_SIZE,
         );
 
         for suggestion in &suggestions {
@@ -65,6 +66,7 @@ proptest! {
             None,
             empty_field_names(),
             &tracker,
+            DEFAULT_ARRAY_SAMPLE_SIZE,
         );
 
         for suggestion in &suggestions {
@@ -270,6 +272,7 @@ proptest! {
             None,
             empty_field_names(),
             &tracker,
+            DEFAULT_ARRAY_SAMPLE_SIZE,
         );
 
         for suggestion in &suggestions {
@@ -305,6 +308,7 @@ proptest! {
             None,
             empty_field_names(),
             &tracker,
+            DEFAULT_ARRAY_SAMPLE_SIZE,
         );
 
         let field_suggestions: Vec<_> = suggestions

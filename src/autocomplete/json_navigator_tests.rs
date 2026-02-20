@@ -1,4 +1,4 @@
-use super::json_navigator::{ARRAY_SAMPLE_SIZE, navigate, navigate_multi};
+use super::json_navigator::{DEFAULT_ARRAY_SAMPLE_SIZE, navigate, navigate_multi};
 use super::path_parser::PathSegment;
 use serde_json::{Value, json};
 
@@ -508,14 +508,18 @@ mod navigate_multi_tests {
     #[test]
     fn test_empty_segments_returns_root() {
         let json = json!({"name": "Alice"});
-        let result = navigate_multi(&json, &[], ARRAY_SAMPLE_SIZE);
+        let result = navigate_multi(&json, &[], DEFAULT_ARRAY_SAMPLE_SIZE);
         assert_eq!(result, vec![&json]);
     }
 
     #[test]
     fn test_fan_out_returns_n_elements() {
         let json = json!([{"a": 1}, {"b": 2}, {"c": 3}]);
-        let result = navigate_multi(&json, &[PathSegment::ArrayIterator], ARRAY_SAMPLE_SIZE);
+        let result = navigate_multi(
+            &json,
+            &[PathSegment::ArrayIterator],
+            DEFAULT_ARRAY_SAMPLE_SIZE,
+        );
 
         assert_eq!(result.len(), 3);
         assert_eq!(result[0], &json!({"a": 1}));
@@ -530,7 +534,7 @@ mod navigate_multi_tests {
             PathSegment::Field("users".into()),
             PathSegment::ArrayIterator,
         ];
-        let result = navigate_multi(&json, &segments, ARRAY_SAMPLE_SIZE);
+        let result = navigate_multi(&json, &segments, DEFAULT_ARRAY_SAMPLE_SIZE);
 
         assert_eq!(result.len(), 2);
         assert_eq!(result[0], &json!({"id": 1}));
@@ -541,7 +545,7 @@ mod navigate_multi_tests {
     fn test_nested_iterators_fan_out() {
         let json = json!([[{"a": 1}, {"b": 2}], [{"c": 3}]]);
         let segments = vec![PathSegment::ArrayIterator, PathSegment::ArrayIterator];
-        let result = navigate_multi(&json, &segments, ARRAY_SAMPLE_SIZE);
+        let result = navigate_multi(&json, &segments, DEFAULT_ARRAY_SAMPLE_SIZE);
 
         assert_eq!(result.len(), 3);
         assert_eq!(result[0], &json!({"a": 1}));
@@ -562,7 +566,11 @@ mod navigate_multi_tests {
     #[test]
     fn test_array_index_does_not_fan_out() {
         let json = json!([{"id": 1}, {"id": 2}]);
-        let result = navigate_multi(&json, &[PathSegment::ArrayIndex(1)], ARRAY_SAMPLE_SIZE);
+        let result = navigate_multi(
+            &json,
+            &[PathSegment::ArrayIndex(1)],
+            DEFAULT_ARRAY_SAMPLE_SIZE,
+        );
 
         assert_eq!(result.len(), 1);
         assert_eq!(result[0], &json!({"id": 2}));
@@ -571,7 +579,11 @@ mod navigate_multi_tests {
     #[test]
     fn test_empty_array_returns_empty() {
         let json = json!([]);
-        let result = navigate_multi(&json, &[PathSegment::ArrayIterator], ARRAY_SAMPLE_SIZE);
+        let result = navigate_multi(
+            &json,
+            &[PathSegment::ArrayIterator],
+            DEFAULT_ARRAY_SAMPLE_SIZE,
+        );
 
         assert!(result.is_empty());
     }
@@ -580,7 +592,7 @@ mod navigate_multi_tests {
     fn test_type_mismatch_returns_empty() {
         let json = json!("not an object");
         let segments = vec![PathSegment::Field("name".into())];
-        let result = navigate_multi(&json, &segments, ARRAY_SAMPLE_SIZE);
+        let result = navigate_multi(&json, &segments, DEFAULT_ARRAY_SAMPLE_SIZE);
 
         assert!(result.is_empty());
     }
@@ -595,7 +607,7 @@ mod navigate_multi_tests {
             PathSegment::ArrayIterator,
             PathSegment::Field("profile".into()),
         ];
-        let result = navigate_multi(&json, &segments, ARRAY_SAMPLE_SIZE);
+        let result = navigate_multi(&json, &segments, DEFAULT_ARRAY_SAMPLE_SIZE);
 
         assert_eq!(result.len(), 2);
         assert_eq!(result[0], &json!({"name": "Alice"}));
@@ -604,17 +616,17 @@ mod navigate_multi_tests {
 
     #[test]
     fn test_max_navigated_values_caps_total() {
-        // Build a large nested structure that would produce >100 values
-        // 15 outer * 15 inner = 225 uncapped, should cap at 100
-        let inner: Vec<Value> = (0..15).map(|i| json!({"v": i})).collect();
-        let outer: Vec<Value> = (0..15).map(|_| Value::Array(inner.clone())).collect();
+        // Build a large nested structure that would produce >1000 values
+        // 35 outer * 35 inner = 1225 uncapped, should cap at 1000
+        let inner: Vec<Value> = (0..35).map(|i| json!({"v": i})).collect();
+        let outer: Vec<Value> = (0..35).map(|_| Value::Array(inner.clone())).collect();
         let json = Value::Array(outer);
 
         let segments = vec![PathSegment::ArrayIterator, PathSegment::ArrayIterator];
-        let result = navigate_multi(&json, &segments, 15);
+        let result = navigate_multi(&json, &segments, 35);
 
         assert!(
-            result.len() <= 100,
+            result.len() <= 1000,
             "Should cap at MAX_NAVIGATED_VALUES, got {}",
             result.len()
         );
@@ -628,7 +640,7 @@ mod navigate_multi_tests {
             PathSegment::ArrayIterator,
             PathSegment::Field("name".into()),
         ];
-        let result = navigate_multi(&json, &segments, ARRAY_SAMPLE_SIZE);
+        let result = navigate_multi(&json, &segments, DEFAULT_ARRAY_SAMPLE_SIZE);
 
         assert_eq!(result.len(), 2);
         assert_eq!(result[0], &json!("Alice"));
@@ -639,7 +651,7 @@ mod navigate_multi_tests {
     fn test_negative_index_underflow_skipped() {
         let json = json!([[{"a": 1}], [{"b": 2}]]);
         let segments = vec![PathSegment::ArrayIterator, PathSegment::ArrayIndex(-1000)];
-        let result = navigate_multi(&json, &segments, ARRAY_SAMPLE_SIZE);
+        let result = navigate_multi(&json, &segments, DEFAULT_ARRAY_SAMPLE_SIZE);
 
         assert!(
             result.is_empty(),
@@ -656,7 +668,7 @@ mod navigate_multi_tests {
             PathSegment::Field("items".into()),
             PathSegment::ArrayIterator,
         ];
-        let result = navigate_multi(&json, &segments, ARRAY_SAMPLE_SIZE);
+        let result = navigate_multi(&json, &segments, DEFAULT_ARRAY_SAMPLE_SIZE);
 
         // Only the first element's items array is iterated
         assert_eq!(result.len(), 2);
@@ -674,7 +686,7 @@ mod navigate_multi_tests {
             PathSegment::Field("nonexistent".into()),
             PathSegment::Field("deep".into()),
         ];
-        let result = navigate_multi(&json, &segments, ARRAY_SAMPLE_SIZE);
+        let result = navigate_multi(&json, &segments, DEFAULT_ARRAY_SAMPLE_SIZE);
 
         assert!(result.is_empty());
     }

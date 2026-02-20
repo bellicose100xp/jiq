@@ -1,4 +1,4 @@
-use super::common::{empty_field_names, tracker_for};
+use super::common::{DEFAULT_ARRAY_SAMPLE_SIZE, empty_field_names, tracker_for};
 use crate::autocomplete::BraceTracker;
 use crate::autocomplete::context::{SuggestionContext, analyze_context};
 use crate::autocomplete::get_suggestions;
@@ -13,6 +13,7 @@ fn get_var_suggestions(query: &str, cursor_pos: usize) -> Vec<String> {
         None,
         empty_field_names(),
         &tracker,
+        DEFAULT_ARRAY_SAMPLE_SIZE,
     )
     .into_iter()
     .map(|s| s.text)

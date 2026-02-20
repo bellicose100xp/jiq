@@ -82,6 +82,55 @@ fn test_malformed_toml_missing_value() {
 }
 
 #[test]
+fn test_autocomplete_array_sample_size_default() {
+    let config = Config::default();
+    assert_eq!(config.autocomplete.array_sample_size, 10);
+}
+
+#[test]
+fn test_autocomplete_array_sample_size_parsed() {
+    let toml = r#"
+[autocomplete]
+array_sample_size = 25
+"#;
+    let config: Config = toml::from_str(toml).unwrap();
+    assert_eq!(config.autocomplete.array_sample_size, 25);
+}
+
+#[test]
+fn test_autocomplete_array_sample_size_clamp_zero() {
+    let toml = r#"
+[autocomplete]
+array_sample_size = 0
+"#;
+    let mut config: Config = toml::from_str(toml).unwrap();
+    config.autocomplete.array_sample_size = config.autocomplete.array_sample_size.clamp(1, 1000);
+    assert_eq!(config.autocomplete.array_sample_size, 1);
+}
+
+#[test]
+fn test_autocomplete_array_sample_size_clamp_above_max() {
+    let toml = r#"
+[autocomplete]
+array_sample_size = 5000
+"#;
+    let mut config: Config = toml::from_str(toml).unwrap();
+    config.autocomplete.array_sample_size = config.autocomplete.array_sample_size.clamp(1, 1000);
+    assert_eq!(config.autocomplete.array_sample_size, 1000);
+}
+
+#[test]
+fn test_autocomplete_array_sample_size_within_range() {
+    let toml = r#"
+[autocomplete]
+array_sample_size = 500
+"#;
+    let mut config: Config = toml::from_str(toml).unwrap();
+    config.autocomplete.array_sample_size = config.autocomplete.array_sample_size.clamp(1, 1000);
+    assert_eq!(config.autocomplete.array_sample_size, 500);
+}
+
+#[test]
 fn test_config_path_consistency() {
     let path1 = get_config_path();
     let path2 = get_config_path();

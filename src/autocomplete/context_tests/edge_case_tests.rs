@@ -2,7 +2,7 @@
 ///
 /// Tests for transforming functions, complex expressions,
 /// and other edge cases that require special handling.
-use super::common::{empty_field_names, field_names_from, tracker_for};
+use super::common::{DEFAULT_ARRAY_SAMPLE_SIZE, empty_field_names, field_names_from, tracker_for};
 use crate::autocomplete::*;
 use crate::query::ResultType;
 use serde_json::Value;
@@ -48,6 +48,7 @@ mod optional_field_access {
             Some(parsed),
             empty_field_names(),
             &tracker,
+            DEFAULT_ARRAY_SAMPLE_SIZE,
         );
 
         // Optional fields should still navigate correctly in non-executing context
@@ -81,6 +82,7 @@ mod bracket_notation {
             Some(parsed),
             empty_field_names(),
             &tracker,
+            DEFAULT_ARRAY_SAMPLE_SIZE,
         );
 
         // Bracket notation should navigate like dot notation
@@ -110,6 +112,7 @@ mod array_index_access {
             Some(parsed),
             empty_field_names(),
             &tracker,
+            DEFAULT_ARRAY_SAMPLE_SIZE,
         );
 
         // Specific index access should work
@@ -139,6 +142,7 @@ mod array_index_access {
             Some(parsed),
             empty_field_names(),
             &tracker,
+            DEFAULT_ARRAY_SAMPLE_SIZE,
         );
 
         // Negative index should access from end
@@ -168,6 +172,7 @@ mod pipe_chaining {
             Some(parsed),
             empty_field_names(),
             &tracker,
+            DEFAULT_ARRAY_SAMPLE_SIZE,
         );
 
         // Identity pipe should still work in non-executing context
@@ -193,6 +198,7 @@ mod pipe_chaining {
             Some(parsed),
             empty_field_names(),
             &tracker,
+            DEFAULT_ARRAY_SAMPLE_SIZE,
         );
 
         // Multiple pipes with field access should work
@@ -230,6 +236,7 @@ mod mixed_contexts {
             Some(parsed),
             empty_field_names(),
             &tracker,
+            DEFAULT_ARRAY_SAMPLE_SIZE,
         );
 
         // Inside map, navigation should work with element context prepending
@@ -254,6 +261,7 @@ mod mixed_contexts {
             Some(parsed),
             empty_field_names(),
             &tracker,
+            DEFAULT_ARRAY_SAMPLE_SIZE,
         );
 
         // Select with comparison should work
@@ -300,6 +308,7 @@ mod deep_nesting {
             Some(parsed),
             empty_field_names(),
             &tracker,
+            DEFAULT_ARRAY_SAMPLE_SIZE,
         );
 
         // Deep nesting should work
@@ -330,6 +339,7 @@ mod middle_of_query_tests {
             Some(parsed),
             empty_field_names(),
             &tracker,
+            DEFAULT_ARRAY_SAMPLE_SIZE,
         );
 
         // Middle-of-query should navigate from original_json to .user
@@ -361,6 +371,7 @@ mod middle_of_query_tests {
             Some(parsed),
             empty_field_names(),
             &tracker,
+            DEFAULT_ARRAY_SAMPLE_SIZE,
         );
 
         // Should suggest fields of order elements: id, items, status
@@ -391,6 +402,7 @@ mod middle_of_query_tests {
             Some(parsed),
             empty_field_names(),
             &tracker,
+            DEFAULT_ARRAY_SAMPLE_SIZE,
         );
 
         // Should filter suggestions by partial "pro"
@@ -417,6 +429,7 @@ mod middle_of_query_tests {
             Some(parsed.clone()),
             field_names_from(&parsed),
             &tracker,
+            DEFAULT_ARRAY_SAMPLE_SIZE,
         );
 
         // Navigation fails, should fall back to all field names from original_json
@@ -442,6 +455,7 @@ mod middle_of_query_tests {
             Some(parsed.clone()),
             field_names_from(&parsed),
             &tracker,
+            DEFAULT_ARRAY_SAMPLE_SIZE,
         );
 
         // Inside map(), middle of query, should navigate from original
@@ -468,6 +482,7 @@ mod middle_of_query_tests {
             Some(parsed),
             empty_field_names(),
             &tracker,
+            DEFAULT_ARRAY_SAMPLE_SIZE,
         );
 
         // Inside array builder, middle of query
@@ -493,6 +508,7 @@ mod middle_of_query_tests {
             Some(parsed.clone()),
             empty_field_names(),
             &tracker,
+            DEFAULT_ARRAY_SAMPLE_SIZE,
         );
 
         // Cursor in middle (after ".user.")
@@ -504,6 +520,7 @@ mod middle_of_query_tests {
             Some(parsed),
             empty_field_names(),
             &tracker,
+            DEFAULT_ARRAY_SAMPLE_SIZE,
         );
 
         // Results should be different - end shows name's type, middle shows user's fields
@@ -562,6 +579,7 @@ mod performance_tests {
             Some(parsed),
             empty_field_names(),
             &tracker,
+            DEFAULT_ARRAY_SAMPLE_SIZE,
         );
         let elapsed = start.elapsed();
 
@@ -588,6 +606,7 @@ mod performance_tests {
             Some(parsed),
             empty_field_names(),
             &tracker,
+            DEFAULT_ARRAY_SAMPLE_SIZE,
         );
         let elapsed = start.elapsed();
 
@@ -620,6 +639,7 @@ mod performance_tests {
                 Some(parsed.clone()),
                 empty_field_names(),
                 &tracker,
+                DEFAULT_ARRAY_SAMPLE_SIZE,
             );
         }
         let elapsed = start.elapsed();

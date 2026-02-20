@@ -9,7 +9,7 @@ use super::path_parser::PathSegment;
 /// Maximum number of array elements to sample when collecting field names.
 /// Unions keys from the first N elements to surface fields that only
 /// appear in non-first elements of heterogeneous arrays.
-pub const ARRAY_SAMPLE_SIZE: usize = 10;
+pub const DEFAULT_ARRAY_SAMPLE_SIZE: usize = 10;
 
 /// Navigate a JSON tree following path segments.
 ///
@@ -70,7 +70,7 @@ pub fn navigate<'a>(root: &'a Value, segments: &[PathSegment]) -> Option<&'a Val
 
 /// Cap on total values returned by `navigate_multi` to bound fan-out
 /// at deeply nested array levels (e.g., 10^3 = 1000 uncapped).
-const MAX_NAVIGATED_VALUES: usize = 100;
+const MAX_NAVIGATED_VALUES: usize = 1000;
 
 /// Navigate a JSON tree following path segments, fanning out at `ArrayIterator` segments.
 ///

@@ -1,5 +1,4 @@
 use crate::autocomplete::autocomplete_state::{JsonFieldType, Suggestion, SuggestionType};
-use crate::autocomplete::json_navigator::ARRAY_SAMPLE_SIZE;
 use crate::query::ResultType;
 use serde_json::Value;
 use std::collections::HashSet;
@@ -91,6 +90,7 @@ impl ResultAnalyzer {
         values: &[&Value],
         needs_leading_dot: bool,
         suppress_array_brackets: bool,
+        array_sample_size: usize,
     ) -> Vec<Suggestion> {
         let prefix = dot_prefix(needs_leading_dot);
         let mut suggestions = Vec::new();
@@ -123,7 +123,7 @@ impl ResultAnalyzer {
                     }
                     Self::extract_union_fields_from_array(
                         arr,
-                        ARRAY_SAMPLE_SIZE,
+                        array_sample_size,
                         prefix,
                         suppress_array_brackets,
                         &mut seen_keys,
@@ -145,8 +145,14 @@ impl ResultAnalyzer {
         value: &Value,
         needs_leading_dot: bool,
         suppress_array_brackets: bool,
+        array_sample_size: usize,
     ) -> Vec<Suggestion> {
-        Self::analyze_multi_values(&[value], needs_leading_dot, suppress_array_brackets)
+        Self::analyze_multi_values(
+            &[value],
+            needs_leading_dot,
+            suppress_array_brackets,
+            array_sample_size,
+        )
     }
 
     /// Analyze pre-parsed JSON value for field suggestions
@@ -163,12 +169,14 @@ impl ResultAnalyzer {
         result_type: ResultType,
         needs_leading_dot: bool,
         suppress_array_brackets: bool,
+        array_sample_size: usize,
     ) -> Vec<Suggestion> {
         Self::extract_suggestions_for_type(
             value,
             result_type,
             needs_leading_dot,
             suppress_array_brackets,
+            array_sample_size,
         )
     }
 
@@ -177,6 +185,7 @@ impl ResultAnalyzer {
         result_type: ResultType,
         needs_leading_dot: bool,
         suppress_array_brackets: bool,
+        array_sample_size: usize,
     ) -> Vec<Suggestion> {
         match result_type {
             ResultType::ArrayOfObjects => {
@@ -195,7 +204,7 @@ impl ResultAnalyzer {
                     let mut seen_keys = HashSet::new();
                     Self::extract_union_fields_from_array(
                         arr,
-                        ARRAY_SAMPLE_SIZE,
+                        array_sample_size,
                         prefix,
                         suppress_array_brackets,
                         &mut seen_keys,

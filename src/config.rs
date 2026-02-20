@@ -7,6 +7,9 @@ mod types;
 // AI types are used internally via Config struct
 pub use types::{ClipboardBackend, Config};
 
+#[allow(unused_imports)]
+pub use types::AutocompleteConfig;
+
 // Re-export for integration tests
 #[allow(unused_imports)]
 pub use ai_types::{AiConfig, AiProviderType, AnthropicConfig};
@@ -50,10 +53,14 @@ pub fn load_config() -> ConfigResult {
 
     // Try to parse TOML
     match toml::from_str::<Config>(&contents) {
-        Ok(config) => ConfigResult {
-            config,
-            warning: None,
-        },
+        Ok(mut config) => {
+            config.autocomplete.array_sample_size =
+                config.autocomplete.array_sample_size.clamp(1, 1000);
+            ConfigResult {
+                config,
+                warning: None,
+            }
+        }
         Err(e) => {
             #[cfg(debug_assertions)]
             log::error!("Failed to parse config file {:?}: {}", config_path, e);
