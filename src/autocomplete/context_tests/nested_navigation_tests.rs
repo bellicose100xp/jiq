@@ -627,3 +627,142 @@ mod streaming_result_context {
         );
     }
 }
+
+/// Tests for multi-element array navigation (heterogeneous arrays)
+mod multi_element_navigation {
+    use super::*;
+
+    fn create_heterogeneous_array_json() -> (Arc<Value>, ResultType) {
+        let json = r#"[
+            {"name": "svc1", "status": "ACTIVE"},
+            {"name": "svc2", "extra_key": true, "region": "us-east-1"},
+            {"name": "svc3", "priority": 5}
+        ]"#;
+        let parsed = serde_json::from_str::<Value>(json).unwrap();
+        (Arc::new(parsed), ResultType::ArrayOfObjects)
+    }
+
+    fn create_nested_heterogeneous_json() -> (Arc<Value>, ResultType) {
+        let json = r#"{
+            "services": [
+                {"serviceName": "svc1", "status": "ACTIVE"},
+                {"serviceName": "svc2", "extra_service_key": "special"}
+            ]
+        }"#;
+        let parsed = serde_json::from_str::<Value>(json).unwrap();
+        (Arc::new(parsed), ResultType::Object)
+    }
+
+    #[test]
+    fn test_map_with_heterogeneous_array_suggests_union_keys() {
+        let (parsed, result_type) = create_heterogeneous_array_json();
+        let query = "map(.";
+        let tracker = tracker_for(query);
+
+        let suggestions = get_suggestions(
+            query,
+            query.len(),
+            Some(parsed.clone()),
+            Some(result_type),
+            Some(parsed),
+            empty_field_names(),
+            &tracker,
+        );
+
+        assert!(
+            suggestions.iter().any(|s| s.text.contains("name")),
+            "Should suggest 'name' from first element. Got: {:?}",
+            suggestions.iter().map(|s| &s.text).collect::<Vec<_>>()
+        );
+        assert!(
+            suggestions.iter().any(|s| s.text.contains("extra_key")),
+            "Should suggest 'extra_key' from second element"
+        );
+        assert!(
+            suggestions.iter().any(|s| s.text.contains("priority")),
+            "Should suggest 'priority' from third element"
+        );
+    }
+
+    #[test]
+    fn test_select_with_heterogeneous_array_suggests_union_keys() {
+        let (parsed, result_type) = create_heterogeneous_array_json();
+        let query = "select(.";
+        let tracker = tracker_for(query);
+
+        let suggestions = get_suggestions(
+            query,
+            query.len(),
+            Some(parsed.clone()),
+            Some(result_type),
+            Some(parsed),
+            empty_field_names(),
+            &tracker,
+        );
+
+        assert!(
+            suggestions.iter().any(|s| s.text.contains("status")),
+            "Should suggest 'status' from first element. Got: {:?}",
+            suggestions.iter().map(|s| &s.text).collect::<Vec<_>>()
+        );
+        assert!(
+            suggestions.iter().any(|s| s.text.contains("region")),
+            "Should suggest 'region' from second element"
+        );
+    }
+
+    #[test]
+    fn test_nested_array_path_suggests_union_keys() {
+        let (parsed, result_type) = create_nested_heterogeneous_json();
+        let query = "[.services[].";
+        let tracker = tracker_for(query);
+
+        let suggestions = get_suggestions(
+            query,
+            query.len(),
+            Some(parsed.clone()),
+            Some(result_type),
+            Some(parsed),
+            empty_field_names(),
+            &tracker,
+        );
+
+        assert!(
+            suggestions.iter().any(|s| s.text.contains("serviceName")),
+            "Should suggest 'serviceName' from first service. Got: {:?}",
+            suggestions.iter().map(|s| &s.text).collect::<Vec<_>>()
+        );
+        assert!(
+            suggestions
+                .iter()
+                .any(|s| s.text.contains("extra_service_key")),
+            "Should suggest 'extra_service_key' from second service"
+        );
+    }
+
+    #[test]
+    fn test_original_json_fallback_uses_multi_element() {
+        let (parsed, result_type) = create_nested_heterogeneous_json();
+        let all_fields = field_names_from(&parsed);
+        let query = "map(.services[].";
+        let tracker = tracker_for(query);
+
+        let suggestions = get_suggestions(
+            query,
+            query.len(),
+            Some(parsed.clone()),
+            Some(result_type),
+            Some(parsed),
+            all_fields,
+            &tracker,
+        );
+
+        assert!(
+            suggestions
+                .iter()
+                .any(|s| s.text.contains("extra_service_key")),
+            "Original JSON fallback should also show keys from non-first elements. Got: {:?}",
+            suggestions.iter().map(|s| &s.text).collect::<Vec<_>>()
+        );
+    }
+}

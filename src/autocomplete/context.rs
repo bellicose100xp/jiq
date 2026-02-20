@@ -1,7 +1,7 @@
 use super::autocomplete_state::{JsonFieldType, Suggestion, SuggestionType};
 use super::brace_tracker::{BraceTracker, BraceType};
 use super::jq_functions::filter_builtins;
-use super::json_navigator::navigate;
+use super::json_navigator::{ARRAY_SAMPLE_SIZE, navigate_multi};
 use super::path_parser::{PathSegment, parse_path};
 use super::result_analyzer::ResultAnalyzer;
 use super::scan_state::ScanState;
@@ -950,12 +950,17 @@ fn get_nested_field_suggestions(
         return None;
     }
 
-    // Navigate to the target value
-    let navigated = navigate(json, &parsed_path.segments)?;
+    // Navigate with fan-out to collect values from multiple array elements
+    let navigated_values = navigate_multi(json, &parsed_path.segments, ARRAY_SAMPLE_SIZE);
+    if navigated_values.is_empty() {
+        return None;
+    }
 
-    // Get suggestions from the navigated value
-    let suggestions =
-        ResultAnalyzer::analyze_value(navigated, needs_leading_dot, suppress_array_brackets);
+    let suggestions = ResultAnalyzer::analyze_multi_values(
+        &navigated_values,
+        needs_leading_dot,
+        suppress_array_brackets,
+    );
 
     Some(suggestions)
 }
