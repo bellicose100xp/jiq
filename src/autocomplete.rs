@@ -51,6 +51,7 @@ pub fn update_suggestions(
     original_json: Option<Arc<Value>>,
     all_field_names: Arc<HashSet<String>>,
     brace_tracker: &BraceTracker,
+    array_sample_size: usize,
 ) {
     if query.trim().len() < MIN_CHARS_FOR_AUTOCOMPLETE {
         autocomplete.hide();
@@ -65,6 +66,7 @@ pub fn update_suggestions(
         original_json,
         all_field_names,
         brace_tracker,
+        array_sample_size,
     );
     autocomplete.update_suggestions(suggestions);
 }

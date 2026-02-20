@@ -1,3 +1,4 @@
+pub use crate::autocomplete::json_navigator::DEFAULT_ARRAY_SAMPLE_SIZE;
 use crate::autocomplete::*;
 use crate::query::ResultType;
 use serde_json::Value;
@@ -30,8 +31,8 @@ fn collect_fields_recursive(value: &Value, fields: &mut HashSet<String>) {
             }
         }
         Value::Array(arr) => {
-            if let Some(first) = arr.first() {
-                collect_fields_recursive(first, fields);
+            for element in arr.iter().take(10) {
+                collect_fields_recursive(element, fields);
             }
         }
         _ => {}

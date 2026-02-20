@@ -57,6 +57,7 @@ pub struct App {
     pub frame_count: u64,
     pub needs_render: bool,
     pub layout_regions: LayoutRegions,
+    pub array_sample_size: usize,
 }
 
 impl App {
@@ -161,6 +162,7 @@ impl App {
             frame_count: 0,
             needs_render: true,
             layout_regions: LayoutRegions::new(),
+            array_sample_size: config.autocomplete.array_sample_size,
         }
     }
 
@@ -172,7 +174,10 @@ impl App {
             self.mark_dirty();
             match result {
                 Ok(json_input) => {
-                    self.query = Some(QueryState::new(json_input.clone()));
+                    self.query = Some(QueryState::new_with_sample_size(
+                        json_input.clone(),
+                        self.array_sample_size,
+                    ));
 
                     let schema_input = crate::json::extract_first_json_value(&json_input)
                         .unwrap_or_else(|| json_input.clone());

@@ -46,6 +46,25 @@ impl Default for TooltipConfig {
     }
 }
 
+/// Autocomplete configuration section
+#[derive(Debug, Clone, Deserialize)]
+pub struct AutocompleteConfig {
+    #[serde(default = "default_array_sample_size")]
+    pub array_sample_size: usize,
+}
+
+fn default_array_sample_size() -> usize {
+    10
+}
+
+impl Default for AutocompleteConfig {
+    fn default() -> Self {
+        AutocompleteConfig {
+            array_sample_size: 10,
+        }
+    }
+}
+
 /// Root configuration structure
 #[derive(Debug, Clone, Deserialize, Default)]
 pub struct Config {
@@ -55,6 +74,8 @@ pub struct Config {
     pub tooltip: TooltipConfig,
     #[serde(default)]
     pub ai: AiConfig,
+    #[serde(default)]
+    pub autocomplete: AutocompleteConfig,
 }
 
 #[cfg(test)]

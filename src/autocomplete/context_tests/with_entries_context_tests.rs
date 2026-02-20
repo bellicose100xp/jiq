@@ -1,4 +1,6 @@
-use super::common::{create_array_of_objects_json, empty_field_names, tracker_for};
+use super::common::{
+    DEFAULT_ARRAY_SAMPLE_SIZE, create_array_of_objects_json, empty_field_names, tracker_for,
+};
 use crate::autocomplete::*;
 use crate::query::ResultType;
 use serde_json::Value;
@@ -24,6 +26,7 @@ fn test_with_entries_suggests_key_and_value() {
         None,
         empty_field_names(),
         &tracker,
+        DEFAULT_ARRAY_SAMPLE_SIZE,
     );
 
     assert!(
@@ -50,6 +53,7 @@ fn test_with_entries_key_value_appear_first() {
         None,
         empty_field_names(),
         &tracker,
+        DEFAULT_ARRAY_SAMPLE_SIZE,
     );
 
     assert!(suggestions.len() >= 2, "Should have at least 2 suggestions");
@@ -77,6 +81,7 @@ fn test_with_entries_partial_filtering_key() {
         None,
         empty_field_names(),
         &tracker,
+        DEFAULT_ARRAY_SAMPLE_SIZE,
     );
 
     assert!(
@@ -103,6 +108,7 @@ fn test_with_entries_partial_filtering_value() {
         None,
         empty_field_names(),
         &tracker,
+        DEFAULT_ARRAY_SAMPLE_SIZE,
     );
 
     assert!(
@@ -129,6 +135,7 @@ fn test_with_entries_with_nested_select() {
         None,
         empty_field_names(),
         &tracker,
+        DEFAULT_ARRAY_SAMPLE_SIZE,
     );
 
     assert!(
@@ -155,6 +162,7 @@ fn test_with_entries_after_pipe() {
         None,
         empty_field_names(),
         &tracker,
+        DEFAULT_ARRAY_SAMPLE_SIZE,
     );
 
     assert!(
@@ -181,6 +189,7 @@ fn test_with_entries_closed_context() {
         None,
         empty_field_names(),
         &tracker,
+        DEFAULT_ARRAY_SAMPLE_SIZE,
     );
 
     assert!(
@@ -209,6 +218,7 @@ fn test_with_entries_data_suggestions_included() {
         None,
         empty_field_names(),
         &tracker,
+        DEFAULT_ARRAY_SAMPLE_SIZE,
     );
 
     assert!(
@@ -235,6 +245,7 @@ fn test_with_entries_with_object_construction() {
         None,
         empty_field_names(),
         &tracker,
+        DEFAULT_ARRAY_SAMPLE_SIZE,
     );
 
     assert!(
@@ -261,6 +272,7 @@ fn test_with_entries_key_has_description() {
         None,
         empty_field_names(),
         &tracker,
+        DEFAULT_ARRAY_SAMPLE_SIZE,
     );
 
     let key_suggestion = suggestions.iter().find(|s| s.text == ".key");
@@ -290,6 +302,7 @@ fn test_with_entries_value_has_description() {
         None,
         empty_field_names(),
         &tracker,
+        DEFAULT_ARRAY_SAMPLE_SIZE,
     );
 
     let value_suggestion = suggestions.iter().find(|s| s.text == ".value");
@@ -319,6 +332,7 @@ fn test_with_entries_array_input() {
         None,
         empty_field_names(),
         &tracker,
+        DEFAULT_ARRAY_SAMPLE_SIZE,
     );
 
     assert!(
@@ -359,6 +373,7 @@ fn test_outside_with_entries_no_key_value() {
         None,
         empty_field_names(),
         &tracker,
+        DEFAULT_ARRAY_SAMPLE_SIZE,
     );
 
     // Check that .key and .value with descriptions don't appear outside with_entries

@@ -369,6 +369,11 @@ jiq looks for a configuration file at `~/.config/jiq/config.toml` (or the platfo
 # - osc52: use terminal escape sequences (works in most modern terminals over SSH)
 backend = "auto"
 
+[autocomplete]
+# Number of array elements to sample for field suggestions (default: 10, range: 1-1000)
+# Increase for heterogeneous arrays where fields vary across elements
+array_sample_size = 10
+
 [ai]
 # Enable AI assistant
 # For faster responses, prefer lightweight models:
@@ -449,7 +454,7 @@ profile = "default"  # Optional: AWS profile name (uses default credential chain
 
 ## Known Limitations
 
-- **Autocomplete** - Editing in the middle of a query falls back to root-level suggestions; for arrays, only the first element is used for field autocomplete, so fields missing from the first element or present only in other elements of a heterogeneous array will not appear as suggestions.
+- **Autocomplete** - Editing in the middle of a query falls back to root-level suggestions; for arrays, a configurable number of elements are sampled to build field suggestions (default: 10, configurable via `array_sample_size` in `[autocomplete]` config section).
 - **Syntax highlighting** - Basic keyword-based only, does not analyze structure like tree-sitter.
 
 ## Contributing

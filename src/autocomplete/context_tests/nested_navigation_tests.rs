@@ -3,7 +3,8 @@
 /// These tests verify that autocomplete correctly suggests nested fields
 /// in non-executing contexts (map, select, array builders, object builders).
 use super::common::{
-    create_array_of_objects_json, empty_field_names, field_names_from, tracker_for,
+    DEFAULT_ARRAY_SAMPLE_SIZE, create_array_of_objects_json, empty_field_names, field_names_from,
+    tracker_for,
 };
 use crate::autocomplete::*;
 use crate::query::ResultType;
@@ -72,6 +73,7 @@ mod nested_field_suggestions {
             Some(parsed),
             empty_field_names(),
             &tracker,
+            DEFAULT_ARRAY_SAMPLE_SIZE,
         );
 
         // Should suggest fields from [].user.profile (name, age)
@@ -100,6 +102,7 @@ mod nested_field_suggestions {
             Some(parsed),
             empty_field_names(),
             &tracker,
+            DEFAULT_ARRAY_SAMPLE_SIZE,
         );
 
         // Should suggest fields from .user.settings (theme, lang)
@@ -127,6 +130,7 @@ mod nested_field_suggestions {
             Some(parsed),
             empty_field_names(),
             &tracker,
+            DEFAULT_ARRAY_SAMPLE_SIZE,
         );
 
         // Should suggest fields from .user.profile
@@ -159,6 +163,7 @@ mod array_navigation {
             Some(parsed),
             empty_field_names(),
             &tracker,
+            DEFAULT_ARRAY_SAMPLE_SIZE,
         );
 
         // Should suggest fields from [].orders[].items[] (sku, qty)
@@ -187,6 +192,7 @@ mod array_navigation {
             Some(parsed),
             empty_field_names(),
             &tracker,
+            DEFAULT_ARRAY_SAMPLE_SIZE,
         );
 
         // Should suggest fields from .orders[0] (id, items, status)
@@ -218,6 +224,7 @@ mod element_context_with_nested_path {
             Some(parsed),
             empty_field_names(),
             &tracker,
+            DEFAULT_ARRAY_SAMPLE_SIZE,
         );
 
         // Should suggest element fields directly (name, age) without .[]
@@ -250,6 +257,7 @@ mod element_context_with_nested_path {
             Some(parsed),
             empty_field_names(),
             &tracker,
+            DEFAULT_ARRAY_SAMPLE_SIZE,
         );
 
         let field_suggestions: Vec<_> = suggestions.iter().filter(|s| s.text != ".[]").collect();
@@ -285,6 +293,7 @@ mod pipe_boundary {
             Some(parsed.clone()),
             field_names_from(&parsed),
             &tracker,
+            DEFAULT_ARRAY_SAMPLE_SIZE,
         );
 
         // After pipe, path extraction should start from the pipe
@@ -313,6 +322,7 @@ mod fallback_behavior {
             Some(parsed),
             empty_field_names(),
             &tracker,
+            DEFAULT_ARRAY_SAMPLE_SIZE,
         );
 
         // Navigation fails, should fall back to standard suggestions
@@ -336,6 +346,7 @@ mod fallback_behavior {
             None, // No original_json
             empty_field_names(),
             &tracker,
+            DEFAULT_ARRAY_SAMPLE_SIZE,
         );
 
         // Should still attempt navigation using result_parsed
@@ -361,6 +372,7 @@ mod regression_tests {
             Some(parsed),
             empty_field_names(),
             &tracker,
+            DEFAULT_ARRAY_SAMPLE_SIZE,
         );
 
         // Executing context at end should use cache directly
@@ -392,6 +404,7 @@ mod regression_tests {
             Some(parsed),
             empty_field_names(),
             &tracker,
+            DEFAULT_ARRAY_SAMPLE_SIZE,
         );
 
         assert!(
@@ -413,6 +426,7 @@ mod regression_tests {
             None,
             empty_field_names(),
             &tracker,
+            DEFAULT_ARRAY_SAMPLE_SIZE,
         );
 
         assert!(
@@ -489,6 +503,7 @@ mod streaming_result_context {
             Some(original),
             empty_field_names(),
             &tracker,
+            DEFAULT_ARRAY_SAMPLE_SIZE,
         );
 
         // Should suggest service element fields
@@ -522,6 +537,7 @@ mod streaming_result_context {
             Some(original),
             empty_field_names(),
             &tracker,
+            DEFAULT_ARRAY_SAMPLE_SIZE,
         );
 
         // Should filter to only 'strategy' field
@@ -552,6 +568,7 @@ mod streaming_result_context {
             Some(original),
             empty_field_names(),
             &tracker,
+            DEFAULT_ARRAY_SAMPLE_SIZE,
         );
 
         // Should suggest fields from deploymentConfiguration
@@ -588,6 +605,7 @@ mod streaming_result_context {
             Some(original),
             empty_field_names(),
             &tracker,
+            DEFAULT_ARRAY_SAMPLE_SIZE,
         );
 
         // Should suggest element fields (prepended ArrayIterator works)
@@ -613,6 +631,7 @@ mod streaming_result_context {
             Some(original),
             empty_field_names(),
             &tracker,
+            DEFAULT_ARRAY_SAMPLE_SIZE,
         );
 
         // Should suggest service element fields
@@ -625,5 +644,299 @@ mod streaming_result_context {
             suggestions.iter().any(|s| s.text.contains("strategy")),
             "Should suggest 'strategy' field"
         );
+    }
+}
+
+/// Tests for multi-element array navigation (heterogeneous arrays)
+mod multi_element_navigation {
+    use super::*;
+
+    fn create_heterogeneous_array_json() -> (Arc<Value>, ResultType) {
+        let json = r#"[
+            {"name": "svc1", "status": "ACTIVE"},
+            {"name": "svc2", "extra_key": true, "region": "us-east-1"},
+            {"name": "svc3", "priority": 5}
+        ]"#;
+        let parsed = serde_json::from_str::<Value>(json).unwrap();
+        (Arc::new(parsed), ResultType::ArrayOfObjects)
+    }
+
+    fn create_nested_heterogeneous_json() -> (Arc<Value>, ResultType) {
+        let json = r#"{
+            "services": [
+                {"serviceName": "svc1", "status": "ACTIVE"},
+                {"serviceName": "svc2", "extra_service_key": "special"}
+            ]
+        }"#;
+        let parsed = serde_json::from_str::<Value>(json).unwrap();
+        (Arc::new(parsed), ResultType::Object)
+    }
+
+    #[test]
+    fn test_map_with_heterogeneous_array_suggests_union_keys() {
+        let (parsed, result_type) = create_heterogeneous_array_json();
+        let query = "map(.";
+        let tracker = tracker_for(query);
+
+        let suggestions = get_suggestions(
+            query,
+            query.len(),
+            Some(parsed.clone()),
+            Some(result_type),
+            Some(parsed),
+            empty_field_names(),
+            &tracker,
+            DEFAULT_ARRAY_SAMPLE_SIZE,
+        );
+
+        assert!(
+            suggestions.iter().any(|s| s.text.contains("name")),
+            "Should suggest 'name' from first element. Got: {:?}",
+            suggestions.iter().map(|s| &s.text).collect::<Vec<_>>()
+        );
+        assert!(
+            suggestions.iter().any(|s| s.text.contains("extra_key")),
+            "Should suggest 'extra_key' from second element"
+        );
+        assert!(
+            suggestions.iter().any(|s| s.text.contains("priority")),
+            "Should suggest 'priority' from third element"
+        );
+    }
+
+    #[test]
+    fn test_select_with_heterogeneous_array_suggests_union_keys() {
+        let (parsed, result_type) = create_heterogeneous_array_json();
+        let query = "select(.";
+        let tracker = tracker_for(query);
+
+        let suggestions = get_suggestions(
+            query,
+            query.len(),
+            Some(parsed.clone()),
+            Some(result_type),
+            Some(parsed),
+            empty_field_names(),
+            &tracker,
+            DEFAULT_ARRAY_SAMPLE_SIZE,
+        );
+
+        assert!(
+            suggestions.iter().any(|s| s.text.contains("status")),
+            "Should suggest 'status' from first element. Got: {:?}",
+            suggestions.iter().map(|s| &s.text).collect::<Vec<_>>()
+        );
+        assert!(
+            suggestions.iter().any(|s| s.text.contains("region")),
+            "Should suggest 'region' from second element"
+        );
+    }
+
+    #[test]
+    fn test_nested_array_path_suggests_union_keys() {
+        let (parsed, result_type) = create_nested_heterogeneous_json();
+        let query = "[.services[].";
+        let tracker = tracker_for(query);
+
+        let suggestions = get_suggestions(
+            query,
+            query.len(),
+            Some(parsed.clone()),
+            Some(result_type),
+            Some(parsed),
+            empty_field_names(),
+            &tracker,
+            DEFAULT_ARRAY_SAMPLE_SIZE,
+        );
+
+        assert!(
+            suggestions.iter().any(|s| s.text.contains("serviceName")),
+            "Should suggest 'serviceName' from first service. Got: {:?}",
+            suggestions.iter().map(|s| &s.text).collect::<Vec<_>>()
+        );
+        assert!(
+            suggestions
+                .iter()
+                .any(|s| s.text.contains("extra_service_key")),
+            "Should suggest 'extra_service_key' from second service"
+        );
+    }
+
+    #[test]
+    fn test_original_json_fallback_uses_multi_element() {
+        let (parsed, result_type) = create_nested_heterogeneous_json();
+        let all_fields = field_names_from(&parsed);
+        let query = "map(.services[].";
+        let tracker = tracker_for(query);
+
+        let suggestions = get_suggestions(
+            query,
+            query.len(),
+            Some(parsed.clone()),
+            Some(result_type),
+            Some(parsed),
+            all_fields,
+            &tracker,
+            DEFAULT_ARRAY_SAMPLE_SIZE,
+        );
+
+        assert!(
+            suggestions
+                .iter()
+                .any(|s| s.text.contains("extra_service_key")),
+            "Original JSON fallback should also show keys from non-first elements. Got: {:?}",
+            suggestions.iter().map(|s| &s.text).collect::<Vec<_>>()
+        );
+    }
+}
+
+/// Integration tests for the canonical issue #145 scenarios
+mod issue_145_integration {
+    use super::*;
+
+    fn create_canonical_json() -> (Arc<Value>, ResultType) {
+        let json = r#"{
+            "services": [
+                {
+                    "serviceName": "inventory-manager",
+                    "status": "ACTIVE",
+                    "deployments": [
+                        {
+                            "id": "deploy-1",
+                            "tasks": [
+                                {"taskArn": "arn:task:1", "cpu": 256}
+                            ]
+                        }
+                    ]
+                },
+                {
+                    "serviceName": "order-processor",
+                    "status": "ACTIVE",
+                    "extra_service_key": "special_value",
+                    "deployments": [
+                        {
+                            "id": "deploy-2",
+                            "tasks": [
+                                {"taskArn": "arn:task:2", "payload": {"data": "test"}}
+                            ]
+                        }
+                    ]
+                }
+            ]
+        }"#;
+        let parsed = serde_json::from_str::<Value>(json).unwrap();
+        (Arc::new(parsed), ResultType::Object)
+    }
+
+    #[test]
+    fn test_services_iterator_includes_extra_service_key() {
+        let (parsed, result_type) = create_canonical_json();
+        let query = "[.services[].";
+        let tracker = tracker_for(query);
+
+        let suggestions = get_suggestions(
+            query,
+            query.len(),
+            Some(parsed.clone()),
+            Some(result_type),
+            Some(parsed),
+            empty_field_names(),
+            &tracker,
+            DEFAULT_ARRAY_SAMPLE_SIZE,
+        );
+
+        assert!(
+            suggestions
+                .iter()
+                .any(|s| s.text.contains("extra_service_key")),
+            ".services[]. should include extra_service_key. Got: {:?}",
+            suggestions.iter().map(|s| &s.text).collect::<Vec<_>>()
+        );
+        assert!(
+            suggestions.iter().any(|s| s.text.contains("serviceName")),
+            "Should also include serviceName from first element"
+        );
+    }
+
+    #[test]
+    fn test_select_with_services_includes_extra_key() {
+        let (parsed, result_type) = create_canonical_json();
+        let all_fields = field_names_from(&parsed);
+
+        let query = "[.services[] | select(.";
+        let tracker = tracker_for(query);
+        let suggestions = get_suggestions(
+            query,
+            query.len(),
+            Some(parsed.clone()),
+            Some(result_type),
+            Some(parsed),
+            all_fields,
+            &tracker,
+            DEFAULT_ARRAY_SAMPLE_SIZE,
+        );
+
+        assert!(
+            suggestions
+                .iter()
+                .any(|s| s.text.contains("extra_service_key")),
+            "select() should include extra_service_key from second service. Got: {:?}",
+            suggestions.iter().map(|s| &s.text).collect::<Vec<_>>()
+        );
+        assert!(
+            suggestions.iter().any(|s| s.text.contains("serviceName")),
+            "select() should include serviceName from first service"
+        );
+    }
+
+    #[test]
+    fn test_nested_array_path_surfaces_non_first_keys() {
+        let (parsed, result_type) = create_canonical_json();
+        let all_fields = field_names_from(&parsed);
+        let query = "[.services[].deployments[].tasks[].";
+        let tracker = tracker_for(query);
+
+        let suggestions = get_suggestions(
+            query,
+            query.len(),
+            Some(parsed.clone()),
+            Some(result_type),
+            Some(parsed),
+            all_fields,
+            &tracker,
+            DEFAULT_ARRAY_SAMPLE_SIZE,
+        );
+
+        assert!(
+            suggestions.iter().any(|s| s.text.contains("taskArn")),
+            "Should include taskArn from first task. Got: {:?}",
+            suggestions.iter().map(|s| &s.text).collect::<Vec<_>>()
+        );
+        assert!(
+            suggestions.iter().any(|s| s.text.contains("payload")),
+            "Should include payload from second service's task"
+        );
+    }
+
+    #[test]
+    fn test_invalid_path_falls_back_cleanly() {
+        let (parsed, result_type) = create_canonical_json();
+        let all_fields = field_names_from(&parsed);
+        let query = "[.nonexistent[].";
+        let tracker = tracker_for(query);
+
+        let suggestions = get_suggestions(
+            query,
+            query.len(),
+            Some(parsed.clone()),
+            Some(result_type),
+            Some(parsed),
+            all_fields,
+            &tracker,
+            DEFAULT_ARRAY_SAMPLE_SIZE,
+        );
+
+        // Should not panic; may return fallback or empty suggestions
+        let _ = suggestions;
     }
 }

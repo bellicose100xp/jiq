@@ -27,6 +27,7 @@ pub fn preprocess_result(
     output: String,
     query: &str,
     cancel_token: &CancellationToken,
+    array_sample_size: usize,
 ) -> Result<ProcessedResult, QueryError> {
     // Strip ANSI codes
     if cancel_token.is_cancelled() {
@@ -50,7 +51,7 @@ pub fn preprocess_result(
     if cancel_token.is_cancelled() {
         return Err(QueryError::Cancelled);
     }
-    let (parsed, result_type) = parse_and_detect_type(&unformatted);
+    let (parsed, result_type) = parse_and_detect_type(&unformatted, array_sample_size);
     let parsed = parsed.map(Arc::new);
 
     let base_query = normalize_base_query(query);
@@ -206,7 +207,7 @@ fn skip_csi_sequence(bytes: &[u8], start: usize) -> usize {
 ///
 /// Uses fast-path `from_str` for single values (common case), falling back to
 /// streaming parser for destructured output like `{"a":1}\n{"b":2}`.
-pub fn parse_and_detect_type(text: &str) -> (Option<Value>, ResultType) {
+pub fn parse_and_detect_type(text: &str, array_sample_size: usize) -> (Option<Value>, ResultType) {
     let text = text.trim();
     if text.is_empty() {
         return (None, ResultType::Null);
@@ -228,8 +229,76 @@ pub fn parse_and_detect_type(text: &str) -> (Option<Value>, ResultType) {
     };
 
     // Check for multiple values (destructured output)
-    let has_multiple = deserializer.next().is_some();
-    let result_type = value_to_result_type(&first_value, has_multiple);
+    let second_value = deserializer.next();
+    let has_multiple = second_value.is_some();
+    let mut result_type = value_to_result_type(&first_value, has_multiple);
+
+    // When the first value is null/scalar but subsequent values are objects or
+    // arrays-of-objects, reclassify so autocomplete can extract field suggestions
+    if has_multiple
+        && !matches!(
+            result_type,
+            ResultType::DestructuredObjects | ResultType::ArrayOfObjects
+        )
+        && let Some(Ok(ref second)) = second_value
+    {
+        match second {
+            Value::Object(_) => result_type = ResultType::DestructuredObjects,
+            Value::Array(arr) if matches!(arr.first(), Some(Value::Object(_))) => {
+                result_type = ResultType::ArrayOfObjects;
+            }
+            _ => {}
+        }
+    }
+
+    // For destructured objects, merge keys from first N streamed objects
+    // into a synthetic combined object so autocomplete sees all fields
+    if result_type == ResultType::DestructuredObjects {
+        let mut merged = match first_value {
+            Value::Object(map) => map,
+            _ => serde_json::Map::new(),
+        };
+
+        if let Some(Ok(Value::Object(map))) = second_value {
+            for (key, val) in map {
+                merged.entry(key).or_insert(val);
+            }
+        }
+
+        let remaining = array_sample_size.saturating_sub(2);
+        for result in deserializer.take(remaining) {
+            if let Ok(Value::Object(map)) = result {
+                for (key, val) in map {
+                    merged.entry(key).or_insert(val);
+                }
+            }
+        }
+
+        return (Some(Value::Object(merged)), result_type);
+    }
+
+    // For destructured arrays of objects (e.g., .services[].tasks produces
+    // [{...}]\n[{...}]), merge elements from subsequent arrays into the first
+    // so autocomplete sees fields from all streamed arrays
+    if has_multiple && result_type == ResultType::ArrayOfObjects {
+        let mut merged = match first_value {
+            Value::Array(arr) => arr,
+            _ => Vec::new(),
+        };
+
+        if let Some(Ok(Value::Array(arr))) = second_value {
+            merged.extend(arr);
+        }
+
+        let remaining = array_sample_size.saturating_sub(2);
+        for result in deserializer.take(remaining) {
+            if let Ok(Value::Array(arr)) = result {
+                merged.extend(arr);
+            }
+        }
+
+        return (Some(Value::Array(merged)), result_type);
+    }
 
     (Some(first_value), result_type)
 }

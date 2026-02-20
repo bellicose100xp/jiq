@@ -1,6 +1,6 @@
 //! Tests for entry context detection (to_entries, with_entries)
 
-use super::common::{empty_field_names, field_names_from, tracker_for};
+use super::common::{DEFAULT_ARRAY_SAMPLE_SIZE, empty_field_names, field_names_from, tracker_for};
 use crate::autocomplete::*;
 use crate::query::ResultType;
 use serde_json::Value;
@@ -217,6 +217,7 @@ fn test_to_entries_array_iteration_suggests_key_value() {
         Some(parsed),
         empty_field_names(),
         &tracker,
+        DEFAULT_ARRAY_SAMPLE_SIZE,
     );
 
     // No leading dot because user already typed the dot in ".[].""
@@ -244,6 +245,7 @@ fn test_to_entries_map_suggests_key_value() {
         Some(parsed),
         empty_field_names(),
         &tracker,
+        DEFAULT_ARRAY_SAMPLE_SIZE,
     );
 
     assert!(
@@ -273,6 +275,7 @@ fn test_to_entries_opaque_value_shows_all_fields() {
         Some(parsed),
         all_fields,
         &tracker,
+        DEFAULT_ARRAY_SAMPLE_SIZE,
     );
 
     // Should show all fields since we can't determine the structure after .value | .
@@ -308,6 +311,7 @@ fn test_to_entries_complex_pattern_shows_all_fields() {
         Some(parsed),
         all_fields,
         &tracker,
+        DEFAULT_ARRAY_SAMPLE_SIZE,
     );
 
     // In opaque context, should fall back to all fields
@@ -331,6 +335,7 @@ fn test_key_value_have_correct_descriptions() {
         Some(parsed),
         empty_field_names(),
         &tracker,
+        DEFAULT_ARRAY_SAMPLE_SIZE,
     );
 
     let key_suggestion = suggestions.iter().find(|s| s.text == ".key");
@@ -366,6 +371,7 @@ fn test_key_value_appear_first_in_to_entries() {
         Some(parsed),
         empty_field_names(),
         &tracker,
+        DEFAULT_ARRAY_SAMPLE_SIZE,
     );
 
     assert!(suggestions.len() >= 2, "Should have at least 2 suggestions");
@@ -397,6 +403,7 @@ fn test_no_duplicate_key_value_suggestions() {
         Some(parsed),
         empty_field_names(),
         &tracker,
+        DEFAULT_ARRAY_SAMPLE_SIZE,
     );
 
     // Count occurrences of key and value suggestions
