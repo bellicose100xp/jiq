@@ -370,8 +370,8 @@ jiq looks for a configuration file at `~/.config/jiq/config.toml` (or the platfo
 backend = "auto"
 
 [autocomplete]
-# Number of array elements to sample for field suggestions (default: 10, range: 1-1000)
-# Increase for heterogeneous arrays where fields vary across elements
+# Number of array elements sampled to discover field suggestions for arrays where fields
+# differ across elements. Increasing this may improve suggestions but adds a performance cost.
 array_sample_size = 10
 
 [ai]
