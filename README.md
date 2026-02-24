@@ -372,7 +372,7 @@ backend = "auto"
 [autocomplete]
 # Number of array elements sampled to discover field suggestions for arrays where fields
 # differ across elements. Increasing this may improve suggestions but adds a performance cost.
-# Range: 1 - 1000
+# Range: 1 - 1000 (default: 10)
 array_sample_size = 10
 
 [ai]
