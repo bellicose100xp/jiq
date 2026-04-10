@@ -16,7 +16,7 @@ struct SnippetsFile {
 }
 
 pub fn snippets_path() -> Option<PathBuf> {
-    dirs::home_dir().map(|p| p.join(".config").join(CONFIG_DIR).join(SNIPPETS_FILE))
+    std::env::home_dir().map(|p| p.join(".config").join(CONFIG_DIR).join(SNIPPETS_FILE))
 }
 
 pub fn load_snippets() -> Vec<Snippet> {

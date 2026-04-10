@@ -7,7 +7,36 @@ const HISTORY_DIR: &str = "jiq";
 const HISTORY_FILE: &str = "history";
 
 pub fn history_path() -> Option<PathBuf> {
-    dirs::data_dir().map(|p| p.join(HISTORY_DIR).join(HISTORY_FILE))
+    for supported_path in [
+        std::env::home_dir().map(|p| {
+            p.join(".local")
+                .join("share")
+                .join(HISTORY_DIR)
+                .join(HISTORY_FILE)
+        }),
+        // paths for backwards compatibility
+        #[cfg(target_os = "macos")]
+        std::env::home_dir().map(|p| {
+            p.join("Library/Application Support")
+                .join(HISTORY_DIR)
+                .join(HISTORY_FILE)
+        }),
+        #[cfg(target_os = "windows")]
+        std::env::home_dir().map(|p| {
+            p.join("AppData")
+                .join("Roaming")
+                .join(HISTORY_DIR)
+                .join(HISTORY_FILE)
+        }),
+    ]
+    .iter()
+    .filter_map(|v| v.as_ref())
+    {
+        if supported_path.exists() {
+            return Some(supported_path.clone());
+        }
+    }
+    None
 }
 
 pub fn load_history() -> Vec<String> {

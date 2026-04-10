@@ -76,7 +76,7 @@ pub fn load_config() -> ConfigResult {
 ///
 /// Always uses ~/.config/jiq/config.toml on all platforms for consistency.
 fn get_config_path() -> PathBuf {
-    dirs::home_dir()
+    std::env::home_dir()
         .unwrap_or_else(|| PathBuf::from("."))
         .join(".config")
         .join("jiq")
