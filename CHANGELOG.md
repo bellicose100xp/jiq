@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.21.1] - 2026-04-11
+
+### Changed
+- **Commit Cargo.lock for reproducible builds** - Removed `Cargo.lock` from `.gitignore` and committed it to the repository, enabling packaging for Nix and other package managers that require the lock file ([#154](https://github.com/bellicose100xp/jiq/issues/154))
+
+### Documentation
+- Clarified `array_sample_size` config description and default value in README
+
 ## [3.20.3] - 2026-01-29
 
 ### Added
