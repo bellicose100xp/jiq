@@ -91,8 +91,7 @@ pub fn render_popup(app: &App, frame: &mut Frame, input_area: Rect) -> Option<Re
             let type_label = get_type_label(suggestion);
             let display_text = get_display_text(suggestion);
 
-            let display_str: &str = &display_text;
-            let display_width = UnicodeWidthStr::width(display_str);
+            let display_width = UnicodeWidthStr::width(display_text);
             let truncated_text = if display_width > available_for_text {
                 let keep_width = available_for_text.saturating_sub(3);
                 let mut acc_width = 0usize;

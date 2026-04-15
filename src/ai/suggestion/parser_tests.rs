@@ -304,3 +304,87 @@ proptest! {
         );
     }
 }
+
+// =========================================================================
+// Edge-case fence/format robustness tests
+// =========================================================================
+
+mod fence_edge_cases {
+    use super::*;
+
+    #[test]
+    fn fence_with_closing_on_same_line_as_json() {
+        // Model returns fence with no newline before closing ```
+        let response = r#"```json
+{"suggestions":[{"type":"fix","query":".x","details":"d"}]}```"#;
+        let suggestions = parse_suggestions(response);
+        assert_eq!(suggestions.len(), 1);
+        assert_eq!(suggestions[0].query, ".x");
+    }
+
+    #[test]
+    fn fence_with_missing_closing_fence() {
+        // Truncated or streaming response without closing ```
+        let response = r#"```json
+{"suggestions":[{"type":"fix","query":".x","details":"d"}]}"#;
+        let suggestions = parse_suggestions(response);
+        assert_eq!(suggestions.len(), 1);
+    }
+
+    #[test]
+    fn fence_without_language_tag() {
+        let response = r#"```
+{"suggestions":[{"type":"next","query":".y","details":"d"}]}
+```"#;
+        let suggestions = parse_suggestions(response);
+        assert_eq!(suggestions.len(), 1);
+        assert_eq!(suggestions[0].query, ".y");
+    }
+
+    #[test]
+    fn fence_inline_no_newlines() {
+        let response = r#"```json{"suggestions":[{"type":"fix","query":".z","details":"d"}]}```"#;
+        let suggestions = parse_suggestions(response);
+        assert_eq!(suggestions.len(), 1);
+        assert_eq!(suggestions[0].query, ".z");
+    }
+
+    #[test]
+    fn json_wrapped_in_prose() {
+        // Model adds explanation before/after JSON
+        let response = r#"Here are the suggestions:
+
+{"suggestions":[{"type":"next","query":".a","details":"d"}]}
+
+Hope this helps!"#;
+        let suggestions = parse_suggestions(response);
+        assert_eq!(suggestions.len(), 1);
+        assert_eq!(suggestions[0].query, ".a");
+    }
+
+    #[test]
+    fn json_with_escaped_non_ascii_strings() {
+        // The actual scenario from issue: non-ASCII keys with escaped quotes
+        let response = r#"```json
+{"suggestions":[{"type":"next","query":".[\"趣味\"] | length","details":"Count hobbies"},{"type":"next","query":".[\"趣味\"] | join(\", \")","details":"Join with comma"}]}
+```"#;
+        let suggestions = parse_suggestions(response);
+        assert_eq!(suggestions.len(), 2);
+        assert_eq!(suggestions[0].query, r#".["趣味"] | length"#);
+        assert_eq!(suggestions[1].query, r#".["趣味"] | join(", ")"#);
+    }
+
+    #[test]
+    fn uppercase_language_tag() {
+        let response = "```JSON\n{\"suggestions\":[{\"type\":\"fix\",\"query\":\".x\",\"details\":\"d\"}]}\n```";
+        let suggestions = parse_suggestions(response);
+        assert_eq!(suggestions.len(), 1);
+    }
+
+    #[test]
+    fn extra_whitespace_around_fences() {
+        let response = "   \n\n```json\n{\"suggestions\":[{\"type\":\"fix\",\"query\":\".x\",\"details\":\"d\"}]}\n```\n\n   ";
+        let suggestions = parse_suggestions(response);
+        assert_eq!(suggestions.len(), 1);
+    }
+}

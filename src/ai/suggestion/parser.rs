@@ -115,8 +115,17 @@ pub fn parse_suggestions(response: &str) -> Vec<Suggestion> {
     // Strip markdown code fences if present
     let cleaned_response = strip_markdown_fences(response);
 
-    // Try JSON format first
+    // Try JSON format first — on the fence-stripped text
     if let Ok(parsed) = parse_suggestions_json(&cleaned_response)
+        && !parsed.is_empty()
+    {
+        return parsed;
+    }
+
+    // Last-resort: scan for a JSON object containing "suggestions" anywhere
+    // in the response (handles extra prose, broken fences, streaming artifacts)
+    if let Some(extracted) = extract_suggestions_json(response)
+        && let Ok(parsed) = parse_suggestions_json(&extracted)
         && !parsed.is_empty()
     {
         return parsed;
@@ -124,6 +133,48 @@ pub fn parse_suggestions(response: &str) -> Vec<Suggestion> {
 
     // Fallback to legacy text format
     parse_suggestions_text(response)
+}
+
+/// Find a `{...}` JSON object in the response that contains the literal
+/// `"suggestions"` key, and return it as a standalone string. Returns
+/// `None` if no balanced object is found.
+fn extract_suggestions_json(response: &str) -> Option<String> {
+    let start = response.find(r#""suggestions""#)?;
+    // Walk backwards from the key to the enclosing '{'
+    let before = &response[..start];
+    let obj_start = before.rfind('{')?;
+    let tail = &response[obj_start..];
+
+    // Find matching closing brace, respecting string literals
+    let mut depth = 0i32;
+    let mut in_string = false;
+    let mut escape = false;
+    for (i, ch) in tail.char_indices() {
+        if escape {
+            escape = false;
+            continue;
+        }
+        if in_string {
+            match ch {
+                '\\' => escape = true,
+                '"' => in_string = false,
+                _ => {}
+            }
+            continue;
+        }
+        match ch {
+            '"' => in_string = true,
+            '{' => depth += 1,
+            '}' => {
+                depth -= 1;
+                if depth == 0 {
+                    return Some(tail[..=i].to_string());
+                }
+            }
+            _ => {}
+        }
+    }
+    None
 }
 
 /// Strip markdown code fences from response
@@ -135,23 +186,25 @@ pub fn parse_suggestions(response: &str) -> Vec<Suggestion> {
 fn strip_markdown_fences(response: &str) -> String {
     let trimmed = response.trim();
 
-    // Check for markdown code fence pattern
-    if let Some(first_newline) = trimmed.find('\n') {
-        let first_line = &trimmed[..first_newline];
-
-        // Check if it starts with ```json or ```
-        if first_line.trim().starts_with("```") {
-            // Find the closing ```
-            let content_start = first_newline + 1;
-            if let Some(closing_fence_pos) = trimmed[content_start..].rfind("\n```") {
-                let content_end = content_start + closing_fence_pos;
-                return trimmed[content_start..content_end].trim().to_string();
-            }
-        }
+    if !trimmed.starts_with("```") {
+        return response.to_string();
     }
 
-    // No code fences found, return original
-    response.to_string()
+    // Strip leading fence (```json, ```JSON, ```, optionally followed by newline)
+    let after_opening = trimmed.trim_start_matches("```");
+    let after_lang = after_opening
+        .split_once('\n')
+        .map(|(_, rest)| rest)
+        .unwrap_or_else(|| {
+            // No newline: strip alphanumeric lang tag like "json"
+            after_opening.trim_start_matches(|c: char| c.is_ascii_alphanumeric())
+        });
+
+    // Strip trailing fence
+    let body = after_lang.trim();
+    let body = body.strip_suffix("```").unwrap_or(body);
+
+    body.trim().to_string()
 }
 
 /// Parse suggestions from JSON format
