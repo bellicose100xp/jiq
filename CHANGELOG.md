@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.22.0] - 2026-04-15
+
+### Fixed
+- **UTF-8 crash in autocomplete** ([#153](https://github.com/bellicose100xp/jiq/issues/153)) - Typing non-ASCII characters (CJK, emoji, accented Latin) no longer panics. Root cause was the textarea reporting cursor as a character index while autocomplete used it as a byte offset for Rust string slicing. Fixed via ingress normalization at the two autocomplete entry points, making all downstream slicing automatically safe for multibyte text.
+- **Autocomplete suggestions emit valid jq for non-ASCII keys** - Previously, keys like `名前` or `café` were classified as identifiers via Rust's Unicode-aware `is_alphanumeric`, producing suggestions like `.名前` that jq rejects as syntax errors. The identifier check is now ASCII-only, so non-ASCII keys are suggested as `.["名前"]` bracket notation.
+- **Autocomplete popup width for wide characters** - CJK and emoji characters now size the suggestion popup correctly via `unicode-width`. Previously `.chars().count()` undercounted their 2-column display footprint, causing type labels to get cut off.
+- **AI assistant reliability for non-ASCII keys** - Added a client-side sanitizer that rewrites any `.X` suggestion to `.["X"]` when X isn't a valid ASCII jq identifier, eliminating invalid queries regardless of model compliance with prompt rules.
+- **AI response parsing robustness** - More lenient markdown-fence stripping (handles missing newlines, inline fences, missing closing fences, uppercase language tags) plus a last-resort JSON-object extractor that catches prose-wrapped responses.
+- **AI parse-error visibility** - Parse errors now only display when a response genuinely failed to parse, not during the intermediate state between two requests where stale output would briefly appear as "Could not parse".
+
+### Added
+- **Non-ASCII bracket-notation guidance in AI prompts** - Both error and success prompts now include rules and a stricter output-format specification to reduce parse failures and invalid-syntax suggestions.
+- **UTF-8 test fixtures** - `tests/fixtures/utf8-{cjk,emoji,accented,mixed}.json` for manual and future automated testing.
+- **Diagnostic logging for AI parse failures** - Failing responses are now logged via the existing `env_logger` infrastructure (debug builds only) so the exact model output can be inspected.
+
+### Documentation
+- Added Tips entry in README explaining that non-ASCII keys require bracket notation (`.["名前"]`) or quoted-dot notation (`."名前"`) — jq's `.field` shorthand is ASCII-only.
+
 ## [3.21.1] - 2026-04-11
 
 ### Changed
