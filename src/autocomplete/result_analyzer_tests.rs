@@ -986,21 +986,21 @@ mod analyze_value_tests {
 // ============================================================================
 
 #[test]
-fn test_field_starting_with_digit_gets_quoted() {
+fn test_field_starting_with_digit_uses_bracket_notation() {
     let json: Value = serde_json::from_str(r#"{"1numeric_key": "value"}"#).unwrap();
     let suggestions = ResultAnalyzer::analyze_value(&json, true, false, DEFAULT_ARRAY_SAMPLE_SIZE);
 
     assert_eq!(suggestions.len(), 1);
-    assert_eq!(suggestions[0].text, r#"."1numeric_key""#);
+    assert_eq!(suggestions[0].text, r#".["1numeric_key"]"#);
 }
 
 #[test]
-fn test_field_with_hyphen_gets_quoted() {
+fn test_field_with_hyphen_uses_bracket_notation() {
     let json: Value = serde_json::from_str(r#"{"my-field": "value"}"#).unwrap();
     let suggestions = ResultAnalyzer::analyze_value(&json, true, false, DEFAULT_ARRAY_SAMPLE_SIZE);
 
     assert_eq!(suggestions.len(), 1);
-    assert_eq!(suggestions[0].text, r#"."my-field""#);
+    assert_eq!(suggestions[0].text, r#".["my-field"]"#);
 }
 
 #[test]
@@ -1021,8 +1021,8 @@ fn test_multiple_fields_with_mixed_identifier_types() {
     assert_eq!(suggestions.len(), 3);
     let suggestion_texts: Vec<_> = suggestions.iter().map(|s| s.text.as_str()).collect();
     assert!(suggestion_texts.contains(&".simple_key"));
-    assert!(suggestion_texts.contains(&r#"."1numeric_key""#));
-    assert!(suggestion_texts.contains(&r#"."hyphen-key""#));
+    assert!(suggestion_texts.contains(&r#".["1numeric_key"]"#));
+    assert!(suggestion_texts.contains(&r#".["hyphen-key"]"#));
 }
 
 #[test]
@@ -1033,10 +1033,10 @@ fn test_array_of_objects_with_nonsimple_field_names() {
     .unwrap();
     let suggestions = ResultAnalyzer::analyze_value(&json, true, false, DEFAULT_ARRAY_SAMPLE_SIZE);
 
-    assert_eq!(suggestions.len(), 3); // .[], .[].1numeric_key, .[].simple_key
+    assert_eq!(suggestions.len(), 3); // .[], .[]["1numeric_key"], .[].simple_key
     let suggestion_texts: Vec<_> = suggestions.iter().map(|s| s.text.as_str()).collect();
     assert!(suggestion_texts.contains(&".[]"));
-    assert!(suggestion_texts.contains(&r#".[]."1numeric_key""#));
+    assert!(suggestion_texts.contains(&r#".[]["1numeric_key"]"#));
     assert!(suggestion_texts.contains(&".[].simple_key"));
 }
 
@@ -1046,7 +1046,7 @@ fn test_no_leading_dot_with_nonsimple_field() {
     let suggestions = ResultAnalyzer::analyze_value(&json, false, false, DEFAULT_ARRAY_SAMPLE_SIZE);
 
     assert_eq!(suggestions.len(), 1);
-    assert_eq!(suggestions[0].text, r#""1numeric_key""#);
+    assert_eq!(suggestions[0].text, r#"["1numeric_key"]"#);
 }
 
 // ============================================================================
@@ -1070,7 +1070,7 @@ fn test_nested_array_name_quoting_across_levels() {
     .unwrap();
 
     let top_level = ResultAnalyzer::analyze_value(&json, true, false, DEFAULT_ARRAY_SAMPLE_SIZE);
-    assert!(top_level.iter().any(|s| s.text == r#"."hyphen-array""#));
+    assert!(top_level.iter().any(|s| s.text == r#".["hyphen-array"]"#));
     assert!(!top_level.iter().any(|s| s.text == ".hyphen-array"));
 
     let outer_array = json
@@ -1084,7 +1084,11 @@ fn test_nested_array_name_quoting_across_levels() {
     let outer_obj_value = Value::Object(outer_obj.clone());
     let nested_level =
         ResultAnalyzer::analyze_value(&outer_obj_value, true, false, DEFAULT_ARRAY_SAMPLE_SIZE);
-    assert!(nested_level.iter().any(|s| s.text == r#"."nested-items""#));
+    assert!(
+        nested_level
+            .iter()
+            .any(|s| s.text == r#".["nested-items"]"#)
+    );
     assert!(!nested_level.iter().any(|s| s.text == ".nested-items"));
 }
 
@@ -1118,7 +1122,7 @@ fn test_nested_field_quoting_with_iteration() {
     assert!(
         outer_suggestions
             .iter()
-            .any(|s| s.text == r#"."inner-array""#)
+            .any(|s| s.text == r#".["inner-array"]"#)
     );
 
     let inner_array = outer_obj_value
@@ -1133,12 +1137,12 @@ fn test_nested_field_quoting_with_iteration() {
     assert!(
         inner_suggestions
             .iter()
-            .any(|s| s.text == r#".[]."hyphen-key""#)
+            .any(|s| s.text == r#".[]["hyphen-key"]"#)
     );
     assert!(
         inner_suggestions
             .iter()
-            .any(|s| s.text == r#".[]."1numeric_key""#)
+            .any(|s| s.text == r#".[]["1numeric_key"]"#)
     );
     assert!(inner_suggestions.iter().any(|s| s.text == ".[].simple_key"));
     assert!(!inner_suggestions.iter().any(|s| s.text == ".[].hyphen-key"));
@@ -1389,4 +1393,112 @@ fn test_sample_size_one_suggests_only_first_element_fields() {
         !suggestions.iter().any(|s| s.text == ".[].c"),
         "Should NOT suggest 'c' with sample size 1"
     );
+}
+
+// ============================================================================
+// UTF-8 / Non-ASCII Identifier Classification & Emission
+//
+// jq only accepts ASCII [A-Za-z_][A-Za-z_0-9]* for the .field shorthand.
+// Anything else — CJK, emoji, accented Latin, hyphens, leading digit —
+// must use bracket notation: .["key"].
+// ============================================================================
+
+mod non_ascii_emission {
+    use super::*;
+
+    #[test]
+    fn cjk_field_uses_bracket_notation() {
+        let json: Value = serde_json::from_str(r#"{"名前": "Alice"}"#).unwrap();
+        let suggestions =
+            ResultAnalyzer::analyze_value(&json, true, false, DEFAULT_ARRAY_SAMPLE_SIZE);
+        assert_eq!(suggestions.len(), 1);
+        assert_eq!(suggestions[0].text, r#".["名前"]"#);
+    }
+
+    #[test]
+    fn emoji_field_uses_bracket_notation() {
+        let json: Value = serde_json::from_str(r#"{"👋": "hi"}"#).unwrap();
+        let suggestions =
+            ResultAnalyzer::analyze_value(&json, true, false, DEFAULT_ARRAY_SAMPLE_SIZE);
+        assert_eq!(suggestions.len(), 1);
+        assert_eq!(suggestions[0].text, r#".["👋"]"#);
+    }
+
+    #[test]
+    fn accented_field_uses_bracket_notation() {
+        let json: Value = serde_json::from_str(r#"{"café": "drink"}"#).unwrap();
+        let suggestions =
+            ResultAnalyzer::analyze_value(&json, true, false, DEFAULT_ARRAY_SAMPLE_SIZE);
+        assert_eq!(suggestions.len(), 1);
+        assert_eq!(suggestions[0].text, r#".["café"]"#);
+    }
+
+    #[test]
+    fn ascii_identifier_still_uses_dot_notation() {
+        let json: Value = serde_json::from_str(r#"{"name": "Alice"}"#).unwrap();
+        let suggestions =
+            ResultAnalyzer::analyze_value(&json, true, false, DEFAULT_ARRAY_SAMPLE_SIZE);
+        assert_eq!(suggestions.len(), 1);
+        assert_eq!(suggestions[0].text, ".name");
+    }
+
+    #[test]
+    fn ascii_with_underscore_still_uses_dot_notation() {
+        let json: Value = serde_json::from_str(r#"{"_private_1": 1}"#).unwrap();
+        let suggestions =
+            ResultAnalyzer::analyze_value(&json, true, false, DEFAULT_ARRAY_SAMPLE_SIZE);
+        assert_eq!(suggestions.len(), 1);
+        assert_eq!(suggestions[0].text, "._private_1");
+    }
+
+    #[test]
+    fn mixed_ascii_and_multibyte_keys() {
+        let json: Value =
+            serde_json::from_str(r#"{"name": 1, "名前": 2, "👋": 3, "café": 4}"#).unwrap();
+        let suggestions =
+            ResultAnalyzer::analyze_value(&json, true, false, DEFAULT_ARRAY_SAMPLE_SIZE);
+        let texts: Vec<_> = suggestions.iter().map(|s| s.text.as_str()).collect();
+        assert!(texts.contains(&".name"));
+        assert!(texts.contains(&r#".["名前"]"#));
+        assert!(texts.contains(&r#".["👋"]"#));
+        assert!(texts.contains(&r#".["café"]"#));
+    }
+
+    #[test]
+    fn cjk_field_in_array_iteration() {
+        let json: Value = serde_json::from_str(r#"[{"名前": "A"}, {"名前": "B"}]"#).unwrap();
+        let suggestions =
+            ResultAnalyzer::analyze_value(&json, true, false, DEFAULT_ARRAY_SAMPLE_SIZE);
+        let texts: Vec<_> = suggestions.iter().map(|s| s.text.as_str()).collect();
+        assert!(texts.contains(&r#".[]["名前"]"#));
+    }
+
+    #[test]
+    fn no_leading_dot_emits_bare_bracket_for_multibyte() {
+        let json: Value = serde_json::from_str(r#"{"名前": "A"}"#).unwrap();
+        let suggestions =
+            ResultAnalyzer::analyze_value(&json, false, false, DEFAULT_ARRAY_SAMPLE_SIZE);
+        assert_eq!(suggestions.len(), 1);
+        assert_eq!(suggestions[0].text, r#"["名前"]"#);
+    }
+
+    #[test]
+    fn key_with_embedded_double_quote_is_escaped() {
+        // A (rare) JSON key containing `"` must be escaped so the emitted
+        // bracket notation is still valid jq: .["a\"b"] not .["a"b"].
+        let json: Value = serde_json::from_str(r#"{"a\"b": 1}"#).unwrap();
+        let suggestions =
+            ResultAnalyzer::analyze_value(&json, true, false, DEFAULT_ARRAY_SAMPLE_SIZE);
+        assert_eq!(suggestions.len(), 1);
+        assert_eq!(suggestions[0].text, r#".["a\"b"]"#);
+    }
+
+    #[test]
+    fn key_with_embedded_backslash_is_escaped() {
+        let json: Value = serde_json::from_str(r#"{"a\\b": 1}"#).unwrap();
+        let suggestions =
+            ResultAnalyzer::analyze_value(&json, true, false, DEFAULT_ARRAY_SAMPLE_SIZE);
+        assert_eq!(suggestions.len(), 1);
+        assert_eq!(suggestions[0].text, r#".["a\\b"]"#);
+    }
 }

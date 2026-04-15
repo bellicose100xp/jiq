@@ -1,0 +1,23 @@
+{
+  "café": "2-byte chars",
+  "中文": "3-byte chars",
+  "👋": "4-byte chars",
+  "mixed_data": [
+    {"id": 1, "label": "café ☕", "tags": ["français", "中国", "🇯🇵"]},
+    {"id": 2, "label": "日本語 🗾", "tags": ["東京", "José", "🎌"]},
+    {"id": 3, "label": "Señor 👴", "tags": ["español", "老人", "👨‍🦳"]}
+  ],
+  "scripts": {
+    "latin_extended": "café, naïve, résumé, Zürich",
+    "cjk": "中文, 日本語, 한국어",
+    "emoji": "😀 🎉 🚀 ❤️ 👋",
+    "combined": "Hello 世界 👋 café"
+  },
+  "nested": {
+    "数字": {
+      "один": 1,
+      "二": 2,
+      "três": 3
+    }
+  }
+}

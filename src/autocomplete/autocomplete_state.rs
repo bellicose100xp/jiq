@@ -17,7 +17,8 @@ pub fn update_suggestions_from_app(app: &mut App) {
     };
 
     let query = app.input.query().to_string();
-    let cursor_pos = app.input.textarea.cursor().1; // Column position
+    let cursor_char = app.input.textarea.cursor().1;
+    let cursor_pos = crate::str_utils::char_pos_to_byte_pos(&query, cursor_char);
     let result_parsed = query_state.last_successful_result_parsed.clone();
     let result_type = query_state.base_type_for_suggestions.clone();
     let original_json = query_state.executor.json_input_parsed();

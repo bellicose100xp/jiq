@@ -1,5 +1,6 @@
 ---
 source: src/ai/ai_render_tests/snapshot_tests.rs
+assertion_line: 96
 expression: output
 ---
 "                                                                                                    "
@@ -20,12 +21,12 @@ expression: output
 "                                                                                                    "
 "                                                       ╭ Anthropic ───────── claude-3-5-sonnet... ╮ "
 "                                                       │                                          │ "
-"                                                       │ The error in your query `.foo[` is a     │ "
-"                                                       │ missing closing bracket.                 │ "
 "                                                       │                                          │ "
-"                                                       │ Try using `.foo[]` to iterate over the   │ "
-"                                                       │ array, or `.foo[0]` to access the first  │ "
-"                                                       │ element.                                 │ "
+"                                                       │                                          │ "
+"                                                       │                                          │ "
+"                                                       │                                          │ "
+"                                                       │                                          │ "
+"                                                       │                                          │ "
 "                                                       │                                          │ "
 "                                                       ╰────────────── Ctrl+A Close ──────────────╯ "
 "                                                                                                    "

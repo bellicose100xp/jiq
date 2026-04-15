@@ -35,6 +35,7 @@ impl AiState {
             in_flight_request_id: None,
             current_cancel_token: None,
             suggestions: Vec::new(),
+            parse_failed: false,
             selection: SelectionState::new(),
             previous_popup_height: None,
         }
@@ -73,6 +74,7 @@ impl AiState {
             in_flight_request_id: None,
             current_cancel_token: None,
             suggestions: Vec::new(),
+            parse_failed: false,
             selection: SelectionState::new(),
             previous_popup_height: None,
         }
@@ -104,6 +106,7 @@ impl AiState {
         self.request_id = self.request_id.wrapping_add(1);
         self.in_flight_request_id = Some(self.request_id);
         self.suggestions.clear();
+        self.parse_failed = false;
         self.selection.clear_selection();
         self.selection.clear_layout();
     }
@@ -116,6 +119,14 @@ impl AiState {
         self.previous_response = None;
         self.in_flight_request_id = None;
         self.suggestions = parse_suggestions(&self.response);
+        self.parse_failed = !self.response.is_empty() && self.suggestions.is_empty();
+        if self.parse_failed {
+            log::warn!(
+                "AI response failed to parse (len={}):\n{}",
+                self.response.len(),
+                self.response
+            );
+        }
         self.selection.clear_layout();
     }
 
@@ -148,5 +159,6 @@ impl AiState {
         self.error = None;
         self.previous_response = None;
         self.loading = false;
+        self.parse_failed = false;
     }
 }

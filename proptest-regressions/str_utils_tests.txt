@@ -4,5 +4,4 @@
 #
 # It is recommended to check this file in to source control so that
 # everyone who runs the test benefits from these saved cases.
-cc 1f3a7fb758af1ce3d9a103e52ce30d6b36e0b58bb50df765a6d7f6be128dd58d # shrinks to type_idx = 0
-cc f23f9b96a7bb6dfb7c8c041675a2433df8a1726b86343fded8bc123a6ee36afd # shrinks to query = ".0", desc = "A", suggestion_type = "fix"
+cc e1023d16cb9ebaa10420c03e82c6e3d8b996f5e39717e196b6c2c1241c2efd4a # shrinks to s = "𝒩￼𑱰￼  𞣇0 aa ஙa𑿿 0\u{ac7}  🌀   0 0 அ  A𞸹", byte_pos = 26

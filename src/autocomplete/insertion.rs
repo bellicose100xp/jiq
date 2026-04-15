@@ -36,8 +36,9 @@ fn replace_partial_at_cursor(
     textarea.delete_line_by_end();
     textarea.insert_str(&new_query);
 
-    let target_pos = replacement_start + insert_text.len();
-    move_cursor_to_column(textarea, target_pos);
+    let target_byte = replacement_start + insert_text.len();
+    let target_char = crate::str_utils::byte_pos_to_char_pos(&new_query, target_byte);
+    move_cursor_to_column(textarea, target_char);
 }
 
 /// Insert an autocomplete suggestion from App context
@@ -159,9 +160,9 @@ fn insert_field_suggestion(
 
     let replacement_start = if partial.is_empty() {
         if cursor_pos > 0 {
-            let char_before = query.chars().nth(cursor_pos - 1);
+            let char_before = query[..cursor_pos].chars().last();
             if should_replace_trailing_separator(char_before, suggestion_text) {
-                cursor_pos - 1
+                cursor_pos - char_before.map_or(0, |c| c.len_utf8())
             } else {
                 cursor_pos
             }
@@ -195,8 +196,9 @@ pub fn insert_suggestion(
     suggestion: &Suggestion,
 ) {
     let query = textarea.lines()[0].clone();
-    let cursor_pos = textarea.cursor().1;
-    let before_cursor = &query[..cursor_pos.min(query.len())];
+    let cursor_char = textarea.cursor().1;
+    let cursor_pos = crate::str_utils::char_pos_to_byte_pos(&query, cursor_char);
+    let before_cursor = &query[..cursor_pos];
 
     let mut temp_tracker = crate::autocomplete::BraceTracker::new();
     temp_tracker.rebuild(before_cursor);

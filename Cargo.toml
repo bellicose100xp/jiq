@@ -21,6 +21,9 @@ path = "src/main.rs"
 # TUI framework
 ratatui = "0.29"
 
+# Display-width of strings (CJK double-width, emoji, etc.) for correct popup sizing
+unicode-width = "0.2"
+
 # Cross-platform terminal manipulation with dev-tty for piped stdin
 crossterm = { version = "0.28.1", features = ["use-dev-tty"] }
 

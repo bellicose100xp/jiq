@@ -1,5 +1,6 @@
 ---
 source: src/ai/ai_render_tests/model_name_tests.rs
+assertion_line: 251
 expression: output
 ---
 "                                                                                "
@@ -20,7 +21,7 @@ expression: output
 "                                                                                "
 "                                       ╭ Bedrock ───────── anthropic.claud... ╮ "
 "                                       │                                      │ "
-"                                       │ Test response                        │ "
+"                                       │                                      │ "
 "                                       │                                      │ "
 "                                       │                                      │ "
 "                                       │                                      │ "

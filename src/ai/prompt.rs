@@ -5,6 +5,69 @@
 
 use super::context::QueryContext;
 
+/// Shared guidance for non-ASCII field names.
+///
+/// jq's `.field` shorthand only accepts ASCII `[A-Za-z_][A-Za-z_0-9]*` —
+/// CJK, emoji, accented Latin, hyphens, spaces, and digit-start keys must
+/// use bracket notation `.["key"]`. Without this rule the model often
+/// suggests invalid queries like `.名前` which jq rejects as syntax errors.
+/// Shared, strict output-format rules to maximize parse reliability.
+///
+/// The response reaches a deterministic parser that expects exactly
+/// `{"suggestions": [...]}`. Any deviation (code fences, prose wrapper,
+/// trailing commentary) must be extracted by fallback heuristics, which
+/// is brittle. These rules tell the model exactly what shape to produce.
+fn build_output_format_rules(example_type: &str) -> String {
+    format!(
+        "## Output Format (STRICT)\n\
+Your entire response MUST be a single JSON object and NOTHING else. \
+Follow these rules exactly:\n\
+\n\
+1. The FIRST character of your response MUST be `{{` (an opening brace).\n\
+2. The LAST character of your response MUST be `}}` (a closing brace).\n\
+3. Do NOT wrap the JSON in markdown code fences (no ```json, no ```).\n\
+4. Do NOT prepend explanations like \"Here are the suggestions:\".\n\
+5. Do NOT append commentary like \"Hope this helps!\" after the JSON.\n\
+6. Do NOT include newlines outside of JSON string values — \
+emit the whole object on a single line OR with standard JSON indentation, \
+never both, never with trailing prose.\n\
+7. Use STRAIGHT double quotes `\"` for all JSON strings. Never use \
+curly/smart quotes like `\u{201c}` `\u{201d}`.\n\
+8. Escape inner quotes with `\\\"`. Escape backslashes with `\\\\`.\n\
+9. Non-ASCII characters inside string values (CJK, emoji, accented Latin) \
+should appear literally, NOT as `\\uXXXX` escapes.\n\
+\n\
+Schema:\n\
+`{{\"suggestions\": [{{\"type\": \"{example_type}\", \"query\": \"jq_query\", \"details\": \"1 line description\"}}]}}`\n\
+\n\
+Field rules:\n\
+- `type`: one of `\"fix\"` (error corrections), `\"optimize\"` (improvements), `\"next\"` (next steps / related queries)\n\
+- `query`: valid jq syntax, single line, no trailing whitespace\n\
+- `details`: ONE sentence, no line breaks\n\
+- Provide 3-5 suggestions total\n\
+\n\
+If you cannot comply with every rule above, return this exact string instead: \
+`{{\"suggestions\":[]}}`\n\n",
+    )
+}
+
+const NON_ASCII_KEY_RULES: &str = "\
+## Non-ASCII Field Names (CRITICAL)\n\
+jq's `.field` shorthand is restricted to ASCII identifiers matching \
+`[A-Za-z_][A-Za-z_0-9]*`. ANY key containing non-ASCII characters \
+(CJK like `名前`, emoji like `👋`, accented Latin like `café`, \
+Cyrillic, Arabic, etc.) OR ASCII characters outside the identifier \
+set (hyphens, spaces, dots, digit-start) MUST use bracket notation:\n\
+- Correct:   `.[\"名前\"]`, `.[\"👋\"]`, `.[\"café\"]`, `.[\"my-field\"]`\n\
+- Incorrect: `.名前`, `.👋`, `.café`, `.my-field` (all produce jq syntax errors)\n\
+Bracket notation composes without a leading dot between segments: \
+`.users[][\"名前\"]`, not `.users[].\"名前\"`.\n\
+When suggesting fixes for queries that reference non-ASCII keys, \
+ALWAYS emit bracket notation. When emitting `optimize` suggestions, \
+do NOT propose removing brackets around non-ASCII keys — the brackets \
+are required, not optional.\n\n\
+";
+
 /// Build a prompt based on query context
 ///
 /// Dispatches to either error troubleshooting or success optimization prompt
@@ -51,17 +114,8 @@ pub fn build_error_prompt(context: &QueryContext) -> String {
         }
     }
 
-    prompt.push_str("## Response Format\n");
-    prompt.push_str(
-        "Return ONLY a raw JSON object (no markdown, no code fences) with this EXACT structure:\n",
-    );
-    prompt.push_str(r#"{"suggestions": [{"type": "fix", "query": "jq_query", "details": "1 line description"}]}"#);
-    prompt.push_str("\n\n");
-    prompt.push_str("- type: \"fix\" for error corrections, \"optimize\" for improvements, \"next\" for next steps\n");
-    prompt.push_str("- query: valid jq syntax, single line\n");
-    prompt.push_str("- details: brief 1-sentence explanation\n");
-    prompt.push_str("- Provide 3-5 suggestions\n");
-    prompt.push_str("- IMPORTANT: Return raw JSON only, do NOT wrap in ```json code fences\n\n");
+    prompt.push_str(&build_output_format_rules("fix"));
+    prompt.push_str(NON_ASCII_KEY_RULES);
 
     prompt.push_str("## Natural Language in Query\n");
     prompt.push_str("The query may contain natural language. Two patterns:\n\n");
@@ -127,22 +181,11 @@ pub fn build_success_prompt(context: &QueryContext) -> String {
         }
     }
 
-    prompt.push_str("## Response Format\n");
+    prompt.push_str(&build_output_format_rules("optimize"));
     prompt.push_str(
-        "Return ONLY a raw JSON object (no markdown, no code fences) with this EXACT structure:\n",
+        "If the query is already optimal, provide \"next\" suggestions for related operations.\n\n",
     );
-    prompt.push_str(r#"{"suggestions": [{"type": "optimize", "query": "jq_query", "details": "1 line description"}]}"#);
-    prompt.push_str("\n\n");
-    prompt.push_str(
-        "- type: \"optimize\" for improvements, \"next\" for next steps or related queries\n",
-    );
-    prompt.push_str("- query: valid jq syntax, single line\n");
-    prompt.push_str("- details: brief 1-sentence explanation\n");
-    prompt.push_str("- Provide 3-5 suggestions\n");
-    prompt.push_str(
-        "- If the query is already optimal, provide \"next\" suggestions for related operations\n",
-    );
-    prompt.push_str("- IMPORTANT: Return raw JSON only, do NOT wrap in ```json code fences\n\n");
+    prompt.push_str(NON_ASCII_KEY_RULES);
 
     prompt.push_str("## Natural Language in Query\n");
     prompt.push_str("The query may contain natural language. Two patterns:\n\n");

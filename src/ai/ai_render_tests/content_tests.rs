@@ -119,7 +119,10 @@ fn test_build_content_error() {
 }
 
 #[test]
-fn test_build_content_response() {
+fn test_build_content_response_that_fails_to_parse_shows_friendly_error() {
+    // When a response arrives that cannot be parsed into structured
+    // suggestions, we must not dump raw/garbled text to the user — we
+    // show a clear "could not parse" message instead.
     let mut state = AiState::new_with_config(
         true,
         true,
@@ -128,6 +131,7 @@ fn test_build_content_response() {
         TEST_MAX_CONTEXT_LENGTH,
     );
     state.response = "Try using .foo instead".to_string();
+    state.parse_failed = true;
 
     let content = build_content(&state, 60);
     let text: String = content
@@ -137,7 +141,8 @@ fn test_build_content_response() {
         .map(|s| s.content.as_ref())
         .collect();
 
-    assert!(text.contains("Try using .foo instead"));
+    assert!(text.contains("Could not parse AI response"));
+    assert!(!text.contains("Try using .foo instead"));
 }
 
 #[test]
