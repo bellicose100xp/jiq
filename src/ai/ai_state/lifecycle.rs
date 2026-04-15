@@ -120,12 +120,12 @@ impl AiState {
         self.in_flight_request_id = None;
         self.suggestions = parse_suggestions(&self.response);
         self.parse_failed = !self.response.is_empty() && self.suggestions.is_empty();
-        // Diagnostic: when parsing fails, write the raw response to a debug
-        // file so the exact model output can be inspected. Only active when
-        // JIQ_DEBUG_AI=1 is set to avoid filesystem writes in normal use.
-        if self.parse_failed && std::env::var("JIQ_DEBUG_AI").as_deref() == Ok("1") {
-            let path = std::env::temp_dir().join("jiq-ai-failed-response.log");
-            let _ = std::fs::write(&path, &self.response);
+        if self.parse_failed {
+            log::warn!(
+                "AI response failed to parse (len={}):\n{}",
+                self.response.len(),
+                self.response
+            );
         }
         self.selection.clear_layout();
     }
