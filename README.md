@@ -364,7 +364,7 @@ echo $QUERY | xargs -I {} jq {} mydata.json
   .名前           ✗ jq syntax error
   ```
 
-  Same rule applies to `.["café"]`, `.["👋"]`, `.["my-field"]`, etc.
+  Same rule applies to `.["café"]`, `.["👋"]`, `.["中文"]`, `.["日本語"]`, etc.
 
 ## Configuration
 
