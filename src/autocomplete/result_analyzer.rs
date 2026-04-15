@@ -23,15 +23,22 @@ impl ResultAnalyzer {
             return false;
         }
         let first_char = name.chars().next().unwrap();
-        !first_char.is_numeric() && name.chars().all(|c| c.is_alphanumeric() || c == '_')
+        !first_char.is_ascii_digit() && name.chars().all(|c| c.is_ascii_alphanumeric() || c == '_')
     }
 
-    /// Format a field name for jq syntax, quoting if it doesn't fit simple dot syntax
+    /// Format a bracket-notation key access for jq, used for keys that don't
+    /// fit simple dot syntax (non-ASCII, hyphenated, starts-with-digit, etc.)
+    fn format_bracket_access(key: &str) -> String {
+        format!("[\"{}\"]", key)
+    }
+
+    /// Format a field name for jq syntax, using bracket notation for keys that
+    /// don't fit simple dot syntax
     fn format_field_name(prefix: &str, name: &str) -> String {
         if Self::is_simple_jq_identifier(name) {
             format!("{}{}", prefix, name)
         } else {
-            format!("{}\"{}\"", prefix, name)
+            format!("{}{}", prefix, Self::format_bracket_access(name))
         }
     }
 
@@ -71,7 +78,7 @@ impl ResultAnalyzer {
                         } else if Self::is_simple_jq_identifier(key) {
                             format!("{}[].{}", prefix, key)
                         } else {
-                            format!("{}[].\"{}\"", prefix, key)
+                            format!("{}[]{}", prefix, Self::format_bracket_access(key))
                         };
                         suggestions.push(Suggestion::new_with_type(
                             field_text,
