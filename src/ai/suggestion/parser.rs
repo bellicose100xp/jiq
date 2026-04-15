@@ -226,7 +226,7 @@ fn parse_suggestions_json(response: &str) -> Result<Vec<Suggestion>, serde_json:
         .filter_map(|json_sugg| {
             let suggestion_type = SuggestionType::parse_type(&json_sugg.suggestion_type)?;
             Some(Suggestion {
-                query: json_sugg.query,
+                query: super::sanitizer::sanitize_jq_query(&json_sugg.query),
                 description: json_sugg.details,
                 suggestion_type,
             })

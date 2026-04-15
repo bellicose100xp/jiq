@@ -229,10 +229,13 @@ proptest! {
 
     #[test]
     fn prop_suggestion_parsing_extracts_queries_json(
-        query in "\\.[a-zA-Z0-9_|\\[\\]]{1,30}",
+        query in "\\.[a-zA-Z_][a-zA-Z0-9_]{0,30}",
         desc in "[a-zA-Z ]{1,50}",
         suggestion_type in prop::sample::select(vec!["fix", "optimize", "next"]),
     ) {
+        // Generator restricted to valid ASCII jq identifiers so the
+        // sanitizer passes them through unchanged. Sanitizer behaviour on
+        // invalid inputs is tested directly in sanitizer_tests.
         let response = format!(
             r#"{{"suggestions": [{{"type": "{}", "query": "{}", "details": "{}"}}]}}"#,
             suggestion_type, query, desc
