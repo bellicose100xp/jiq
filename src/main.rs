@@ -30,6 +30,7 @@ mod scroll;
 mod search;
 mod snippets;
 mod stats;
+mod str_utils;
 mod syntax_highlight;
 #[cfg(test)]
 mod test_utils;

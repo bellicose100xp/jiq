@@ -1,0 +1,19 @@
+{
+  "café": {
+    "nom": "Le Café Français",
+    "adresse": "123 rue de la Paix",
+    "ville": "París",
+    "menu": [
+      {"plat": "Crème brûlée", "prix": 8.50},
+      {"plat": "Pâté en croûte", "prix": 12.00},
+      {"plat": "Bœuf bourguignon", "prix": 18.50}
+    ]
+  },
+  "señor": "José García",
+  "über": "Übermensch",
+  "naïve": true,
+  "résumé": {
+    "título": "Señor Developer",
+    "años_experiencia": 10
+  }
+}

@@ -447,3 +447,103 @@ fn test_brace_info_struct() {
         Some(FunctionContext::ElementIterator("select"))
     ));
 }
+
+// ============================================================================
+// UTF-8 Position Handling Tests
+//
+// BraceTracker stores byte positions (from char_indices()). After ingress
+// normalization in the autocomplete entry points, callers pass byte offsets
+// too — so byte-vs-byte comparison yields correct context detection for
+// queries containing multi-byte characters.
+// ============================================================================
+
+mod utf8_position_handling {
+    use super::*;
+
+    #[test]
+    fn context_at_correct_with_cjk_before_brace() {
+        let mut tracker = BraceTracker::new();
+        let query = ".名前{";
+        tracker.rebuild(query);
+        // "{" is at byte position 9 (".名前" = 1 + 3 + 3 = 7 bytes, then brace at 9 after ".")
+        // Actually: "." (1) + "名" (3) + "前" (3) + "{" = brace at byte 7
+        let brace_byte = query.find('{').unwrap();
+        assert_eq!(tracker.context_at(brace_byte + 1), Some(BraceType::Curly));
+        assert!(tracker.is_in_object(brace_byte + 1));
+    }
+
+    #[test]
+    fn context_at_correct_with_emoji_before_paren() {
+        let mut tracker = BraceTracker::new();
+        let query = ".👋 | select(";
+        tracker.rebuild(query);
+        let paren_byte = query.find('(').unwrap();
+        assert_eq!(tracker.context_at(paren_byte + 1), Some(BraceType::Paren));
+    }
+
+    #[test]
+    fn is_in_element_context_correct_with_cjk() {
+        let mut tracker = BraceTracker::new();
+        let query = "map(.中文";
+        tracker.rebuild(query);
+        // end-of-query position in bytes
+        assert!(tracker.is_in_element_context(query.len()));
+    }
+
+    #[test]
+    fn is_in_object_correct_with_emoji_keys() {
+        let mut tracker = BraceTracker::new();
+        let query = "{🎉: .data, 👋";
+        tracker.rebuild(query);
+        assert!(tracker.is_in_object(query.len()));
+    }
+
+    #[test]
+    fn detect_function_context_with_multibyte_before_function() {
+        let mut tracker = BraceTracker::new();
+        let query = ".名前 | select(";
+        tracker.rebuild(query);
+        let paren_byte = query.find('(').unwrap();
+        let info = tracker
+            .innermost_brace_info(paren_byte + 1)
+            .expect("paren at byte position");
+        assert!(matches!(
+            info.context,
+            Some(FunctionContext::ElementIterator("select"))
+        ));
+    }
+
+    #[test]
+    fn closed_braces_with_multibyte_content() {
+        let mut tracker = BraceTracker::new();
+        tracker.rebuild("{名前: .x}");
+        // After closing, no open braces
+        let query_len = "{名前: .x}".len();
+        assert_eq!(tracker.context_at(query_len), None);
+    }
+}
+
+proptest! {
+    /// BraceTracker must not panic on arbitrary Unicode input.
+    #[test]
+    fn prop_rebuild_never_panics_unicode(query in "\\PC{0,50}") {
+        let mut tracker = BraceTracker::new();
+        tracker.rebuild(&query);
+    }
+
+    /// All query methods must be panic-free on arbitrary Unicode when positions
+    /// are valid UTF-8 boundaries (the invariant provided by ingress normalization).
+    #[test]
+    fn prop_context_queries_never_panic_unicode(
+        query in "\\PC{0,50}",
+        char_pos in 0usize..60
+    ) {
+        let pos = crate::str_utils::char_pos_to_byte_pos(&query, char_pos);
+        let mut tracker = BraceTracker::new();
+        tracker.rebuild(&query);
+        let _ = tracker.context_at(pos);
+        let _ = tracker.is_in_object(pos);
+        let _ = tracker.is_in_element_context(pos);
+        let _ = tracker.is_in_non_executing_context(pos);
+    }
+}

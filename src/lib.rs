@@ -21,6 +21,7 @@ pub mod scroll;
 pub mod search;
 pub mod snippets;
 pub mod stats;
+pub mod str_utils;
 pub mod syntax_highlight;
 
 #[cfg(test)]

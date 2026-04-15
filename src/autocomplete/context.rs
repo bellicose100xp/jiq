@@ -171,8 +171,7 @@ fn needs_leading_dot(before_cursor: &str, partial: &str) -> bool {
     } else {
         before_cursor.len().saturating_sub(partial.len() + 1)
     };
-    let has_immediate_dot =
-        dot_pos < before_cursor.len() && before_cursor.chars().nth(dot_pos) == Some('.');
+    let has_immediate_dot = before_cursor.as_bytes().get(dot_pos) == Some(&b'.');
 
     let has_whitespace_before_dot = if dot_pos > 0 && has_immediate_dot {
         before_cursor[..dot_pos]

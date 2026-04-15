@@ -58,9 +58,10 @@ pub fn render_popup(app: &App, frame: &mut Frame, input_area: Rect) -> Option<Re
         .max()
         .unwrap_or(0);
 
+    use unicode_width::UnicodeWidthStr;
     let max_display_text_len = suggestions
         .iter()
-        .map(|s| get_display_text(s).len())
+        .map(|s| UnicodeWidthStr::width(get_display_text(s)))
         .max()
         .unwrap_or(0);
 
@@ -90,16 +91,28 @@ pub fn render_popup(app: &App, frame: &mut Frame, input_area: Rect) -> Option<Re
             let type_label = get_type_label(suggestion);
             let display_text = get_display_text(suggestion);
 
-            let truncated_text = if display_text.len() > available_for_text {
-                format!(
-                    "{}...",
-                    &display_text[..available_for_text.saturating_sub(3)]
-                )
+            let display_str: &str = &display_text;
+            let display_width = UnicodeWidthStr::width(display_str);
+            let truncated_text = if display_width > available_for_text {
+                let keep_width = available_for_text.saturating_sub(3);
+                let mut acc_width = 0usize;
+                let mut prefix = String::new();
+                for ch in display_text.chars() {
+                    let ch_str = ch.to_string();
+                    let ch_w = UnicodeWidthStr::width(ch_str.as_str());
+                    if acc_width + ch_w > keep_width {
+                        break;
+                    }
+                    prefix.push(ch);
+                    acc_width += ch_w;
+                }
+                format!("{}...", prefix)
             } else {
                 display_text.to_string()
             };
 
-            let padding_needed = available_for_text.saturating_sub(truncated_text.len());
+            let truncated_width = UnicodeWidthStr::width(truncated_text.as_str());
+            let padding_needed = available_for_text.saturating_sub(truncated_width);
             let padding = " ".repeat(padding_needed);
 
             let line = if abs_idx == app.autocomplete.selected_index() {
