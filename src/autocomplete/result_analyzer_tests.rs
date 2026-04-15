@@ -1481,4 +1481,24 @@ mod non_ascii_emission {
         assert_eq!(suggestions.len(), 1);
         assert_eq!(suggestions[0].text, r#"["名前"]"#);
     }
+
+    #[test]
+    fn key_with_embedded_double_quote_is_escaped() {
+        // A (rare) JSON key containing `"` must be escaped so the emitted
+        // bracket notation is still valid jq: .["a\"b"] not .["a"b"].
+        let json: Value = serde_json::from_str(r#"{"a\"b": 1}"#).unwrap();
+        let suggestions =
+            ResultAnalyzer::analyze_value(&json, true, false, DEFAULT_ARRAY_SAMPLE_SIZE);
+        assert_eq!(suggestions.len(), 1);
+        assert_eq!(suggestions[0].text, r#".["a\"b"]"#);
+    }
+
+    #[test]
+    fn key_with_embedded_backslash_is_escaped() {
+        let json: Value = serde_json::from_str(r#"{"a\\b": 1}"#).unwrap();
+        let suggestions =
+            ResultAnalyzer::analyze_value(&json, true, false, DEFAULT_ARRAY_SAMPLE_SIZE);
+        assert_eq!(suggestions.len(), 1);
+        assert_eq!(suggestions[0].text, r#".["a\\b"]"#);
+    }
 }

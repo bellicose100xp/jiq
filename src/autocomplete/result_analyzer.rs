@@ -28,8 +28,11 @@ impl ResultAnalyzer {
 
     /// Format a bracket-notation key access for jq, used for keys that don't
     /// fit simple dot syntax (non-ASCII, hyphenated, starts-with-digit, etc.)
+    /// Escapes embedded backslashes and double quotes so the result is valid
+    /// jq even for keys containing those characters.
     fn format_bracket_access(key: &str) -> String {
-        format!("[\"{}\"]", key)
+        let escaped = key.replace('\\', "\\\\").replace('"', "\\\"");
+        format!("[\"{}\"]", escaped)
     }
 
     /// Format a field name for jq syntax, using bracket notation for keys that

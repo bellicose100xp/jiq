@@ -69,8 +69,9 @@ pub fn sanitize_jq_query(query: &str) -> String {
                 out.push('.');
                 out.push_str(&name);
             } else {
+                let escaped = name.replace('\\', "\\\\").replace('"', "\\\"");
                 out.push_str(".[\"");
-                out.push_str(&name);
+                out.push_str(&escaped);
                 out.push_str("\"]");
             }
             continue;
