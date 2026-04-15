@@ -52,20 +52,44 @@ If you cannot comply with every rule above, return this exact string instead: \
 }
 
 const NON_ASCII_KEY_RULES: &str = "\
-## Non-ASCII Field Names (CRITICAL)\n\
-jq's `.field` shorthand is restricted to ASCII identifiers matching \
-`[A-Za-z_][A-Za-z_0-9]*`. ANY key containing non-ASCII characters \
-(CJK like `名前`, emoji like `👋`, accented Latin like `café`, \
-Cyrillic, Arabic, etc.) OR ASCII characters outside the identifier \
-set (hyphens, spaces, dots, digit-start) MUST use bracket notation:\n\
-- Correct:   `.[\"名前\"]`, `.[\"👋\"]`, `.[\"café\"]`, `.[\"my-field\"]`\n\
-- Incorrect: `.名前`, `.👋`, `.café`, `.my-field` (all produce jq syntax errors)\n\
-Bracket notation composes without a leading dot between segments: \
-`.users[][\"名前\"]`, not `.users[].\"名前\"`.\n\
-When suggesting fixes for queries that reference non-ASCII keys, \
-ALWAYS emit bracket notation. When emitting `optimize` suggestions, \
-do NOT propose removing brackets around non-ASCII keys — the brackets \
-are required, not optional.\n\n\
+## jq Identifier Rules — READ BEFORE WRITING ANY QUERY\n\
+\n\
+jq's `.field` dot-access shorthand ONLY accepts ASCII identifiers \
+matching `[A-Za-z_][A-Za-z_0-9]*`. There are NO exceptions:\n\
+- CJK (名前, 中文, 住所, 職業, 趣味) — dot notation is a SYNTAX ERROR\n\
+- Emoji (👋, 🎉) — dot notation is a SYNTAX ERROR\n\
+- Accented Latin (café, résumé, niño) — dot notation is a SYNTAX ERROR\n\
+- Hyphens (my-field), spaces, digit-start (1numeric) — SYNTAX ERROR\n\
+\n\
+For ANY such key you MUST use bracket notation with quoted strings:\n\
+\n\
+| Key name   | WRONG (jq rejects) | RIGHT (jq accepts)   |\n\
+|------------|--------------------|----------------------|\n\
+| 名前       | `.名前`            | `.[\"名前\"]`        |\n\
+| 住所.郵便番号 | `.住所.郵便番号`  | `.[\"住所\"][\"郵便番号\"]` |\n\
+| 👋         | `.👋`              | `.[\"👋\"]`          |\n\
+| café       | `.café`            | `.[\"café\"]`        |\n\
+| my-field   | `.my-field`        | `.[\"my-field\"]`    |\n\
+\n\
+Bracket segments compose WITHOUT a dot between them: \
+`.users[][\"名前\"]` not `.users[].[\"名前\"]`. \
+Chaining multiple bracket accesses: `.[\"住所\"][\"郵便番号\"]` \
+not `.住所.郵便番号` or `.[\"住所\"].郵便番号`.\n\
+\n\
+### Self-check (MANDATORY before emitting each query)\n\
+Before writing any `query` field in your JSON response, scan the query \
+string. For EVERY occurrence of `.X` where X is a key name:\n\
+1. Is X composed ENTIRELY of ASCII letters, digits, and underscores?\n\
+2. Does X start with a non-digit?\n\
+\n\
+If the answer to BOTH is yes, `.X` is valid. Otherwise you MUST rewrite \
+that segment as `[\"X\"]` (no leading dot). A query like \
+`.名前, .年齢, .職業` is INVALID — the correct form is \
+`.[\"名前\"], .[\"年齢\"], .[\"職業\"]`.\n\
+\n\
+When the user's query already uses bracket notation correctly, \
+DO NOT \"simplify\" by stripping brackets around non-ASCII keys — \
+the brackets are required, not stylistic.\n\n\
 ";
 
 /// Build a prompt based on query context
@@ -114,8 +138,8 @@ pub fn build_error_prompt(context: &QueryContext) -> String {
         }
     }
 
-    prompt.push_str(&build_output_format_rules("fix"));
     prompt.push_str(NON_ASCII_KEY_RULES);
+    prompt.push_str(&build_output_format_rules("fix"));
 
     prompt.push_str("## Natural Language in Query\n");
     prompt.push_str("The query may contain natural language. Two patterns:\n\n");
@@ -181,11 +205,11 @@ pub fn build_success_prompt(context: &QueryContext) -> String {
         }
     }
 
+    prompt.push_str(NON_ASCII_KEY_RULES);
     prompt.push_str(&build_output_format_rules("optimize"));
     prompt.push_str(
         "If the query is already optimal, provide \"next\" suggestions for related operations.\n\n",
     );
-    prompt.push_str(NON_ASCII_KEY_RULES);
 
     prompt.push_str("## Natural Language in Query\n");
     prompt.push_str("The query may contain natural language. Two patterns:\n\n");
