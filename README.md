@@ -356,6 +356,15 @@ echo $QUERY | xargs -I {} jq {} mydata.json
 - Empty query shows original JSON (identity filter `.`)
 - Invalid queries display `Syntax Error` message above input while preserving last successful output.
 - Results auto-scroll to top when query changes
+- **Non-ASCII keys** (CJK, emoji, accented Latin, hyphens, digit-start) must use bracket notation or quoted-dot notation — jq's `.field` shorthand only accepts ASCII identifiers. jiq's autocomplete emits bracket notation by default:
+
+  ```
+  .["名前"]      ✓ works (bracket notation, used by autocomplete)
+  ."名前"        ✓ works (quoted-dot, valid alternative)
+  .名前           ✗ jq syntax error
+  ```
+
+  Same rule applies to `.["café"]`, `.["👋"]`, `.["my-field"]`, etc.
 
 ## Configuration
 
