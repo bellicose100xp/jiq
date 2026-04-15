@@ -116,7 +116,7 @@ pub fn build_content(ai_state: &AiState, max_width: u16) -> Text<'static> {
             ]));
             lines.push(Line::from(""));
             for line in wrap_text(
-                "The response did not match the expected format. Press Ctrl+A to close and try again.",
+                "The response did not match the expected format.",
                 max_width as usize,
             ) {
                 lines.push(Line::from(Span::styled(
