@@ -110,10 +110,18 @@ pub fn build_content(ai_state: &AiState, max_width: u16) -> Text<'static> {
                 crate::ai::render::suggestions::render_suggestions(ai_state, max_width, wrap_text);
             lines.extend(suggestion_lines);
         } else {
-            for line in wrap_text(&ai_state.response, max_width as usize) {
+            lines.push(Line::from(vec![
+                Span::styled("⚠ ", Style::default().fg(theme::ai::ERROR_ICON)),
+                Span::styled("Could not parse AI response", theme::ai::ERROR_TITLE),
+            ]));
+            lines.push(Line::from(""));
+            for line in wrap_text(
+                "The response did not match the expected format. Press Ctrl+A to close and try again.",
+                max_width as usize,
+            ) {
                 lines.push(Line::from(Span::styled(
                     line,
-                    Style::default().fg(theme::ai::RESULT_TEXT),
+                    Style::default().fg(theme::ai::ERROR_MESSAGE),
                 )));
             }
         }

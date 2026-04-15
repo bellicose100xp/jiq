@@ -1,5 +1,6 @@
 ---
 source: src/ai/ai_render_tests/model_name_tests.rs
+assertion_line: 251
 expression: output
 ---
 "                                                                                "
@@ -20,11 +21,11 @@ expression: output
 "                                                                                "
 "                                       ╭ Bedrock ───────── anthropic.claud... ╮ "
 "                                       │                                      │ "
-"                                       │ Test response                        │ "
+"                                       │ ⚠ Could not parse AI response        │ "
 "                                       │                                      │ "
-"                                       │                                      │ "
-"                                       │                                      │ "
-"                                       │                                      │ "
+"                                       │ The response did not match the       │ "
+"                                       │ expected format. Press Ctrl+A to     │ "
+"                                       │ close and try again.                 │ "
 "                                       │                                      │ "
 "                                       │                                      │ "
 "                                       ╰──────────── Ctrl+A Close ────────────╯ "
