@@ -131,6 +131,7 @@ fn test_build_content_response_that_fails_to_parse_shows_friendly_error() {
         TEST_MAX_CONTEXT_LENGTH,
     );
     state.response = "Try using .foo instead".to_string();
+    state.parse_failed = true;
 
     let content = build_content(&state, 60);
     let text: String = content

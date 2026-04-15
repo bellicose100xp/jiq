@@ -194,9 +194,10 @@ fn snapshot_ai_popup_raw_response_fallback() {
         TEST_MAX_CONTEXT_LENGTH,
     );
     state.visible = true;
-    // Response without parseable suggestions - should fall back to raw display
+    // Response that failed to parse — should show friendly error, not raw dump
     state.response = "This is a plain text response without structured suggestions.\n\nIt should be displayed as-is.".to_string();
-    state.suggestions = vec![]; // No parsed suggestions
+    state.suggestions = vec![];
+    state.parse_failed = true;
 
     let output = render_ai_popup_to_string(&mut state, 100, 30);
     assert_snapshot!(output);

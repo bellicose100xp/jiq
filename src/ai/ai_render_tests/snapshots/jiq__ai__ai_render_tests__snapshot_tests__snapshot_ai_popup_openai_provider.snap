@@ -1,6 +1,6 @@
 ---
 source: src/ai/ai_render_tests/snapshot_tests.rs
-assertion_line: 517
+assertion_line: 518
 expression: output
 ---
 "                                                                                                    "
@@ -21,10 +21,10 @@ expression: output
 "                                                                                                    "
 "                                                       ╭ OpenAI ───────────────────── gpt-4o-mini ╮ "
 "                                                       │                                          │ "
-"                                                       │ ⚠ Could not parse AI response            │ "
 "                                                       │                                          │ "
-"                                                       │ The response did not match the expected  │ "
-"                                                       │ format.                                  │ "
+"                                                       │                                          │ "
+"                                                       │                                          │ "
+"                                                       │                                          │ "
 "                                                       │                                          │ "
 "                                                       │                                          │ "
 "                                                       │                                          │ "

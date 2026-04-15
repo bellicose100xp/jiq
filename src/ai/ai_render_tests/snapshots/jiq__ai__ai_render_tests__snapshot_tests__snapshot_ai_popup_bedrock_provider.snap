@@ -1,6 +1,6 @@
 ---
 source: src/ai/ai_render_tests/snapshot_tests.rs
-assertion_line: 501
+assertion_line: 502
 expression: output
 ---
 "                                                                                                    "
@@ -21,10 +21,10 @@ expression: output
 "                                                                                                    "
 "                                                       ╭ Bedrock ─────────── anthropic.claude-... ╮ "
 "                                                       │                                          │ "
-"                                                       │ ⚠ Could not parse AI response            │ "
 "                                                       │                                          │ "
-"                                                       │ The response did not match the expected  │ "
-"                                                       │ format.                                  │ "
+"                                                       │                                          │ "
+"                                                       │                                          │ "
+"                                                       │                                          │ "
 "                                                       │                                          │ "
 "                                                       │                                          │ "
 "                                                       │                                          │ "

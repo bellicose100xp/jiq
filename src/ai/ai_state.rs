@@ -102,6 +102,11 @@ pub struct AiState {
     /// Parsed suggestions from AI response
     /// Empty if response couldn't be parsed into structured suggestions
     pub suggestions: Vec<Suggestion>,
+    /// Whether the most recently completed request produced a response that
+    /// failed to parse into structured suggestions. Distinguishes "parse
+    /// genuinely failed" from "we are between requests / response is stale",
+    /// so the UI never shows a stale parse-error message.
+    pub parse_failed: bool,
     /// Selection state for suggestion navigation
     /// Tracks which suggestion is selected and navigation mode
     pub selection: SelectionState,
