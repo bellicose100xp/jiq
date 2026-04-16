@@ -122,6 +122,11 @@ impl JqExecutor {
 
         // Empty query defaults to identity filter
         let query = if query.trim().is_empty() { "." } else { query };
+        log::debug!(
+            "jq query: {:?} (input: {} bytes)",
+            query,
+            self.json_input.len()
+        );
 
         // Galaxy theme colors for jq output (using true color ANSI codes)
         // Format: null:false:true:numbers:strings:arrays:objects:keys
@@ -185,11 +190,20 @@ impl JqExecutor {
 
         // Poll for completion or cancellation
         const POLL_INTERVAL_MS: u64 = 10;
+        let poll_start = std::time::Instant::now();
+        let mut slow_warned = false;
         let status = loop {
             // Check cancellation first
             if cancel_token.is_cancelled() {
+                log::debug!("jq process killed due to cancellation");
                 let _ = child.kill();
                 return Err(QueryError::Cancelled);
+            }
+
+            // Warn once if jq is taking a long time
+            if !slow_warned && poll_start.elapsed() > Duration::from_secs(5) {
+                log::warn!("jq process still running after 5s for query {:?}", query);
+                slow_warned = true;
             }
 
             // Check if process finished
@@ -214,11 +228,12 @@ impl JqExecutor {
             .map_err(|_| QueryError::OutputReadFailed("Failed to read stderr".to_string()))?;
 
         if status.success() {
+            log::debug!("jq succeeded: {} bytes output", stdout_data.len());
             Ok(String::from_utf8_lossy(&stdout_data).to_string())
         } else {
-            Err(QueryError::ExecutionFailed(
-                String::from_utf8_lossy(&stderr_data).to_string(),
-            ))
+            let stderr_str = String::from_utf8_lossy(&stderr_data).to_string();
+            log::debug!("jq failed (exit {:?}): {}", status.code(), stderr_str);
+            Err(QueryError::ExecutionFailed(stderr_str))
         }
     }
 }

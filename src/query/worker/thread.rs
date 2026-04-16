@@ -106,6 +106,7 @@ fn handle_request(
 ) {
     // Check if already cancelled
     if request.cancel_token.is_cancelled() {
+        log::debug!("Query {} already cancelled", request.request_id);
         let _ = response_tx.send(QueryResponse::Cancelled {
             request_id: request.request_id,
         });
@@ -115,13 +116,16 @@ fn handle_request(
     // Execute query with cancellation support
     let query = request.query.clone();
     let start = Instant::now();
+    log::debug!("Query {}: {:?}", request.request_id, query);
 
     match executor.execute_with_cancel(&request.query, &request.cancel_token) {
         Ok(output) => {
             // Preprocess result (expensive operations done in worker thread)
             match preprocess_result(output, &query, &request.cancel_token, array_sample_size) {
                 Ok(mut processed) => {
-                    processed.execution_time_ms = Some(start.elapsed().as_millis() as u64);
+                    let elapsed = start.elapsed();
+                    processed.execution_time_ms = Some(elapsed.as_millis() as u64);
+                    log::debug!("Query {} completed in {:?}", request.request_id, elapsed);
                     let _ = response_tx.send(QueryResponse::ProcessedSuccess {
                         processed,
                         request_id: request.request_id,
@@ -147,6 +151,12 @@ fn handle_request(
             });
         }
         Err(e) => {
+            log::debug!(
+                "Query {} failed in {:?}: {}",
+                request.request_id,
+                start.elapsed(),
+                e
+            );
             let _ = response_tx.send(QueryResponse::Error {
                 message: e.to_string(),
                 query: request.query,

@@ -174,6 +174,7 @@ impl App {
             self.mark_dirty();
             match result {
                 Ok(json_input) => {
+                    log::debug!("File loaded successfully: {} bytes", json_input.len());
                     self.query = Some(QueryState::new_with_sample_size(
                         json_input.clone(),
                         self.array_sample_size,
@@ -200,7 +201,8 @@ impl App {
                         self.trigger_ai_request();
                     }
                 }
-                Err(_e) => {
+                Err(ref e) => {
+                    log::error!("File loader error: {:?}", e);
                     // Keep loader for state tracking
                     // Show brief notification - full error details in results area
                     self.notification.show_error("Failed to load file");

@@ -79,7 +79,7 @@ bytes = "1.5"
 aws-config = { version = "1", features = ["rustls"] }
 aws-sdk-bedrockruntime = { version = "1", features = ["rustls"] }
 
-# Logging (code only active in debug builds via #[cfg(debug_assertions)])
+# Logging (activated via --debug flag or JIQ_DEBUG=1 env var)
 log = "0.4"
 env_logger = "0.11"
 chrono = "0.4"

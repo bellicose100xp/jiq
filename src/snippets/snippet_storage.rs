@@ -20,6 +20,7 @@ pub fn snippets_path() -> Option<PathBuf> {
 }
 
 pub fn load_snippets() -> Vec<Snippet> {
+    log::debug!("Snippets path: {:?}", snippets_path());
     let Some(path) = snippets_path() else {
         return Vec::new();
     };
@@ -30,7 +31,10 @@ pub fn load_snippets() -> Vec<Snippet> {
 pub fn load_snippets_from_path(path: &PathBuf) -> Vec<Snippet> {
     let mut file = match File::open(path) {
         Ok(f) => f,
-        Err(_) => return Vec::new(),
+        Err(_) => {
+            log::debug!("No snippets file at {:?}", path);
+            return Vec::new();
+        }
     };
 
     let mut contents = String::new();
@@ -44,7 +48,10 @@ pub fn load_snippets_from_path(path: &PathBuf) -> Vec<Snippet> {
 pub fn parse_snippets_toml(content: &str) -> Vec<Snippet> {
     match toml::from_str::<SnippetsFile>(content) {
         Ok(snippets_file) => snippets_file.snippets,
-        Err(_) => Vec::new(),
+        Err(e) => {
+            log::warn!("Failed to parse snippets TOML: {}", e);
+            Vec::new()
+        }
     }
 }
 
@@ -64,6 +71,7 @@ pub fn save_snippets(snippets: &[Snippet]) -> io::Result<()> {
     let mut file = File::create(&path)?;
     file.write_all(content.as_bytes())?;
 
+    log::debug!("Saved {} snippets", snippets.len());
     Ok(())
 }
 

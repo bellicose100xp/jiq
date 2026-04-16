@@ -31,6 +31,7 @@ impl AiState {
     pub fn send_request(&mut self, prompt: String) -> bool {
         // Check if we have a channel first
         if self.request_tx.is_none() {
+            log::warn!("AI: no request channel, cannot send");
             return false;
         }
 
@@ -59,6 +60,7 @@ impl AiState {
             return true;
         }
         // If send failed, clear the token
+        log::error!("AI: request send failed (channel closed)");
         self.current_cancel_token = None;
         false
     }

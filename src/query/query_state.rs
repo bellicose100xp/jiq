@@ -272,10 +272,17 @@ impl QueryState {
     /// Automatically cancels any in-flight request before starting new one.
     pub fn execute_async(&mut self, query: &str) {
         // Cancel any existing request
+        let had_in_flight = self.in_flight_request_id.is_some();
         self.cancel_in_flight();
 
         // Allocate new request ID
         let request_id = self.next_request_id;
+        log::debug!(
+            "execute_async: query={:?}, request_id={}, cancelling_previous={}",
+            query,
+            request_id,
+            had_in_flight
+        );
         self.next_request_id = self.next_request_id.wrapping_add(1);
 
         // Skip 0 on wrap (reserved for worker errors)
@@ -374,6 +381,11 @@ impl QueryState {
             } => {
                 // Ignore stale responses
                 if Some(request_id) != current_request_id {
+                    log::debug!(
+                        "Discarding stale query response {} (current: {:?})",
+                        request_id,
+                        current_request_id
+                    );
                     return None;
                 }
 

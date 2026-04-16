@@ -27,6 +27,7 @@ fn copy_query(app: &mut App, backend: ClipboardBackend) -> bool {
     let query = app.query();
 
     if query.is_empty() {
+        log::debug!("Clipboard: query is empty, nothing to copy");
         return false;
     }
 
@@ -42,16 +43,23 @@ fn copy_result(app: &mut App, backend: ClipboardBackend) -> bool {
     // Only copy if query state is available
     let query_state = match &app.query {
         Some(q) => q,
-        None => return false,
+        None => {
+            log::debug!("Clipboard: no query state, nothing to copy");
+            return false;
+        }
     };
 
     // Copy what's displayed: last_successful_result_unformatted
     let full_result = match &query_state.last_successful_result_unformatted {
         Some(text) => text.as_ref().to_string(),
-        None => return false,
+        None => {
+            log::debug!("Clipboard: no result available to copy");
+            return false;
+        }
     };
 
     if full_result.is_empty() {
+        log::debug!("Clipboard: result is empty, nothing to copy");
         return false;
     }
 

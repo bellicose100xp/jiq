@@ -80,6 +80,7 @@ impl FileLoader {
                 Err(std::sync::mpsc::TryRecvError::Empty) => None,
                 Err(std::sync::mpsc::TryRecvError::Disconnected) => {
                     self.rx = None;
+                    log::error!("File loader thread disconnected");
                     let err = JiqError::Io("File loader thread disconnected".to_string());
                     self.state = LoadingState::Error(err.clone());
                     Some(Err(err))
@@ -114,6 +115,7 @@ fn validate_json_or_jsonl(content: &str) -> Result<(), JiqError> {
     if count == 0 {
         return Err(JiqError::InvalidJson("Empty input".to_string()));
     }
+    log::debug!("JSON validation: {} top-level value(s)", count);
     Ok(())
 }
 
@@ -124,9 +126,11 @@ fn load_file_sync(path: &Path) -> Result<String, JiqError> {
     use std::fs::File;
     use std::io::Read;
 
+    log::debug!("Loading file: {:?}", path);
     let mut file = File::open(path)?;
     let mut contents = String::new();
     file.read_to_string(&mut contents)?;
+    log::debug!("File read: {} bytes", contents.len());
 
     validate_json_or_jsonl(&contents)?;
 
@@ -139,7 +143,9 @@ fn load_file_sync(path: &Path) -> Result<String, JiqError> {
 fn load_stdin_sync() -> Result<String, JiqError> {
     use std::io::{self, IsTerminal, Read};
 
+    log::debug!("Loading from stdin");
     if io::stdin().is_terminal() {
+        log::debug!("stdin is a terminal, no piped input");
         return Err(JiqError::Io(
             "No input provided. Usage: jiq <file> or echo '{}' | jiq".to_string(),
         ));
@@ -147,6 +153,7 @@ fn load_stdin_sync() -> Result<String, JiqError> {
 
     let mut buffer = String::new();
     io::stdin().read_to_string(&mut buffer)?;
+    log::debug!("Stdin read: {} bytes", buffer.len());
 
     validate_json_or_jsonl(&buffer)?;
 
