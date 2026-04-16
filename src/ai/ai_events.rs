@@ -124,6 +124,7 @@ pub fn poll_response_channel(ai_state: &mut AiState) -> bool {
     }
 
     if disconnected && ai_state.loading {
+        log::error!("AI response channel disconnected while loading");
         ai_state.set_error("AI worker disconnected unexpectedly".to_string());
     }
 
@@ -151,6 +152,7 @@ pub fn handle_execution_result(
     let query_changed = ai_state.is_query_changed(query);
 
     if !query_changed {
+        log::debug!("AI: query unchanged, skipping request");
         return;
     }
 

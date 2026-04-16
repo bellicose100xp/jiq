@@ -14,6 +14,7 @@ pub enum JiqError {
 
 impl From<std::io::Error> for JiqError {
     fn from(err: std::io::Error) -> Self {
+        log::error!("IO error: {}", err);
         JiqError::Io(err.to_string())
     }
 }

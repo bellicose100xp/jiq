@@ -29,9 +29,11 @@ pub struct ConfigResult {
 /// Returns default configuration if file doesn't exist or on parse errors
 pub fn load_config() -> ConfigResult {
     let config_path = get_config_path();
+    log::debug!("Config path: {:?}", config_path);
 
     // If file doesn't exist, return defaults silently
     if !config_path.exists() {
+        log::debug!("No config file found, using defaults");
         return ConfigResult {
             config: Config::default(),
             warning: None,
@@ -42,7 +44,6 @@ pub fn load_config() -> ConfigResult {
     let contents = match fs::read_to_string(&config_path) {
         Ok(contents) => contents,
         Err(e) => {
-            #[cfg(debug_assertions)]
             log::error!("Failed to read config file {:?}: {}", config_path, e);
             return ConfigResult {
                 config: Config::default(),
@@ -56,13 +57,19 @@ pub fn load_config() -> ConfigResult {
         Ok(mut config) => {
             config.autocomplete.array_sample_size =
                 config.autocomplete.array_sample_size.clamp(1, 1000);
+            log::debug!(
+                "Config: clipboard={:?}, ai.enabled={}, ai.provider={:?}, array_sample_size={}",
+                config.clipboard.backend,
+                config.ai.enabled,
+                config.ai.provider,
+                config.autocomplete.array_sample_size
+            );
             ConfigResult {
                 config,
                 warning: None,
             }
         }
         Err(e) => {
-            #[cfg(debug_assertions)]
             log::error!("Failed to parse config file {:?}: {}", config_path, e);
             ConfigResult {
                 config: Config::default(),

@@ -11,6 +11,7 @@ pub fn history_path() -> Option<PathBuf> {
 }
 
 pub fn load_history() -> Vec<String> {
+    log::debug!("History path: {:?}", history_path());
     let Some(path) = history_path() else {
         return Vec::new();
     };
@@ -21,11 +22,13 @@ pub fn load_history() -> Vec<String> {
     };
 
     let reader = BufReader::new(file);
-    reader
+    let entries: Vec<String> = reader
         .lines()
         .map_while(Result::ok)
         .filter(|line| !line.trim().is_empty())
-        .collect()
+        .collect();
+    log::debug!("Loaded {} history entries", entries.len());
+    entries
 }
 
 pub fn save_history(entries: &[String]) -> io::Result<()> {
@@ -45,10 +48,11 @@ pub fn save_history(entries: &[String]) -> io::Result<()> {
     let unique_entries = deduplicate(entries);
     let trimmed = trim_to_max(&unique_entries);
 
-    for entry in trimmed {
+    for entry in &trimmed {
         writeln!(file, "{}", entry)?;
     }
 
+    log::debug!("Saved {} history entries", trimmed.len());
     Ok(())
 }
 

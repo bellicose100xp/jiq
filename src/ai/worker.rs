@@ -42,7 +42,12 @@ pub fn spawn_worker(
     response_tx: Sender<AiResponse>,
 ) {
     // Try to create the async provider from config
+    log::debug!("Initializing AI provider: {:?}", config.provider);
     let provider_result = AsyncAiProvider::from_config(config);
+    match &provider_result {
+        Ok(_) => log::debug!("AI provider initialized successfully"),
+        Err(e) => log::error!("AI provider initialization failed: {}", e),
+    }
 
     std::thread::spawn(move || {
         // Set a custom panic hook for this thread to suppress output
@@ -152,9 +157,12 @@ async fn handle_query_async(
 ) {
     // Check if already cancelled before starting
     if cancel_token.is_cancelled() {
+        log::debug!("AI request {} already cancelled", request_id);
         let _ = response_tx.send(AiResponse::Cancelled { request_id });
         return;
     }
+
+    log::debug!("AI request {}: prompt_len={}", request_id, prompt.len());
 
     // Check if provider is available
     let provider = match provider {
@@ -174,14 +182,15 @@ async fn handle_query_async(
         .await
     {
         Ok(()) => {
-            // Stream completed successfully
+            log::debug!("AI request {} completed", request_id);
             let _ = response_tx.send(AiResponse::Complete { request_id });
         }
         Err(AiError::Cancelled) => {
-            // Request was cancelled - send Cancelled response
+            log::debug!("AI request {} cancelled", request_id);
             let _ = response_tx.send(AiResponse::Cancelled { request_id });
         }
         Err(e) => {
+            log::error!("AI request {} failed: {}", request_id, e);
             let _ = response_tx.send(AiResponse::Error(e.to_string()));
         }
     }

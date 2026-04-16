@@ -52,54 +52,33 @@ use query::executor::JqExecutor;
 struct Args {
     /// Input JSON file (if not provided, reads from stdin)
     input: Option<PathBuf>,
+
+    /// Enable debug logging to /tmp/jiq-debug.log
+    #[arg(long)]
+    debug: bool,
 }
 
 fn main() -> Result<()> {
-    // Writes to /tmp/jiq-debug.log at DEBUG level
-    #[cfg(debug_assertions)]
-    {
-        use std::io::Write;
+    let args = Args::parse();
 
-        let log_file = std::fs::OpenOptions::new()
-            .create(true)
-            .append(true)
-            .open("/tmp/jiq-debug.log")
-            .expect("Failed to open /tmp/jiq-debug.log");
-
-        env_logger::Builder::new()
-            .filter_level(log::LevelFilter::Debug)
-            .target(env_logger::Target::Pipe(Box::new(log_file)))
-            .format(|buf, record| {
-                use std::time::SystemTime;
-                let datetime: chrono::DateTime<chrono::Local> = SystemTime::now().into();
-                writeln!(
-                    buf,
-                    "[{}] [{}] {}",
-                    datetime.format("%Y-%m-%dT%H:%M:%S%.3f"),
-                    record.level(),
-                    record.args()
-                )
-            })
-            .init();
-
-        log::debug!("=== JIQ DEBUG SESSION STARTED ===");
-    }
+    init_logger(args.debug);
 
     color_eyre::install()?;
 
     // Load config early to avoid defaults during app initialization
     let config_result = config::load_config();
 
-    let args = Args::parse();
-
     validate_jq_exists()?;
+    log::debug!("jq binary found in PATH");
 
     let terminal = init_terminal()?;
 
     // Deferred loading prevents blocking on large files/stdin
-    let loader = if let Some(path) = args.input {
-        FileLoader::spawn_load(path)
+    let loader = if let Some(ref path) = args.input {
+        log::debug!("File loader spawned for: {:?}", path);
+        FileLoader::spawn_load(path.clone())
     } else {
+        log::debug!("File loader spawned for stdin");
         FileLoader::spawn_load_stdin()
     };
 
@@ -112,7 +91,6 @@ fn main() -> Result<()> {
     // Output after terminal restore to prevent corruption
     handle_output(&app)?;
 
-    #[cfg(debug_assertions)]
     log::debug!("=== JIQ DEBUG SESSION ENDED ===");
 
     Ok(())
@@ -126,6 +104,7 @@ fn validate_jq_exists() -> Result<(), JiqError> {
 
 /// Initialize terminal with raw mode, alternate screen, and bracketed paste
 fn init_terminal() -> Result<DefaultTerminal> {
+    log::debug!("Initializing terminal");
     let hook = std::panic::take_hook();
     std::panic::set_hook(Box::new(move |info| {
         let _ = execute!(
@@ -139,6 +118,7 @@ fn init_terminal() -> Result<DefaultTerminal> {
     }));
 
     enable_raw_mode()?;
+    log::debug!("Raw mode enabled");
 
     // If any subsequent operations fail, ensure raw mode is disabled
     match execute!(
@@ -147,16 +127,23 @@ fn init_terminal() -> Result<DefaultTerminal> {
         EnableBracketedPaste,
         EnableMouseCapture
     ) {
-        Ok(_) => {}
+        Ok(_) => {
+            log::debug!("Alternate screen entered");
+        }
         Err(e) => {
+            log::error!("Failed to enter alternate screen: {}", e);
             let _ = disable_raw_mode();
             return Err(e.into());
         }
     }
 
     match ratatui::Terminal::new(ratatui::backend::CrosstermBackend::new(stdout())) {
-        Ok(terminal) => Ok(terminal),
+        Ok(terminal) => {
+            log::debug!("Terminal backend created");
+            Ok(terminal)
+        }
         Err(e) => {
+            log::error!("Failed to create terminal backend: {}", e);
             let _ = execute!(
                 stdout(),
                 DisableMouseCapture,
@@ -171,6 +158,7 @@ fn init_terminal() -> Result<DefaultTerminal> {
 
 /// Restore terminal to normal state
 fn restore_terminal() -> Result<()> {
+    log::debug!("Restoring terminal");
     let _ = execute!(
         stdout(),
         DisableMouseCapture,
@@ -219,6 +207,11 @@ fn run(
 
 /// Set up the AI worker thread and channels
 fn setup_ai_worker(app: &mut App, config: &config::Config) {
+    log::debug!(
+        "AI setup: enabled={}, configured={}",
+        config.ai.enabled,
+        app.ai.configured
+    );
     if config.ai.enabled && !app.ai.configured {
         app.notification
             .show_warning("AI enabled but not configured. Add provider credentials to config.");
@@ -226,6 +219,7 @@ fn setup_ai_worker(app: &mut App, config: &config::Config) {
 
     // Worker needed even when disabled to support Ctrl+A toggle
     if !app.ai.configured {
+        log::debug!("AI: skipping worker spawn (not configured)");
         return;
     }
 
@@ -235,6 +229,65 @@ fn setup_ai_worker(app: &mut App, config: &config::Config) {
 
     // Spawn the worker thread
     ai::worker::spawn_worker(&config.ai, request_rx, response_tx);
+    log::debug!("AI worker spawned");
+}
+
+/// Initialize debug logger when activated via --debug flag, JIQ_DEBUG=1, or debug build.
+/// All output goes to /tmp/jiq-debug.log (never stdout/stderr).
+fn init_logger(cli_debug: bool) {
+    let env_debug = std::env::var("JIQ_DEBUG").is_ok_and(|v| v == "1");
+    let debug_build = cfg!(debug_assertions);
+    let enabled = cli_debug || env_debug || debug_build;
+
+    if !enabled {
+        return;
+    }
+
+    use std::io::Write;
+
+    let log_file = match std::fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open("/tmp/jiq-debug.log")
+    {
+        Ok(f) => f,
+        Err(_) => return,
+    };
+
+    env_logger::Builder::new()
+        .filter_level(log::LevelFilter::Debug)
+        .target(env_logger::Target::Pipe(Box::new(log_file)))
+        .format(|buf, record| {
+            use std::time::SystemTime;
+            let datetime: chrono::DateTime<chrono::Local> = SystemTime::now().into();
+            writeln!(
+                buf,
+                "[{}] [{}] {}",
+                datetime.format("%Y-%m-%dT%H:%M:%S%.3f"),
+                record.level(),
+                record.args()
+            )
+        })
+        .init();
+
+    let method = match (cli_debug, env_debug, debug_build) {
+        (true, true, _) => "--debug flag and JIQ_DEBUG env var",
+        (true, false, _) => "--debug flag",
+        (false, true, _) => "JIQ_DEBUG env var",
+        (false, false, true) => "debug build",
+        _ => "unknown",
+    };
+
+    log::debug!(
+        "=== JIQ DEBUG SESSION STARTED (v{}) ===",
+        env!("CARGO_PKG_VERSION")
+    );
+    log::debug!("Activated via: {}", method);
+    log::debug!(
+        "Platform: {} {}",
+        std::env::consts::OS,
+        std::env::consts::ARCH
+    );
 }
 
 /// Handle output after terminal is restored
