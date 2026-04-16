@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.22.1] - 2026-04-15
+
+### Added
+- **Release-build debug logging** ([#157](https://github.com/bellicose100xp/jiq/pull/157)) - End users running release binaries can now capture diagnostic output via `--debug` flag or `JIQ_DEBUG=1` environment variable. Logs are written to `/tmp/jiq-debug.log` at DEBUG level with zero overhead when disabled. Expanded coverage across session lifecycle, config loading, file I/O, jq execution, query dispatch, AI requests, clipboard operations, and terminal init/restore to make logs useful for diagnosing crashes, hangs, wrong results, and config issues. All output goes to file only — never stdout/stderr — so the TUI remains uncorrupted.
+
+### Documentation
+- Added Troubleshooting section to README explaining debug logging activation.
+
 ## [3.22.0] - 2026-04-15
 
 ### Fixed
