@@ -115,8 +115,9 @@ pub fn truncate_json(json: &str, max_len: usize) -> String {
         return json.to_string();
     }
 
-    // Simple truncation with ellipsis indicator
-    let truncated = &json[..max_len];
+    // Truncate on UTF-8 character boundary with ellipsis indicator
+    let end = json.floor_char_boundary(max_len);
+    let truncated = &json[..end];
     format!("{}... [truncated]", truncated)
 }
 
