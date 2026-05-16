@@ -50,11 +50,7 @@ fn format_position_indicator(scroll: &ScrollState, line_count: u32) -> String {
     }
     let start = scroll.offset as u32 + 1;
     let end = (scroll.offset as u32 + scroll.viewport_height as u32).min(line_count);
-    let percentage = if line_count > 0 {
-        (scroll.offset as u32 * 100) / line_count
-    } else {
-        0
-    };
+    let percentage = (scroll.offset as u32 * 100) / line_count;
     format!("L{}-{}/{} ({}%)", start, end, line_count, percentage)
 }
 

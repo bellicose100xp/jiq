@@ -76,10 +76,8 @@ impl StatsParser {
                 ']' | '}' => {
                     depth -= 1;
                 }
-                ',' => {
-                    if depth == 1 {
-                        comma_count += 1;
-                    }
+                ',' if depth == 1 => {
+                    comma_count += 1;
                 }
                 c if !c.is_whitespace() && depth == 1 => {
                     has_content = true;
