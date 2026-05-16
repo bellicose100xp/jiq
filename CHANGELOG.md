@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.22.2] - 2026-05-16
+
+### Fixed
+- **AI context UTF-8 boundary truncation** ([#158](https://github.com/bellicose100xp/jiq/pull/158)) - JSON context sent to the AI assistant is now truncated at valid UTF-8 character boundaries, preventing panics when the cutoff fell mid-multibyte character (CJK, emoji, accented Latin).
+- **Clippy lints for Rust 1.95.0** ([#159](https://github.com/bellicose100xp/jiq/pull/159)) - Behavior-preserving refactors to satisfy stricter clippy checks in Rust 1.95.0: `unnecessary_sort_by` in history/snippet matchers (now use `sort_by_key` with `Reverse`), `manual_checked_ops` in results render, and `collapsible_match` in stats parser and tooltip detector.
+
 ## [3.22.1] - 2026-04-15
 
 ### Added
