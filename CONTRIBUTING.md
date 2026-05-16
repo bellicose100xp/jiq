@@ -80,7 +80,7 @@ if clipboard::handle_clipboard_key(self, key) {
 
 ```bash
 cargo build              # Zero warnings required
-cargo clippy -D warnings # Must pass
+cargo clippy -- -D warnings  # Must pass
 ```
 
 **DRY Principles:**

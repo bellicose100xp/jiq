@@ -34,6 +34,21 @@ fn test_truncate_json_long() {
 }
 
 #[test]
+fn test_truncate_json_does_not_panic_mid_utf8_char() {
+    // Byte index `max_len` falls inside U+7AE0 '章' (UTF-8: 3 bytes) without adjustment.
+    let prefix_len = 99_999;
+    let json = format!("{}{}", "x".repeat(prefix_len), "章".repeat(500));
+    assert!(json.len() > prefix_len + 1);
+    assert!(!json.is_char_boundary(prefix_len + 1));
+
+    let truncated = truncate_json(&json, prefix_len + 1);
+    assert!(truncated.ends_with("... [truncated]"));
+    let body = truncated.trim_end_matches("... [truncated]");
+    assert!(json.starts_with(body));
+    assert!(body.len() <= prefix_len + 1);
+}
+
+#[test]
 fn test_query_context_new() {
     let query = ".name".to_string();
     let ctx = QueryContext::new(
