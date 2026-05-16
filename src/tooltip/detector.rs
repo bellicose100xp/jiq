@@ -240,11 +240,8 @@ fn check_triple_slash_equals(chars: &[char], cursor_pos: usize) -> Option<&'stat
                 return Some("//=");
             }
         }
-        '=' => {
-            // Check if this is the = of //=
-            if cursor_pos >= 2 && chars[cursor_pos - 1] == '/' && chars[cursor_pos - 2] == '/' {
-                return Some("//=");
-            }
+        '=' if cursor_pos >= 2 && chars[cursor_pos - 1] == '/' && chars[cursor_pos - 2] == '/' => {
+            return Some("//=");
         }
         _ => {}
     }
@@ -284,17 +281,11 @@ fn check_pipe_equals(chars: &[char], cursor_pos: usize) -> Option<&'static str> 
     let current = chars[cursor_pos];
 
     match current {
-        '|' => {
-            // Check if | is followed by =
-            if cursor_pos + 1 < len && chars[cursor_pos + 1] == '=' {
-                return Some("|=");
-            }
+        '|' if cursor_pos + 1 < len && chars[cursor_pos + 1] == '=' => {
+            return Some("|=");
         }
-        '=' => {
-            // Check if = is preceded by |
-            if cursor_pos > 0 && chars[cursor_pos - 1] == '|' {
-                return Some("|=");
-            }
+        '=' if cursor_pos > 0 && chars[cursor_pos - 1] == '|' => {
+            return Some("|=");
         }
         _ => {}
     }
