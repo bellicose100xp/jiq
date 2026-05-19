@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.22.3] - 2026-05-19
+
+### Fixed
+- **Search no-match feedback** ([#160](https://github.com/bellicose100xp/jiq/pull/160)) - When typing in the search bar (Ctrl+F edit mode) and the query stops matching, the results pane now resets scroll to the top, dims the rendered results, and shows a red `⚠ No Matches` badge in the title — visually consistent with the existing `⚠ Syntax Error` and `∅ No Results` badges. Previously the viewport stayed frozen at the last partial match with no visual indication that the current query produced no results. The behavior applies only while typing and only for non-empty queries; once Enter confirms the search, navigation mode resumes normally.
+
 ## [3.22.2] - 2026-05-16
 
 ### Fixed
