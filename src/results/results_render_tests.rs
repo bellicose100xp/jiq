@@ -4,6 +4,7 @@ use crate::input::FileLoader;
 use proptest::prelude::*;
 use ratatui::Terminal;
 use ratatui::backend::TestBackend;
+use ratatui::style::Modifier;
 use std::path::PathBuf;
 
 /// Helper to create a test terminal
@@ -516,5 +517,189 @@ mod scrollbar_tests {
             has_scrollbar_in_middle,
             "Scrollbar should render between the corners"
         );
+    }
+}
+
+#[cfg(test)]
+mod search_no_match_dim_tests {
+    use super::*;
+    use crate::search::search_events::open_search;
+    use crate::test_utils::test_helpers::test_app;
+    use std::sync::Arc;
+
+    fn setup_app_with_results(content: &str) -> App {
+        use ratatui::text::Text;
+
+        let mut app = test_app(r#"{"name": "test"}"#);
+        let arc = Arc::new(content.to_string());
+        let q = app.query.as_mut().unwrap();
+        q.last_successful_result = Some(Arc::clone(&arc));
+        q.last_successful_result_unformatted = Some(Arc::clone(&arc));
+        q.last_successful_result_rendered = Some(Text::raw(content.to_string()));
+        q.result = Ok(content.to_string());
+        q.is_empty_result = false;
+        app
+    }
+
+    fn count_dim_cells(app: &mut App, width: u16, height: u16) -> (usize, usize) {
+        use crate::search::search_render::SEARCH_BAR_HEIGHT;
+
+        let mut terminal = create_test_terminal(width, height);
+        terminal.draw(|f| app.render(f)).unwrap();
+        let buffer = terminal.backend().buffer();
+
+        // Scan only the interior viewport of the results pane: skip top/bottom
+        // borders, the search bar, and the bottom-border row that may carry
+        // overlaid hint text (which uses DIM styling unrelated to is_stale).
+        let results_bottom = height.saturating_sub(SEARCH_BAR_HEIGHT);
+        let scan_y_start: u16 = 1;
+        let scan_y_end: u16 = results_bottom.saturating_sub(2);
+        let scan_x_start: u16 = 1;
+        let scan_x_end: u16 = width.saturating_sub(1);
+
+        let mut dim = 0usize;
+        let mut content = 0usize;
+        for y in scan_y_start..scan_y_end {
+            for x in scan_x_start..scan_x_end {
+                let cell = &buffer[(x, y)];
+                let sym = cell.symbol();
+                if sym.trim().is_empty() {
+                    continue;
+                }
+                if matches!(sym, "│" | "─" | "╭" | "╮" | "╰" | "╯" | "█") {
+                    continue;
+                }
+                content += 1;
+                if cell.modifier.contains(Modifier::DIM) {
+                    dim += 1;
+                }
+            }
+        }
+        (dim, content)
+    }
+
+    #[test]
+    fn no_dim_when_search_query_has_matches() {
+        let content = "alpha line\nbeta line\nalpha again\n";
+        let mut app = setup_app_with_results(content);
+
+        open_search(&mut app);
+        app.search.search_textarea_mut().insert_str("alpha");
+        app.search.update_matches(content);
+
+        let (dim, total) = count_dim_cells(&mut app, 60, 12);
+        assert!(total > 0, "should have rendered content cells");
+        assert_eq!(dim, 0, "no cells should be dimmed when matches exist");
+    }
+
+    #[test]
+    fn dim_when_search_query_has_no_matches() {
+        let content = "alpha line\nbeta line\nalpha again\n";
+        let mut app = setup_app_with_results(content);
+
+        open_search(&mut app);
+        app.search.search_textarea_mut().insert_str("zzz");
+        app.search.update_matches(content);
+
+        let (dim, total) = count_dim_cells(&mut app, 60, 12);
+        assert!(total > 0, "should have rendered content cells");
+        assert!(dim > 0, "result cells should be dimmed when no matches");
+    }
+
+    #[test]
+    fn no_dim_when_search_query_is_empty() {
+        let content = "alpha line\nbeta line\nalpha again\n";
+        let mut app = setup_app_with_results(content);
+
+        open_search(&mut app);
+
+        let (dim, total) = count_dim_cells(&mut app, 60, 12);
+        assert!(total > 0, "should have rendered content cells");
+        assert_eq!(dim, 0, "empty query must not dim");
+    }
+
+    fn render_to_string_local(app: &mut App, width: u16, height: u16) -> String {
+        let mut terminal = create_test_terminal(width, height);
+        terminal.draw(|f| app.render(f)).unwrap();
+        terminal.backend().to_string()
+    }
+
+    #[test]
+    fn shows_no_matches_badge_when_search_query_has_no_matches() {
+        let content = "alpha line\nbeta line\n";
+        let mut app = setup_app_with_results(content);
+
+        open_search(&mut app);
+        app.search.search_textarea_mut().insert_str("zzz");
+        app.search.update_matches(content);
+
+        let output = render_to_string_local(&mut app, 60, 12);
+        assert!(
+            output.contains("No Matches"),
+            "results pane title should advertise the no-match state. Output:\n{}",
+            output
+        );
+    }
+
+    #[test]
+    fn no_no_matches_badge_when_query_has_matches() {
+        let content = "alpha line\nbeta line\n";
+        let mut app = setup_app_with_results(content);
+
+        open_search(&mut app);
+        app.search.search_textarea_mut().insert_str("alpha");
+        app.search.update_matches(content);
+
+        let output = render_to_string_local(&mut app, 60, 12);
+        assert!(
+            !output.contains("No Matches"),
+            "title must not show no-match badge while matches exist"
+        );
+    }
+
+    #[test]
+    fn no_no_matches_badge_when_query_is_empty() {
+        let content = "alpha line\nbeta line\n";
+        let mut app = setup_app_with_results(content);
+
+        open_search(&mut app);
+
+        let output = render_to_string_local(&mut app, 60, 12);
+        assert!(
+            !output.contains("No Matches"),
+            "title must not show no-match badge while query is empty"
+        );
+    }
+
+    #[test]
+    fn no_no_matches_badge_when_confirmed() {
+        let content = "alpha line\nbeta line\n";
+        let mut app = setup_app_with_results(content);
+
+        open_search(&mut app);
+        app.search.search_textarea_mut().insert_str("zzz");
+        app.search.update_matches(content);
+        app.search.confirm();
+
+        let output = render_to_string_local(&mut app, 60, 12);
+        assert!(
+            !output.contains("No Matches"),
+            "confirmed mode must not show the no-match badge"
+        );
+    }
+
+    #[test]
+    fn no_dim_when_search_confirmed_with_no_matches() {
+        let content = "alpha line\nbeta line\n";
+        let mut app = setup_app_with_results(content);
+
+        open_search(&mut app);
+        app.search.search_textarea_mut().insert_str("zzz");
+        app.search.update_matches(content);
+        app.search.confirm();
+
+        let (dim, total) = count_dim_cells(&mut app, 60, 12);
+        assert!(total > 0, "should have rendered content cells");
+        assert_eq!(dim, 0, "confirmed mode must not dim, even with no matches");
     }
 }

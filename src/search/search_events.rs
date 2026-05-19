@@ -116,6 +116,9 @@ pub fn handle_search_key(app: &mut App, key: KeyEvent) -> bool {
 
             if let Some(m) = app.search.current_match() {
                 scroll_to_line(app, m.line);
+            } else if !app.search.query().is_empty() {
+                app.results_scroll.offset = 0;
+                app.results_scroll.h_offset = 0;
             }
 
             true
