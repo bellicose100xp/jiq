@@ -267,7 +267,23 @@ pub fn render_pane(app: &mut App, frame: &mut Frame, area: Rect) -> (Rect, Optio
         unfocused_border_color
     };
 
-    let is_stale = query_state.result.is_err() || query_state.is_empty_result;
+    let search_no_match = search_visible
+        && !app.search.is_confirmed()
+        && !app.search.query().is_empty()
+        && app.search.matches().is_empty();
+    let is_stale = query_state.result.is_err() || query_state.is_empty_result || search_no_match;
+
+    let title = if search_no_match {
+        let mut spans = vec![
+            Span::raw(" "),
+            Span::styled("  ⚠ No Matches  ", theme::search::BADGE_NO_MATCHES),
+            Span::raw(" "),
+        ];
+        spans.extend(title.spans);
+        Line::from(spans)
+    } else {
+        title
+    };
 
     // Always render from cached pre-rendered text
     if let Some(rendered) = &query_state.last_successful_result_rendered {

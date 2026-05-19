@@ -2,5 +2,7 @@
 mod lifecycle_tests;
 #[path = "search_events_tests/navigation_tests.rs"]
 mod navigation_tests;
+#[path = "search_events_tests/no_match_tests.rs"]
+mod no_match_tests;
 #[path = "search_events_tests/scroll_tests.rs"]
 mod scroll_tests;
