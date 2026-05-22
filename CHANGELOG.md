@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.23.1] - 2026-05-22
+
+### Added
+- **`Ctrl+O` to copy results from any focus** ([#162](https://github.com/bellicose100xp/jiq/pull/162)) - Pressing `Ctrl+O` now copies the results pane content regardless of which pane is focused, so you can grab the rendered JSON without leaving the query box. `Ctrl+Y` is unchanged and remains focus-aware (copies query when input focused, results when results focused).
+
 ## [3.23.0] - 2026-05-22
 
 ### Added
