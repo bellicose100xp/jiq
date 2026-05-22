@@ -77,9 +77,12 @@ fn main() -> Result<()> {
     let loader = if let Some(ref path) = args.input {
         log::debug!("File loader spawned for: {:?}", path);
         FileLoader::spawn_load(path.clone())
-    } else {
+    } else if !std::io::IsTerminal::is_terminal(&std::io::stdin()) {
         log::debug!("File loader spawned for stdin");
         FileLoader::spawn_load_stdin()
+    } else {
+        log::debug!("File loader spawned for clipboard (no argument, no piped stdin)");
+        FileLoader::spawn_load_clipboard()
     };
 
     let app = App::new_with_loader(loader, &config_result.config);

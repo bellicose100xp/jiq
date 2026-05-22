@@ -174,6 +174,22 @@ fn test_load_stdin_sync_detects_terminal() {
 }
 
 // ============================================================================
+// Clipboard Loading Tests
+// ============================================================================
+
+#[test]
+fn test_spawn_load_clipboard_creates_loader() {
+    // Verifies the constructor returns a loader in the Loading state.
+    // We don't poll for completion here: the underlying arboard backend on
+    // macOS interacts poorly with the test harness when multiple tests
+    // touch NSPasteboard within the same process. End-to-end behavior is
+    // exercised at runtime when launching `jiq` with no stdin and no path.
+    let loader = FileLoader::spawn_load_clipboard();
+    assert!(loader.is_loading());
+    assert!(matches!(loader.state(), LoadingState::Loading));
+}
+
+// ============================================================================
 // JSONL Validation Tests
 // ============================================================================
 
