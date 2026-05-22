@@ -189,6 +189,28 @@ fn test_spawn_load_clipboard_creates_loader() {
     assert!(matches!(loader.state(), LoadingState::Loading));
 }
 
+#[test]
+fn test_no_clipboard_input_error_is_friendly_usage_hint() {
+    let err = no_clipboard_input_error();
+    match err {
+        JiqError::Io(msg) => {
+            assert!(msg.contains("No input provided"));
+            assert!(msg.contains("Usage:"));
+            assert!(!msg.to_lowercase().contains("clipboard"));
+            assert!(!msg.to_lowercase().contains("x11"));
+        }
+        other => panic!("expected JiqError::Io, got {:?}", other),
+    }
+}
+
+#[test]
+fn test_validate_json_or_jsonl_rejects_plain_text() {
+    // Mirrors the clipboard-with-non-JSON path: the caller surfaces a
+    // friendly usage hint when validation fails on clipboard contents.
+    let result = validate_json_or_jsonl("hello world");
+    assert!(result.is_err());
+}
+
 // ============================================================================
 // JSONL Validation Tests
 // ============================================================================

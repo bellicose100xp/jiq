@@ -181,27 +181,49 @@ fn load_stdin_sync() -> Result<String, JiqError> {
 
 /// Synchronous clipboard loading (runs in background thread)
 ///
-/// Reads text from the system clipboard and validates JSON. Returns an Io error
-/// when the clipboard is unavailable or empty so callers can surface a usage hint
-/// matching the no-input experience.
+/// Reads text from the system clipboard and validates JSON. The clipboard is a
+/// silent fallback when the user supplies neither a path nor piped stdin, so
+/// every failure mode (unavailable backend, empty clipboard, non-JSON content)
+/// is collapsed into the same usage hint the stdin path uses. Surfacing the
+/// raw `arboard` error - "X11 server connection timed out", etc. - is noisy
+/// and confusing on remote SSH sessions where the clipboard was never usable.
 fn load_clipboard_sync() -> Result<String, JiqError> {
     log::debug!("Loading from clipboard");
-    let mut clipboard = arboard::Clipboard::new()
-        .map_err(|e| JiqError::Io(format!("Clipboard unavailable: {}", e)))?;
-    let contents = clipboard
-        .get_text()
-        .map_err(|e| JiqError::Io(format!("Clipboard read failed: {}", e)))?;
+
+    let mut clipboard = match arboard::Clipboard::new() {
+        Ok(c) => c,
+        Err(e) => {
+            log::debug!("Clipboard unavailable: {}", e);
+            return Err(no_clipboard_input_error());
+        }
+    };
+
+    let contents = match clipboard.get_text() {
+        Ok(t) => t,
+        Err(e) => {
+            log::debug!("Clipboard read failed: {}", e);
+            return Err(no_clipboard_input_error());
+        }
+    };
     log::debug!("Clipboard read: {} bytes", contents.len());
 
     if contents.trim().is_empty() {
+        return Err(no_clipboard_input_error());
+    }
+
+    if validate_json_or_jsonl(&contents).is_err() {
+        log::debug!("Clipboard contents are not valid JSON or JSONL");
         return Err(JiqError::Io(
-            "No input provided. Usage: jiq <file> or echo '{}' | jiq".to_string(),
+            "No input provided and clipboard does not contain valid JSON. Usage: jiq <file> or echo '{}' | jiq"
+                .to_string(),
         ));
     }
 
-    validate_json_or_jsonl(&contents)?;
-
     Ok(contents)
+}
+
+fn no_clipboard_input_error() -> JiqError {
+    JiqError::Io("No input provided. Usage: jiq <file> or echo '{}' | jiq".to_string())
 }
 
 #[cfg(test)]
