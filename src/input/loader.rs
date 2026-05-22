@@ -62,6 +62,25 @@ impl FileLoader {
         }
     }
 
+    /// Spawn a background thread to load from the system clipboard
+    ///
+    /// Creates a background thread that reads text from the system clipboard,
+    /// validates JSON, and sends the result back via a channel. Used when jiq
+    /// is launched with no file argument and no piped stdin.
+    pub fn spawn_load_clipboard() -> Self {
+        let (tx, rx) = channel();
+
+        std::thread::spawn(move || {
+            let result = load_clipboard_sync();
+            let _ = tx.send(result);
+        });
+
+        Self {
+            state: LoadingState::Loading,
+            rx: Some(rx),
+        }
+    }
+
     /// Poll for loading completion (non-blocking)
     ///
     /// Checks the channel for results without blocking. Returns None if still loading,
@@ -158,6 +177,31 @@ fn load_stdin_sync() -> Result<String, JiqError> {
     validate_json_or_jsonl(&buffer)?;
 
     Ok(buffer)
+}
+
+/// Synchronous clipboard loading (runs in background thread)
+///
+/// Reads text from the system clipboard and validates JSON. Returns an Io error
+/// when the clipboard is unavailable or empty so callers can surface a usage hint
+/// matching the no-input experience.
+fn load_clipboard_sync() -> Result<String, JiqError> {
+    log::debug!("Loading from clipboard");
+    let mut clipboard = arboard::Clipboard::new()
+        .map_err(|e| JiqError::Io(format!("Clipboard unavailable: {}", e)))?;
+    let contents = clipboard
+        .get_text()
+        .map_err(|e| JiqError::Io(format!("Clipboard read failed: {}", e)))?;
+    log::debug!("Clipboard read: {} bytes", contents.len());
+
+    if contents.trim().is_empty() {
+        return Err(JiqError::Io(
+            "No input provided. Usage: jiq <file> or echo '{}' | jiq".to_string(),
+        ));
+    }
+
+    validate_json_or_jsonl(&contents)?;
+
+    Ok(contents)
 }
 
 #[cfg(test)]
