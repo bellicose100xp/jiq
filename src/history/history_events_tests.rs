@@ -309,6 +309,55 @@ fn test_filter_with_no_matches() {
 }
 
 #[test]
+fn test_ctrl_d_deletes_selected_entry() {
+    let mut app = app_with_query("");
+    app.input.editor_mode = EditorMode::Insert;
+
+    app.history.add_entry_in_memory(".keep");
+    app.history.add_entry_in_memory(".delete_me");
+
+    app.handle_key_event(key_with_mods(KeyCode::Char('r'), KeyModifiers::CONTROL));
+    assert!(app.history.is_visible());
+    assert_eq!(app.history.selected_entry(), Some(".delete_me"));
+
+    app.handle_key_event(key_with_mods(KeyCode::Char('d'), KeyModifiers::CONTROL));
+
+    assert!(app.history.is_visible());
+    assert_eq!(app.history.total_count(), 1);
+    assert_eq!(app.history.selected_entry(), Some(".keep"));
+}
+
+#[test]
+fn test_ctrl_d_closes_popup_when_last_entry_deleted() {
+    let mut app = app_with_query("");
+    app.input.editor_mode = EditorMode::Insert;
+
+    app.history.add_entry_in_memory(".only");
+
+    app.handle_key_event(key_with_mods(KeyCode::Char('r'), KeyModifiers::CONTROL));
+    assert!(app.history.is_visible());
+
+    app.handle_key_event(key_with_mods(KeyCode::Char('d'), KeyModifiers::CONTROL));
+
+    assert!(!app.history.is_visible());
+    assert_eq!(app.history.total_count(), 0);
+}
+
+#[test]
+fn test_ctrl_d_does_not_replace_query() {
+    let mut app = app_with_query(".existing_query");
+    app.input.editor_mode = EditorMode::Insert;
+
+    app.history.add_entry_in_memory(".other");
+    app.history.add_entry_in_memory(".target");
+
+    app.handle_key_event(key_with_mods(KeyCode::Char('r'), KeyModifiers::CONTROL));
+    app.handle_key_event(key_with_mods(KeyCode::Char('d'), KeyModifiers::CONTROL));
+
+    assert_eq!(app.query(), ".existing_query");
+}
+
+#[test]
 fn test_backspace_on_empty_search() {
     let mut app = app_with_query("");
     app.input.editor_mode = EditorMode::Insert;

@@ -33,8 +33,49 @@ pub fn handle_click(app: &mut App, region: Option<Region>, mouse: MouseEvent) {
         Some(Region::AiWindow) => click_ai_window(app, mouse),
         Some(Region::SnippetList) => click_snippet_list(app, mouse),
         Some(Region::HelpPopup) => click_help_popup(app, mouse),
+        Some(Region::HistoryPopup) => click_history_popup(app, mouse),
         _ => {}
     }
+}
+
+fn click_history_popup(app: &mut App, mouse: MouseEvent) {
+    if !app.history.is_visible() {
+        return;
+    }
+
+    if let Some(display_idx) =
+        crate::history::history_render::delete_button_at(app, mouse.column, mouse.row)
+    {
+        app.history.delete_at_display_index(display_idx);
+        if app.history.total_count() == 0 {
+            app.history.close();
+        }
+        return;
+    }
+
+    if let Some(display_idx) =
+        crate::history::history_render::display_index_at(app, mouse.column, mouse.row)
+        && let Some(entry) = app.history.entry_at_display_index(display_idx)
+    {
+        let entry = entry.to_string();
+        replace_query_with_entry(app, &entry);
+        app.history.close();
+    }
+}
+
+fn replace_query_with_entry(app: &mut App, text: &str) {
+    app.input.textarea.delete_line_by_head();
+    app.input.textarea.delete_line_by_end();
+    app.input.textarea.insert_str(text);
+
+    let query = app.input.textarea.lines()[0].as_ref();
+    if let Some(query_state) = &mut app.query {
+        query_state.execute(query);
+    }
+
+    app.results_scroll.reset();
+    app.results_cursor.reset();
+    app.error_overlay_visible = false;
 }
 
 fn click_results_pane(app: &mut App, mouse: MouseEvent) {

@@ -1,6 +1,6 @@
 use ratatui::{
     Frame,
-    layout::{Constraint, Layout, Rect},
+    layout::{Alignment, Constraint, Layout, Rect},
     style::Style,
     text::{Line, Span},
     widgets::{Block, BorderType, Borders, List, ListItem},
@@ -14,6 +14,9 @@ use crate::theme;
 use crate::widgets::{popup, scrollbar};
 
 pub const HISTORY_SEARCH_HEIGHT: u16 = 3;
+
+/// Width of the trailing ` [✕] ` button column rendered when an entry is hovered or selected.
+const DELETE_BUTTON_WIDTH: u16 = 5;
 
 /// Render the history popup
 ///
@@ -50,7 +53,11 @@ pub fn render_popup(app: &mut App, frame: &mut Frame, input_area: Rect) -> Optio
         app.history.total_count()
     );
 
-    let max_text_len = (list_area.width as usize).saturating_sub(6);
+    // Reserve space for the right-edge delete button on top of the existing
+    // 6-cell padding (border + indicator + trailing space).
+    let max_text_len = (list_area.width as usize)
+        .saturating_sub(6)
+        .saturating_sub(DELETE_BUTTON_WIDTH as usize);
 
     let items: Vec<ListItem> = if app.history.filtered_count() == 0 {
         vec![
@@ -67,6 +74,8 @@ pub fn render_popup(app: &mut App, frame: &mut Frame, input_area: Rect) -> Optio
         // Top padding
         list_items.push(ListItem::new(Line::from("")));
 
+        let hovered_index = app.history.hovered_index();
+
         for (display_idx, entry) in app.history.visible_entries() {
             let display_text = if entry.chars().count() > max_text_len {
                 let truncated: String = entry.chars().take(max_text_len).collect();
@@ -76,6 +85,7 @@ pub fn render_popup(app: &mut App, frame: &mut Frame, input_area: Rect) -> Optio
             };
 
             let is_selected = display_idx == app.history.selected_index();
+            let is_hovered = hovered_index == Some(display_idx);
 
             let (bg_color, prefix) = if is_selected {
                 (
@@ -99,21 +109,47 @@ pub fn render_popup(app: &mut App, frame: &mut Frame, input_area: Rect) -> Optio
 
             let mut spans = prefix;
 
-            // Syntax highlighting for all items
             let highlighted = JqHighlighter::highlight(&display_text);
+            let mut text_width: usize = 0;
             for span in highlighted {
                 let style = if is_selected {
-                    // Selected: bright syntax colors
                     span.style.bg(bg_color)
                 } else {
-                    // Normal: muted foreground color (no syntax colors)
                     Style::default()
                         .fg(theme::history::ITEM_NORMAL_FG)
                         .bg(bg_color)
                 };
+                text_width += span.content.chars().count();
                 spans.push(Span::styled(span.content, style));
             }
-            spans.push(Span::styled(" ", Style::default().bg(bg_color)));
+
+            // Right-align the delete column independently of List's truncation.
+            let inner_width = list_area.width.saturating_sub(2) as usize;
+            let used = 3 + text_width;
+            let trailing_btn_width = DELETE_BUTTON_WIDTH as usize;
+            let pad = inner_width
+                .saturating_sub(used)
+                .saturating_sub(trailing_btn_width);
+            if pad > 0 {
+                spans.push(Span::styled(" ".repeat(pad), Style::default().bg(bg_color)));
+            }
+
+            // Reserve the column even when invisible so the row layout is
+            // stable as hover toggles on and off.
+            let show_button = is_hovered || is_selected;
+            if show_button {
+                let btn_color = if is_hovered {
+                    theme::history::DELETE_BUTTON_HOVER
+                } else {
+                    theme::history::DELETE_BUTTON
+                };
+                spans.push(Span::styled(
+                    " [✕] ",
+                    Style::default().fg(btn_color).bg(bg_color),
+                ));
+            } else {
+                spans.push(Span::styled("     ", Style::default().bg(bg_color)));
+            }
 
             list_items.push(ListItem::new(Line::from(spans)));
         }
@@ -124,10 +160,16 @@ pub fn render_popup(app: &mut App, frame: &mut Frame, input_area: Rect) -> Optio
         list_items
     };
 
+    let bottom_hints = theme::border_hints::build_hints(
+        &[("Enter", "Select"), ("Ctrl+D", "Delete"), ("Esc", "Close")],
+        theme::history::BORDER,
+    );
+
     let block = Block::default()
         .borders(Borders::ALL)
         .border_type(BorderType::Rounded)
         .title(title)
+        .title_bottom(bottom_hints.alignment(Alignment::Center))
         .border_style(Style::default().fg(theme::history::BORDER))
         .style(Style::default().bg(theme::history::BACKGROUND));
 
@@ -173,3 +215,48 @@ pub fn render_popup(app: &mut App, frame: &mut Frame, input_area: Rect) -> Optio
 
     Some(popup_area)
 }
+
+/// Resolves the display index for an entry at screen position `(x, y)`.
+///
+/// Returns `None` when the cursor is on padding rows, the search area, or
+/// outside the popup. Display index matches [`HistoryState::visible_entries`].
+pub fn display_index_at(app: &App, x: u16, y: u16) -> Option<usize> {
+    let popup = app.layout_regions.history_popup?;
+    if x < popup.x || x >= popup.x + popup.width {
+        return None;
+    }
+
+    let visible_count = app.history.filtered_count().min(MAX_VISIBLE_HISTORY) as u16;
+    if visible_count == 0 {
+        return None;
+    }
+
+    let entries_top = popup.y.saturating_add(2);
+    let entries_bottom = entries_top.saturating_add(visible_count);
+    if y < entries_top || y >= entries_bottom {
+        return None;
+    }
+
+    let row_in_list = (y - entries_top) as usize;
+    let scroll = app.history.scroll_offset();
+    let visible = visible_count as usize;
+    Some(scroll + visible - 1 - row_in_list)
+}
+
+/// Returns the display index whose ` [✕] ` delete button is at `(x, y)`.
+pub fn delete_button_at(app: &App, x: u16, y: u16) -> Option<usize> {
+    let popup = app.layout_regions.history_popup?;
+    let display_idx = display_index_at(app, x, y)?;
+
+    let inner_right = popup.x.saturating_add(popup.width).saturating_sub(1);
+    let btn_start = inner_right.saturating_sub(DELETE_BUTTON_WIDTH);
+    if x < btn_start || x >= inner_right {
+        return None;
+    }
+
+    Some(display_idx)
+}
+
+#[cfg(test)]
+#[path = "history_render_tests.rs"]
+mod history_render_tests;

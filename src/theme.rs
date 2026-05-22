@@ -232,6 +232,10 @@ pub mod history {
     // Search textarea
     pub const SEARCH_TEXT: Color = Color::Rgb(236, 236, 244);
     pub const SEARCH_BG: Color = Color::Rgb(26, 26, 46);
+
+    // Delete button (rendered on selected/hovered rows)
+    pub const DELETE_BUTTON: Color = Color::Rgb(130, 133, 158);
+    pub const DELETE_BUTTON_HOVER: Color = Color::Rgb(255, 107, 107);
 }
 
 /// Snippets popup styles

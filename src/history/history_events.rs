@@ -1,4 +1,4 @@
-use ratatui::crossterm::event::{KeyCode, KeyEvent};
+use ratatui::crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use tui_textarea::Input;
 
 use crate::app::App;
@@ -10,6 +10,13 @@ pub fn handle_history_popup_key(app: &mut App, key: KeyEvent) {
         }
         KeyCode::Down => {
             app.history.select_previous();
+        }
+
+        KeyCode::Char('d') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+            app.history.delete_selected();
+            if app.history.total_count() == 0 {
+                app.history.close();
+            }
         }
 
         KeyCode::Enter | KeyCode::Tab => {

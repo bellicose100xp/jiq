@@ -102,6 +102,8 @@ pub const HELP_CATEGORIES: &[HelpCategory] = &[
                 ("↑/↓", "Navigate history entries"),
                 ("Type", "Fuzzy search filter"),
                 ("Enter/Tab", "Select entry and close"),
+                ("Ctrl+D", "Delete selected entry"),
+                ("Click ✕", "Delete entry under mouse"),
                 ("Esc", "Close without selecting"),
             ],
         }],

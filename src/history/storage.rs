@@ -71,6 +71,21 @@ pub fn add_entry(query: &str) -> io::Result<()> {
     save_history(&entries)
 }
 
+/// Removes all occurrences of `query` from the persisted history.
+///
+/// No file locking - last writer wins if multiple instances run simultaneously.
+pub fn delete_entry(query: &str) -> io::Result<()> {
+    let mut entries = load_history();
+    let original_len = entries.len();
+    entries.retain(|e| e != query);
+
+    if entries.len() == original_len {
+        return Ok(());
+    }
+
+    save_history(&entries)
+}
+
 /// Removes duplicate entries, keeping the first occurrence of each.
 fn deduplicate(entries: &[String]) -> Vec<String> {
     let mut seen = std::collections::HashSet::new();
