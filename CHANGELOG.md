@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.23.2] - 2026-05-22
+
+### Added
+- **Delete entries from history popup** ([#163](https://github.com/bellicose100xp/jiq/pull/163)) - Press `Ctrl+D` to delete the selected entry, or hover any row to reveal a `✕` button that deletes the entry on click. The popup auto-closes when the last entry is removed, and deletes are persisted to the on-disk history file. The popup's bottom border now shows `Enter Select • Ctrl+D Delete • Esc Close`, matching the pattern used by search and snippets.
+
 ## [3.23.1] - 2026-05-22
 
 ### Added

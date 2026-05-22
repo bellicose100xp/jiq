@@ -288,6 +288,8 @@ Successful queries are saved to your platform's application data directory:
 | `↑` / `↓` | Navigate entries |
 | Type characters | Fuzzy search filter |
 | `Enter` / `Tab` | Select entry and close |
+| `Ctrl+D` | Delete selected entry |
+| Click `✕` | Delete entry under mouse (revealed on hover) |
 | `ESC` | Close without selecting |
 
 </details>
