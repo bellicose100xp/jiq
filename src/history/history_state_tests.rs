@@ -13,6 +13,7 @@ fn create_test_state(entries: Vec<&str>) -> HistoryState {
         matcher: HistoryMatcher::new(),
         persist_to_disk: false,
         cycling_index: None,
+        hovered_index: None,
     }
 }
 
@@ -361,6 +362,7 @@ fn create_scrollable_test_state(entry_count: usize) -> HistoryState {
         matcher: HistoryMatcher::new(),
         persist_to_disk: false,
         cycling_index: None,
+        hovered_index: None,
     }
 }
 
@@ -433,4 +435,141 @@ fn test_scrollable_content_fits_in_viewport() {
 
     state.scroll_view_down(5);
     assert_eq!(Scrollable::scroll_offset(&state), 0); // Can't scroll when content fits
+}
+
+// Tests for delete and hover behavior
+
+#[test]
+fn test_delete_selected_removes_entry() {
+    let mut state = create_test_state(vec![".foo", ".bar", ".baz"]);
+    state.filtered_indices = vec![0, 1, 2];
+
+    let removed = state.delete_selected();
+
+    assert_eq!(removed, Some(".foo".to_string()));
+    assert_eq!(state.total_count(), 2);
+    assert_eq!(state.entry_at_display_index(0), Some(".bar"));
+    assert_eq!(state.entry_at_display_index(1), Some(".baz"));
+}
+
+#[test]
+fn test_delete_selected_returns_none_when_empty() {
+    let mut state = HistoryState::empty();
+    let removed = state.delete_selected();
+    assert_eq!(removed, None);
+}
+
+#[test]
+fn test_delete_selected_clamps_selection_to_last_entry() {
+    let mut state = create_test_state(vec![".foo", ".bar", ".baz"]);
+    state.filtered_indices = vec![0, 1, 2];
+    state.selected_index = 2;
+
+    state.delete_selected();
+
+    assert_eq!(state.total_count(), 2);
+    assert_eq!(state.selected_index(), 1);
+    assert_eq!(state.selected_entry(), Some(".bar"));
+}
+
+#[test]
+fn test_delete_selected_keeps_selection_when_first_removed() {
+    let mut state = create_test_state(vec![".foo", ".bar", ".baz"]);
+    state.filtered_indices = vec![0, 1, 2];
+    state.selected_index = 0;
+
+    state.delete_selected();
+
+    assert_eq!(state.selected_index(), 0);
+    assert_eq!(state.selected_entry(), Some(".bar"));
+}
+
+#[test]
+fn test_delete_selected_resets_cycling_state() {
+    let mut state = create_test_state(vec![".foo", ".bar", ".baz"]);
+    state.filtered_indices = vec![0, 1, 2];
+    state.cycle_previous();
+    assert!(state.cycling_index.is_some());
+
+    state.delete_selected();
+
+    assert_eq!(state.cycling_index, None);
+}
+
+#[test]
+fn test_delete_selected_reapplies_filter() {
+    let mut state = create_test_state(vec![".apple", ".banana", ".apricot"]);
+    state.filtered_indices = vec![0, 1, 2];
+    state.search_textarea_mut().insert_str("ap");
+    state.on_search_input_changed();
+
+    let filtered_before = state.filtered_count();
+    assert_eq!(filtered_before, 2);
+
+    state.delete_selected();
+
+    assert_eq!(state.total_count(), 2);
+    assert_eq!(state.filtered_count(), 1);
+}
+
+#[test]
+fn test_delete_at_display_index_removes_specific_entry() {
+    let mut state = create_test_state(vec![".foo", ".bar", ".baz"]);
+    state.filtered_indices = vec![0, 1, 2];
+
+    let removed = state.delete_at_display_index(1);
+
+    assert_eq!(removed, Some(".bar".to_string()));
+    assert_eq!(state.entry_at_display_index(0), Some(".foo"));
+    assert_eq!(state.entry_at_display_index(1), Some(".baz"));
+}
+
+#[test]
+fn test_delete_at_display_index_out_of_bounds_returns_none() {
+    let mut state = create_test_state(vec![".foo"]);
+    state.filtered_indices = vec![0];
+
+    let removed = state.delete_at_display_index(99);
+
+    assert_eq!(removed, None);
+    assert_eq!(state.total_count(), 1);
+}
+
+#[test]
+fn test_set_and_clear_hover() {
+    let mut state = create_test_state(vec![".foo", ".bar"]);
+    assert_eq!(state.hovered_index(), None);
+
+    state.set_hovered(Some(1));
+    assert_eq!(state.hovered_index(), Some(1));
+
+    state.clear_hover();
+    assert_eq!(state.hovered_index(), None);
+}
+
+#[test]
+fn test_close_clears_hover() {
+    let mut state = create_test_state(vec![".foo", ".bar"]);
+    state.set_hovered(Some(0));
+
+    state.close();
+
+    assert_eq!(state.hovered_index(), None);
+}
+
+#[test]
+fn test_delete_clears_hover() {
+    let mut state = create_test_state(vec![".foo", ".bar"]);
+    state.filtered_indices = vec![0, 1];
+    state.set_hovered(Some(1));
+
+    state.delete_selected();
+
+    assert_eq!(state.hovered_index(), None);
+}
+
+#[test]
+fn test_entry_at_display_index_out_of_bounds() {
+    let state = create_test_state(vec![".foo"]);
+    assert_eq!(state.entry_at_display_index(5), None);
 }

@@ -385,6 +385,76 @@ fn test_drag_outside_results_pane_clears_hover() {
     assert_eq!(app.results_cursor.hovered_line(), None);
 }
 
+// Tests for history popup hover handling
+
+fn setup_history_popup_for_hover(app: &mut App) {
+    app.history.add_entry_in_memory(".oldest");
+    app.history.add_entry_in_memory(".middle");
+    app.history.add_entry_in_memory(".newest");
+    app.history.open(None);
+
+    app.layout_regions.history_popup = Some(Rect::new(0, 0, 80, 10));
+}
+
+#[test]
+fn test_hover_history_popup_sets_hovered_index() {
+    let mut app = create_test_app();
+    setup_history_popup_for_hover(&mut app);
+
+    // Row 4 holds the newest entry (display index 0).
+    let mouse = create_mouse_event(10, 4);
+    handle_hover(&mut app, Some(Region::HistoryPopup), mouse);
+
+    assert_eq!(app.history.hovered_index(), Some(0));
+}
+
+#[test]
+fn test_hover_history_popup_updates_when_moving_between_rows() {
+    let mut app = create_test_app();
+    setup_history_popup_for_hover(&mut app);
+
+    handle_hover(
+        &mut app,
+        Some(Region::HistoryPopup),
+        create_mouse_event(10, 4),
+    );
+    assert_eq!(app.history.hovered_index(), Some(0));
+
+    handle_hover(
+        &mut app,
+        Some(Region::HistoryPopup),
+        create_mouse_event(10, 2),
+    );
+    assert_eq!(app.history.hovered_index(), Some(2));
+}
+
+#[test]
+fn test_hover_history_popup_clears_on_padding_row() {
+    let mut app = create_test_app();
+    setup_history_popup_for_hover(&mut app);
+    app.history.set_hovered(Some(1));
+
+    // Row 1 is the top padding row.
+    handle_hover(
+        &mut app,
+        Some(Region::HistoryPopup),
+        create_mouse_event(10, 1),
+    );
+
+    assert_eq!(app.history.hovered_index(), None);
+}
+
+#[test]
+fn test_hover_outside_history_popup_clears_hover() {
+    let mut app = create_test_app();
+    setup_history_popup_for_hover(&mut app);
+    app.history.set_hovered(Some(0));
+
+    handle_hover(&mut app, None, create_mouse_event(0, 0));
+
+    assert_eq!(app.history.hovered_index(), None);
+}
+
 #[test]
 fn test_drag_with_scroll_offset() {
     let mut app = test_app(

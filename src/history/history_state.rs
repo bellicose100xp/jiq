@@ -24,6 +24,7 @@ pub struct HistoryState {
     matcher: HistoryMatcher,
     persist_to_disk: bool,
     cycling_index: Option<usize>,
+    hovered_index: Option<usize>,
 }
 
 impl Default for HistoryState {
@@ -47,6 +48,7 @@ impl HistoryState {
             matcher: HistoryMatcher::new(),
             persist_to_disk: true,
             cycling_index: None,
+            hovered_index: None,
         }
     }
 
@@ -62,6 +64,7 @@ impl HistoryState {
             matcher: HistoryMatcher::new(),
             persist_to_disk: false,
             cycling_index: None,
+            hovered_index: None,
         }
     }
 
@@ -95,6 +98,7 @@ impl HistoryState {
         self.search_textarea.cut();
         self.selected_index = 0;
         self.scroll_offset = 0;
+        self.hovered_index = None;
         self.filtered_indices = (0..self.entries.len()).collect();
     }
 
@@ -155,6 +159,13 @@ impl HistoryState {
     pub fn selected_entry(&self) -> Option<&str> {
         self.filtered_indices
             .get(self.selected_index)
+            .and_then(|&idx| self.entries.get(idx))
+            .map(String::as_str)
+    }
+
+    pub fn entry_at_display_index(&self, display_index: usize) -> Option<&str> {
+        self.filtered_indices
+            .get(display_index)
             .and_then(|&idx| self.entries.get(idx))
             .map(String::as_str)
     }
@@ -251,6 +262,68 @@ impl HistoryState {
 
     pub fn reset_cycling(&mut self) {
         self.cycling_index = None;
+    }
+
+    pub fn set_hovered(&mut self, display_index: Option<usize>) {
+        self.hovered_index = display_index;
+    }
+
+    pub fn clear_hover(&mut self) {
+        self.hovered_index = None;
+    }
+
+    pub fn hovered_index(&self) -> Option<usize> {
+        self.hovered_index
+    }
+
+    /// Delete the entry currently selected in the popup.
+    ///
+    /// Returns the deleted entry text, or `None` when there is no selection.
+    /// Persists to disk when persistence is enabled and re-runs the active filter.
+    pub fn delete_selected(&mut self) -> Option<String> {
+        let &entry_idx = self.filtered_indices.get(self.selected_index)?;
+        self.delete_at_entry_index(entry_idx)
+    }
+
+    /// Delete the entry shown at `display_index` in the filtered list.
+    ///
+    /// `display_index` is the same index returned by [`visible_entries`].
+    pub fn delete_at_display_index(&mut self, display_index: usize) -> Option<String> {
+        let &entry_idx = self.filtered_indices.get(display_index)?;
+        let deleted = self.delete_at_entry_index(entry_idx)?;
+
+        if self.selected_index >= self.filtered_indices.len() {
+            self.selected_index = self.filtered_indices.len().saturating_sub(1);
+        }
+        self.adjust_scroll_to_selection();
+        Some(deleted)
+    }
+
+    fn delete_at_entry_index(&mut self, entry_idx: usize) -> Option<String> {
+        if entry_idx >= self.entries.len() {
+            return None;
+        }
+        let removed = self.entries.remove(entry_idx);
+
+        if self.persist_to_disk
+            && let Err(e) = storage::delete_entry(&removed)
+        {
+            eprintln!(
+                "Warning: Failed to delete query history entry on disk: {}",
+                e
+            );
+        }
+
+        self.cycling_index = None;
+        self.hovered_index = None;
+        self.update_filter();
+
+        if self.selected_index >= self.filtered_indices.len() {
+            self.selected_index = self.filtered_indices.len().saturating_sub(1);
+        }
+        self.adjust_scroll_to_selection();
+
+        Some(removed)
     }
 
     /// Get the current scroll offset
