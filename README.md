@@ -111,7 +111,8 @@ is unavailable there.
 |-----|--------|
 | `F1` or `?` | Toggle keyboard shortcuts help popup |
 | `Shift+Tab` | Switch focus between Input and Results |
-| `Ctrl+Y` | Copy current query or results to clipboard |
+| `Ctrl+Y` | Copy current query or results to clipboard (focus-aware) |
+| `Ctrl+O` | Copy results to clipboard regardless of focus |
 | `yy` | Copy current query or results to clipboard (NORMAL mode) |
 | `Ctrl+T` | Toggle function tooltip (when cursor is on a function) |
 | `Ctrl+E` | Toggle error overlay (when syntax error exists) |
