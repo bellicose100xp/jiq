@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.23.0] - 2026-05-22
+
+### Added
+- **Clipboard fallback on launch** ([#161](https://github.com/bellicose100xp/jiq/pull/161)) - When `jiq` is launched with no file argument and no piped stdin, it now reads JSON from the system clipboard. If the clipboard contains valid JSON or JSONL, jiq starts with that content; otherwise the existing "No input provided" error is shown. Existing paths (positional file argument and piped stdin) are unchanged. Note: this relies on a real local clipboard (macOS, Linux desktop, WSL); remote SSH sessions that copy via OSC 52 cannot read it back, so the feature is unavailable there and falls back gracefully to the no-input error.
+
 ## [3.22.3] - 2026-05-19
 
 ### Fixed

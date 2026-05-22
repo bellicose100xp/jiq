@@ -81,7 +81,15 @@ jiq data.json
 cat data.json | jiq
 echo '{"name": "Alice", "age": 30}' | jiq
 curl https://api.example.com/data | jiq
+
+# From clipboard (no argument, no stdin)
+jiq
 ```
+
+When launched with no file argument and no piped stdin, jiq reads JSON from the
+system clipboard. Requires a real local clipboard (macOS, Linux desktop, WSL).
+Remote SSH sessions that copy via OSC 52 cannot read it back, so this fallback
+is unavailable there.
 
 ## Usage
 
