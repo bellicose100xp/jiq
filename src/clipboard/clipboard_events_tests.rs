@@ -275,6 +275,63 @@ fn test_handle_clipboard_key_ctrl_y() {
 }
 
 #[test]
+fn test_ctrl_o_copies_result_when_input_focused() {
+    use crate::app::Focus;
+
+    let mut app = test_app(r#"{"test": "data"}"#);
+    app.focus = Focus::InputField;
+    app.query.as_mut().unwrap().result = Ok(r#"{"key": "value"}"#.to_string());
+
+    let key = KeyEvent::new(KeyCode::Char('o'), KeyModifiers::CONTROL);
+    let result = handle_clipboard_key(&mut app, key, ClipboardBackend::Osc52);
+
+    assert!(result, "Ctrl+O should copy result while input is focused");
+    assert_eq!(
+        app.notification.current_message(),
+        Some("Copied result!"),
+        "Should show result-copy notification"
+    );
+}
+
+#[test]
+fn test_ctrl_o_copies_result_when_results_focused() {
+    use crate::app::Focus;
+
+    let mut app = test_app(r#"{"test": "data"}"#);
+    app.focus = Focus::ResultsPane;
+    app.query.as_mut().unwrap().result = Ok(r#"{"key": "value"}"#.to_string());
+
+    let key = KeyEvent::new(KeyCode::Char('o'), KeyModifiers::CONTROL);
+    let result = handle_clipboard_key(&mut app, key, ClipboardBackend::Osc52);
+
+    assert!(
+        result,
+        "Ctrl+O should also work when results pane is focused"
+    );
+}
+
+#[test]
+fn test_ctrl_o_returns_false_when_no_result() {
+    use crate::app::Focus;
+    use std::sync::Arc;
+
+    let mut app = test_app(r#"{"test": "data"}"#);
+    app.focus = Focus::InputField;
+    if let Some(ref mut query_state) = app.query {
+        query_state.last_successful_result_unformatted = Some(Arc::new(String::new()));
+    }
+
+    let key = KeyEvent::new(KeyCode::Char('o'), KeyModifiers::CONTROL);
+    let result = handle_clipboard_key(&mut app, key, ClipboardBackend::Osc52);
+
+    assert!(!result, "Ctrl+O on empty result should return false");
+    assert!(
+        app.notification.current().is_none(),
+        "No notification when nothing was copied"
+    );
+}
+
+#[test]
 fn test_copy_focused_content_results_pane() {
     use crate::app::Focus;
 

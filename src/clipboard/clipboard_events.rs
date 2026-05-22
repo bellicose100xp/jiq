@@ -9,6 +9,10 @@ pub fn handle_clipboard_key(app: &mut App, key: KeyEvent, backend: ClipboardBack
         return copy_focused_content(app, backend);
     }
 
+    if key.code == KeyCode::Char('o') && key.modifiers.contains(KeyModifiers::CONTROL) {
+        return copy_result(app, backend);
+    }
+
     false
 }
 
