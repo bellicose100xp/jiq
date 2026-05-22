@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.23.3] - 2026-05-22
+
+### Fixed
+- **Clipboard fallback no longer surfaces raw backend errors** ([#164](https://github.com/bellicose100xp/jiq/pull/164)) - On remote SSH sessions without a real clipboard (no X11/Wayland, no OSC 52 read), launching `jiq` with no path and no piped stdin previously dumped the raw `arboard` error - e.g. `Failed to load file: I/O error, clipboard unavailable. ... X11 server connection timed out`. The clipboard fallback is silent, so any failure now collapses to a friendly usage hint: `No input provided. Usage: jiq <file> or echo '{}' | jiq` (backend unavailable, empty, or read failure) or `No input provided and clipboard does not contain valid JSON. Usage: jiq <file> or echo '{}' | jiq` (clipboard had text but it wasn't JSON). The raw arboard error remains visible at debug level via `--debug` / `JIQ_DEBUG=1` for diagnosis.
+
 ## [3.23.2] - 2026-05-22
 
 ### Added
