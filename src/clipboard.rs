@@ -1,4 +1,4 @@
 mod backend;
 pub mod clipboard_events;
-mod osc52;
+pub mod osc52;
 mod system;

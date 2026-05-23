@@ -71,9 +71,9 @@ fn main() -> Result<()> {
     validate_jq_exists()?;
     log::debug!("jq binary found in PATH");
 
-    let terminal = init_terminal()?;
-
-    // Deferred loading prevents blocking on large files/stdin
+    // Clipboard fallback runs *before* init_terminal so OSC 52 read can briefly
+    // own raw stdin without racing the main event loop. File and stdin paths
+    // stay deferred so a large input never blocks the splash screen.
     let loader = if let Some(ref path) = args.input {
         log::debug!("File loader spawned for: {:?}", path);
         FileLoader::spawn_load(path.clone())
@@ -81,9 +81,11 @@ fn main() -> Result<()> {
         log::debug!("File loader spawned for stdin");
         FileLoader::spawn_load_stdin()
     } else {
-        log::debug!("File loader spawned for clipboard (no argument, no piped stdin)");
-        FileLoader::spawn_load_clipboard()
+        log::debug!("Loading clipboard synchronously (no argument, no piped stdin)");
+        FileLoader::load_clipboard_blocking()
     };
+
+    let terminal = init_terminal()?;
 
     let app = App::new_with_loader(loader, &config_result.config);
     let result = run(terminal, app, config_result);

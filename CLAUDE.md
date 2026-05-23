@@ -20,6 +20,22 @@ Execute in order:
 
 All checks must pass before staging files.
 
+## Releasing a Change
+
+Whenever the user asks to release, ship, or publish a change — for example "release the change", "release patch", "release minor", "release major", "ship jiq", "publish a new version", "tag a release" — invoke the **`jiq-release`** skill (project-local, in `.claude/skills/jiq-release/SKILL.md`). It drives the full flow end-to-end: branch, PR, CI, squash-merge, version bump, tag, `cargo publish`, and Homebrew tap update.
+
+The skill accepts an optional bump argument:
+
+| Phrasing | Skill argument |
+|---|---|
+| "release the change", "release patch" | `patch` (default) |
+| "release minor", "release as a minor" | `minor` |
+| "release major" (only with explicit user authorization) | `major` |
+
+If the user does not say which bump, the skill infers from the change set (bug fix → patch, new feature → minor, breaking change → major-with-confirmation).
+
+Do not reinvent the release flow inline. Reach for the skill.
+
 ## Rust Module Structure
 - Use `{module_name}.rs`, never `mod.rs`
 - Place tests in `{module_name}_tests.rs` files

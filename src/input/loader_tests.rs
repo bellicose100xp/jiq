@@ -178,26 +178,71 @@ fn test_load_stdin_sync_detects_terminal() {
 // ============================================================================
 
 #[test]
-fn test_spawn_load_clipboard_creates_loader() {
-    // Verifies the constructor returns a loader in the Loading state.
-    // We don't poll for completion here: the underlying arboard backend on
-    // macOS interacts poorly with the test harness when multiple tests
-    // touch NSPasteboard within the same process. End-to-end behavior is
-    // exercised at runtime when launching `jiq` with no stdin and no path.
-    let loader = FileLoader::spawn_load_clipboard();
-    assert!(loader.is_loading());
-    assert!(matches!(loader.state(), LoadingState::Loading));
+fn test_input_load_error_clipboard_unreadable_message_shape() {
+    let err = input_load_error(InputErrorReason::ClipboardUnreadable);
+    match err {
+        JiqError::Io(msg) => {
+            assert!(msg.contains("No input provided"));
+            assert!(msg.contains("Could not read the system clipboard"));
+            assert!(msg.contains("Usage:"));
+            assert!(msg.contains("jiq <file>"));
+            assert!(msg.contains("cat data.json | jiq"));
+            assert!(msg.contains("# load from system clipboard"));
+            assert!(!msg.to_lowercase().contains("x11"));
+            assert!(!msg.to_lowercase().contains("arboard"));
+        }
+        other => panic!("expected JiqError::Io, got {:?}", other),
+    }
 }
 
 #[test]
-fn test_no_clipboard_input_error_is_friendly_usage_hint() {
-    let err = no_clipboard_input_error();
+fn test_input_load_error_clipboard_empty_distinguished_from_unreadable() {
+    let unreadable = match input_load_error(InputErrorReason::ClipboardUnreadable) {
+        JiqError::Io(m) => m,
+        _ => panic!("expected Io"),
+    };
+    let empty = match input_load_error(InputErrorReason::ClipboardEmpty) {
+        JiqError::Io(m) => m,
+        _ => panic!("expected Io"),
+    };
+
+    assert!(unreadable.contains("Could not read"));
+    assert!(empty.contains("Clipboard is empty"));
+    assert_ne!(unreadable, empty);
+}
+
+#[test]
+fn test_input_load_error_invalid_json_distinguishes_from_unreadable() {
+    let invalid = match input_load_error(InputErrorReason::ClipboardInvalidJson) {
+        JiqError::Io(m) => m,
+        _ => panic!("expected Io"),
+    };
+    let unreadable = match input_load_error(InputErrorReason::ClipboardUnreadable) {
+        JiqError::Io(m) => m,
+        _ => panic!("expected Io"),
+    };
+
+    assert!(invalid.contains("does not contain valid JSON"));
+    assert!(!unreadable.contains("does not contain valid JSON"));
+
+    // All clipboard-failure variants share the three-line usage block so
+    // users always see all valid invocation forms regardless of how they
+    // failed.
+    for msg in [&invalid, &unreadable] {
+        assert!(msg.contains("jiq <file>"));
+        assert!(msg.contains("| jiq"));
+        assert!(msg.contains("# load from system clipboard"));
+    }
+}
+
+#[test]
+fn test_input_load_error_no_stdin_message_shape() {
+    let err = input_load_error(InputErrorReason::NoStdin);
     match err {
         JiqError::Io(msg) => {
             assert!(msg.contains("No input provided"));
             assert!(msg.contains("Usage:"));
-            assert!(!msg.to_lowercase().contains("clipboard"));
-            assert!(!msg.to_lowercase().contains("x11"));
+            assert!(msg.contains("jiq <file>"));
         }
         other => panic!("expected JiqError::Io, got {:?}", other),
     }
@@ -205,8 +250,6 @@ fn test_no_clipboard_input_error_is_friendly_usage_hint() {
 
 #[test]
 fn test_validate_json_or_jsonl_rejects_plain_text() {
-    // Mirrors the clipboard-with-non-JSON path: the caller surfaces a
-    // friendly usage hint when validation fails on clipboard contents.
     let result = validate_json_or_jsonl("hello world");
     assert!(result.is_err());
 }
