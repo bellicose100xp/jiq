@@ -631,6 +631,105 @@ mod paste_recovery_event_tests {
     }
 
     #[test]
+    fn j_in_normal_mode_moves_cursor_down() {
+        let mut app = app_in_recovery();
+        app.input.textarea.insert_str("line1\nline2\nline3");
+        app.input
+            .textarea
+            .move_cursor(tui_textarea::CursorMove::Top);
+        app.input.editor_mode = EditorMode::Normal;
+        let (start_row, _) = app.input.textarea.cursor();
+
+        let _ = paste_recovery_events::handle_key(
+            &mut app,
+            key_with_mods(KeyCode::Char('j'), KeyModifiers::NONE),
+        );
+
+        let (end_row, _) = app.input.textarea.cursor();
+        assert_eq!(end_row, start_row + 1, "j should move cursor down a line");
+    }
+
+    #[test]
+    fn k_in_normal_mode_moves_cursor_up() {
+        let mut app = app_in_recovery();
+        app.input.textarea.insert_str("line1\nline2\nline3");
+        app.input
+            .textarea
+            .move_cursor(tui_textarea::CursorMove::Bottom);
+        app.input.editor_mode = EditorMode::Normal;
+        let (start_row, _) = app.input.textarea.cursor();
+        assert!(start_row > 0);
+
+        let _ = paste_recovery_events::handle_key(
+            &mut app,
+            key_with_mods(KeyCode::Char('k'), KeyModifiers::NONE),
+        );
+
+        let (end_row, _) = app.input.textarea.cursor();
+        assert_eq!(end_row + 1, start_row, "k should move cursor up a line");
+    }
+
+    #[test]
+    fn capital_g_in_normal_mode_jumps_to_bottom() {
+        let mut app = app_in_recovery();
+        app.input.textarea.insert_str("a\nb\nc\nd");
+        app.input
+            .textarea
+            .move_cursor(tui_textarea::CursorMove::Top);
+        app.input.editor_mode = EditorMode::Normal;
+
+        let _ = paste_recovery_events::handle_key(
+            &mut app,
+            key_with_mods(KeyCode::Char('G'), KeyModifiers::NONE),
+        );
+
+        let (row, _) = app.input.textarea.cursor();
+        assert_eq!(row, 3);
+    }
+
+    #[test]
+    fn lowercase_g_in_normal_mode_jumps_to_top() {
+        let mut app = app_in_recovery();
+        app.input.textarea.insert_str("a\nb\nc\nd");
+        app.input
+            .textarea
+            .move_cursor(tui_textarea::CursorMove::Bottom);
+        app.input.editor_mode = EditorMode::Normal;
+
+        let _ = paste_recovery_events::handle_key(
+            &mut app,
+            key_with_mods(KeyCode::Char('g'), KeyModifiers::NONE),
+        );
+
+        let (row, _) = app.input.textarea.cursor();
+        assert_eq!(row, 0);
+    }
+
+    #[test]
+    fn up_down_arrows_move_cursor_in_insert_mode() {
+        // Multi-line motion via arrow keys must work in recovery's Insert
+        // mode without triggering the query-input's history popup.
+        let mut app = app_in_recovery();
+        app.input.textarea.insert_str("a\nb\nc");
+        app.input
+            .textarea
+            .move_cursor(tui_textarea::CursorMove::Bottom);
+        let (start_row, _) = app.input.textarea.cursor();
+
+        let _ = paste_recovery_events::handle_key(
+            &mut app,
+            key_with_mods(KeyCode::Up, KeyModifiers::NONE),
+        );
+
+        let (end_row, _) = app.input.textarea.cursor();
+        assert_eq!(end_row + 1, start_row);
+        assert!(
+            !app.history.is_visible(),
+            "Up arrow during recovery must not trigger the history popup"
+        );
+    }
+
+    #[test]
     fn dd_deletes_whole_line_via_existing_operator_infra() {
         // Confirms the operator/motion infra (dd, dw, ci", etc.) is
         // available during recovery for free. Here: 'd' enters Operator

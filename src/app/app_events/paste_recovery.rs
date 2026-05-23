@@ -13,6 +13,7 @@
 //! is mid-command.
 
 use ratatui::crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
+use tui_textarea::CursorMove;
 
 use crate::app::App;
 use crate::editor::EditorMode;
@@ -45,11 +46,58 @@ pub fn handle_key(app: &mut App, key: KeyEvent) -> bool {
         return true;
     }
 
+    // The query input is single-line, so the shared handler doesn't bind
+    // any vertical-motion keys (j/k/↑/↓/g/G). Recovery is multi-line, so
+    // we layer those motions on *before* delegation. We deliberately
+    // don't expose them on the query input — that block stays unchanged.
+    if handle_recovery_only_motion(app, key) {
+        return true;
+    }
+
+    // The query input maps `Up` (Insert mode) to "open history popup".
+    // Recovery has no history to scroll through, so swallow Up/Down in
+    // Insert mode to avoid triggering a nonsensical popup. (j/k/↑/↓ in
+    // Normal mode are already handled above.)
+    if app.input.editor_mode == EditorMode::Insert
+        && matches!(key.code, KeyCode::Up | KeyCode::Down)
+    {
+        let cm = if key.code == KeyCode::Up {
+            CursorMove::Up
+        } else {
+            CursorMove::Down
+        };
+        app.input.textarea.move_cursor(cm);
+        return true;
+    }
+
     // Everything else: route through the same handler the query input
     // uses. `execute_query` inside the editor handlers is a no-op when
     // `app.query` is None (which it is during recovery), so dd/cc/dw
     // just edit the textarea without trying to run jq.
     app.handle_input_field_key(key);
+    true
+}
+
+/// Multi-line motions that the single-line query input doesn't expose.
+/// Returns true if the key was a recovery-only motion and was handled.
+fn handle_recovery_only_motion(app: &mut App, key: KeyEvent) -> bool {
+    if app.input.editor_mode != EditorMode::Normal {
+        return false;
+    }
+    if key
+        .modifiers
+        .intersects(KeyModifiers::CONTROL | KeyModifiers::ALT)
+    {
+        return false;
+    }
+    let motion = match key.code {
+        KeyCode::Char('j') => CursorMove::Down,
+        KeyCode::Char('k') => CursorMove::Up,
+        KeyCode::Char('g') => CursorMove::Top,
+        KeyCode::Char('G') => CursorMove::Bottom,
+        _ => return false,
+    };
+    app.input.textarea.move_cursor(motion);
     true
 }
 
