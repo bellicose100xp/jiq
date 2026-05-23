@@ -19,7 +19,7 @@ pub mod test_helpers {
     /// This helper creates a FileLoader that immediately has the JSON available,
     /// avoiding the need for actual file I/O or background threads in tests.
     pub fn create_test_loader(json: String) -> FileLoader {
-        use crate::input::loader::LoadingState;
+        use crate::input::loader::{LoaderSource, LoadingState};
         use std::sync::mpsc::channel;
         let (tx, rx) = channel();
         // Send the result immediately so poll() will return it
@@ -27,6 +27,7 @@ pub mod test_helpers {
         FileLoader {
             state: LoadingState::Loading,
             rx: Some(rx),
+            source: LoaderSource::File,
         }
     }
 

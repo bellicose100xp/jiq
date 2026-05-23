@@ -490,3 +490,296 @@ fn test_esc_closes_help_before_snippets() {
         "Second Esc should close snippets"
     );
 }
+
+#[cfg(test)]
+mod paste_recovery_event_tests {
+    use super::*;
+    use crate::app::App;
+    use crate::app::app_events::paste_recovery as paste_recovery_events;
+    use crate::config::Config;
+    use crate::editor::EditorMode;
+    use crate::input::loader::{LoaderSource, LoadingState};
+
+    fn app_in_recovery() -> App {
+        let (tx, rx) = std::sync::mpsc::channel();
+        let _ = tx.send(Err(crate::error::JiqError::Io("err".to_string())));
+        let loader = crate::input::FileLoader {
+            state: LoadingState::Error(crate::error::JiqError::Io("err".to_string())),
+            rx: Some(rx),
+            source: LoaderSource::Clipboard,
+        };
+        let mut app = App::new_with_loader(loader, &Config::default());
+        app.poll_file_loader();
+        assert!(app.paste_recovery.is_some());
+        app
+    }
+
+    #[test]
+    fn enter_in_insert_mode_with_valid_json_loads_and_clears_recovery() {
+        let mut app = app_in_recovery();
+        app.input.textarea.insert_str(r#"{"name": "Alice"}"#);
+
+        let consumed = paste_recovery_events::handle_key(
+            &mut app,
+            key_with_mods(KeyCode::Enter, KeyModifiers::NONE),
+        );
+
+        assert!(consumed);
+        assert!(app.paste_recovery.is_none(), "recovery cleared on success");
+        assert!(app.query.is_some(), "query initialised on success");
+        // After accept, the input textarea is wiped so the user lands
+        // on an empty query input, like a normal launch.
+        assert_eq!(app.input.textarea.lines().join("\n"), "");
+    }
+
+    #[test]
+    fn enter_with_invalid_json_keeps_recovery_and_updates_error_message() {
+        let mut app = app_in_recovery();
+        app.input.textarea.insert_str("not json");
+
+        let _ = paste_recovery_events::handle_key(
+            &mut app,
+            key_with_mods(KeyCode::Enter, KeyModifiers::NONE),
+        );
+
+        let recovery = app
+            .paste_recovery
+            .as_ref()
+            .expect("recovery still active on failure");
+        assert!(recovery.error_message.starts_with("Invalid JSON:"));
+        assert!(app.query.is_none(), "query should not be initialised");
+    }
+
+    #[test]
+    fn enter_with_invalid_json_fires_red_toast() {
+        // The user's eye needs a nudge to look at the top "No JSON
+        // loaded" block when the error message changes silently.
+        let mut app = app_in_recovery();
+        app.input.textarea.insert_str("not json");
+
+        let _ = paste_recovery_events::handle_key(
+            &mut app,
+            key_with_mods(KeyCode::Enter, KeyModifiers::NONE),
+        );
+
+        let notif = app.notification.current().expect("toast expected");
+        assert!(notif.message.starts_with("Invalid JSON:"));
+    }
+
+    #[test]
+    fn enter_submits_in_normal_mode_too() {
+        let mut app = app_in_recovery();
+        app.input.textarea.insert_str(r#"[1,2,3]"#);
+        app.input.editor_mode = EditorMode::Normal;
+
+        let _ = paste_recovery_events::handle_key(
+            &mut app,
+            key_with_mods(KeyCode::Enter, KeyModifiers::NONE),
+        );
+
+        assert!(app.paste_recovery.is_none());
+        assert!(app.query.is_some());
+    }
+
+    #[test]
+    fn esc_in_insert_mode_switches_to_normal_via_existing_handler() {
+        // The existing handle_input_field_key already maps Esc to
+        // EditorMode::Normal — this test confirms reuse.
+        let mut app = app_in_recovery();
+        assert_eq!(app.input.editor_mode, EditorMode::Insert);
+
+        let _ = paste_recovery_events::handle_key(
+            &mut app,
+            key_with_mods(KeyCode::Esc, KeyModifiers::NONE),
+        );
+
+        assert!(!app.should_quit);
+        assert_eq!(app.input.editor_mode, EditorMode::Normal);
+        assert!(app.paste_recovery.is_some(), "still in recovery");
+    }
+
+    #[test]
+    fn i_in_normal_mode_re_enters_insert() {
+        let mut app = app_in_recovery();
+        app.input.editor_mode = EditorMode::Normal;
+
+        let _ = paste_recovery_events::handle_key(
+            &mut app,
+            key_with_mods(KeyCode::Char('i'), KeyModifiers::NONE),
+        );
+
+        assert_eq!(app.input.editor_mode, EditorMode::Insert);
+    }
+
+    #[test]
+    fn x_in_normal_mode_deletes_char_via_existing_handler() {
+        // Confirms the existing 'x' handler runs against app.input.textarea
+        // during recovery (no separate codepath needed).
+        let mut app = app_in_recovery();
+        app.input.textarea.insert_str("abc");
+        app.input
+            .textarea
+            .move_cursor(tui_textarea::CursorMove::Head);
+        app.input.editor_mode = EditorMode::Normal;
+
+        let _ = paste_recovery_events::handle_key(
+            &mut app,
+            key_with_mods(KeyCode::Char('x'), KeyModifiers::NONE),
+        );
+
+        assert_eq!(app.input.textarea.lines().join("\n"), "bc");
+    }
+
+    #[test]
+    fn dd_deletes_whole_line_via_existing_operator_infra() {
+        // Confirms the operator/motion infra (dd, dw, ci", etc.) is
+        // available during recovery for free. Here: 'd' enters Operator
+        // mode, second 'd' triggers delete-line.
+        let mut app = app_in_recovery();
+        app.input.textarea.insert_str("garbage line");
+        app.input.editor_mode = EditorMode::Normal;
+
+        let _ = paste_recovery_events::handle_key(
+            &mut app,
+            key_with_mods(KeyCode::Char('d'), KeyModifiers::NONE),
+        );
+        let _ = paste_recovery_events::handle_key(
+            &mut app,
+            key_with_mods(KeyCode::Char('d'), KeyModifiers::NONE),
+        );
+
+        assert_eq!(app.input.textarea.lines().join("\n"), "");
+    }
+
+    #[test]
+    fn capital_d_deletes_to_end_of_line() {
+        let mut app = app_in_recovery();
+        app.input.textarea.insert_str("keep|drop");
+        app.input
+            .textarea
+            .move_cursor(tui_textarea::CursorMove::Head);
+        for _ in 0..4 {
+            app.input
+                .textarea
+                .move_cursor(tui_textarea::CursorMove::Forward);
+        }
+        app.input.editor_mode = EditorMode::Normal;
+
+        let _ = paste_recovery_events::handle_key(
+            &mut app,
+            key_with_mods(KeyCode::Char('D'), KeyModifiers::NONE),
+        );
+
+        assert_eq!(app.input.textarea.lines().join("\n"), "keep");
+    }
+
+    #[test]
+    fn typing_in_insert_mode_inserts_chars() {
+        let mut app = app_in_recovery();
+
+        for c in r#"{"x": 1}"#.chars() {
+            let _ = paste_recovery_events::handle_key(
+                &mut app,
+                key_with_mods(KeyCode::Char(c), KeyModifiers::NONE),
+            );
+        }
+
+        assert_eq!(app.input.textarea.lines().join("\n"), r#"{"x": 1}"#);
+    }
+
+    #[test]
+    fn ctrl_x_clears_pasted_content() {
+        let mut app = app_in_recovery();
+        app.input
+            .textarea
+            .insert_str("accidentally pasted nonsense");
+        app.input.editor_mode = EditorMode::Normal;
+
+        let _ = paste_recovery_events::handle_key(
+            &mut app,
+            key_with_mods(KeyCode::Char('x'), KeyModifiers::CONTROL),
+        );
+
+        assert_eq!(app.input.textarea.lines().join("\n"), "");
+        assert_eq!(
+            app.input.editor_mode,
+            EditorMode::Insert,
+            "Ctrl+X should also drop back to Insert so user can paste again"
+        );
+        // Recovery still active — Ctrl+X clears, doesn't exit.
+        assert!(app.paste_recovery.is_some());
+    }
+
+    #[test]
+    fn handle_paste_in_recovery_inserts_into_input_textarea() {
+        let mut app = app_in_recovery();
+
+        app.handle_paste_recovery_paste(r#"{"k": 1}"#.to_string());
+
+        assert_eq!(app.input.textarea.lines().join("\n"), r#"{"k": 1}"#);
+        assert!(app.query.is_none(), "no query yet");
+    }
+
+    #[test]
+    fn handle_paste_in_recovery_normalises_crlf() {
+        let mut app = app_in_recovery();
+
+        app.handle_paste_recovery_paste("{\r\n  \"a\": 1\r\n}\r\n".to_string());
+
+        let content = app.input.textarea.lines().join("\n");
+        assert!(!content.contains('\r'));
+    }
+
+    #[test]
+    fn handle_paste_in_recovery_oversize_shows_error_notification() {
+        let mut app = app_in_recovery();
+        let huge = "x".repeat(crate::input::paste_recovery::PASTE_RECOVERY_MAX_BYTES + 1);
+
+        app.handle_paste_recovery_paste(huge);
+
+        let notif = app.notification.current();
+        assert!(notif.is_some());
+        assert!(notif.unwrap().message.contains("too large"));
+    }
+
+    #[test]
+    fn paste_event_outside_recovery_still_inserts_into_query() {
+        // Regression: outside recovery, paste must continue inserting
+        // into the query textarea (existing behavior unchanged).
+        let mut app = test_app(r#"{"x": 1}"#);
+        assert!(app.paste_recovery.is_none());
+
+        app.handle_paste_event(".x".to_string());
+
+        assert_eq!(app.query(), ".x");
+    }
+
+    #[test]
+    fn ctrl_c_quits_during_recovery() {
+        // Truly global Ctrl+C handler still wins.
+        let mut app = app_in_recovery();
+        app.handle_paste_recovery_key_event(key_with_mods(
+            KeyCode::Char('c'),
+            KeyModifiers::CONTROL,
+        ));
+        assert!(app.should_quit);
+    }
+
+    #[test]
+    fn loader_io_prefix_stripped_in_error_message() {
+        let (tx, rx) = std::sync::mpsc::channel();
+        let _ = tx.send(Err(crate::error::JiqError::Io(
+            "Clipboard is empty.\n\nUsage:\n  jiq".to_string(),
+        )));
+        let loader = crate::input::FileLoader {
+            state: LoadingState::Error(crate::error::JiqError::Io("err".to_string())),
+            rx: Some(rx),
+            source: LoaderSource::Clipboard,
+        };
+        let mut app = App::new_with_loader(loader, &Config::default());
+        app.poll_file_loader();
+
+        let recovery = app.paste_recovery.expect("recovery");
+        assert_eq!(recovery.error_message, "Clipboard is empty.");
+    }
+}

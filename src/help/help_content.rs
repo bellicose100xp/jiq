@@ -14,22 +14,38 @@ pub const HELP_CATEGORIES: &[HelpCategory] = &[
     // 1: Global tab
     HelpCategory {
         tab: HelpTab::Global,
-        sections: &[HelpSection {
-            title: None,
-            entries: &[
-                ("F1 or ?", "Toggle this help"),
-                ("Ctrl+A", "Toggle AI assistant"),
-                ("Ctrl+S", "Open snippets manager"),
-                ("Ctrl+C", "Quit without output"),
-                ("Enter", "Output filtered JSON and exit"),
-                ("Ctrl+Q", "Output query string only and exit"),
-                ("Shift+Tab", "Switch focus (Input / Results)"),
-                ("Ctrl+Y", "Copy focused pane (query or results)"),
-                ("Ctrl+O", "Copy results from any focus"),
-                ("q", "Quit (in Normal mode or Results pane)"),
-                ("Ctrl+E", "Toggle error overlay"),
-            ],
-        }],
+        sections: &[
+            HelpSection {
+                title: None,
+                entries: &[
+                    ("F1 or ?", "Toggle this help"),
+                    ("Ctrl+A", "Toggle AI assistant"),
+                    ("Ctrl+S", "Open snippets manager"),
+                    ("Ctrl+C", "Quit without output"),
+                    ("Enter", "Output filtered JSON and exit"),
+                    ("Ctrl+Q", "Output query string only and exit"),
+                    ("Shift+Tab", "Switch focus (Input / Results)"),
+                    ("Ctrl+Y", "Copy focused pane (query or results)"),
+                    ("Ctrl+O", "Copy results from any focus"),
+                    ("q", "Quit (in Normal mode or Results pane)"),
+                    ("Ctrl+E", "Toggle error overlay"),
+                ],
+            },
+            HelpSection {
+                title: Some("PASTE RECOVERY (no input on launch)"),
+                entries: &[
+                    ("Cmd+V", "Paste JSON into the recovery box"),
+                    ("Enter", "Validate and load the JSON (any mode)"),
+                    ("Ctrl+X", "Clear the pasted content"),
+                    ("Esc / i", "Switch between Normal and Insert"),
+                    (
+                        "Vim bindings",
+                        "Same as the query input (dd, dw, ci\", etc.)",
+                    ),
+                    ("Ctrl+C", "Quit"),
+                ],
+            },
+        ],
     },
     // 2: Input tab (combines Insert + Normal modes + Autocomplete)
     HelpCategory {

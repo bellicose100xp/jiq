@@ -16,10 +16,22 @@ pub enum LoadingState {
     Error(JiqError),
 }
 
+/// Origin of a load operation. Determines the recovery path on failure:
+/// only `Clipboard` failures drop into the in-app paste-recovery flow;
+/// `File` and `Stdin` errors keep the existing notification + results-pane
+/// error message behavior.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum LoaderSource {
+    File,
+    Stdin,
+    Clipboard,
+}
+
 /// Manages asynchronous file loading in a background thread
 pub struct FileLoader {
     pub state: LoadingState,
     pub rx: Option<Receiver<Result<String, JiqError>>>,
+    pub source: LoaderSource,
 }
 
 impl FileLoader {
@@ -41,6 +53,7 @@ impl FileLoader {
         Self {
             state: LoadingState::Loading,
             rx: Some(rx),
+            source: LoaderSource::File,
         }
     }
 
@@ -59,6 +72,7 @@ impl FileLoader {
         Self {
             state: LoadingState::Loading,
             rx: Some(rx),
+            source: LoaderSource::Stdin,
         }
     }
 
@@ -86,6 +100,7 @@ impl FileLoader {
         Self {
             state,
             rx: Some(rx),
+            source: LoaderSource::Clipboard,
         }
     }
 
@@ -132,7 +147,7 @@ impl FileLoader {
 /// Validate that content is valid JSON or JSONL
 ///
 /// Uses StreamDeserializer to handle both single JSON values and JSONL (multiple values).
-fn validate_json_or_jsonl(content: &str) -> Result<(), JiqError> {
+pub(crate) fn validate_json_or_jsonl(content: &str) -> Result<(), JiqError> {
     let deserializer = serde_json::Deserializer::from_str(content).into_iter::<serde_json::Value>();
     let mut count = 0;
     for result in deserializer {

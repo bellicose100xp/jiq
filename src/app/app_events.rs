@@ -14,6 +14,7 @@ use crate::results;
 use crate::snippets;
 
 mod global;
+pub mod paste_recovery;
 
 /// Determine the default help tab based on current app context
 ///
@@ -240,24 +241,76 @@ impl App {
         if event::poll(EVENT_POLL_TIMEOUT)? {
             match event::read()? {
                 Event::Key(key_event) if key_event.kind == KeyEventKind::Press => {
-                    self.handle_key_event(key_event);
+                    if self.paste_recovery.is_some() {
+                        self.handle_paste_recovery_key_event(key_event);
+                    } else {
+                        self.handle_key_event(key_event);
+                    }
                     self.mark_dirty();
                 }
                 Event::Paste(text) => {
-                    self.handle_paste_event(text);
+                    if self.paste_recovery.is_some() {
+                        self.handle_paste_recovery_paste(text);
+                    } else {
+                        self.handle_paste_event(text);
+                    }
                     self.mark_dirty();
                 }
                 Event::Resize(_, _) => {
                     self.mark_dirty();
                 }
                 Event::Mouse(mouse_event) => {
-                    self.handle_mouse_event(mouse_event);
+                    if self.paste_recovery.is_some() {
+                        // Ignore mouse during recovery — there is no
+                        // input/results split to act on.
+                    } else {
+                        self.handle_mouse_event(mouse_event);
+                    }
                     self.mark_dirty();
                 }
                 _ => {}
             }
         }
         Ok(())
+    }
+
+    /// Route a key while paste-recovery is active. Truly global keys
+    /// (Ctrl+C quit, F1 help) still take precedence, then the recovery
+    /// handler swallows everything else.
+    fn handle_paste_recovery_key_event(&mut self, key: KeyEvent) {
+        if handle_truly_global_keys(self, key) {
+            return;
+        }
+        // F1 still works during recovery (renders help on top).
+        if self.help.visible && handle_help_keys(self, key) {
+            return;
+        }
+        let _ = paste_recovery::handle_key(self, key);
+    }
+
+    /// Handle a paste event while in recovery: normalise CRLF endings,
+    /// enforce the soft size cap, then forward to the standard
+    /// `handle_paste_event` which inserts into `app.input.textarea`.
+    /// `execute_query` is a no-op while `app.query` is None.
+    fn handle_paste_recovery_paste(&mut self, text: String) {
+        let normalised = crate::input::paste_recovery::normalise_newlines(&text);
+        let projected = self
+            .input
+            .textarea
+            .lines()
+            .iter()
+            .map(|l| l.len())
+            .sum::<usize>()
+            .saturating_add(normalised.len());
+        if projected > crate::input::paste_recovery::PASTE_RECOVERY_MAX_BYTES {
+            let msg = format!(
+                "Pasted content too large (max {} MB). Reduce or load via file argument.",
+                crate::input::paste_recovery::PASTE_RECOVERY_MAX_BYTES / (1024 * 1024)
+            );
+            self.notification.show_error(&msg);
+            return;
+        }
+        self.handle_paste_event(normalised);
     }
 
     fn handle_paste_event(&mut self, text: String) {
@@ -329,7 +382,7 @@ impl App {
         }
     }
 
-    fn handle_input_field_key(&mut self, key: KeyEvent) {
+    pub(super) fn handle_input_field_key(&mut self, key: KeyEvent) {
         if key.code == KeyCode::Esc {
             if self.autocomplete.is_visible() {
                 self.autocomplete.hide();
