@@ -87,9 +87,12 @@ jiq
 ```
 
 When launched with no file argument and no piped stdin, jiq reads JSON from the
-system clipboard. Requires a real local clipboard (macOS, Linux desktop, WSL).
-Remote SSH sessions that copy via OSC 52 cannot read it back, so this fallback
-is unavailable there.
+system clipboard. Local desktops (macOS, Linux desktop, WSL) use the native
+clipboard. Remote SSH sessions fall back to OSC 52 read with a 1s timeout, so
+clipboard content copied *inside* the remote session (tmux selection buffers,
+OSC 52 writes from peer apps) is also picked up on modern terminals. Content
+copied on the host workstation typically does not round-trip because most
+terminals refuse to forward host-clipboard reads through the SSH tunnel.
 
 ## Usage
 

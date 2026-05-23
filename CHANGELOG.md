@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.23.4] - 2026-05-23
+
+### Added
+- **OSC 52 clipboard read fallback** ([#165](https://github.com/bellicose100xp/jiq/pull/165)) - When `arboard` cannot reach the system clipboard - typically a remote SSH session without X11/Wayland - jiq now falls back to OSC 52 read with a 1s timeout (matching Neovim's `vim.ui.clipboard.osc52` initial wait). Modern terminals (Ghostty, kitty, WezTerm, foot) hand the clipboard back over the SSH tunnel, so launching `jiq` with no path / no piped stdin works in environments where it previously errored out. The OSC 52 path picks up content copied *inside* the remote session (tmux selection buffers, OSC 52 writes from peer apps); content copied on the host workstation generally cannot reach jiq because most terminals refuse to forward host-clipboard reads back through the SSH tunnel for security reasons.
+
+### Changed
+- **Multi-line input-error message** ([#165](https://github.com/bellicose100xp/jiq/pull/165)) - The "no input provided" error now uses a multi-line format with three distinct first-line diagnoses: `Could not read the system clipboard.` (backend unavailable, both arboard and OSC 52 failed), `Clipboard is empty.`, or `Clipboard does not contain valid JSON.`. Each is followed by the three valid invocation forms with inline comments: `jiq <file>`, `cat data.json | jiq`, and `jiq` (clipboard).
+
 ## [3.23.3] - 2026-05-22
 
 ### Fixed
