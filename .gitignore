@@ -27,3 +27,6 @@ coverage/
 lcov.info
 coverage_output.log
 llvm_cov_output.log
+
+# Claude Code runtime
+.claude/scheduled_tasks.lock
