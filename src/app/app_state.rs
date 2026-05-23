@@ -9,6 +9,7 @@ use crate::layout::LayoutRegions;
 use crate::notification::NotificationState;
 use crate::path_at_cursor::PathAtCursorCache;
 use crate::query::{Debouncer, QueryState};
+use crate::query_undo::{QueryUndoRing, ViewportState};
 use crate::results::cursor_state::CursorState;
 use crate::scroll::ScrollState;
 use crate::search::SearchState;
@@ -47,6 +48,13 @@ pub struct App {
     pub tooltip: TooltipState,
     pub stats: StatsState,
     pub path_at_cursor: PathAtCursorCache,
+    pub query_undo: QueryUndoRing,
+    /// Viewport state captured by `<` (drill-back) that must be applied
+    /// once the worker delivers the restored query's result. The restore
+    /// can't run synchronously because the freshly-rewritten input still
+    /// shows the *drilled* result's line layout until the async query
+    /// completes — restoring against the wrong layout clamps the cursor.
+    pub pending_viewport_restore: Option<ViewportState>,
     pub debouncer: Debouncer,
     pub search: SearchState,
     pub snippets: SnippetState,
@@ -154,6 +162,8 @@ impl App {
             tooltip: TooltipState::new(tooltip_enabled),
             stats: StatsState::default(),
             path_at_cursor: PathAtCursorCache::new(),
+            query_undo: QueryUndoRing::new(),
+            pending_viewport_restore: None,
             debouncer: Debouncer::new(),
             search: SearchState::new(),
             snippets: SnippetState::new(),
@@ -285,6 +295,15 @@ impl App {
     /// merge of multiple top-level documents, the result is non-JSON, or
     /// the cursor row maps to no value.
     pub fn current_cursor_path(&mut self) -> Option<crate::json_path::JsonPath> {
+        let row = self.results_cursor.cursor_line();
+        self.path_at_row(row)
+    }
+
+    /// Resolve the jq path of the value pretty-printed on a specific
+    /// `row`. Subject to the same gating as [`current_cursor_path`].
+    /// Used by the renderer to show the match-row path while search is
+    /// active, and by `>` from search mode to drill into the match.
+    pub fn path_at_row(&mut self, row: u32) -> Option<crate::json_path::JsonPath> {
         let query_state = self.query.as_ref()?;
         if query_state.is_empty_result {
             return None;
@@ -296,7 +315,6 @@ impl App {
             return None;
         }
         let parsed = query_state.last_successful_result_parsed.as_ref()?;
-        let row = self.results_cursor.cursor_line();
         self.path_at_cursor.resolve(parsed, row)
     }
 

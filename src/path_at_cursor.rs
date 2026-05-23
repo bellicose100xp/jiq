@@ -1,8 +1,8 @@
 //! Path-at-cursor lookup for the results pane.
 //!
-//! Computes the jq path or RFC 6901 JSON Pointer of the value pretty-printed
-//! on a given line of the current result. Backed by a single-entry cache so
-//! repeated reads on the same row do not re-walk the value tree.
+//! Computes the jq path of the value pretty-printed on a given line of the
+//! current result. Backed by a single-entry cache so repeated reads on the
+//! same row do not re-walk the value tree.
 
 use crate::json_path::{JsonPath, path_at_line};
 use serde_json::Value;

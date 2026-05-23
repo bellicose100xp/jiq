@@ -45,18 +45,9 @@ fn format_field_name_picks_dot_or_bracket() {
 }
 
 #[test]
-fn pointer_segment_escapes_slash_and_tilde() {
-    assert_eq!(format_pointer_segment("foo"), "foo");
-    assert_eq!(format_pointer_segment("a/b"), "a~1b");
-    assert_eq!(format_pointer_segment("a~b"), "a~0b");
-    assert_eq!(format_pointer_segment("~/"), "~0~1");
-}
-
-#[test]
 fn empty_path_renders_as_root() {
     let p = JsonPath::new();
     assert_eq!(p.to_jq(), ".");
-    assert_eq!(p.to_pointer(), "");
     assert!(p.is_empty());
 }
 
@@ -67,7 +58,6 @@ fn jq_path_simple_keys() {
     p.push_index(2);
     p.push_key("name");
     assert_eq!(p.to_jq(), ".users[2].name");
-    assert_eq!(p.to_pointer(), "/users/2/name");
 }
 
 #[test]
@@ -76,7 +66,6 @@ fn jq_path_mixed_simple_and_quoted() {
     p.push_key("user-info");
     p.push_key("zip-code");
     assert_eq!(p.to_jq(), ".[\"user-info\"][\"zip-code\"]");
-    assert_eq!(p.to_pointer(), "/user-info/zip-code");
 }
 
 #[test]
@@ -95,7 +84,6 @@ fn jq_path_unicode_keys() {
     p.push_index(0);
     p.push_key("名前");
     assert_eq!(p.to_jq(), ".[\"café\"][0][\"名前\"]");
-    assert_eq!(p.to_pointer(), "/café/0/名前");
 }
 
 #[test]

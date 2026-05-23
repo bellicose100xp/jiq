@@ -534,3 +534,279 @@ fn test_tab_exits_visual_mode() {
     assert!(!app.results_cursor.is_visual_mode());
     assert_eq!(app.focus, Focus::InputField);
 }
+
+mod drill_tests {
+    use super::*;
+    use crate::test_utils::test_helpers::test_app;
+
+    fn place(app: &mut crate::app::App, row: u32) {
+        app.focus = Focus::ResultsPane;
+        let total = app.results_line_count_u32();
+        app.results_cursor.update_total_lines(total);
+        app.results_cursor.move_to_line(row);
+    }
+
+    #[test]
+    fn drill_in_pipe_composes_onto_existing_query() {
+        let mut app = test_app(r#"{"users": [{"name": "alice"}]}"#);
+        app.input.textarea.insert_str(".users");
+        if let Some(qs) = app.query.as_mut() {
+            qs.execute(".users");
+        }
+        place(&mut app, 2);
+
+        app.handle_key_event(key(KeyCode::Char('>')));
+
+        assert_eq!(app.input.query(), ".users | .[0].name");
+        assert_eq!(app.focus, Focus::ResultsPane, "stays on results pane");
+        assert!(!app.query_undo.is_empty(), "snapshot pushed");
+    }
+
+    #[test]
+    fn drill_in_replaces_when_query_empty() {
+        let mut app = test_app(r#"{"a": 1, "b": 2}"#);
+        place(&mut app, 2);
+
+        app.handle_key_event(key(KeyCode::Char('>')));
+
+        assert_eq!(app.input.query(), ".b");
+    }
+
+    #[test]
+    fn drill_in_at_root_no_ops_with_notification() {
+        let mut app = test_app(r#"{"a": 1}"#);
+        app.input.textarea.insert_str(".existing");
+        place(&mut app, 0);
+
+        app.handle_key_event(key(KeyCode::Char('>')));
+
+        assert_eq!(app.input.query(), ".existing");
+        assert_eq!(app.notification.current_message(), Some("Already at root"));
+        assert!(app.query_undo.is_empty());
+    }
+
+    #[test]
+    fn drill_in_with_no_resolvable_path_notifies() {
+        let mut app = test_app(r#"{"a": 1}"#);
+        app.input.textarea.insert_str(".existing");
+        app.focus = Focus::ResultsPane;
+        if let Some(qs) = app.query.as_mut() {
+            qs.last_successful_result_parsed = None;
+        }
+
+        app.handle_key_event(key(KeyCode::Char('>')));
+
+        assert_eq!(app.input.query(), ".existing");
+        assert_eq!(
+            app.notification.current_message(),
+            Some("No path at cursor")
+        );
+    }
+
+    #[test]
+    fn drill_back_round_trips() {
+        let mut app = test_app(r#"{"a": 1, "b": 2}"#);
+        app.input.textarea.insert_str(".");
+        place(&mut app, 1);
+
+        app.handle_key_event(key(KeyCode::Char('>')));
+        assert_eq!(app.input.query(), ".a");
+
+        app.handle_key_event(key(KeyCode::Char('<')));
+        assert_eq!(app.input.query(), ".");
+        assert!(app.query_undo.is_empty());
+    }
+
+    #[test]
+    fn drill_back_on_empty_ring_notifies() {
+        let mut app = test_app(r#"{"a": 1}"#);
+        app.focus = Focus::ResultsPane;
+
+        app.handle_key_event(key(KeyCode::Char('<')));
+
+        assert_eq!(
+            app.notification.current_message(),
+            Some("Nothing to go back to")
+        );
+    }
+
+    #[test]
+    fn drill_back_after_manual_edit_clears_ring_and_notifies() {
+        let mut app = test_app(r#"{"a": 1, "b": 2}"#);
+        place(&mut app, 1);
+
+        app.handle_key_event(key(KeyCode::Char('>')));
+        // Simulate manual textarea edit by inserting into the query.
+        app.input.textarea.insert_str(" | .extra");
+
+        app.handle_key_event(key(KeyCode::Char('<')));
+
+        assert_eq!(
+            app.notification.current_message(),
+            Some("Query was edited — undo history cleared")
+        );
+        assert!(app.query_undo.is_empty());
+    }
+
+    #[test]
+    fn deep_chain_drill_in_then_back_to_root() {
+        // `>` only rewrites the textarea — execution is debounced. To
+        // model a user drilling repeatedly, we simulate the worker having
+        // delivered each new result by re-running `qs.execute(...)` between
+        // chord presses, then repositioning the cursor onto a row of the
+        // *new* parsed result.
+        let mut app = test_app(r#"{"users": [{"name": "alice"}]}"#);
+        app.input.textarea.insert_str(".");
+        if let Some(qs) = app.query.as_mut() {
+            qs.execute(".");
+        }
+        place(&mut app, 1);
+
+        app.handle_key_event(key(KeyCode::Char('>')));
+        assert_eq!(app.input.query(), ".users");
+
+        if let Some(qs) = app.query.as_mut() {
+            qs.execute(".users");
+        }
+        app.path_at_cursor.invalidate();
+        place(&mut app, 1);
+        app.handle_key_event(key(KeyCode::Char('>')));
+        assert_eq!(app.input.query(), ".users | .[0]");
+
+        app.handle_key_event(key(KeyCode::Char('<')));
+        assert_eq!(app.input.query(), ".users");
+
+        app.handle_key_event(key(KeyCode::Char('<')));
+        assert_eq!(app.input.query(), ".");
+
+        app.handle_key_event(key(KeyCode::Char('<')));
+        assert_eq!(
+            app.notification.current_message(),
+            Some("Nothing to go back to")
+        );
+    }
+
+    #[test]
+    fn drill_in_preserves_results_pane_focus() {
+        let mut app = test_app(r#"{"a": 1}"#);
+        place(&mut app, 1);
+
+        app.handle_key_event(key(KeyCode::Char('>')));
+
+        assert_eq!(app.focus, Focus::ResultsPane);
+    }
+
+    #[test]
+    fn drill_in_works_in_visual_mode_after_exit() {
+        // Visual mode swallows certain keys; `>` is not handled by the
+        // visual-mode arm, so it falls through to the main key match arm
+        // and triggers drill-in (the user's intent is most likely to drill
+        // into the visually-marked region's anchor row).
+        let mut app = test_app(r#"{"a": 1, "b": 2}"#);
+        place(&mut app, 1);
+        app.handle_key_event(key(KeyCode::Char('v')));
+        assert!(app.results_cursor.is_visual_mode());
+
+        app.handle_key_event(key(KeyCode::Char('>')));
+
+        assert_eq!(app.input.query(), ".a");
+    }
+
+    #[test]
+    fn drill_in_special_key_uses_bracket_notation() {
+        let mut app = test_app(r#"{"foo-bar": 1}"#);
+        place(&mut app, 1);
+
+        app.handle_key_event(key(KeyCode::Char('>')));
+
+        assert_eq!(app.input.query(), ".[\"foo-bar\"]");
+    }
+
+    #[test]
+    fn drill_back_defers_viewport_restore_until_result_lands() {
+        // `<` cannot restore the cursor synchronously: the new query is
+        // executed asynchronously via the debouncer, so the result-pane
+        // line layout is still the *drilled* layout at the moment `<`
+        // fires. Restoring against that layout would clamp the cursor.
+        // Instead, `<` parks the viewport on `app.pending_viewport_restore`
+        // and the main event loop applies it once the worker delivers
+        // the prior query's result.
+        let mut app = test_app(r#"{"a": 1, "b": 2, "c": 3, "d": 4, "e": 5}"#);
+        place(&mut app, 3);
+        app.results_scroll.offset = 2;
+        app.results_scroll.h_offset = 5;
+
+        app.handle_key_event(key(KeyCode::Char('>')));
+        assert_eq!(app.results_cursor.cursor_line(), 0);
+        assert_eq!(app.results_scroll.offset, 0);
+        assert_eq!(app.results_scroll.h_offset, 0);
+
+        app.handle_key_event(key(KeyCode::Char('<')));
+        // Snapshot is staged but cursor / scroll have NOT moved yet.
+        assert_eq!(app.results_cursor.cursor_line(), 0);
+        assert_eq!(app.results_scroll.offset, 0);
+        assert_eq!(app.results_scroll.h_offset, 0);
+        assert!(app.pending_viewport_restore.is_some());
+
+        // Simulate the worker delivering the prior result + the main loop
+        // consuming the pending restore.
+        if let Some(qs) = app.query.as_mut() {
+            qs.execute(".");
+        }
+        app.update_stats();
+        crate::path_at_cursor_apply::apply_pending_viewport_restore(&mut app);
+
+        assert_eq!(app.results_cursor.cursor_line(), 3);
+        assert_eq!(app.results_scroll.offset, 2);
+        assert_eq!(app.results_scroll.h_offset, 5);
+        assert!(app.pending_viewport_restore.is_none());
+    }
+
+    /// Pretty-print of `{"users": [{"name": "alice"}]}` is:
+    /// ```text
+    /// 0: {
+    /// 1:   "users": [
+    /// 2:     {
+    /// 3:       "name": "alice"
+    /// 4:     }
+    /// 5:   ]
+    /// 6: }
+    /// ```
+    /// Each row's "natural drill" target should be the value rendered on
+    /// that row: container paths on opening / closing brackets, leaf paths
+    /// on key:value rows.
+    #[test]
+    fn drill_in_row_semantics_match_natural_intuition() {
+        let json = r#"{"users": [{"name": "alice"}]}"#;
+        let cases = [
+            (0, "."),              // root `{`
+            (1, ".users"),         // `"users": [`
+            (2, ".users[0]"),      // inner `{`
+            (3, ".users[0].name"), // leaf
+            (4, ".users[0]"),      // inner `}`
+            (5, ".users"),         // outer `]`
+            (6, "."),              // outer `}`
+        ];
+        for (row, expected) in cases {
+            let mut app = test_app(json);
+            place(&mut app, row);
+            app.handle_key_event(key(KeyCode::Char('>')));
+            if expected == "." {
+                assert_eq!(
+                    app.notification.current_message(),
+                    Some("Already at root"),
+                    "row {} should be at root",
+                    row
+                );
+            } else {
+                assert_eq!(
+                    app.input.query(),
+                    expected,
+                    "row {} should drill to {}",
+                    row,
+                    expected
+                );
+            }
+        }
+    }
+}

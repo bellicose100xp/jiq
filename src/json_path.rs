@@ -43,20 +43,6 @@ pub fn format_field_name(prefix: &str, name: &str) -> String {
     }
 }
 
-/// Encode a single path segment for an RFC 6901 JSON Pointer: `~` -> `~0`,
-/// `/` -> `~1`. Other characters pass through verbatim.
-pub fn format_pointer_segment(segment: &str) -> String {
-    let mut out = String::with_capacity(segment.len());
-    for ch in segment.chars() {
-        match ch {
-            '~' => out.push_str("~0"),
-            '/' => out.push_str("~1"),
-            _ => out.push(ch),
-        }
-    }
-    out
-}
-
 /// One step in a structured JSON path.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum JsonPathStep {
@@ -122,20 +108,6 @@ impl JsonPath {
                     }
                     out.push_str(&format!("[{}]", i));
                 }
-            }
-        }
-        out
-    }
-
-    /// Render as an RFC 6901 JSON Pointer: `/users/2/profile/zip-code`.
-    /// Empty path renders as the root pointer (empty string).
-    pub fn to_pointer(&self) -> String {
-        let mut out = String::new();
-        for step in &self.steps {
-            out.push('/');
-            match step {
-                JsonPathStep::Key(k) => out.push_str(&format_pointer_segment(k)),
-                JsonPathStep::Index(i) => out.push_str(&format!("{}", i)),
             }
         }
         out

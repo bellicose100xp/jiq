@@ -15,27 +15,35 @@ use crate::widgets::{popup, scrollbar};
 
 const SPINNER_CHARS: &[char] = &['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
 
-/// Maximum display width for the inline path-at-cursor span on the stats line.
-/// Long paths head-truncate with `…` so the existing stats prefix stays legible.
-const PATH_AT_CURSOR_MAX_WIDTH: usize = 60;
+/// Below this column budget, the path-at-cursor span hides entirely rather
+/// than rendering a lonely `…` next to the existing stats prefix.
+const PATH_AT_CURSOR_MIN_WIDTH: usize = 5;
 
-fn build_results_pane_hints() -> Line<'static> {
-    theme::border_hints::build_hints(
-        &[("Tab", "Edit Query"), ("i", "Edit Query")],
-        theme::results::HINT_KEY,
-    )
+/// Cells consumed by the ` · ` separator and the trailing space inside the
+/// path span (`format!("{} ", path)`). Subtracted from the available top
+/// border before head-truncating the path text itself.
+const PATH_AT_CURSOR_CHROME_WIDTH: usize = 4;
+
+fn build_results_pane_hints(can_undo: bool) -> Line<'static> {
+    let mut hints: Vec<(&'static str, &'static str)> = vec![
+        ("Tab", "Edit Query"),
+        ("i", "Edit Query"),
+        (">", "Drill in"),
+    ];
+    if can_undo {
+        hints.push(("<", "Back"));
+    }
+    theme::border_hints::build_hints(&hints, theme::results::HINT_KEY)
 }
 
-fn build_search_hints() -> Line<'static> {
-    theme::border_hints::build_hints(
-        &[
-            ("n/N", "Next/Prev"),
-            ("Enter", "Next"),
-            ("Ctrl+F", "Edit"),
-            ("Esc", "Close"),
-        ],
-        theme::results::SEARCH_ACTIVE,
-    )
+fn build_search_hints(can_undo: bool) -> Line<'static> {
+    let mut hints: Vec<(&'static str, &'static str)> =
+        vec![("n/N", "Next/Prev"), ("Enter", "Next"), (">", "Drill in")];
+    if can_undo {
+        hints.push(("<", "Back"));
+    }
+    hints.extend([("Ctrl+F", "Edit"), ("Esc", "Close")]);
+    theme::border_hints::build_hints(&hints, theme::results::SEARCH_ACTIVE)
 }
 
 fn get_spinner(frame_count: u64) -> (char, Color) {
@@ -56,6 +64,43 @@ fn format_position_indicator(scroll: &ScrollState, line_count: u32) -> String {
     let end = (scroll.offset as u32 + scroll.viewport_height as u32).min(line_count);
     let percentage = (scroll.offset as u32 * 100) / line_count;
     format!("L{}-{}/{} ({}%)", start, end, line_count, percentage)
+}
+
+/// Compute the column budget for the path-at-cursor span on the success
+/// branch's top border, given the rendered widths of the surrounding chrome.
+/// Caller still gates on [`PATH_AT_CURSOR_MIN_WIDTH`] so a degenerate budget
+/// hides the span entirely instead of showing a lonely `…`.
+fn path_at_cursor_budget(
+    area_width: u16,
+    stats_info: &str,
+    position_indicator: &str,
+    is_pending: bool,
+) -> usize {
+    use unicode_width::UnicodeWidthStr;
+
+    // Block borders consume the leftmost and rightmost cells of the title row.
+    const BORDER_CORNERS: usize = 2;
+    // The stats prefix is rendered as ` {stats} ` (one cell of padding on
+    // each side). Pending state prepends `<spinner> ` on the very left.
+    const STATS_PADDING: usize = 2;
+    const SPINNER_WIDTH: usize = 2;
+    // The right-aligned position indicator is rendered as ` {pos} `.
+    const RIGHT_TITLE_PADDING: usize = 2;
+
+    let stats_width = UnicodeWidthStr::width(stats_info) + STATS_PADDING;
+    let position_width = if position_indicator.is_empty() {
+        0
+    } else {
+        UnicodeWidthStr::width(position_indicator) + RIGHT_TITLE_PADDING
+    };
+    let spinner_width = if is_pending { SPINNER_WIDTH } else { 0 };
+
+    (area_width as usize)
+        .saturating_sub(BORDER_CORNERS)
+        .saturating_sub(stats_width)
+        .saturating_sub(position_width)
+        .saturating_sub(spinner_width)
+        .saturating_sub(PATH_AT_CURSOR_CHROME_WIDTH)
 }
 
 fn format_execution_time(ms: u64) -> String {
@@ -127,16 +172,26 @@ pub fn render_pane(app: &mut App, frame: &mut Frame, area: Rect) -> (Rect, Optio
     let is_pending = query_state.is_pending();
     let stats_info = app.stats.display().unwrap_or_else(|| "Results".to_string());
 
-    // Path-at-cursor: only resolved on success branch when results pane is
-    // focused and search is not active. Computed once here so the borrow on
-    // query_state below stays clean.
+    // Path-at-cursor: only resolved on success branch. Always falls back to
+    // the cursor row, but prefers the current search match's row when
+    // search is visible and has matches — that way the path tracks what the
+    // user is actually looking at while typing or navigating a search.
+    // Computed once here so the borrow on query_state below stays clean.
     let path_at_cursor_jq: Option<String> = if app.focus == crate::app::Focus::ResultsPane
-        && !app.search.is_visible()
         && !query_state.is_synthetic_merge
         && query_state.result.is_ok()
         && !query_state.is_empty_result
     {
-        app.current_cursor_path().map(|p| p.to_jq())
+        let path_row = if app.search.is_visible() {
+            app.search.current_match().map(|m| m.line)
+        } else {
+            None
+        };
+        match path_row {
+            Some(row) => app.path_at_row(row).map(|p| p.to_jq()),
+            None if !app.search.is_visible() => app.current_cursor_path().map(|p| p.to_jq()),
+            None => None,
+        }
     } else {
         None
     };
@@ -240,10 +295,15 @@ pub fn render_pane(app: &mut App, frame: &mut Frame, area: Rect) -> (Rect, Optio
         } else {
             theme::results::RESULT_OK
         };
+        let path_budget = path_at_cursor_budget(
+            results_area.width,
+            &stats_info,
+            &position_indicator,
+            is_pending,
+        );
         let path_spans: Vec<Span<'static>> = match path_at_cursor_jq.as_deref() {
-            Some(path) if !path.is_empty() => {
-                let truncated =
-                    crate::str_utils::head_truncate_to_width(path, PATH_AT_CURSOR_MAX_WIDTH);
+            Some(path) if !path.is_empty() && path_budget >= PATH_AT_CURSOR_MIN_WIDTH => {
+                let truncated = crate::str_utils::head_truncate_to_width(path, path_budget);
                 vec![
                     Span::styled(
                         " · ",
@@ -336,7 +396,9 @@ pub fn render_pane(app: &mut App, frame: &mut Frame, area: Rect) -> (Rect, Optio
             block = block.title_top(rt.alignment(Alignment::Right));
         }
         if search_visible && app.search.is_confirmed() {
-            block = block.title_bottom(build_search_hints().alignment(Alignment::Center));
+            block = block.title_bottom(
+                build_search_hints(!app.query_undo.is_empty()).alignment(Alignment::Center),
+            );
             let match_count = app.search.match_count_display();
             let match_count_badge = Line::from(vec![
                 Span::raw(" "),
@@ -351,7 +413,9 @@ pub fn render_pane(app: &mut App, frame: &mut Frame, area: Rect) -> (Rect, Optio
 
         // Add navigation hints when results pane is focused and search is not visible
         if !search_visible && app.focus == crate::app::Focus::ResultsPane {
-            block = block.title_bottom(build_results_pane_hints().alignment(Alignment::Center));
+            block = block.title_bottom(
+                build_results_pane_hints(!app.query_undo.is_empty()).alignment(Alignment::Center),
+            );
         }
 
         // Add execution time display in bottom-left corner
@@ -437,7 +501,9 @@ pub fn render_pane(app: &mut App, frame: &mut Frame, area: Rect) -> (Rect, Optio
             block = block.title_top(rt.alignment(Alignment::Right));
         }
         if search_visible && app.search.is_confirmed() {
-            block = block.title_bottom(build_search_hints().alignment(Alignment::Center));
+            block = block.title_bottom(
+                build_search_hints(!app.query_undo.is_empty()).alignment(Alignment::Center),
+            );
             let match_count = app.search.match_count_display();
             let match_count_badge = Line::from(vec![
                 Span::raw(" "),
@@ -449,7 +515,9 @@ pub fn render_pane(app: &mut App, frame: &mut Frame, area: Rect) -> (Rect, Optio
             ]);
             block = block.title_bottom(match_count_badge.alignment(Alignment::Right));
         } else if !search_visible && app.focus == crate::app::Focus::ResultsPane {
-            block = block.title_bottom(build_results_pane_hints().alignment(Alignment::Center));
+            block = block.title_bottom(
+                build_results_pane_hints(!app.query_undo.is_empty()).alignment(Alignment::Center),
+            );
         }
 
         // Add execution time display in bottom-left corner

@@ -21,7 +21,7 @@ expression: output
 "│                                                                              │"
 "│                                                                              │"
 "│                                                                              │"
-"╰─────────────────────── Tab Edit Query • i Edit Query ────────────────────────╯"
+"╰───────────────── Tab Edit Query • i Edit Query • > Drill in ─────────────────╯"
 "╭ Query [NORMAL] (press 'i' to edit) ───────────────────── Ctrl+A AI Assistant ╮"
 "│.invalid[                                                                     │"
 "╰──────────────────────────────────────────────────────────────────────────────╯"
