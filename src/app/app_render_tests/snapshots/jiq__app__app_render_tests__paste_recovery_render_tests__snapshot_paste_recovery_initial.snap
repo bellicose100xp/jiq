@@ -1,0 +1,28 @@
+---
+source: src/app/app_render_tests/paste_recovery_render_tests.rs
+expression: output
+---
+"╭ No JSON loaded ──────────────────────────────────────────────────────────────╮"
+"│ No input provided. Clipboard does not contain valid JSON.                    │"
+"│                                                                              │"
+"│ Paste JSON below and press Enter to load.                                    │"
+"│                                                                              │"
+"│                                                                              │"
+"╰──────────────────────────────────────────────────────────────────────────────╯"
+"╭ Paste JSON [INSERT] ─────────────────────────────────────────────────────────╮"
+"│ Paste JSON, then press Enter to load                                         │"
+"│                                                                              │"
+"│                                                                              │"
+"│                                                                              │"
+"│                                                                              │"
+"│                                                                              │"
+"│                                                                              │"
+"│                                                                              │"
+"│                                                                              │"
+"│                                                                              │"
+"│                                                                              │"
+"│                                                                              │"
+"│                                                                              │"
+"│                                                                              │"
+"│                                                                              │"
+"╰───────── Enter Load JSON • Esc Normal • Ctrl+X Clear • Ctrl+C Quit ──────────╯"

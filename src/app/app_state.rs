@@ -3,7 +3,8 @@ use crate::autocomplete::{self, AutocompleteState};
 use crate::config::{ClipboardBackend, Config};
 use crate::help::HelpPopupState;
 use crate::history::HistoryState;
-use crate::input::{FileLoader, InputState};
+use crate::input::loader::LoaderSource;
+use crate::input::{FileLoader, InputState, PasteRecoveryState};
 use crate::layout::LayoutRegions;
 use crate::notification::NotificationState;
 use crate::query::{Debouncer, QueryState};
@@ -30,6 +31,7 @@ pub struct App {
     pub input: InputState,
     pub query: Option<QueryState>,
     pub file_loader: Option<FileLoader>,
+    pub paste_recovery: Option<PasteRecoveryState>,
     pub focus: Focus,
     pub results_scroll: ScrollState,
     pub results_cursor: CursorState,
@@ -135,6 +137,7 @@ impl App {
             input: InputState::new(),
             query: None,
             file_loader: Some(loader),
+            paste_recovery: None,
             focus: Focus::InputField,
             results_scroll: ScrollState::new(),
             results_cursor: CursorState::new(),
@@ -168,47 +171,80 @@ impl App {
 
     /// Poll file loader and initialize QueryState when complete
     pub fn poll_file_loader(&mut self) {
-        if let Some(loader) = &mut self.file_loader
-            && let Some(result) = loader.poll()
-        {
+        let polled = if let Some(loader) = &mut self.file_loader {
+            loader.poll().map(|res| (res, loader.source))
+        } else {
+            None
+        };
+
+        if let Some((result, source)) = polled {
             self.mark_dirty();
             match result {
                 Ok(json_input) => {
-                    log::debug!("File loaded successfully: {} bytes", json_input.len());
-                    self.query = Some(QueryState::new_with_sample_size(
-                        json_input.clone(),
-                        self.array_sample_size,
-                    ));
-
-                    let schema_input = crate::json::extract_first_json_value(&json_input)
-                        .unwrap_or_else(|| json_input.clone());
-
-                    self.input_json_schema =
-                        crate::json::extract_json_schema_dynamic(&schema_input).map(|s| {
-                            crate::ai::context::prepare_schema_for_context(
-                                &s,
-                                self.ai.max_context_length,
-                            )
-                        });
-
-                    // Initialize stats for initial result
-                    self.update_stats();
-
-                    self.file_loader = None;
-
-                    // Ensure AI works on launch with deferred file loading
-                    if self.ai.visible && self.ai.enabled && self.ai.configured {
-                        self.trigger_ai_request();
-                    }
+                    self.initialize_from_json(json_input);
                 }
-                Err(ref e) => {
+                Err(e) => {
                     log::error!("File loader error: {:?}", e);
-                    // Keep loader for state tracking
-                    // Show brief notification - full error details in results area
-                    self.notification.show_error("Failed to load file");
+                    if source == LoaderSource::Clipboard {
+                        // Drop into paste recovery: surface only the
+                        // single-sentence diagnosis line (the multi-line
+                        // "Usage:" block is past at this point). No
+                        // notification is shown — the recovery panel
+                        // itself carries the same instruction inline.
+                        let original = first_line(&e.to_string());
+                        log::debug!(
+                            "paste-recovery: ENTER recovery, error_message={:?}",
+                            original
+                        );
+                        self.paste_recovery = Some(PasteRecoveryState::new(original));
+                        self.file_loader = None;
+                    } else {
+                        // File / stdin source: existing behavior unchanged.
+                        // Keep loader for state tracking; full details in
+                        // results area.
+                        self.notification.show_error("Failed to load file");
+                    }
                 }
             }
         }
+    }
+
+    /// Build the initial QueryState (and dependent caches) from a JSON
+    /// input string. Shared by the loader-success path and the
+    /// paste-recovery acceptance path.
+    fn initialize_from_json(&mut self, json_input: String) {
+        log::debug!("Initialising from JSON: {} bytes", json_input.len());
+        self.query = Some(QueryState::new_with_sample_size(
+            json_input.clone(),
+            self.array_sample_size,
+        ));
+
+        let schema_input = crate::json::extract_first_json_value(&json_input)
+            .unwrap_or_else(|| json_input.clone());
+
+        self.input_json_schema = crate::json::extract_json_schema_dynamic(&schema_input).map(|s| {
+            crate::ai::context::prepare_schema_for_context(&s, self.ai.max_context_length)
+        });
+
+        self.update_stats();
+        self.file_loader = None;
+
+        if self.ai.visible && self.ai.enabled && self.ai.configured {
+            self.trigger_ai_request();
+        }
+    }
+
+    /// Accept a JSON string from the paste-recovery flow and continue as
+    /// if the JSON had been loaded normally.
+    pub fn accept_paste_recovery_json(&mut self, json_input: String) {
+        let bytes = json_input.len();
+        self.initialize_from_json(json_input);
+        self.paste_recovery = None;
+        self.notification.show(&format!(
+            "Loaded {} bytes — type a query, Enter outputs result",
+            bytes
+        ));
+        self.mark_dirty();
     }
 
     pub fn should_quit(&self) -> bool {
@@ -343,6 +379,20 @@ impl App {
         self.tooltip.enabled = self.saved_tooltip_visibility_for_results;
         self.focus = Focus::InputField;
     }
+}
+
+/// Extract the first non-empty line of a multi-line error message and
+/// strip our `JiqError` Display prefix. Used to surface only the
+/// diagnosis sentence in the paste-recovery view (the loader's full
+/// "Usage:" block is irrelevant once we are past it, and the
+/// "IO error: " prefix is implementation detail leaking from
+/// `thiserror`'s Display impl).
+fn first_line(s: &str) -> String {
+    let line = s.lines().find(|l| !l.trim().is_empty()).unwrap_or(s);
+    line.strip_prefix("IO error: ")
+        .or_else(|| line.strip_prefix("Invalid JSON input: "))
+        .unwrap_or(line)
+        .to_string()
 }
 
 #[cfg(test)]

@@ -748,3 +748,7 @@ fn test_trigger_ai_request_empty_result_uses_unformatted() {
 #[cfg(test)]
 #[path = "app_state_tests/dirty_flag_tests.rs"]
 mod dirty_flag_tests;
+
+#[cfg(test)]
+#[path = "app_state_tests/paste_recovery_tests.rs"]
+mod paste_recovery_tests;

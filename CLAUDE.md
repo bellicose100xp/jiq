@@ -6,7 +6,8 @@
   - Verify: `jq --version` should show `jq-1.8.1` or higher
 
 ## Testing
-Run tests in background mode - execution may be lengthy.
+- Run tests in background mode - execution may be lengthy.
+- Always run the full test suite with `cargo test`. Never use `--lib`.
 
 ## Pre-Commit Requirements
 Execute in order:

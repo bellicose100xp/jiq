@@ -19,7 +19,7 @@ fn fixture_path(name: &str) -> PathBuf {
 /// This helper creates a FileLoader that immediately has the JSON available,
 /// avoiding the need for actual file I/O in integration tests.
 fn create_test_loader(json: String) -> jiq::input::FileLoader {
-    use jiq::input::loader::LoadingState;
+    use jiq::input::loader::{LoaderSource, LoadingState};
     use std::sync::mpsc::channel;
     let (tx, rx) = channel();
     // Send the result immediately so poll() will return it
@@ -27,6 +27,7 @@ fn create_test_loader(json: String) -> jiq::input::FileLoader {
     jiq::input::FileLoader {
         state: LoadingState::Loading,
         rx: Some(rx),
+        source: LoaderSource::File,
     }
 }
 

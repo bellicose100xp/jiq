@@ -11,6 +11,30 @@ impl App {
         self.frame_count = self.frame_count.wrapping_add(1);
         self.layout_regions.clear();
 
+        // Paste-recovery short-circuits the normal layout entirely.
+        if self.paste_recovery.is_some() {
+            // We render the live `app.input.textarea` here so all
+            // existing VIM key handlers (which mutate that textarea)
+            // are visible to the user without any duplicated state.
+            let area = frame.area();
+            let editor_mode = self.input.editor_mode;
+            super::paste_recovery_render::render(
+                self.paste_recovery.as_ref().unwrap(),
+                &mut self.input.textarea,
+                editor_mode,
+                frame,
+                area,
+            );
+
+            if self.help.visible
+                && let Some(help_rect) = crate::help::help_popup_render::render_popup(self, frame)
+            {
+                self.layout_regions.help_popup = Some(help_rect);
+            }
+            render_notification(frame, &mut self.notification);
+            return;
+        }
+
         let overlay_visible = self.search.is_visible() || self.snippets.is_visible();
 
         let (results_area, input_area, help_area) = if overlay_visible {

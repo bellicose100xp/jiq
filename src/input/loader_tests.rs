@@ -29,6 +29,27 @@ fn wait_for_completion(
 }
 
 #[test]
+fn test_loader_source_is_file_for_spawn_load() {
+    let (_tmp, path) = create_temp_json_file(r#"{"a": 1}"#);
+    let loader = FileLoader::spawn_load(path);
+    assert_eq!(loader.source, LoaderSource::File);
+}
+
+#[test]
+fn test_loader_source_is_stdin_for_spawn_load_stdin() {
+    let loader = FileLoader::spawn_load_stdin();
+    assert_eq!(loader.source, LoaderSource::Stdin);
+}
+
+#[test]
+fn test_loader_source_is_clipboard_for_load_clipboard_blocking() {
+    // load_clipboard_blocking runs synchronously and may succeed or fail
+    // depending on the environment; either way `source` must be Clipboard.
+    let loader = FileLoader::load_clipboard_blocking();
+    assert_eq!(loader.source, LoaderSource::Clipboard);
+}
+
+#[test]
 fn test_file_loader_loads_valid_json() {
     // Requirement 6.1: THE FileLoader SHALL have unit tests verifying successful file loading
     let json_content = r#"{"name": "test", "value": 42}"#;
