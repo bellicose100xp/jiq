@@ -54,3 +54,87 @@ fn test_encode_osc52_unicode() {
     let decoded = STANDARD.decode(base64_part).unwrap();
     assert_eq!(String::from_utf8(decoded).unwrap(), "日本語");
 }
+
+// =============================================================================
+// OSC 52 read response parsing
+// =============================================================================
+
+#[test]
+fn test_parse_response_complete_with_bel_terminator() {
+    let payload = STANDARD.encode("hello");
+    let buffer = format!("\x1b]52;c;{}\x07", payload);
+    let result = parse_response(buffer.as_bytes()).unwrap();
+    assert_eq!(result, Some("hello".to_string()));
+}
+
+#[test]
+fn test_parse_response_complete_with_st_terminator() {
+    let payload = STANDARD.encode("hello");
+    let buffer = format!("\x1b]52;c;{}\x1b\\", payload);
+    let result = parse_response(buffer.as_bytes()).unwrap();
+    assert_eq!(result, Some("hello".to_string()));
+}
+
+#[test]
+fn test_parse_response_unicode_payload() {
+    let payload = STANDARD.encode("日本語");
+    let buffer = format!("\x1b]52;c;{}\x07", payload);
+    let result = parse_response(buffer.as_bytes()).unwrap();
+    assert_eq!(result, Some("日本語".to_string()));
+}
+
+#[test]
+fn test_parse_response_partial_returns_none() {
+    // Only the prefix has arrived; we should keep waiting for more bytes.
+    let buffer = b"\x1b]52;c;aGVsbG8";
+    let result = parse_response(buffer).unwrap();
+    assert_eq!(result, None);
+}
+
+#[test]
+fn test_parse_response_without_prefix_returns_none() {
+    let buffer = b"\x1b[A";
+    let result = parse_response(buffer).unwrap();
+    assert_eq!(result, None);
+}
+
+#[test]
+fn test_parse_response_question_mark_reply_is_malformed() {
+    // Some terminals reply `\x1b]52;c;?\x07` to refuse a read; treat as malformed.
+    let buffer = b"\x1b]52;c;?\x07";
+    let result = parse_response(buffer);
+    assert!(matches!(result, Err(Osc52ReadError::Malformed)));
+}
+
+#[test]
+fn test_parse_response_invalid_base64_is_malformed() {
+    let buffer = b"\x1b]52;c;not-base-64-!!!\x07";
+    let result = parse_response(buffer);
+    assert!(matches!(result, Err(Osc52ReadError::Malformed)));
+}
+
+#[test]
+fn test_parse_response_skips_leading_garbage() {
+    // The terminal may have echoed unrelated bytes before the OSC 52 reply.
+    let payload = STANDARD.encode("hello");
+    let mut buffer = b"some prefix bytes ".to_vec();
+    buffer.extend_from_slice(format!("\x1b]52;c;{}\x07", payload).as_bytes());
+    let result = parse_response(&buffer).unwrap();
+    assert_eq!(result, Some("hello".to_string()));
+}
+
+#[test]
+fn test_parse_response_empty_payload_decodes_to_empty_string() {
+    let buffer = b"\x1b]52;c;\x07";
+    let result = parse_response(buffer).unwrap();
+    assert_eq!(result, Some(String::new()));
+}
+
+#[test]
+fn test_parse_response_long_unrelated_buffer_bails_out() {
+    // 65+ bytes with no ESC at all means the terminal isn't going to send a
+    // reply; bail early so the loop doesn't sit on the timeout.
+    let buffer = vec![b'x'; 100];
+    let result = parse_response(&buffer);
+    assert!(matches!(result, Err(Osc52ReadError::Malformed)));
+}
