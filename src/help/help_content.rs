@@ -105,6 +105,8 @@ pub const HELP_CATEGORIES: &[HelpCategory] = &[
                 ("G/End", "Jump to bottom"),
                 ("Ctrl+D/U", "Half page down/up"),
                 ("PageDown/Up", "Half page down/up"),
+                (">", "Drill into value at cursor"),
+                ("<", "Step back to prior query"),
             ],
         }],
     },

@@ -1,5 +1,6 @@
 ---
 source: src/json_tests.rs
+assertion_line: 147
 expression: schema
 ---
-{"count":"number","users":[{"address":{"city":"string","zip":"string"},"age":"number","name":"string"}]}
+{"users":[{"name":"string","age":"number","address":{"city":"string","zip":"string"}}],"count":"number"}

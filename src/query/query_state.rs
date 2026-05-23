@@ -68,6 +68,12 @@ pub struct QueryState {
     pub(crate) cached_execution_time_ms: Option<u64>,
     /// Whether current result is null/empty (valid query but no results)
     pub is_empty_result: bool,
+    /// True when `last_successful_result_parsed` was synthesized by merging
+    /// multiple top-level JSON documents. When true, the parsed Value's
+    /// `to_string_pretty` line layout does NOT match the rendered output, so
+    /// any line-indexed walk of the parsed Value (e.g., path-at-cursor)
+    /// would produce wrong paths and must be skipped.
+    pub is_synthetic_merge: bool,
 
     // Async execution support
     /// Channel to send query requests to worker
@@ -114,14 +120,15 @@ impl QueryState {
         let base_query_for_suggestions = Some(".".to_string());
 
         // Parse JSON and detect type in single pass (avoids duplicate parsing)
-        let (last_successful_result_parsed, base_type_for_suggestions) =
+        let (last_successful_result_parsed, base_type_for_suggestions, is_synthetic_merge_initial) =
             last_successful_result_unformatted
                 .as_ref()
                 .map(|s| {
-                    let (parsed, result_type) = parse_and_detect_type(s, array_sample_size);
-                    (parsed.map(Arc::new), Some(result_type))
+                    let (parsed, result_type, is_synthetic) =
+                        parse_and_detect_type(s, array_sample_size);
+                    (parsed.map(Arc::new), Some(result_type), is_synthetic)
                 })
-                .unwrap_or((None, None));
+                .unwrap_or((None, None, false));
 
         // Pre-render result to avoid expensive conversion in render loop
         let last_successful_result_rendered = last_successful_result.clone().map(|s| {
@@ -175,6 +182,7 @@ impl QueryState {
             cached_line_widths,
             cached_execution_time_ms: None,
             is_empty_result: false,
+            is_synthetic_merge: is_synthetic_merge_initial,
             request_tx: Some(request_tx),
             response_rx: Some(response_rx),
             next_request_id: 1, // Reserve 0 for worker errors
@@ -250,9 +258,11 @@ impl QueryState {
                 )));
 
             // Parse JSON and detect type in single pass (avoids duplicate parsing)
-            let (parsed, result_type) = parse_and_detect_type(&unformatted, self.array_sample_size);
+            let (parsed, result_type, is_synthetic) =
+                parse_and_detect_type(&unformatted, self.array_sample_size);
             self.last_successful_result_parsed = parsed.map(Arc::new);
             self.base_type_for_suggestions = Some(result_type);
+            self.is_synthetic_merge = is_synthetic;
 
             // Trim trailing whitespace/incomplete operators: ".services | ." → ".services"
             let base_query = Self::normalize_base_query(query);
@@ -421,6 +431,7 @@ impl QueryState {
                     self.cached_execution_time_ms = processed.execution_time_ms;
                     self.base_query_for_suggestions = Some(processed.query.clone());
                     self.base_type_for_suggestions = Some(processed.result_type);
+                    self.is_synthetic_merge = processed.is_synthetic_merge;
                 } else {
                     // Null result - preserve ALL cache including rendered output
                     // Only update self.result so it shows as "null" in error state

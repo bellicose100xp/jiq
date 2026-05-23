@@ -504,6 +504,12 @@ impl App {
             // Result changed - update stats once (not on every frame)
             self.update_stats();
 
+            // Apply any pending viewport restore from a `<` (drill-back).
+            // Has to happen *after* update_stats so cached_line_count
+            // reflects the freshly-loaded result; otherwise the cursor
+            // gets clamped against the prior (drilled) result's row count.
+            crate::path_at_cursor_apply::apply_pending_viewport_restore(self);
+
             // State changed - trigger AI update if visible and query is not empty
             if self.ai.visible && !completed_query.is_empty() {
                 let query_state = self.query.as_ref().unwrap();

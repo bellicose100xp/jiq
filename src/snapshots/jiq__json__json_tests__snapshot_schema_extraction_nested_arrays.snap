@@ -1,5 +1,6 @@
 ---
 source: src/json_tests.rs
+assertion_line: 154
 expression: schema
 ---
-{"labels":["string"],"matrix":[["number"]]}
+{"matrix":[["number"]],"labels":["string"]}

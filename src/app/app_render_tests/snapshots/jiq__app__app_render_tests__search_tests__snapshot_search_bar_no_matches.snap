@@ -1,6 +1,5 @@
 ---
 source: src/app/app_render_tests/search_tests.rs
-assertion_line: 81
 expression: output
 ---
 "╭   ⚠ No Matches    Object ─────────────────────────────────────── L1-4/4 (0%) ╮"
@@ -22,8 +21,8 @@ expression: output
 "│                                                                              │"
 "│                                                                              │"
 "│                                                                              │"
-"╰──────────────────────────────────────────────────────────────────────────────╯"
+"╰───────────────────────────────── > Drill in ─────────────────────────────────╯"
 "╭ Search ─────────────────────────────────────────────────────────────   0/0   ╮"
 "│xyz                                                                           │"
-"╰───────────────────────── Enter Confirm • Esc Close ──────────────────────────╯"
+"╰─────────────────── Enter Confirm • > Drill in • Esc Close ───────────────────╯"
 " F1/? Help • Esc Close • Enter Confirm Search                                   "

@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Path-at-cursor display + `>` / `<` to drill in / step back** - The results pane title shows the live jq path of the value pretty-printed on the current cursor row (e.g., `Array [50 objects] · .users[2].profile.email`). The path span fills the available top-border space and head-truncates with `…` only when it would otherwise overflow. Press `>` to drill into the value at the cursor — pipe-composes the path onto the current query (or replaces it outright when the query is empty or just `.`); press `<` to step back to the prior query. Drill-in / back simply rewrite the input, so the existing debounced async query pipeline picks up the change exactly as if you'd typed it. Both chords stay on the results pane so you can drill repeatedly without leaving exploration mode. While search is active, `>` drills into the *current match's* row (not the cursor) and closes the search overlay; `<` works identically inside or outside search. The `<` bottom-border hint only appears once you have at least one snapshot to step back to. The span is hidden when the result is a multi-document stream (where the parsed-value layout doesn't line up with the rendered output). Path emission rules (jq simple-identifier vs. bracket notation) are centralized in a new `json_path` module shared with the autocomplete suggestion engine.
+
 ## [3.24.0] - 2026-05-23
 
 ### Added

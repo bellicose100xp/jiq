@@ -2,7 +2,7 @@
 source: src/app/app_render_tests/search_tests.rs
 expression: output
 ---
-"╭ Object ───────────────────────────────────────────────────────── L1-4/4 (0%) ╮"
+"╭ Object  · .very_long_field ───────────────────────────────────── L1-4/4 (0%) ╮"
 "▌                                                                              │"
 "│                                                                              │"
 "│                                                                     match_he │"
@@ -21,7 +21,7 @@ expression: output
 "│                                                                              │"
 "│                                                                              │"
 "│                                                                              │"
-"╰──────────── n/N Next/Prev • Enter Next • Ctrl+F Edit • Esc Close ───   1/1   ╯"
+"╰───── n/N Next/Prev • Enter Next • > Drill in • Ctrl+F Edit • Esc Close 1/1   ╯"
 "╭ Search ──────────────────────────────────────────────────────────────────────╮"
 "│match_here                                                                    │"
 "╰──────────────────────────────────────────────────────────────────────────────╯"

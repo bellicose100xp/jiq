@@ -27,6 +27,43 @@ pub fn byte_pos_to_char_pos(s: &str, byte_pos: usize) -> usize {
     s.char_indices().take_while(|(b, _)| *b < byte_pos).count()
 }
 
+/// Truncate `s` from the front, keeping the trailing characters that fit
+/// within `max_width` display columns and prefixing with `…` when content
+/// is dropped. Display width is counted via `unicode_width` so CJK and
+/// emoji widths are handled correctly.
+pub fn head_truncate_to_width(s: &str, max_width: usize) -> String {
+    use unicode_width::UnicodeWidthChar;
+
+    if max_width == 0 {
+        return String::new();
+    }
+
+    let mut total: usize = 0;
+    for ch in s.chars() {
+        total += UnicodeWidthChar::width(ch).unwrap_or(0);
+    }
+    if total <= max_width {
+        return s.to_string();
+    }
+
+    let budget = max_width.saturating_sub(1);
+    let mut accumulated: usize = 0;
+    let mut start_byte = s.len();
+    for (idx, ch) in s.char_indices().rev() {
+        let w = UnicodeWidthChar::width(ch).unwrap_or(0);
+        if accumulated + w > budget {
+            break;
+        }
+        accumulated += w;
+        start_byte = idx;
+    }
+
+    let mut out = String::with_capacity(s.len() - start_byte + 4);
+    out.push('…');
+    out.push_str(&s[start_byte..]);
+    out
+}
+
 #[cfg(test)]
 #[path = "str_utils_tests.rs"]
 mod str_utils_tests;

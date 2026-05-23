@@ -280,7 +280,8 @@ fn test_parsed_result_handles_destructured_output() {
 #[test]
 fn test_parse_first_value_handles_single_object() {
     let json = r#"{"name": "test", "value": 42}"#;
-    let (parsed, result_type) = parse_and_detect_type(json, DEFAULT_ARRAY_SAMPLE_SIZE);
+    let (parsed, result_type, _is_synthetic) =
+        parse_and_detect_type(json, DEFAULT_ARRAY_SAMPLE_SIZE);
 
     assert!(parsed.is_some());
     let value = parsed.unwrap();
@@ -292,7 +293,8 @@ fn test_parse_first_value_handles_single_object() {
 #[test]
 fn test_parse_first_value_handles_destructured_objects() {
     let json = "{\"name\": \"first\"}\n{\"name\": \"second\"}\n{\"name\": \"third\"}";
-    let (parsed, result_type) = parse_and_detect_type(json, DEFAULT_ARRAY_SAMPLE_SIZE);
+    let (parsed, result_type, _is_synthetic) =
+        parse_and_detect_type(json, DEFAULT_ARRAY_SAMPLE_SIZE);
 
     assert!(parsed.is_some());
     let value = parsed.unwrap();
@@ -305,7 +307,8 @@ fn test_parse_first_value_handles_destructured_objects() {
 #[test]
 fn test_parse_first_value_handles_array() {
     let json = r#"[{"id": 1}, {"id": 2}]"#;
-    let (parsed, result_type) = parse_and_detect_type(json, DEFAULT_ARRAY_SAMPLE_SIZE);
+    let (parsed, result_type, _is_synthetic) =
+        parse_and_detect_type(json, DEFAULT_ARRAY_SAMPLE_SIZE);
 
     assert!(parsed.is_some());
     let value = parsed.unwrap();

@@ -4,6 +4,7 @@ use crate::app::App;
 use crate::clipboard;
 use crate::editor::EditorMode;
 use crate::help::HelpTab;
+use crate::path_at_cursor_apply::{ApplyOutcome, PathSource, UndoOutcome, apply_path, pop_undo};
 
 pub fn handle_results_pane_key(app: &mut App, key: KeyEvent) {
     if app.results_cursor.is_visual_mode() && handle_visual_mode_key(app, key) {
@@ -112,7 +113,37 @@ pub fn handle_results_pane_key(app: &mut App, key: KeyEvent) {
             move_cursor_down(app, half_page as u32);
         }
 
+        KeyCode::Char('>') => {
+            drill_in(app, PathSource::CursorRow);
+        }
+
+        KeyCode::Char('<') => {
+            drill_back(app);
+        }
+
         _ => {}
+    }
+}
+
+/// Resolve `source` to a path, pipe-compose onto the query, and surface the
+/// outcome via the notification overlay. Used by both the results-pane key
+/// handler and the search-mode `>` interceptor.
+pub(crate) fn drill_in(app: &mut App, source: PathSource) {
+    match apply_path(app, source) {
+        ApplyOutcome::Applied(_) => {}
+        ApplyOutcome::AtRoot => app.notification.show("Already at root"),
+        ApplyOutcome::NoPath => app.notification.show("No path at cursor"),
+    }
+}
+
+/// Pop the most recent drill-in snapshot, surfacing the outcome.
+pub(crate) fn drill_back(app: &mut App) {
+    match pop_undo(app) {
+        UndoOutcome::Restored(_) => {}
+        UndoOutcome::Empty => app.notification.show("Nothing to go back to"),
+        UndoOutcome::Invalidated => app
+            .notification
+            .show("Query was edited — undo history cleared"),
     }
 }
 

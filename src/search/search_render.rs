@@ -55,12 +55,15 @@ pub fn render_bar(app: &mut App, frame: &mut Frame, area: Rect) {
             ])
             .alignment(Alignment::Right),
         );
+        let mut hints: Vec<(&'static str, &'static str)> =
+            vec![("Enter", "Confirm"), (">", "Drill in")];
+        if !app.query_undo.is_empty() {
+            hints.push(("<", "Back"));
+        }
+        hints.push(("Esc", "Close"));
         block = block.title_bottom(
-            theme::border_hints::build_hints(
-                &[("Enter", "Confirm"), ("Esc", "Close")],
-                theme::search::HINTS,
-            )
-            .alignment(Alignment::Center),
+            theme::border_hints::build_hints(&hints, theme::search::HINTS)
+                .alignment(Alignment::Center),
         );
     }
 

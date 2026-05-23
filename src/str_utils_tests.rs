@@ -161,3 +161,40 @@ proptest! {
         prop_assert!(char_pos <= s.chars().count());
     }
 }
+
+mod head_truncate {
+    use super::*;
+
+    #[test]
+    fn passthrough_when_within_budget() {
+        assert_eq!(head_truncate_to_width("hello", 10), "hello");
+        assert_eq!(head_truncate_to_width("hello", 5), "hello");
+    }
+
+    #[test]
+    fn empty_when_budget_zero() {
+        assert_eq!(head_truncate_to_width("hello", 0), "");
+    }
+
+    #[test]
+    fn truncates_with_ellipsis_prefix() {
+        let s = ".users[2].profile.email";
+        let out = head_truncate_to_width(s, 10);
+        assert!(out.starts_with('…'));
+        assert!(out.ends_with("email"));
+    }
+
+    #[test]
+    fn handles_cjk_double_width() {
+        let s = "中文中文";
+        let out = head_truncate_to_width(s, 5);
+        assert!(out.starts_with('…'));
+    }
+
+    #[test]
+    fn handles_emoji() {
+        let s = "abcdef👋ghi";
+        let out = head_truncate_to_width(s, 6);
+        assert!(out.starts_with('…'));
+    }
+}

@@ -379,7 +379,7 @@ fn test_strip_ansi_codes_escape_at_boundaries() {
 
 #[test]
 fn test_parse_and_detect_type_single_object() {
-    let (parsed, result_type) =
+    let (parsed, result_type, _is_synthetic) =
         parse_and_detect_type(r#"{"name": "test"}"#, DEFAULT_ARRAY_SAMPLE_SIZE);
     assert!(parsed.is_some());
     assert!(parsed.unwrap().is_object());
@@ -389,7 +389,8 @@ fn test_parse_and_detect_type_single_object() {
 #[test]
 fn test_parse_and_detect_type_destructured_objects() {
     let input = "{\"a\": 1}\n{\"b\": 2}";
-    let (parsed, result_type) = parse_and_detect_type(input, DEFAULT_ARRAY_SAMPLE_SIZE);
+    let (parsed, result_type, _is_synthetic) =
+        parse_and_detect_type(input, DEFAULT_ARRAY_SAMPLE_SIZE);
     assert!(parsed.is_some());
     assert!(parsed.unwrap().is_object());
     assert_eq!(result_type, ResultType::DestructuredObjects);
@@ -397,7 +398,7 @@ fn test_parse_and_detect_type_destructured_objects() {
 
 #[test]
 fn test_parse_and_detect_type_array_of_objects() {
-    let (parsed, result_type) =
+    let (parsed, result_type, _is_synthetic) =
         parse_and_detect_type(r#"[{"id": 1}, {"id": 2}]"#, DEFAULT_ARRAY_SAMPLE_SIZE);
     assert!(parsed.is_some());
     assert!(parsed.unwrap().is_array());
@@ -406,78 +407,89 @@ fn test_parse_and_detect_type_array_of_objects() {
 
 #[test]
 fn test_parse_and_detect_type_empty_array() {
-    let (parsed, result_type) = parse_and_detect_type("[]", DEFAULT_ARRAY_SAMPLE_SIZE);
+    let (parsed, result_type, _is_synthetic) =
+        parse_and_detect_type("[]", DEFAULT_ARRAY_SAMPLE_SIZE);
     assert!(parsed.is_some());
     assert_eq!(result_type, ResultType::Array);
 }
 
 #[test]
 fn test_parse_and_detect_type_array_of_primitives() {
-    let (parsed, result_type) = parse_and_detect_type("[1, 2, 3]", DEFAULT_ARRAY_SAMPLE_SIZE);
+    let (parsed, result_type, _is_synthetic) =
+        parse_and_detect_type("[1, 2, 3]", DEFAULT_ARRAY_SAMPLE_SIZE);
     assert!(parsed.is_some());
     assert_eq!(result_type, ResultType::Array);
 }
 
 #[test]
 fn test_parse_and_detect_type_string() {
-    let (parsed, result_type) = parse_and_detect_type(r#""hello""#, DEFAULT_ARRAY_SAMPLE_SIZE);
+    let (parsed, result_type, _is_synthetic) =
+        parse_and_detect_type(r#""hello""#, DEFAULT_ARRAY_SAMPLE_SIZE);
     assert!(parsed.is_some());
     assert_eq!(result_type, ResultType::String);
 }
 
 #[test]
 fn test_parse_and_detect_type_number() {
-    let (parsed, result_type) = parse_and_detect_type("42", DEFAULT_ARRAY_SAMPLE_SIZE);
+    let (parsed, result_type, _is_synthetic) =
+        parse_and_detect_type("42", DEFAULT_ARRAY_SAMPLE_SIZE);
     assert!(parsed.is_some());
     assert_eq!(result_type, ResultType::Number);
 
-    let (parsed, result_type) = parse_and_detect_type("3.14", DEFAULT_ARRAY_SAMPLE_SIZE);
+    let (parsed, result_type, _is_synthetic) =
+        parse_and_detect_type("3.14", DEFAULT_ARRAY_SAMPLE_SIZE);
     assert!(parsed.is_some());
     assert_eq!(result_type, ResultType::Number);
 }
 
 #[test]
 fn test_parse_and_detect_type_boolean() {
-    let (parsed, result_type) = parse_and_detect_type("true", DEFAULT_ARRAY_SAMPLE_SIZE);
+    let (parsed, result_type, _is_synthetic) =
+        parse_and_detect_type("true", DEFAULT_ARRAY_SAMPLE_SIZE);
     assert!(parsed.is_some());
     assert_eq!(result_type, ResultType::Boolean);
 
-    let (parsed, result_type) = parse_and_detect_type("false", DEFAULT_ARRAY_SAMPLE_SIZE);
+    let (parsed, result_type, _is_synthetic) =
+        parse_and_detect_type("false", DEFAULT_ARRAY_SAMPLE_SIZE);
     assert!(parsed.is_some());
     assert_eq!(result_type, ResultType::Boolean);
 }
 
 #[test]
 fn test_parse_and_detect_type_null() {
-    let (parsed, result_type) = parse_and_detect_type("null", DEFAULT_ARRAY_SAMPLE_SIZE);
+    let (parsed, result_type, _is_synthetic) =
+        parse_and_detect_type("null", DEFAULT_ARRAY_SAMPLE_SIZE);
     assert!(parsed.is_some());
     assert_eq!(result_type, ResultType::Null);
 }
 
 #[test]
 fn test_parse_and_detect_type_empty_string() {
-    let (parsed, result_type) = parse_and_detect_type("", DEFAULT_ARRAY_SAMPLE_SIZE);
+    let (parsed, result_type, _is_synthetic) = parse_and_detect_type("", DEFAULT_ARRAY_SAMPLE_SIZE);
     assert!(parsed.is_none());
     assert_eq!(result_type, ResultType::Null);
 }
 
 #[test]
 fn test_parse_and_detect_type_whitespace_only() {
-    let (parsed, result_type) = parse_and_detect_type("   \n\t  ", DEFAULT_ARRAY_SAMPLE_SIZE);
+    let (parsed, result_type, _is_synthetic) =
+        parse_and_detect_type("   \n\t  ", DEFAULT_ARRAY_SAMPLE_SIZE);
     assert!(parsed.is_none());
     assert_eq!(result_type, ResultType::Null);
 }
 
 #[test]
 fn test_parse_and_detect_type_invalid_json() {
-    let (parsed, result_type) = parse_and_detect_type("not valid json", DEFAULT_ARRAY_SAMPLE_SIZE);
+    let (parsed, result_type, _is_synthetic) =
+        parse_and_detect_type("not valid json", DEFAULT_ARRAY_SAMPLE_SIZE);
     assert!(parsed.is_none());
     assert_eq!(result_type, ResultType::Null);
 }
 
 #[test]
 fn test_parse_and_detect_type_trims_whitespace() {
-    let (parsed, result_type) = parse_and_detect_type("  {\"a\": 1}  ", DEFAULT_ARRAY_SAMPLE_SIZE);
+    let (parsed, result_type, _is_synthetic) =
+        parse_and_detect_type("  {\"a\": 1}  ", DEFAULT_ARRAY_SAMPLE_SIZE);
     assert!(parsed.is_some());
     assert_eq!(result_type, ResultType::Object);
 }
@@ -488,7 +500,8 @@ fn test_parse_and_detect_type_pretty_printed_object() {
   "name": "test",
   "value": 42
 }"#;
-    let (parsed, result_type) = parse_and_detect_type(input, DEFAULT_ARRAY_SAMPLE_SIZE);
+    let (parsed, result_type, _is_synthetic) =
+        parse_and_detect_type(input, DEFAULT_ARRAY_SAMPLE_SIZE);
     assert!(parsed.is_some());
     assert_eq!(result_type, ResultType::Object);
 }
@@ -501,7 +514,8 @@ fn test_parse_and_detect_type_pretty_printed_destructured() {
 {
   "id": 2
 }"#;
-    let (parsed, result_type) = parse_and_detect_type(input, DEFAULT_ARRAY_SAMPLE_SIZE);
+    let (parsed, result_type, _is_synthetic) =
+        parse_and_detect_type(input, DEFAULT_ARRAY_SAMPLE_SIZE);
     assert!(parsed.is_some());
     assert_eq!(result_type, ResultType::DestructuredObjects);
 }
@@ -515,7 +529,8 @@ fn test_stream_merge_different_keys() {
     let input = r#"{"a": 1}
 {"b": 2}
 {"c": 3}"#;
-    let (parsed, result_type) = parse_and_detect_type(input, DEFAULT_ARRAY_SAMPLE_SIZE);
+    let (parsed, result_type, _is_synthetic) =
+        parse_and_detect_type(input, DEFAULT_ARRAY_SAMPLE_SIZE);
 
     assert_eq!(result_type, ResultType::DestructuredObjects);
     let obj = parsed.unwrap();
@@ -530,7 +545,7 @@ fn test_stream_merge_different_keys() {
 fn test_stream_merge_first_occurrence_wins() {
     let input = r#"{"x": 42}
 {"x": "string"}"#;
-    let (parsed, _) = parse_and_detect_type(input, DEFAULT_ARRAY_SAMPLE_SIZE);
+    let (parsed, _, _) = parse_and_detect_type(input, DEFAULT_ARRAY_SAMPLE_SIZE);
 
     let obj = parsed.unwrap();
     let map = obj.as_object().unwrap();
@@ -547,7 +562,8 @@ fn test_stream_merge_respects_sample_limit() {
         .map(|i| format!(r#"{{"key_{}": {}}}"#, i, i))
         .collect();
     let input = objects.join("\n");
-    let (parsed, result_type) = parse_and_detect_type(&input, DEFAULT_ARRAY_SAMPLE_SIZE);
+    let (parsed, result_type, _is_synthetic) =
+        parse_and_detect_type(&input, DEFAULT_ARRAY_SAMPLE_SIZE);
 
     assert_eq!(result_type, ResultType::DestructuredObjects);
     let obj = parsed.unwrap();
@@ -572,7 +588,8 @@ fn test_stream_merge_respects_sample_limit() {
 fn test_stream_merge_non_destructured_unchanged() {
     // Single value (not destructured) should not be affected
     let input = r#"{"name": "test"}"#;
-    let (parsed, result_type) = parse_and_detect_type(input, DEFAULT_ARRAY_SAMPLE_SIZE);
+    let (parsed, result_type, _is_synthetic) =
+        parse_and_detect_type(input, DEFAULT_ARRAY_SAMPLE_SIZE);
 
     assert_eq!(result_type, ResultType::Object);
     let obj = parsed.unwrap();
@@ -583,7 +600,8 @@ fn test_stream_merge_non_destructured_unchanged() {
 fn test_stream_merge_mixed_types_handled() {
     // If stream has a non-object value, it's gracefully skipped
     let input = "42\n\"hello\"";
-    let (parsed, result_type) = parse_and_detect_type(input, DEFAULT_ARRAY_SAMPLE_SIZE);
+    let (parsed, result_type, _is_synthetic) =
+        parse_and_detect_type(input, DEFAULT_ARRAY_SAMPLE_SIZE);
 
     // First value is a number, second is string — not DestructuredObjects
     assert!(parsed.is_some());
@@ -599,7 +617,8 @@ fn test_destructured_arrays_merge_elements() {
     // Simulates .services[].tasks producing multiple arrays
     let input = r#"[{"taskArn": "arn:1", "cpu": 256}]
 [{"taskArn": "arn:2", "payload": {"data": "test"}}]"#;
-    let (parsed, result_type) = parse_and_detect_type(input, DEFAULT_ARRAY_SAMPLE_SIZE);
+    let (parsed, result_type, _is_synthetic) =
+        parse_and_detect_type(input, DEFAULT_ARRAY_SAMPLE_SIZE);
 
     assert_eq!(result_type, ResultType::ArrayOfObjects);
     let arr = parsed.unwrap();
@@ -624,7 +643,8 @@ fn test_destructured_arrays_respects_sample_limit() {
         .map(|i| format!(r#"[{{"key_{}": {}}}]"#, i, i))
         .collect();
     let input = arrays.join("\n");
-    let (parsed, result_type) = parse_and_detect_type(&input, DEFAULT_ARRAY_SAMPLE_SIZE);
+    let (parsed, result_type, _is_synthetic) =
+        parse_and_detect_type(&input, DEFAULT_ARRAY_SAMPLE_SIZE);
 
     assert_eq!(result_type, ResultType::ArrayOfObjects);
     let arr = parsed.unwrap();
@@ -641,7 +661,8 @@ fn test_destructured_arrays_respects_sample_limit() {
 fn test_single_array_unchanged() {
     // Single array (not destructured) should not be affected
     let input = r#"[{"a": 1}, {"b": 2}]"#;
-    let (parsed, result_type) = parse_and_detect_type(input, DEFAULT_ARRAY_SAMPLE_SIZE);
+    let (parsed, result_type, _is_synthetic) =
+        parse_and_detect_type(input, DEFAULT_ARRAY_SAMPLE_SIZE);
 
     assert_eq!(result_type, ResultType::ArrayOfObjects);
     let arr = parsed.unwrap();
@@ -653,7 +674,8 @@ fn test_single_array_unchanged() {
 fn test_stream_merge_objects_with_non_object_in_stream() {
     // Stream has objects interleaved with non-objects — non-objects should be skipped
     let input = "{\"a\": 1}\n42\n{\"b\": 2}";
-    let (parsed, result_type) = parse_and_detect_type(input, DEFAULT_ARRAY_SAMPLE_SIZE);
+    let (parsed, result_type, _is_synthetic) =
+        parse_and_detect_type(input, DEFAULT_ARRAY_SAMPLE_SIZE);
 
     assert_eq!(result_type, ResultType::DestructuredObjects);
     let obj = parsed.unwrap();
@@ -666,7 +688,8 @@ fn test_stream_merge_objects_with_non_object_in_stream() {
 fn test_destructured_arrays_with_non_array_in_stream() {
     // Stream has arrays interleaved with non-arrays — non-arrays should be skipped
     let input = "[{\"x\": 1}]\n42\n[{\"y\": 2}]";
-    let (parsed, result_type) = parse_and_detect_type(input, DEFAULT_ARRAY_SAMPLE_SIZE);
+    let (parsed, result_type, _is_synthetic) =
+        parse_and_detect_type(input, DEFAULT_ARRAY_SAMPLE_SIZE);
 
     assert_eq!(result_type, ResultType::ArrayOfObjects);
     let arr = parsed.unwrap();
@@ -693,7 +716,8 @@ fn test_stream_merge_objects_beyond_sample_limit() {
         .map(|i| format!(r#"{{"key_{}": {}}}"#, i, i))
         .collect();
     let input = objects.join("\n");
-    let (parsed, result_type) = parse_and_detect_type(&input, DEFAULT_ARRAY_SAMPLE_SIZE);
+    let (parsed, result_type, _is_synthetic) =
+        parse_and_detect_type(&input, DEFAULT_ARRAY_SAMPLE_SIZE);
 
     assert_eq!(result_type, ResultType::DestructuredObjects);
     let obj = parsed.unwrap();
@@ -719,7 +743,7 @@ fn test_destructured_arrays_beyond_sample_limit_verify_keys() {
         .map(|i| format!(r#"[{{"key_{}": {}}}]"#, i, i))
         .collect();
     let input = arrays.join("\n");
-    let (parsed, _) = parse_and_detect_type(&input, DEFAULT_ARRAY_SAMPLE_SIZE);
+    let (parsed, _, _) = parse_and_detect_type(&input, DEFAULT_ARRAY_SAMPLE_SIZE);
 
     let arr = parsed.unwrap();
     let elements = arr.as_array().unwrap();
@@ -747,7 +771,8 @@ fn test_destructured_arrays_beyond_sample_limit_verify_keys() {
 #[test]
 fn test_null_first_then_objects_merges_keys() {
     let input = "null\n{\"a\": 1}\n{\"b\": 2}";
-    let (parsed, result_type) = parse_and_detect_type(input, DEFAULT_ARRAY_SAMPLE_SIZE);
+    let (parsed, result_type, _is_synthetic) =
+        parse_and_detect_type(input, DEFAULT_ARRAY_SAMPLE_SIZE);
 
     assert_eq!(result_type, ResultType::DestructuredObjects);
     let obj = parsed.unwrap();
@@ -759,7 +784,8 @@ fn test_null_first_then_objects_merges_keys() {
 #[test]
 fn test_null_first_then_single_object_merges() {
     let input = "null\n{\"data\": \"test\"}";
-    let (parsed, result_type) = parse_and_detect_type(input, DEFAULT_ARRAY_SAMPLE_SIZE);
+    let (parsed, result_type, _is_synthetic) =
+        parse_and_detect_type(input, DEFAULT_ARRAY_SAMPLE_SIZE);
 
     assert_eq!(result_type, ResultType::DestructuredObjects);
     let obj = parsed.unwrap();
@@ -773,7 +799,8 @@ fn test_null_first_then_single_object_merges() {
 #[test]
 fn test_scalar_first_then_objects_reclassifies() {
     let input = "42\n{\"a\": 1}";
-    let (parsed, result_type) = parse_and_detect_type(input, DEFAULT_ARRAY_SAMPLE_SIZE);
+    let (parsed, result_type, _is_synthetic) =
+        parse_and_detect_type(input, DEFAULT_ARRAY_SAMPLE_SIZE);
 
     assert_eq!(result_type, ResultType::DestructuredObjects);
     let obj = parsed.unwrap();
@@ -784,7 +811,8 @@ fn test_scalar_first_then_objects_reclassifies() {
 #[test]
 fn test_bool_first_then_objects_reclassifies() {
     let input = "true\n{\"a\": 1}";
-    let (parsed, result_type) = parse_and_detect_type(input, DEFAULT_ARRAY_SAMPLE_SIZE);
+    let (parsed, result_type, _is_synthetic) =
+        parse_and_detect_type(input, DEFAULT_ARRAY_SAMPLE_SIZE);
 
     assert_eq!(result_type, ResultType::DestructuredObjects);
     let obj = parsed.unwrap();
@@ -795,7 +823,8 @@ fn test_bool_first_then_objects_reclassifies() {
 #[test]
 fn test_string_first_then_objects_reclassifies() {
     let input = "\"hi\"\n{\"a\": 1}";
-    let (parsed, result_type) = parse_and_detect_type(input, DEFAULT_ARRAY_SAMPLE_SIZE);
+    let (parsed, result_type, _is_synthetic) =
+        parse_and_detect_type(input, DEFAULT_ARRAY_SAMPLE_SIZE);
 
     assert_eq!(result_type, ResultType::DestructuredObjects);
     let obj = parsed.unwrap();
@@ -806,7 +835,8 @@ fn test_string_first_then_objects_reclassifies() {
 #[test]
 fn test_null_first_then_array_of_objects_reclassifies() {
     let input = "null\n[{\"a\": 1}]";
-    let (parsed, result_type) = parse_and_detect_type(input, DEFAULT_ARRAY_SAMPLE_SIZE);
+    let (parsed, result_type, _is_synthetic) =
+        parse_and_detect_type(input, DEFAULT_ARRAY_SAMPLE_SIZE);
 
     assert_eq!(result_type, ResultType::ArrayOfObjects);
     let arr = parsed.unwrap();
@@ -820,7 +850,8 @@ fn test_null_first_then_array_of_objects_reclassifies() {
 #[test]
 fn test_all_nulls_stays_null() {
     let input = "null\nnull\nnull";
-    let (parsed, result_type) = parse_and_detect_type(input, DEFAULT_ARRAY_SAMPLE_SIZE);
+    let (parsed, result_type, _is_synthetic) =
+        parse_and_detect_type(input, DEFAULT_ARRAY_SAMPLE_SIZE);
 
     assert_eq!(result_type, ResultType::Null);
     assert!(parsed.is_some());
@@ -829,7 +860,8 @@ fn test_all_nulls_stays_null() {
 #[test]
 fn test_null_then_scalar_no_reclassify() {
     let input = "null\n42";
-    let (parsed, result_type) = parse_and_detect_type(input, DEFAULT_ARRAY_SAMPLE_SIZE);
+    let (parsed, result_type, _is_synthetic) =
+        parse_and_detect_type(input, DEFAULT_ARRAY_SAMPLE_SIZE);
 
     assert_ne!(result_type, ResultType::DestructuredObjects);
     assert_ne!(result_type, ResultType::ArrayOfObjects);
@@ -843,7 +875,8 @@ fn test_null_first_then_many_objects_respects_sample_limit() {
         parts.push(format!(r#"{{"key_{}": {}}}"#, i, i));
     }
     let input = parts.join("\n");
-    let (parsed, result_type) = parse_and_detect_type(&input, DEFAULT_ARRAY_SAMPLE_SIZE);
+    let (parsed, result_type, _is_synthetic) =
+        parse_and_detect_type(&input, DEFAULT_ARRAY_SAMPLE_SIZE);
 
     assert_eq!(result_type, ResultType::DestructuredObjects);
     let obj = parsed.unwrap();
@@ -867,7 +900,8 @@ fn test_null_first_then_many_objects_respects_sample_limit() {
 #[test]
 fn test_multiple_nulls_interspersed_with_objects() {
     let input = "null\n{\"a\": 1}\nnull\n{\"b\": 2}";
-    let (parsed, result_type) = parse_and_detect_type(input, DEFAULT_ARRAY_SAMPLE_SIZE);
+    let (parsed, result_type, _is_synthetic) =
+        parse_and_detect_type(input, DEFAULT_ARRAY_SAMPLE_SIZE);
 
     assert_eq!(result_type, ResultType::DestructuredObjects);
     let obj = parsed.unwrap();
@@ -886,7 +920,7 @@ fn test_custom_sample_size_limits_destructured_objects() {
         .map(|i| format!(r#"{{"key_{}": {}}}"#, i, i))
         .collect();
     let input = objects.join("\n");
-    let (parsed, result_type) = parse_and_detect_type(&input, 5);
+    let (parsed, result_type, _is_synthetic) = parse_and_detect_type(&input, 5);
 
     assert_eq!(result_type, ResultType::DestructuredObjects);
     let obj = parsed.unwrap();
@@ -911,7 +945,7 @@ fn test_custom_sample_size_limits_destructured_arrays() {
         .map(|i| format!(r#"[{{"key_{}": {}}}]"#, i, i))
         .collect();
     let input = arrays.join("\n");
-    let (parsed, result_type) = parse_and_detect_type(&input, 5);
+    let (parsed, result_type, _is_synthetic) = parse_and_detect_type(&input, 5);
 
     assert_eq!(result_type, ResultType::ArrayOfObjects);
     let arr = parsed.unwrap();
@@ -931,7 +965,7 @@ fn test_custom_sample_size_limits_destructured_arrays() {
 #[test]
 fn test_sample_size_two_takes_first_two() {
     let input = "{\"a\": 1}\n{\"b\": 2}\n{\"c\": 3}";
-    let (parsed, result_type) = parse_and_detect_type(input, 2);
+    let (parsed, result_type, _is_synthetic) = parse_and_detect_type(input, 2);
 
     assert_eq!(result_type, ResultType::DestructuredObjects);
     let obj = parsed.unwrap();
