@@ -46,6 +46,17 @@ fn build_search_hints(can_undo: bool) -> Line<'static> {
     theme::border_hints::build_hints(&hints, theme::results::SEARCH_ACTIVE)
 }
 
+/// Drill-only hint set for the results-pane bottom border in search-editing
+/// mode. The search bar itself carries `Enter Confirm · Esc Close`, so the
+/// results pane only advertises the jiq-specific `>` / `<` chords here.
+fn build_drill_only_hints(can_undo: bool) -> Line<'static> {
+    let mut hints: Vec<(&'static str, &'static str)> = vec![(">", "Drill in")];
+    if can_undo {
+        hints.push(("<", "Back"));
+    }
+    theme::border_hints::build_hints(&hints, theme::results::SEARCH_INACTIVE)
+}
+
 fn get_spinner(frame_count: u64) -> (char, Color) {
     let index = (frame_count / 8) as usize;
     let char_idx = index % SPINNER_CHARS.len();
@@ -409,6 +420,14 @@ pub fn render_pane(app: &mut App, frame: &mut Frame, area: Rect) -> (Rect, Optio
                 Span::raw(" "),
             ]);
             block = block.title_bottom(match_count_badge.alignment(Alignment::Right));
+        } else if search_visible {
+            // Editing mode (search visible but not confirmed): the search
+            // bar carries Enter/Esc hints; the results pane carries the
+            // jiq-specific drill hints so they're discoverable while the
+            // user is still typing the search query.
+            block = block.title_bottom(
+                build_drill_only_hints(!app.query_undo.is_empty()).alignment(Alignment::Center),
+            );
         }
 
         // Add navigation hints when results pane is focused and search is not visible
@@ -514,7 +533,11 @@ pub fn render_pane(app: &mut App, frame: &mut Frame, area: Rect) -> (Rect, Optio
                 Span::raw(" "),
             ]);
             block = block.title_bottom(match_count_badge.alignment(Alignment::Right));
-        } else if !search_visible && app.focus == crate::app::Focus::ResultsPane {
+        } else if search_visible {
+            block = block.title_bottom(
+                build_drill_only_hints(!app.query_undo.is_empty()).alignment(Alignment::Center),
+            );
+        } else if app.focus == crate::app::Focus::ResultsPane {
             block = block.title_bottom(
                 build_results_pane_hints(!app.query_undo.is_empty()).alignment(Alignment::Center),
             );
