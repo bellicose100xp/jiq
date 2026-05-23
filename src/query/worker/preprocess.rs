@@ -51,7 +51,8 @@ pub fn preprocess_result(
     if cancel_token.is_cancelled() {
         return Err(QueryError::Cancelled);
     }
-    let (parsed, result_type) = parse_and_detect_type(&unformatted, array_sample_size);
+    let (parsed, result_type, is_synthetic_merge) =
+        parse_and_detect_type(&unformatted, array_sample_size);
     let parsed = parsed.map(Arc::new);
 
     let base_query = normalize_base_query(query);
@@ -65,6 +66,7 @@ pub fn preprocess_result(
         max_width,
         line_widths,
         result_type,
+        is_synthetic_merge,
         query: base_query,
         execution_time_ms: None,
         is_only_nulls,
@@ -207,17 +209,20 @@ fn skip_csi_sequence(bytes: &[u8], start: usize) -> usize {
 ///
 /// Uses fast-path `from_str` for single values (common case), falling back to
 /// streaming parser for destructured output like `{"a":1}\n{"b":2}`.
-pub fn parse_and_detect_type(text: &str, array_sample_size: usize) -> (Option<Value>, ResultType) {
+pub fn parse_and_detect_type(
+    text: &str,
+    array_sample_size: usize,
+) -> (Option<Value>, ResultType, bool) {
     let text = text.trim();
     if text.is_empty() {
-        return (None, ResultType::Null);
+        return (None, ResultType::Null, false);
     }
 
     // FAST PATH: Try full parse first (common case: single value)
     // from_str fails on destructured output (trailing content after first value)
     if let Ok(value) = serde_json::from_str::<Value>(text) {
         let result_type = value_to_result_type(&value, false);
-        return (Some(value), result_type);
+        return (Some(value), result_type, false);
     }
 
     // FALLBACK: Streaming parse for destructured output (multiple JSON values)
@@ -225,7 +230,7 @@ pub fn parse_and_detect_type(text: &str, array_sample_size: usize) -> (Option<Va
 
     let first_value = match deserializer.next() {
         Some(Ok(v)) => v,
-        _ => return (None, ResultType::Null),
+        _ => return (None, ResultType::Null, false),
     };
 
     // Check for multiple values (destructured output)
@@ -274,7 +279,7 @@ pub fn parse_and_detect_type(text: &str, array_sample_size: usize) -> (Option<Va
             }
         }
 
-        return (Some(Value::Object(merged)), result_type);
+        return (Some(Value::Object(merged)), result_type, true);
     }
 
     // For destructured arrays of objects (e.g., .services[].tasks produces
@@ -297,10 +302,10 @@ pub fn parse_and_detect_type(text: &str, array_sample_size: usize) -> (Option<Va
             }
         }
 
-        return (Some(Value::Array(merged)), result_type);
+        return (Some(Value::Array(merged)), result_type, true);
     }
 
-    (Some(first_value), result_type)
+    (Some(first_value), result_type, false)
 }
 
 /// Convert a parsed JSON value to its ResultType

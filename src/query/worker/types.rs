@@ -44,6 +44,11 @@ pub struct ProcessedResult {
     pub max_width: u16,
     pub line_widths: Arc<Vec<u16>>,
     pub result_type: ResultType,
+    /// True when the parsed Value was synthesized by merging multiple
+    /// top-level JSON documents (destructured objects or arrays). When true,
+    /// the parsed Value's pretty-print line layout does not match the rendered
+    /// jq output, so line-indexed walks (e.g., path-at-cursor) are unsafe.
+    pub is_synthetic_merge: bool,
     pub query: String,
     pub execution_time_ms: Option<u64>,
     pub is_only_nulls: bool,
