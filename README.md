@@ -17,6 +17,7 @@
 - **Query history** - Searchable history of successful queries
 - **Mouse support** - Full mouse interaction including click-to-focus, scrolling, and selecting items in popups
 - **Clipboard support** - Copy query or results to clipboard (also supports OSC 52 for remote terminals)
+- **Paste recovery** - When the clipboard auto-load fails on launch, jiq drops into an in-app paste box where you can paste JSON and press Enter to load — full VIM editing inside the box
 - **VIM keybindings** - VIM-style editing for power users
 - **Syntax highlighting** - Colorized JSON output and jq query syntax
 - **Stats bar** - Shows result type and count (e.g., "Array [5 objects]", "Stream [3 values]")

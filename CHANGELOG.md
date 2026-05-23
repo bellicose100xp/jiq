@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.24.0] - 2026-05-23
+
+### Added
+- **In-app paste recovery when clipboard auto-load fails** ([#166](https://github.com/bellicose100xp/jiq/pull/166)) - When `jiq` launches with no file argument, no piped stdin, and the clipboard fallback can't produce valid JSON (unreadable backend, empty clipboard, or non-JSON content), the app now drops into a paste-recovery view instead of exiting with the static error. The view shows the diagnosis in a top "No JSON loaded" block and a multi-line textarea below it; paste your JSON (Cmd+V / Ctrl+Shift+V or the terminal's native shortcut), press `Enter` to validate and load. On parse failure the top block updates to `Invalid JSON: <details>` and a red toast nudges the eye to the change. `Ctrl+X` clears the textarea so you can paste fresh content. Editing reuses the existing query-input VIM infrastructure so `dd`, `cc`, `D`, `C`, `dw`, `ci"`, `f`/`F`/`t`/`T`, `;`/`,`, `u`, `Ctrl+R`, etc. all work; `j`/`k`/`g`/`G` navigate between lines. Bottom-border hints are mode-aware — only the *opposite* mode toggle is shown (`Esc Normal` while in Insert; `i Insert` while in Normal). On terminals/multiplexers that don't forward bracketed paste (Cloud Desktop, plain tmux, mosh), pasted newlines arrive as `Ctrl+J` keystrokes, which jiq now intercepts and turns into real line breaks instead of letting `tui-textarea`'s default `Ctrl+J = delete-line-by-head` collapse the paste.
+
 ## [3.23.4] - 2026-05-23
 
 ### Added
