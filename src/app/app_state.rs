@@ -192,6 +192,10 @@ impl App {
                         // notification is shown — the recovery panel
                         // itself carries the same instruction inline.
                         let original = first_line(&e.to_string());
+                        log::debug!(
+                            "paste-recovery: ENTER recovery, error_message={:?}",
+                            original
+                        );
                         self.paste_recovery = Some(PasteRecoveryState::new(original));
                         self.file_loader = None;
                     } else {

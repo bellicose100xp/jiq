@@ -29,10 +29,25 @@ pub fn handle_key(app: &mut App, key: KeyEvent) -> bool {
         return true;
     }
 
-    // Enter submits — but only at "rest" (Insert or Normal). When the
-    // user is mid-operator (`d…`, `c…`, `f…`, `ci…`, etc.) Enter falls
-    // through to the existing handlers which currently ignore it,
-    // matching the query input's behavior.
+    // `Ctrl+J` == LF byte (0x0A). When bracketed paste isn't forwarded
+    // by the terminal/multiplexer (common on Cloud Desktop, plain tmux,
+    // mosh, and many SSH setups), pasted multi-line content arrives as
+    // a stream of `Char` events with `\n` decoded as `Ctrl+J`. The
+    // shared input handler delegates to `tui-textarea::input()`, whose
+    // default `Ctrl+J` mapping is "delete line by head" — that's what
+    // was wiping each line back to column 0 on every paste-newline.
+    //
+    // Always insert a real newline here. Distinct from `KeyCode::Enter`
+    // (the deliberate user keystroke), which keeps its submit semantics.
+    // Logged because this is the diagnostic signal for that class of
+    // terminal bug.
+    if key.code == KeyCode::Char('j') && key.modifiers.contains(KeyModifiers::CONTROL) {
+        log::debug!("paste-recovery: Ctrl+J (paste-newline) -> insert_newline");
+        app.input.textarea.insert_newline();
+        return true;
+    }
+
+    // Enter at "rest" (Insert or Normal) submits.
     if key.code == KeyCode::Enter
         && !key.modifiers.contains(KeyModifiers::CONTROL)
         && !key.modifiers.contains(KeyModifiers::SHIFT)

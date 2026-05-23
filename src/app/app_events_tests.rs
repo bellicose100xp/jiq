@@ -551,6 +551,33 @@ mod paste_recovery_event_tests {
     }
 
     #[test]
+    fn ctrl_j_inserts_newline_not_destructive_delete() {
+        // Regression: when bracketed paste isn't forwarded by the
+        // terminal/multiplexer, pasted '\n' arrives as Ctrl+J. The
+        // shared input handler would otherwise let tui-textarea's
+        // default "Ctrl+J = delete line by head" wipe each line back
+        // to column 0 (observed on Cloud Desktop / plain tmux).
+        let mut app = app_in_recovery();
+        app.input.textarea.insert_str("line1");
+
+        let _ = paste_recovery_events::handle_key(
+            &mut app,
+            key_with_mods(KeyCode::Char('j'), KeyModifiers::CONTROL),
+        );
+
+        for c in "line2".chars() {
+            let _ = paste_recovery_events::handle_key(
+                &mut app,
+                key_with_mods(KeyCode::Char(c), KeyModifiers::NONE),
+            );
+        }
+
+        assert_eq!(app.input.textarea.lines().len(), 2);
+        assert_eq!(app.input.textarea.lines()[0], "line1");
+        assert_eq!(app.input.textarea.lines()[1], "line2");
+    }
+
+    #[test]
     fn enter_with_invalid_json_fires_red_toast() {
         // The user's eye needs a nudge to look at the top "No JSON
         // loaded" block when the error message changes silently.

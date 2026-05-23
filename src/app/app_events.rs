@@ -250,6 +250,11 @@ impl App {
                 }
                 Event::Paste(text) => {
                     if self.paste_recovery.is_some() {
+                        log::debug!(
+                            "paste-recovery: bracketed paste event, {} bytes, {} lines",
+                            text.len(),
+                            text.matches('\n').count() + 1
+                        );
                         self.handle_paste_recovery_paste(text);
                     } else {
                         self.handle_paste_event(text);
