@@ -1,16 +1,17 @@
 ---
 source: src/ai/provider/async_gemini_tests.rs
+assertion_line: 155
 expression: pretty_json
 ---
 {
   "contents": [
     {
+      "role": "user",
       "parts": [
         {
           "text": "suggest jq filters for: extract user names"
         }
-      ],
-      "role": "user"
+      ]
     }
   ]
 }

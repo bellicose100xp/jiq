@@ -8,6 +8,7 @@
 
 ## Features
 
+- **Path-at-cursor** - Live jq path of the value under the cursor in the results pane, with `Ctrl+G` to copy the jq path or `Alt+G` to copy the RFC 6901 JSON Pointer
 - **Real-time query execution** - See results as you type
 - **AI assistant** - Get intelligent query suggestions, error fixes, and natural language interpretation
 - **Context-aware autocomplete** - Smart field suggestions with nested path navigation and JSON type hints
@@ -228,6 +229,8 @@ terminals refuse to forward host-clipboard reads through the SSH tunnel.
 | `Ctrl+u` / `PageUp` | Move cursor half page up (also works from input field) |
 | `g` / `Home` | Jump cursor to top |
 | `G` / `End` | Jump cursor to bottom |
+| `Ctrl+G` | Copy jq path of value at cursor (e.g., `.users[2].profile.email`) |
+| `Alt+G` | Copy RFC 6901 JSON Pointer of value at cursor (e.g., `/users/2/profile/email`) |
 
 **Horizontal Scrolling**
 | Key | Action |

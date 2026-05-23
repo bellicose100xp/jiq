@@ -13,7 +13,48 @@ pub fn handle_clipboard_key(app: &mut App, key: KeyEvent, backend: ClipboardBack
         return copy_result(app, backend);
     }
 
+    // Path-at-cursor copy gestures. Ctrl+G copies the jq path of the value
+    // pretty-printed on the current results-pane cursor row; Alt+G copies the
+    // RFC 6901 JSON Pointer.
+    if key.code == KeyCode::Char('g') && key.modifiers.contains(KeyModifiers::CONTROL) {
+        return copy_cursor_path(app, backend, PathFormat::JqPath);
+    }
+
+    if key.code == KeyCode::Char('g') && key.modifiers.contains(KeyModifiers::ALT) {
+        return copy_cursor_path(app, backend, PathFormat::JsonPointer);
+    }
+
     false
+}
+
+#[derive(Debug, Clone, Copy)]
+enum PathFormat {
+    JqPath,
+    JsonPointer,
+}
+
+fn copy_cursor_path(app: &mut App, backend: ClipboardBackend, format: PathFormat) -> bool {
+    let path = match app.current_cursor_path() {
+        Some(p) => p,
+        None => {
+            app.notification.show("No path at cursor");
+            return true;
+        }
+    };
+    let text = match format {
+        PathFormat::JqPath => path.to_jq(),
+        PathFormat::JsonPointer => path.to_pointer(),
+    };
+    if copy_to_clipboard(&text, backend).is_ok() {
+        let label = match format {
+            PathFormat::JqPath => "Copied jq path",
+            PathFormat::JsonPointer => "Copied JSON Pointer",
+        };
+        app.notification.show(label);
+        true
+    } else {
+        false
+    }
 }
 
 pub fn handle_yank_key(app: &mut App, backend: ClipboardBackend) -> bool {

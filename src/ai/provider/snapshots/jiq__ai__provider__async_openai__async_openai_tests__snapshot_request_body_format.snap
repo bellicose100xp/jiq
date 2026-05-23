@@ -1,14 +1,15 @@
 ---
 source: src/ai/provider/async_openai_tests.rs
+assertion_line: 179
 expression: pretty_json
 ---
 {
+  "model": "gpt-4o-mini",
   "messages": [
     {
-      "content": "suggest jq filters for: extract user names",
-      "role": "user"
+      "role": "user",
+      "content": "suggest jq filters for: extract user names"
     }
   ],
-  "model": "gpt-4o-mini",
   "stream": true
 }

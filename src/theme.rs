@@ -121,6 +121,10 @@ pub mod results {
     // Stale state
     pub const STALE_MODIFIER: Modifier = Modifier::DIM;
 
+    // Path-at-cursor inline span on the stats line (results-pane focus)
+    pub const PATH_AT_CURSOR_SEPARATOR: Color = Color::Rgb(90, 92, 119);
+    pub const PATH_AT_CURSOR: Color = Color::Rgb(189, 147, 249);
+
     // Hints (bottom of results pane)
     pub const HINT_KEY: Color = Color::Rgb(0, 217, 255);
     pub const HINT_DESCRIPTION: Style = Style::new()

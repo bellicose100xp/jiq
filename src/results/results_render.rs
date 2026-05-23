@@ -15,6 +15,10 @@ use crate::widgets::{popup, scrollbar};
 
 const SPINNER_CHARS: &[char] = &['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
 
+/// Maximum display width for the inline path-at-cursor span on the stats line.
+/// Long paths head-truncate with `…` so the existing stats prefix stays legible.
+const PATH_AT_CURSOR_MAX_WIDTH: usize = 60;
+
 fn build_results_pane_hints() -> Line<'static> {
     theme::border_hints::build_hints(
         &[("Tab", "Edit Query"), ("i", "Edit Query")],
@@ -123,6 +127,26 @@ pub fn render_pane(app: &mut App, frame: &mut Frame, area: Rect) -> (Rect, Optio
     let is_pending = query_state.is_pending();
     let stats_info = app.stats.display().unwrap_or_else(|| "Results".to_string());
 
+    // Path-at-cursor: only resolved on success branch when results pane is
+    // focused and search is not active. Computed once here so the borrow on
+    // query_state below stays clean.
+    let path_at_cursor_jq: Option<String> = if app.focus == crate::app::Focus::ResultsPane
+        && !app.search.is_visible()
+        && !query_state.is_synthetic_merge
+        && query_state.result.is_ok()
+        && !query_state.is_empty_result
+    {
+        app.current_cursor_path().map(|p| p.to_jq())
+    } else {
+        None
+    };
+
+    // Re-borrow query_state after the &mut self call above released it.
+    let query_state = match &app.query {
+        Some(q) => q,
+        None => return (results_area, search_area),
+    };
+
     // Calculate viewport dimensions and position indicator early for title
     let viewport_height = results_area.height.saturating_sub(2);
     let viewport_width = results_area.width.saturating_sub(2);
@@ -216,26 +240,41 @@ pub fn render_pane(app: &mut App, frame: &mut Frame, area: Rect) -> (Rect, Optio
         } else {
             theme::results::RESULT_OK
         };
+        let path_spans: Vec<Span<'static>> = match path_at_cursor_jq.as_deref() {
+            Some(path) if !path.is_empty() => {
+                let truncated =
+                    crate::str_utils::head_truncate_to_width(path, PATH_AT_CURSOR_MAX_WIDTH);
+                vec![
+                    Span::styled(
+                        " · ",
+                        Style::default().fg(theme::results::PATH_AT_CURSOR_SEPARATOR),
+                    ),
+                    Span::styled(
+                        format!("{} ", truncated),
+                        Style::default().fg(theme::results::PATH_AT_CURSOR),
+                    ),
+                ]
+            }
+            _ => Vec::new(),
+        };
         if is_pending {
             let (spinner_char, spinner_color) = get_spinner(app.frame_count);
-            (
-                Line::from(vec![
-                    Span::styled(
-                        format!("{} ", spinner_char),
-                        Style::default().fg(spinner_color),
-                    ),
-                    Span::styled(format!("{} ", stats_info), Style::default().fg(text_color)),
-                ]),
-                theme::results::RESULT_OK,
-            )
+            let mut spans = vec![
+                Span::styled(
+                    format!("{} ", spinner_char),
+                    Style::default().fg(spinner_color),
+                ),
+                Span::styled(format!("{} ", stats_info), Style::default().fg(text_color)),
+            ];
+            spans.extend(path_spans);
+            (Line::from(spans), theme::results::RESULT_OK)
         } else {
-            (
-                Line::from(Span::styled(
-                    format!(" {} ", stats_info),
-                    Style::default().fg(text_color),
-                )),
-                theme::results::RESULT_OK,
-            )
+            let mut spans = vec![Span::styled(
+                format!(" {} ", stats_info),
+                Style::default().fg(text_color),
+            )];
+            spans.extend(path_spans);
+            (Line::from(spans), theme::results::RESULT_OK)
         }
     };
 

@@ -1,8 +1,9 @@
 ---
 source: src/input/input_render_tests.rs
+assertion_line: 94
 expression: output
 ---
-"╭ Object ───────────────────────────────────────────────────────── L1-1/1 (0%) ╮"
+"╭ Object  · . ──────────────────────────────────────────────────── L1-1/1 (0%) ╮"
 "▌"Alice"                                                                       │"
 "│                                                                              │"
 "│                                                                              │"

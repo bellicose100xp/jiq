@@ -7,6 +7,7 @@ use crate::input::loader::LoaderSource;
 use crate::input::{FileLoader, InputState, PasteRecoveryState};
 use crate::layout::LayoutRegions;
 use crate::notification::NotificationState;
+use crate::path_at_cursor::PathAtCursorCache;
 use crate::query::{Debouncer, QueryState};
 use crate::results::cursor_state::CursorState;
 use crate::scroll::ScrollState;
@@ -45,6 +46,7 @@ pub struct App {
     pub clipboard_backend: ClipboardBackend,
     pub tooltip: TooltipState,
     pub stats: StatsState,
+    pub path_at_cursor: PathAtCursorCache,
     pub debouncer: Debouncer,
     pub search: SearchState,
     pub snippets: SnippetState,
@@ -151,6 +153,7 @@ impl App {
             clipboard_backend: config.clipboard.backend,
             tooltip: TooltipState::new(tooltip_enabled),
             stats: StatsState::default(),
+            path_at_cursor: PathAtCursorCache::new(),
             debouncer: Debouncer::new(),
             search: SearchState::new(),
             snippets: SnippetState::new(),
@@ -273,6 +276,28 @@ impl App {
 
     pub fn update_stats(&mut self) {
         stats::update_stats_from_app(self);
+        self.path_at_cursor.invalidate();
+    }
+
+    /// Resolve the jq path of the value pretty-printed on the current
+    /// results-pane cursor row, using the parsed-result cache. Returns
+    /// `None` when no successful result exists, the result is a synthetic
+    /// merge of multiple top-level documents, the result is non-JSON, or
+    /// the cursor row maps to no value.
+    pub fn current_cursor_path(&mut self) -> Option<crate::json_path::JsonPath> {
+        let query_state = self.query.as_ref()?;
+        if query_state.is_empty_result {
+            return None;
+        }
+        if query_state.result.is_err() {
+            return None;
+        }
+        if query_state.is_synthetic_merge {
+            return None;
+        }
+        let parsed = query_state.last_successful_result_parsed.as_ref()?;
+        let row = self.results_cursor.cursor_line();
+        self.path_at_cursor.resolve(parsed, row)
     }
 
     pub fn insert_autocomplete_suggestion(

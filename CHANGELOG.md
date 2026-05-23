@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **JSON Path-at-Cursor** - The results pane title now shows the live jq path of the value pretty-printed on the current cursor row (e.g., `Array [50 objects] · .users[2].profile.email`). Press `Ctrl+G` to copy the jq path or `Alt+G` to copy the RFC 6901 JSON Pointer to the clipboard. The path span is shown only when the results pane is focused, the result is a single JSON document (not a multi-document stream), and search is not active. Long paths head-truncate so the existing stats prefix stays legible. Path emission rules (jq simple-identifier vs. bracket notation, RFC 6901 escaping) are centralized in a new `json_path` module shared with the autocomplete suggestion engine.
+
 ## [3.24.0] - 2026-05-23
 
 ### Added

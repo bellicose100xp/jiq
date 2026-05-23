@@ -1,4 +1,5 @@
 use crate::autocomplete::autocomplete_state::{JsonFieldType, Suggestion, SuggestionType};
+use crate::json_path::{format_bracket_access, format_field_name, is_simple_jq_identifier};
 use crate::query::ResultType;
 use serde_json::Value;
 use std::collections::HashSet;
@@ -12,39 +13,6 @@ fn dot_prefix(needs_leading_dot: bool) -> &'static str {
 }
 
 impl ResultAnalyzer {
-    /// Check if a field name can use jq's simple dot syntax (e.g., .foo)
-    /// According to jq manual: "The .foo syntax only works for simple, identifier-like keys,
-    /// that is, keys that are all made of alphanumeric characters and underscore,
-    /// and which do not start with a digit."
-    /// (https://jqlang.org/manual/#object-identifier-index)
-    /// Names that don't fit require quoted access: ."field-name"
-    fn is_simple_jq_identifier(name: &str) -> bool {
-        if name.is_empty() {
-            return false;
-        }
-        let first_char = name.chars().next().unwrap();
-        !first_char.is_ascii_digit() && name.chars().all(|c| c.is_ascii_alphanumeric() || c == '_')
-    }
-
-    /// Format a bracket-notation key access for jq, used for keys that don't
-    /// fit simple dot syntax (non-ASCII, hyphenated, starts-with-digit, etc.)
-    /// Escapes embedded backslashes and double quotes so the result is valid
-    /// jq even for keys containing those characters.
-    fn format_bracket_access(key: &str) -> String {
-        let escaped = key.replace('\\', "\\\\").replace('"', "\\\"");
-        format!("[\"{}\"]", escaped)
-    }
-
-    /// Format a field name for jq syntax, using bracket notation for keys that
-    /// don't fit simple dot syntax
-    fn format_field_name(prefix: &str, name: &str) -> String {
-        if Self::is_simple_jq_identifier(name) {
-            format!("{}{}", prefix, name)
-        } else {
-            format!("{}{}", prefix, Self::format_bracket_access(name))
-        }
-    }
-
     fn extract_object_fields(
         map: &serde_json::Map<String, Value>,
         prefix: &str,
@@ -52,7 +20,7 @@ impl ResultAnalyzer {
     ) {
         for (key, val) in map {
             let field_type = Self::detect_json_type(val);
-            let field_text = Self::format_field_name(prefix, key);
+            let field_text = format_field_name(prefix, key);
             suggestions.push(Suggestion::new_with_type(
                 field_text,
                 SuggestionType::Field,
@@ -77,11 +45,11 @@ impl ResultAnalyzer {
                     if seen_keys.insert(key.clone()) {
                         let field_type = Self::detect_json_type(val);
                         let field_text = if suppress_array_brackets {
-                            Self::format_field_name(prefix, key)
-                        } else if Self::is_simple_jq_identifier(key) {
+                            format_field_name(prefix, key)
+                        } else if is_simple_jq_identifier(key) {
                             format!("{}[].{}", prefix, key)
                         } else {
-                            format!("{}[]{}", prefix, Self::format_bracket_access(key))
+                            format!("{}[]{}", prefix, format_bracket_access(key))
                         };
                         suggestions.push(Suggestion::new_with_type(
                             field_text,
@@ -113,7 +81,7 @@ impl ResultAnalyzer {
                     for (key, val) in map {
                         if seen_keys.insert(key.clone()) {
                             let field_type = Self::detect_json_type(val);
-                            let field_text = Self::format_field_name(prefix, key);
+                            let field_text = format_field_name(prefix, key);
                             suggestions.push(Suggestion::new_with_type(
                                 field_text,
                                 SuggestionType::Field,

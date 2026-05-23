@@ -41,6 +41,7 @@ fn test_query_response_variants() {
         max_width: 6,
         line_widths: std::sync::Arc::new(vec![6]),
         result_type: ResultType::String,
+        is_synthetic_merge: false,
         query: ".foo".to_string(),
         execution_time_ms: None,
         is_only_nulls: false,

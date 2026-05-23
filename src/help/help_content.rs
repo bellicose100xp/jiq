@@ -105,6 +105,8 @@ pub const HELP_CATEGORIES: &[HelpCategory] = &[
                 ("G/End", "Jump to bottom"),
                 ("Ctrl+D/U", "Half page down/up"),
                 ("PageDown/Up", "Half page down/up"),
+                ("Ctrl+G", "Copy jq path of value at cursor"),
+                ("Alt+G", "Copy JSON Pointer of value at cursor"),
             ],
         }],
     },
