@@ -404,3 +404,215 @@ fn step_out_chain_walks_back_to_root() {
     let outcome = apply_step_out(&mut app);
     assert_eq!(outcome, StepOutOutcome::AtRoot);
 }
+
+// ----- sibling (`[` / `]`) — pure cursor movement -----
+
+#[test]
+fn sibling_next_returns_next_object_key_line() {
+    let mut app = test_app(r#"{"a": 1, "b": 2, "c": 3}"#);
+    place_cursor(&mut app, 1); // .a
+
+    let outcome = apply_sibling_cursor(&mut app, PathSource::CursorRow, SiblingDir::Next);
+
+    assert_eq!(outcome, SiblingCursorOutcome::Moved(2));
+}
+
+#[test]
+fn sibling_prev_returns_prev_object_key_line() {
+    let mut app = test_app(r#"{"a": 1, "b": 2, "c": 3}"#);
+    place_cursor(&mut app, 2); // .b
+
+    let outcome = apply_sibling_cursor(&mut app, PathSource::CursorRow, SiblingDir::Prev);
+
+    assert_eq!(outcome, SiblingCursorOutcome::Moved(1));
+}
+
+#[test]
+fn sibling_next_returns_array_index_line() {
+    let mut app = test_app(r#"[10, 20, 30]"#);
+    place_cursor(&mut app, 1); // .[0]
+
+    let outcome = apply_sibling_cursor(&mut app, PathSource::CursorRow, SiblingDir::Next);
+
+    assert_eq!(outcome, SiblingCursorOutcome::Moved(2));
+}
+
+#[test]
+fn sibling_next_wraps_at_last_object_key() {
+    let mut app = test_app(r#"{"a": 1, "b": 2, "c": 3}"#);
+    place_cursor(&mut app, 3); // .c
+
+    let outcome = apply_sibling_cursor(&mut app, PathSource::CursorRow, SiblingDir::Next);
+
+    assert_eq!(outcome, SiblingCursorOutcome::Moved(1));
+}
+
+#[test]
+fn sibling_prev_wraps_at_first_array_index() {
+    let mut app = test_app(r#"[10, 20, 30]"#);
+    place_cursor(&mut app, 1); // .[0]
+
+    let outcome = apply_sibling_cursor(&mut app, PathSource::CursorRow, SiblingDir::Prev);
+
+    assert_eq!(outcome, SiblingCursorOutcome::Moved(3));
+}
+
+#[test]
+fn sibling_does_not_modify_query_or_undo_ring() {
+    let mut app = test_app(r#"{"a": 1, "b": 2}"#);
+    app.input.textarea.insert_str(".untouched");
+    place_cursor(&mut app, 1);
+
+    apply_sibling_cursor(&mut app, PathSource::CursorRow, SiblingDir::Next);
+
+    assert_eq!(
+        app.input.query(),
+        ".untouched",
+        "sibling must not rewrite the textarea"
+    );
+    assert!(
+        app.query_undo.is_empty(),
+        "sibling must not push to the undo ring"
+    );
+    assert!(
+        !app.debouncer.has_pending(),
+        "sibling must not schedule a query re-run"
+    );
+}
+
+#[test]
+fn sibling_at_root_returns_at_root() {
+    let mut app = test_app(r#"{"a": 1}"#);
+    place_cursor(&mut app, 0); // root row
+
+    let outcome = apply_sibling_cursor(&mut app, PathSource::CursorRow, SiblingDir::Next);
+
+    assert_eq!(outcome, SiblingCursorOutcome::AtRoot);
+}
+
+#[test]
+fn sibling_with_single_child_returns_no_sibling() {
+    let mut app = test_app(r#"{"only": 1}"#);
+    place_cursor(&mut app, 1); // .only
+
+    let outcome = apply_sibling_cursor(&mut app, PathSource::CursorRow, SiblingDir::Next);
+
+    assert_eq!(outcome, SiblingCursorOutcome::NoSibling);
+}
+
+#[test]
+fn sibling_no_path_when_no_parsed_result() {
+    let mut app = test_app(r#"{"a": 1, "b": 2}"#);
+    place_cursor(&mut app, 1);
+    if let Some(qs) = app.query.as_mut() {
+        qs.last_successful_result_parsed = None;
+    }
+
+    let outcome = apply_sibling_cursor(&mut app, PathSource::CursorRow, SiblingDir::Next);
+
+    assert_eq!(outcome, SiblingCursorOutcome::NoPath);
+}
+
+#[test]
+fn sibling_resolves_nested_array_element_lines() {
+    let mut app = test_app(r#"{"users": [{"name": "alice"}, {"name": "bob"}]}"#);
+    // The pretty layout:
+    // 0: {
+    // 1:   "users": [
+    // 2:     {
+    // 3:       "name": "alice"
+    // 4:     },
+    // 5:     {
+    // 6:       "name": "bob"
+    // 7:     }
+    // ...
+    place_cursor(&mut app, 2); // .users[0]
+
+    let outcome = apply_sibling_cursor(&mut app, PathSource::CursorRow, SiblingDir::Next);
+
+    assert_eq!(outcome, SiblingCursorOutcome::Moved(5));
+}
+
+#[test]
+fn sibling_round_trips_via_next_then_prev() {
+    let mut app = test_app(r#"{"a": 1, "b": 2, "c": 3}"#);
+    place_cursor(&mut app, 2); // .b
+
+    let next_line = match apply_sibling_cursor(&mut app, PathSource::CursorRow, SiblingDir::Next) {
+        SiblingCursorOutcome::Moved(line) => line,
+        other => panic!("{:?}", other),
+    };
+    assert_eq!(next_line, 3); // .c
+    place_cursor(&mut app, next_line);
+
+    let back_line = match apply_sibling_cursor(&mut app, PathSource::CursorRow, SiblingDir::Prev) {
+        SiblingCursorOutcome::Moved(line) => line,
+        other => panic!("{:?}", other),
+    };
+    assert_eq!(back_line, 2); // .b
+}
+
+#[test]
+fn sibling_with_explicit_match_row_uses_that_row() {
+    let mut app = test_app(r#"{"a": 1, "b": 2, "c": 3}"#);
+    place_cursor(&mut app, 0); // cursor at root, but...
+
+    let outcome = apply_sibling_cursor(&mut app, PathSource::Row(2), SiblingDir::Next);
+
+    // Row 2 is .b; sibling next is .c at line 3.
+    assert_eq!(outcome, SiblingCursorOutcome::Moved(3));
+}
+
+#[test]
+fn sibling_in_array_of_objects_cursor_on_open_brace_walks_to_next_open_brace() {
+    let mut app = test_app(r#"[{"a": 1}, {"b": 2}]"#);
+    place_cursor(&mut app, 1); // first `{` row → .[0]
+
+    let outcome = apply_sibling_cursor(&mut app, PathSource::CursorRow, SiblingDir::Next);
+
+    assert_eq!(
+        outcome,
+        SiblingCursorOutcome::Moved(4),
+        "cursor on .[0]'s `{{` should walk to .[1]'s `{{` row"
+    );
+}
+
+#[test]
+fn sibling_in_array_of_objects_cursor_on_close_brace_walks_to_next_open_brace() {
+    let mut app = test_app(r#"[{"a": 1}, {"b": 2}]"#);
+    place_cursor(&mut app, 3); // `},` row → also .[0] per path_at_line semantics
+
+    let outcome = apply_sibling_cursor(&mut app, PathSource::CursorRow, SiblingDir::Next);
+
+    assert_eq!(
+        outcome,
+        SiblingCursorOutcome::Moved(4),
+        "closing brace of .[0] still walks to .[1]'s open brace"
+    );
+}
+
+#[test]
+fn sibling_in_array_of_objects_cursor_on_inner_key_walks_inner_object_keys() {
+    let mut app = test_app(r#"[{"a": 1, "b": 2}, {"c": 3, "d": 4}]"#);
+    place_cursor(&mut app, 2); // .[0].a
+
+    let outcome = apply_sibling_cursor(&mut app, PathSource::CursorRow, SiblingDir::Next);
+
+    // Pretty layout:
+    // 0: [
+    // 1:   {
+    // 2:     "a": 1,   ← cursor here
+    // 3:     "b": 2    ← sibling next of .[0].a is .[0].b
+    // ...
+    assert_eq!(outcome, SiblingCursorOutcome::Moved(3));
+}
+
+#[test]
+fn sibling_walk_inside_object_with_special_keys() {
+    let mut app = test_app(r#"{"normal": 1, "foo-bar": 2}"#);
+    place_cursor(&mut app, 1); // .normal
+
+    let outcome = apply_sibling_cursor(&mut app, PathSource::CursorRow, SiblingDir::Next);
+
+    assert_eq!(outcome, SiblingCursorOutcome::Moved(2));
+}

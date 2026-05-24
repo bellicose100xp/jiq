@@ -4,9 +4,10 @@ use crate::app::App;
 use crate::clipboard;
 use crate::editor::EditorMode;
 use crate::help::HelpTab;
+use crate::json_path::SiblingDir;
 use crate::path_at_cursor_apply::{
-    ApplyOutcome, PathSource, StepOutOutcome, UndoOutcome, apply_iterate, apply_keep_kv,
-    apply_path, apply_step_out, pop_undo,
+    ApplyOutcome, PathSource, SiblingCursorOutcome, StepOutOutcome, UndoOutcome, apply_iterate,
+    apply_keep_kv, apply_path, apply_sibling_cursor, apply_step_out, pop_undo,
 };
 
 pub fn handle_results_pane_key(app: &mut App, key: KeyEvent) {
@@ -136,6 +137,14 @@ pub fn handle_results_pane_key(app: &mut App, key: KeyEvent) {
             keep_kv(app, PathSource::CursorRow);
         }
 
+        KeyCode::Char('[') => {
+            sibling(app, PathSource::CursorRow, SiblingDir::Prev);
+        }
+
+        KeyCode::Char(']') => {
+            sibling(app, PathSource::CursorRow, SiblingDir::Next);
+        }
+
         _ => {}
     }
 }
@@ -172,6 +181,27 @@ pub(crate) fn iterate(app: &mut App, source: PathSource) {
 pub(crate) fn keep_kv(app: &mut App, source: PathSource) {
     let outcome = apply_keep_kv(app, source);
     report_apply_outcome(app, outcome);
+}
+
+/// `[` / `]` — move the results-pane cursor to the previous / next
+/// sibling row inside the parent container of `source`'s path. Pure
+/// cursor movement: does NOT touch the query, the textarea, or the undo
+/// ring. Wraps at container boundaries.
+pub(crate) fn sibling(app: &mut App, source: PathSource, dir: SiblingDir) {
+    match apply_sibling_cursor(app, source, dir) {
+        SiblingCursorOutcome::Moved(line) => {
+            let total = app.results_line_count_u32();
+            app.results_cursor.update_total_lines(total);
+            app.results_cursor.move_to_line(line);
+            app.results_scroll
+                .ensure_cursor_visible(app.results_cursor.cursor_line());
+        }
+        SiblingCursorOutcome::AtRoot => app.notification.show("Already at root"),
+        SiblingCursorOutcome::NoPath => app.notification.show("No path at cursor"),
+        SiblingCursorOutcome::NoSibling => {
+            app.notification.show("No sibling to navigate to");
+        }
+    }
 }
 
 /// `^` — drop one step from the trailing path segment of the current

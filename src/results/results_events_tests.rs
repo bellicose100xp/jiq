@@ -802,4 +802,136 @@ mod drill_tests {
             }
         }
     }
+
+    #[test]
+    fn next_sibling_chord_moves_cursor_to_next_key_row() {
+        let mut app = test_app(r#"{"a": 1, "b": 2, "c": 3}"#);
+        place(&mut app, 1); // .a
+
+        app.handle_key_event(key(KeyCode::Char(']')));
+
+        assert_eq!(app.results_cursor.cursor_line(), 2, "cursor at .b row");
+        assert_eq!(app.input.query(), "", "query is unchanged");
+        assert!(
+            app.query_undo.is_empty(),
+            "no undo snapshot for cursor move"
+        );
+    }
+
+    #[test]
+    fn prev_sibling_chord_moves_cursor_to_prev_key_row() {
+        let mut app = test_app(r#"{"a": 1, "b": 2, "c": 3}"#);
+        place(&mut app, 2); // .b
+
+        app.handle_key_event(key(KeyCode::Char('[')));
+
+        assert_eq!(app.results_cursor.cursor_line(), 1, "cursor at .a row");
+    }
+
+    #[test]
+    fn next_sibling_chord_wraps_at_last_key() {
+        let mut app = test_app(r#"{"a": 1, "b": 2, "c": 3}"#);
+        place(&mut app, 3); // .c
+
+        app.handle_key_event(key(KeyCode::Char(']')));
+
+        assert_eq!(app.results_cursor.cursor_line(), 1, "wraps to .a row");
+    }
+
+    #[test]
+    fn sibling_chord_in_array_of_objects_walks_brace_to_brace() {
+        // [{"a":1},{"b":2}] — pretty layout:
+        // 0: [
+        // 1:   {       ← .[0]
+        // 2:     "a": 1
+        // 3:   },
+        // 4:   {       ← .[1]
+        // 5:     "b": 2
+        // 6:   }
+        // 7: ]
+        let mut app = test_app(r#"[{"a": 1}, {"b": 2}]"#);
+        place(&mut app, 1);
+
+        app.handle_key_event(key(KeyCode::Char(']')));
+
+        assert_eq!(
+            app.results_cursor.cursor_line(),
+            4,
+            "cursor on .[0]'s {{ should walk to .[1]'s {{ row"
+        );
+        assert!(
+            app.notification.current_message().is_none()
+                || app.notification.current_message() == Some(""),
+            "no notification on a successful sibling walk"
+        );
+    }
+
+    #[test]
+    fn sibling_chord_walks_array_indices() {
+        let mut app = test_app(r#"[10, 20, 30]"#);
+        place(&mut app, 1); // .[0]
+
+        app.handle_key_event(key(KeyCode::Char(']')));
+        assert_eq!(app.results_cursor.cursor_line(), 2);
+        app.handle_key_event(key(KeyCode::Char(']')));
+        assert_eq!(app.results_cursor.cursor_line(), 3);
+        app.handle_key_event(key(KeyCode::Char(']')));
+        assert_eq!(app.results_cursor.cursor_line(), 1, "wraps");
+    }
+
+    #[test]
+    fn sibling_chord_at_root_notifies_already_at_root() {
+        let mut app = test_app(r#"{"a": 1}"#);
+        app.input.textarea.insert_str(".existing");
+        place(&mut app, 0);
+
+        app.handle_key_event(key(KeyCode::Char(']')));
+
+        assert_eq!(app.input.query(), ".existing", "query untouched");
+        assert_eq!(app.results_cursor.cursor_line(), 0, "cursor unchanged");
+        assert_eq!(app.notification.current_message(), Some("Already at root"));
+    }
+
+    #[test]
+    fn sibling_chord_with_single_child_notifies() {
+        let mut app = test_app(r#"{"only": 1}"#);
+        place(&mut app, 1);
+
+        app.handle_key_event(key(KeyCode::Char(']')));
+
+        assert_eq!(app.results_cursor.cursor_line(), 1, "cursor unchanged");
+        assert_eq!(
+            app.notification.current_message(),
+            Some("No sibling to navigate to")
+        );
+    }
+
+    #[test]
+    fn sibling_chord_does_not_touch_undo_ring() {
+        let mut app = test_app(r#"{"a": 1, "b": 2}"#);
+        place(&mut app, 1);
+
+        // Drill in first to push a real snapshot...
+        app.handle_key_event(key(KeyCode::Char('>')));
+        let ring_before = !app.query_undo.is_empty();
+        assert!(ring_before, "test guard: drill pushed a snapshot");
+
+        // ...then a sibling walk should not invalidate it.
+        app.handle_key_event(key(KeyCode::Char(']')));
+
+        assert!(
+            !app.query_undo.is_empty(),
+            "sibling walk must preserve the undo ring"
+        );
+    }
+
+    #[test]
+    fn sibling_chord_stays_on_results_pane() {
+        let mut app = test_app(r#"{"a": 1, "b": 2}"#);
+        place(&mut app, 1);
+
+        app.handle_key_event(key(KeyCode::Char(']')));
+
+        assert_eq!(app.focus, Focus::ResultsPane);
+    }
 }

@@ -25,14 +25,19 @@ const PATH_AT_CURSOR_MIN_WIDTH: usize = 5;
 const PATH_AT_CURSOR_CHROME_WIDTH: usize = 4;
 
 /// Build the path-navigation chord segment shared by every bottom border
-/// that advertises `>` / `<` / `*` / `^` / `}`. The `<` slot only renders
-/// when the undo ring is non-empty so the hint never misleads.
+/// that advertises `>` / `<` / `*` / `^` / `}` / `]` / `[`. The `<` slot
+/// only renders when the undo ring is non-empty so the hint never misleads.
 fn path_chord_hints(can_undo: bool) -> Vec<(&'static str, &'static str)> {
     let mut hints: Vec<(&'static str, &'static str)> = vec![(">", "value")];
     if can_undo {
         hints.push(("<", "back"));
     }
-    hints.extend([("*", "iterate"), ("^", "parent"), ("}", "wrap")]);
+    hints.extend([
+        ("*", "iterate"),
+        ("^", "parent"),
+        ("}", "wrap"),
+        ("]/[", "siblings"),
+    ]);
     hints
 }
 

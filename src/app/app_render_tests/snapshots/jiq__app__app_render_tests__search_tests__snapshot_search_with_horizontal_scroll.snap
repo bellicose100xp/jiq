@@ -1,5 +1,6 @@
 ---
 source: src/app/app_render_tests/search_tests.rs
+assertion_line: 184
 expression: output
 ---
 "╭ Object  · .very_long_field ───────────────────────────────────── L1-4/4 (0%) ╮"
@@ -21,7 +22,7 @@ expression: output
 "│                                                                              │"
 "│                                                                              │"
 "│                                                                              │"
-"╰/Prev • Enter Next • > value • * iterate • ^ parent • } wrap • Ctrl+F Edit • E╯"
+"╰ Enter Next • > value • * iterate • ^ parent • } wrap • ]/[ siblings • Ctrl+F ╯"
 "╭ Search ──────────────────────────────────────────────────────────────────────╮"
 "│match_here                                                                    │"
 "╰──────────────────────────────────────────────────────────────────────────────╯"

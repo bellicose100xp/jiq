@@ -66,4 +66,5 @@ Press **Esc** to close the search bar and clear highlights.
 | `N` / `Shift+Enter` | Previous match |
 | `Tab` | Return to editing the search term |
 | `>` `*` `}` | Drill into the current match's row |
+| `]` `[` | Jump cursor to next / prev sibling of the match's row |
 | `Esc` | Close search |

@@ -18,7 +18,10 @@
 //! synthesized it via drill-in.
 
 use crate::app::App;
-use crate::json_path::{JsonPath, JsonPathStep, format_field_name, is_simple_jq_identifier};
+use crate::json_path::{
+    JsonPath, JsonPathStep, SiblingDir, SiblingOutcome, format_field_name, is_simple_jq_identifier,
+    sibling_at,
+};
 use crate::query_undo::ViewportState;
 
 /// Where to source the row whose path we apply on `>`.
@@ -68,6 +71,20 @@ pub enum StepOutOutcome {
     /// Trailing pipe segment isn't a recognizable jq path expression that
     /// our own renderer would emit. Don't touch the input.
     Unparseable,
+}
+
+/// Outcome of `apply_sibling_cursor`. Caller maps to a notification or
+/// scroll update.
+#[derive(Debug, PartialEq, Eq)]
+pub enum SiblingCursorOutcome {
+    /// Cursor moved to the sibling row (line index).
+    Moved(u32),
+    /// Cursor was at the root row — no parent container.
+    AtRoot,
+    /// Couldn't resolve a path for the source row.
+    NoPath,
+    /// The parent has a single child, so walking would be a no-op.
+    NoSibling,
 }
 
 /// Resolve `source` to a jq path string and pipe-compose it onto the
@@ -137,6 +154,42 @@ pub fn apply_keep_kv(app: &mut App, source: PathSource) -> ApplyOutcome {
         format!("{} | {}", parent, wrap)
     };
     compose_and_apply(app, suffix, /* push_to_ring */ true)
+}
+
+/// `[` / `]` — locate the previous / next sibling of `source`'s path in
+/// the parent container and return the line where it renders. Pure
+/// resolution: does NOT touch the textarea, the undo ring, the cursor,
+/// or the scroll state. Caller is responsible for moving the cursor.
+///
+/// Wraps at container boundaries: `Next` from the last child returns the
+/// first; `Prev` from the first returns the last.
+pub fn apply_sibling_cursor(
+    app: &mut App,
+    source: PathSource,
+    dir: SiblingDir,
+) -> SiblingCursorOutcome {
+    let path = match resolve_path(app, source) {
+        Some(p) => p,
+        None => return SiblingCursorOutcome::NoPath,
+    };
+    let parsed = match app
+        .query
+        .as_ref()
+        .and_then(|qs| qs.last_successful_result_parsed.clone())
+    {
+        Some(v) => v,
+        None => return SiblingCursorOutcome::NoPath,
+    };
+    let new_path = match sibling_at(parsed.as_ref(), &path, dir) {
+        SiblingOutcome::Sibling(p) => p,
+        SiblingOutcome::NoParent => return SiblingCursorOutcome::AtRoot,
+        SiblingOutcome::Single => return SiblingCursorOutcome::NoSibling,
+        SiblingOutcome::Invalid => return SiblingCursorOutcome::NoPath,
+    };
+    match crate::json_path::line_at_path(parsed.as_ref(), &new_path) {
+        Some(line) => SiblingCursorOutcome::Moved(line as u32),
+        None => SiblingCursorOutcome::NoPath,
+    }
 }
 
 /// Shared compose+rewrite logic. Returns `AtRoot` when the path collapses

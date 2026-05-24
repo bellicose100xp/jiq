@@ -1,7 +1,11 @@
 use ratatui::crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 
 use crate::app::{App, Focus};
-use crate::path_at_cursor_apply::{ApplyOutcome, PathSource, apply_iterate, apply_keep_kv};
+use crate::json_path::SiblingDir;
+use crate::path_at_cursor_apply::{
+    ApplyOutcome, PathSource, SiblingCursorOutcome, apply_iterate, apply_keep_kv,
+    apply_sibling_cursor,
+};
 use crate::results::results_events::{drill_back, handle_results_pane_key, step_out};
 
 #[path = "search_events/scroll.rs"]
@@ -124,6 +128,16 @@ pub fn handle_search_key(app: &mut App, key: KeyEvent) -> bool {
             true
         }
 
+        KeyCode::Char('[') => {
+            sibling_from_search(app, SiblingDir::Prev);
+            true
+        }
+
+        KeyCode::Char(']') => {
+            sibling_from_search(app, SiblingDir::Next);
+            true
+        }
+
         // Delegate navigation keys to results pane when confirmed
         _ if app.search.is_confirmed() => {
             handle_results_pane_key(app, key);
@@ -222,6 +236,30 @@ fn keep_kv_from_search(app: &mut App) {
         ApplyOutcome::NoPath => app.notification.show("No path at cursor"),
         ApplyOutcome::NoArrayToIterate => unreachable!("apply_keep_kv never returns this"),
         ApplyOutcome::NoKeyToWrap => app.notification.show("No key at cursor to wrap"),
+    }
+}
+
+/// `[` / `]` from search — move the results-pane cursor to the prev /
+/// next sibling row of the match row's path. Pure cursor movement: does
+/// NOT close the search overlay or modify the query.
+fn sibling_from_search(app: &mut App, dir: SiblingDir) {
+    let match_row = match resolve_match_row(app) {
+        Some(r) => r,
+        None => return,
+    };
+    match apply_sibling_cursor(app, PathSource::Row(match_row), dir) {
+        SiblingCursorOutcome::Moved(line) => {
+            let total = app.results_line_count_u32();
+            app.results_cursor.update_total_lines(total);
+            app.results_cursor.move_to_line(line);
+            app.results_scroll
+                .ensure_cursor_visible(app.results_cursor.cursor_line());
+        }
+        SiblingCursorOutcome::AtRoot => app.notification.show("Already at root"),
+        SiblingCursorOutcome::NoPath => app.notification.show("No path at cursor"),
+        SiblingCursorOutcome::NoSibling => {
+            app.notification.show("No sibling to navigate to");
+        }
     }
 }
 

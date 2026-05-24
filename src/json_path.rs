@@ -242,6 +242,102 @@ pub fn parse_jq_path(input: &str) -> Option<JsonPath> {
     Some(path)
 }
 
+/// Direction for sibling navigation.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SiblingDir {
+    Prev,
+    Next,
+}
+
+/// Result of [`sibling_at`].
+#[derive(Debug, PartialEq, Eq)]
+pub enum SiblingOutcome {
+    /// New path with the last step replaced by the chosen sibling.
+    Sibling(JsonPath),
+    /// `path` is empty: the cursor is at the root, so there's no parent
+    /// container whose siblings we can enumerate.
+    NoParent,
+    /// The parent has a single child — walking would be a no-op. Caller
+    /// surfaces a notification so repeated presses don't silently cycle.
+    Single,
+    /// The path doesn't address a real position in `value` (e.g., a key
+    /// step where the parent is an array, or vice-versa). Treated like
+    /// "no sibling" — the cursor row resolved to a path that no longer
+    /// lines up with the parsed value.
+    Invalid,
+}
+
+/// Resolve the path of the previous or next sibling of the value addressed
+/// by `path` inside `value`. Wraps at container boundaries: `Next` from the
+/// last child returns the first; `Prev` from the first child returns the
+/// last.
+///
+/// O(depth + parent_arity). Walks `path.steps[..len-1]` once to find the
+/// parent container, then does a single pass to locate the current step
+/// and pick its neighbor. Allocates only the returned path.
+pub fn sibling_at(value: &Value, path: &JsonPath, dir: SiblingDir) -> SiblingOutcome {
+    let steps = path.steps();
+    if steps.is_empty() {
+        return SiblingOutcome::NoParent;
+    }
+    let parent = match resolve_value(value, &steps[..steps.len() - 1]) {
+        Some(v) => v,
+        None => return SiblingOutcome::Invalid,
+    };
+    let last = steps.last().unwrap();
+    let new_last = match (parent, last) {
+        (Value::Object(map), JsonPathStep::Key(k)) => {
+            if map.len() <= 1 {
+                return SiblingOutcome::Single;
+            }
+            let idx = match map.keys().position(|key| key == k) {
+                Some(i) => i,
+                None => return SiblingOutcome::Invalid,
+            };
+            let neighbor_idx = wrapping_neighbor(idx, map.len(), dir);
+            let neighbor_key = map.keys().nth(neighbor_idx).unwrap().clone();
+            JsonPathStep::Key(neighbor_key)
+        }
+        (Value::Array(arr), JsonPathStep::Index(i)) => {
+            if arr.len() <= 1 {
+                return SiblingOutcome::Single;
+            }
+            if *i >= arr.len() {
+                return SiblingOutcome::Invalid;
+            }
+            let neighbor_idx = wrapping_neighbor(*i, arr.len(), dir);
+            JsonPathStep::Index(neighbor_idx)
+        }
+        _ => return SiblingOutcome::Invalid,
+    };
+    let mut new_path = JsonPath::new();
+    new_path.steps.extend_from_slice(&steps[..steps.len() - 1]);
+    new_path.steps.push(new_last);
+    SiblingOutcome::Sibling(new_path)
+}
+
+fn wrapping_neighbor(idx: usize, len: usize, dir: SiblingDir) -> usize {
+    debug_assert!(len > 0 && idx < len);
+    match dir {
+        SiblingDir::Next => (idx + 1) % len,
+        SiblingDir::Prev => (idx + len - 1) % len,
+    }
+}
+
+/// Walk `value` along `steps`, returning the addressed sub-value. Returns
+/// `None` if any step doesn't fit the current container's shape.
+fn resolve_value<'a>(value: &'a Value, steps: &[JsonPathStep]) -> Option<&'a Value> {
+    let mut cur = value;
+    for step in steps {
+        cur = match (cur, step) {
+            (Value::Object(map), JsonPathStep::Key(k)) => map.get(k)?,
+            (Value::Array(arr), JsonPathStep::Index(i)) => arr.get(*i)?,
+            _ => return None,
+        };
+    }
+    Some(cur)
+}
+
 /// Locate the path of the value pretty-printed on a given line.
 ///
 /// The line layout matches `serde_json::to_string_pretty` with the default
@@ -257,9 +353,9 @@ pub fn path_at_line(value: &Value, target_line: usize) -> Option<JsonPath> {
 
 /// Count how many lines `serde_json::to_string_pretty` would emit for `value`.
 ///
-/// Public for future stream-aware path lookups; currently consumed only by
-/// the test suite to lock the walker's line-counting invariant against
-/// `serde_json` updates.
+/// Currently consumed only by the test suite to lock the walker's
+/// line-counting invariant against `serde_json` updates; kept public so
+/// future stream-aware path lookups can reach for the same counter.
 #[allow(dead_code)]
 pub fn pretty_line_count(value: &Value) -> usize {
     let mut counter = LineCounter::default();
@@ -267,13 +363,56 @@ pub fn pretty_line_count(value: &Value) -> usize {
     counter.lines + 1
 }
 
+/// Inverse of [`path_at_line`]: locate the line where `path` is rendered.
+///
+/// Returns `None` if `path` doesn't address a real position in `value`.
+/// The root path renders at line 0 (the opening brace of the document).
+/// Walks `O(depth + sum_of_prev_sibling_pretty_line_counts)` — the same
+/// budget [`path_at_line`] uses in the opposite direction.
+pub fn line_at_path(value: &Value, path: &JsonPath) -> Option<usize> {
+    let mut cursor = 0usize;
+    let mut current = value;
+    for step in path.steps() {
+        cursor += 1;
+        match (current, step) {
+            (Value::Object(map), JsonPathStep::Key(k)) => {
+                let mut found = false;
+                for (key, child) in map {
+                    if key == k {
+                        current = child;
+                        found = true;
+                        break;
+                    }
+                    let mut counter = LineCounter::default();
+                    counter.count(child);
+                    cursor += counter.lines + 1;
+                }
+                if !found {
+                    return None;
+                }
+            }
+            (Value::Array(arr), JsonPathStep::Index(i)) => {
+                if *i >= arr.len() {
+                    return None;
+                }
+                for prev in arr.iter().take(*i) {
+                    let mut counter = LineCounter::default();
+                    counter.count(prev);
+                    cursor += counter.lines + 1;
+                }
+                current = &arr[*i];
+            }
+            _ => return None,
+        }
+    }
+    Some(cursor)
+}
+
 #[derive(Default)]
-#[allow(dead_code)]
 struct LineCounter {
     lines: usize,
 }
 
-#[allow(dead_code)]
 impl LineCounter {
     fn count(&mut self, value: &Value) {
         match value {
