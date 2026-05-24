@@ -81,8 +81,8 @@ body {
   overflow-x: auto;
 }
 
-.main-content pre code,
-table code {
+// Code inside <pre> blocks: inherit everything from the pre.
+.main-content pre code {
   background: transparent;
   border: none;
   padding: 0;
@@ -106,13 +106,17 @@ kbd, .kbd {
 }
 
 // ─── Tables ──────────────────────────────────────────────────────────
+// Wrap tables in a scrollable div so long content scrolls rather than clips.
+// Can't add a wrapper in markdown, so make the table itself block-scrollable.
 .main-content table {
   border: 1px solid #21262d;
   border-radius: 8px;
   border-collapse: separate;
   border-spacing: 0;
-  overflow: hidden;
   width: 100%;
+  // No overflow: hidden — that was trapping content off-screen on mobile.
+  // Border-radius still works because border-collapse: separate keeps
+  // the table border distinct from cell borders.
 
   th, td {
     border: none;
@@ -129,11 +133,22 @@ kbd, .kbd {
     color: #f0f6fc;
   }
 
+  // Inline code inside table cells: monospace looks ~10% visually larger
+  // than proportional text at the same px size, so scale it down slightly.
+  td code, th code { font-size: 0.88em !important; }
+
   tr:last-child td { border-bottom: none; }
   tr:nth-child(even) td { background: rgba(255, 255, 255, 0.02); }
 }
 
+// On mobile, enable horizontal scroll so long content doesn't clip off-screen.
 @media (max-width: 50rem) {
+  .main-content table {
+    display: block;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    border-radius: 6px; // block display clips corners slightly differently — keep it
+  }
   .main-content table th,
   .main-content table td { padding: 9px 11px; }
 }
