@@ -7,9 +7,11 @@ description: Function tooltip, error overlay, and the help popup.
 
 # Tooltip & overlays
 
-Three popups anchored to the input.
+Three input-anchored overlays.
 
-## Function tooltip — <kbd>Ctrl</kbd>+<kbd>T</kbd>
+## Inline overlays
+
+### Function tooltip — <kbd>Ctrl</kbd>+<kbd>T</kbd>
 
 When the cursor is on a jq function or operator, jiq shows the signature, a short description, and example uses. Toggling <kbd>Ctrl</kbd>+<kbd>T</kbd> turns auto-show on or off.
 
@@ -29,7 +31,7 @@ When the cursor is on a jq function or operator, jiq shows the signature, a shor
 
 Functions take priority over operators. Move the cursor off the function or operator and the tooltip dismisses.
 
-## Error overlay — <kbd>Ctrl</kbd>+<kbd>E</kbd>
+### Error overlay — <kbd>Ctrl</kbd>+<kbd>E</kbd>
 
 When the current query fails, the input border turns red and the title shows `Syntax Error`. The full jq error stays hidden until you press <kbd>Ctrl</kbd>+<kbd>E</kbd>. <kbd>Ctrl</kbd>+<kbd>E</kbd> only toggles when the current query has an error; otherwise it's a no-op.
 

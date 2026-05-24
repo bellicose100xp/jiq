@@ -22,7 +22,7 @@ Open with <kbd>Ctrl</kbd>+<kbd>F</kbd> from anywhere, or <kbd>/</kbd> from the r
 ╰──────────────────────────────────────────────────────╯
 ╭─ Search ─────────────────────────────────────────────╮
 │ /example                                             │
-╰── Enter Confirm · n Next · N Prev · Esc Close ───────╯</pre>
+╰── Enter Next · N Prev · Esc Close ──────────────────╯</pre>
 </div>
 
 The match counter `2/7` shows where you are in the match list. The current match is brighter than the rest. As you type, the cursor scrolls to the first match; if there are no matches, the pane resets to the top.

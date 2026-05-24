@@ -95,25 +95,9 @@ Five keys rewrite the input query in place. The result re-runs as if you'd typed
   <div class="step active">.</div>
 </div>
 
-<kbd>}</kbd> wraps the leaf as a single-entry object so the result includes the key alongside the value.
+<kbd>}</kbd> wraps the leaf as a single-entry object — `.users[0].name` → `.users[0] | {name}` — so the result includes the key.
 
-<div class="io-pair">
-  <div>
-    <div class="io-label">Cursor on .users[0].name</div>
-    <div class="io-block">.
-"alice"</div>
-  </div>
-  <div class="io-arrow">→</div>
-  <div>
-    <div class="io-label">After }</div>
-    <div class="io-block">.users[0] | {name}
-{ "name": "alice" }</div>
-  </div>
-</div>
-
-<kbd>&lt;</kbd> pops the most recent <kbd>&gt;</kbd> / <kbd>*</kbd> / <kbd>}</kbd> snapshot, restoring the prior query, cursor row, and scroll. Manual edits between drill-ins are discarded by the pop. <kbd>^</kbd> doesn't push to the ring.
-
-In search mode, <kbd>&gt;</kbd> / <kbd>*</kbd> / <kbd>}</kbd> act on the current match's row (not the cursor) and close the overlay. <kbd>&lt;</kbd> and <kbd>^</kbd> behave identically inside or outside search.
+<kbd>&lt;</kbd> pops the most recent <kbd>&gt;</kbd> / <kbd>*</kbd> / <kbd>}</kbd> snapshot, restoring the prior query, cursor row, and scroll; manual edits between drill-ins are discarded, and <kbd>^</kbd> doesn't push to the ring. In search mode, <kbd>&gt;</kbd> / <kbd>*</kbd> / <kbd>}</kbd> act on the current match's row and close the overlay; <kbd>&lt;</kbd> and <kbd>^</kbd> behave identically inside or outside search.
 
 | Key | Action | Undo ring |
 |---|---|---|

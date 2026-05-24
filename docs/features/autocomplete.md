@@ -17,8 +17,6 @@ Five suggestion kinds, picked from cursor context:
 - **Variable** — `$name` bindings declared earlier in the query (via `as $x`, `[$a, $b]`, `{k: $v}`) plus jq's built-ins `$ENV` and `$__loc__`.
 - **Iterator** — `[]` patterns in path-flow contexts.
 
-## What it looks like
-
 <div class="tui-mockup with-title" data-title="Field suggestions after typing .users[0].">
 <pre>╭─ Input ───────────────────────────────────────╮
 │ .users[0].                                    │

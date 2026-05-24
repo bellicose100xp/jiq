@@ -25,20 +25,19 @@ query = ".users | sort_by(.name)"
 ## Browse and apply
 
 <div class="tui-mockup with-title" data-title="Ctrl+S — snippet library">
-<pre>╭─ Snippets ───────────────────────────────────────────────╮
-│ Filter: act                                              │
-│                                                          │
-│ ▸ active-users          .users[] | select(.active...     │
-│   active-with-emails    .users[] | select(.active...     │
-│   inactive-count        [.users[] | select(.active==...  │
-│                                                          │
-│ ┌─ Preview ─────────────────────────────────────────────┐│
-│ │ active-users                                          ││
-│ │ .users[] | select(.active == true)                    ││
-│ │ Users where .active is true                           ││
-│ └───────────────────────────────────────────────────────┘│
-│ Enter Apply · Ctrl+N New · Ctrl+E Edit · Ctrl+D Delete   │
-╰──────────────────────────────────────────────────────────╯</pre>
+<pre>╭─ Snippets ─────────────────────────────────────╮
+│ Filter: act                                    │
+│                                                │
+│ ▸ active-users      .users[] | select(.act...  │
+│   active-emails     .users[] | select(.act...  │
+│   inactive-count    [.users[] | select(...)... │
+│                                                │
+│ ┌─ Preview ────────────────────────────────┐   │
+│ │ active-users                              │  │
+│ │ .users[] | select(.active == true)        │  │
+│ └───────────────────────────────────────────┘  │
+│ Enter Apply · Ctrl+N New · Ctrl+D Delete       │
+╰────────────────────────────────────────────────╯</pre>
 </div>
 
 Type any characters to filter — fuzzy match against names, ranked by score. <kbd>Enter</kbd> replaces the current query with the selected snippet's query and runs it.

@@ -54,7 +54,7 @@ The query input has two modes: **INSERT** (default, cyan border) and **NORMAL** 
 | <kbd>C</kbd> | Change to line end (delete + INSERT) |
 | <kbd>u</kbd> | Undo |
 | <kbd>Ctrl</kbd>+<kbd>r</kbd> | Redo |
-| <kbd>yy</kbd> | Yank line to clipboard |
+| <kbd>yy</kbd> | Yank focused pane (query if input is focused, result if results pane is focused) |
 {: .shortcuts }
 
 ### Operator + motion
