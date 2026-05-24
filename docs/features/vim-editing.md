@@ -1,13 +1,15 @@
 ---
-title: VIM editing
+title: Vim editing
 parent: Features
 nav_order: 9
-description: VIM motions, operators, text objects, undo/redo in the query input.
+description: Edit queries with Vim motions, operators, and text objects.
 ---
 
-# VIM editing
+# Vim editing
 
-The query input has two modes. Press <kbd>Esc</kbd> to enter NORMAL; press <kbd>i</kbd> / <kbd>a</kbd> / <kbd>I</kbd> / <kbd>A</kbd> to return to INSERT.
+The query input has two modes. **INSERT** mode (cyan border) works like a normal text field — just type. **NORMAL** mode (yellow border) gives you Vim navigation and editing commands.
+
+If you don't use Vim, you can ignore this page entirely. INSERT mode is the default and works without any Vim knowledge.
 
 <div class="mode-demo" markdown="0">
   <div class="mode-badge insert">
@@ -20,84 +22,59 @@ The query input has two modes. Press <kbd>Esc</kbd> to enter NORMAL; press <kbd>
   </div>
 </div>
 
-The cyan border means INSERT — every keystroke edits the query. The yellow border means NORMAL — every keystroke is a motion or command.
+## Switch between modes
 
-| Key | Effect |
+Press **Esc** to enter NORMAL mode. Press **i**, **a**, **I**, or **A** to return to INSERT.
+
+| Key | Goes to INSERT at |
 |---|---|
-| <kbd>Esc</kbd> | INSERT → NORMAL |
-| <kbd>i</kbd> | NORMAL → INSERT at cursor |
-| <kbd>a</kbd> | NORMAL → INSERT after cursor |
-| <kbd>I</kbd> | NORMAL → INSERT at line start |
-| <kbd>A</kbd> | NORMAL → INSERT at line end |
-{: .shortcuts }
+| `i` | Cursor position |
+| `a` | After the cursor |
+| `I` | Start of line |
+| `A` | End of line |
 
-## Keys
+## Move through the query
 
-### Motion
+In NORMAL mode, use these keys to position the cursor:
 
-| Key | Move to |
+| Key | Moves to |
 |---|---|
-| <kbd>h</kbd> <kbd>l</kbd> | One char left / right |
-| <kbd>0</kbd> <kbd>^</kbd> <kbd>Home</kbd> | Line start |
-| <kbd>$</kbd> <kbd>End</kbd> | Line end |
-| <kbd>w</kbd> | Next word start |
-| <kbd>b</kbd> | Previous word start |
-| <kbd>e</kbd> | Word end |
-{: .shortcuts }
+| `h` `l` `←` `→` | One character left / right |
+| `0` `^` `Home` | Start of line |
+| `$` `End` | End of line |
+| `w` | Next word start |
+| `b` | Previous word start |
+| `e` | Word end |
 
-### Character search
+## Delete and change text
 
-| Key | Effect |
+**Delete** with `d` + a motion. **Change** (delete then switch to INSERT) with `c` + a motion.
+
+| Keys | Effect |
 |---|---|
-| <kbd>f</kbd>{c} | Forward to next `{c}` |
-| <kbd>F</kbd>{c} | Backward to previous `{c}` |
-| <kbd>t</kbd>{c} | Forward to char before `{c}` |
-| <kbd>T</kbd>{c} | Backward to char after `{c}` |
-| <kbd>;</kbd> | Repeat last search |
-| <kbd>,</kbd> | Repeat in opposite direction |
-{: .shortcuts }
+| `dw` `db` `de` | Delete word forward / back / end |
+| `d$` `d0` | Delete to end / start of line |
+| `dd` `D` | Delete entire line / to end |
+| `cw` `c$` `cc` `C` | Change word / to end / line |
+| `x` | Delete character at cursor |
+| `X` | Delete character before cursor |
 
-### Edit
+## Use text objects
 
-| Key | Effect |
+Text objects let you act on a whole region without positioning exactly. Use `di{t}` (inside) or `da{t}` (around, including delimiters) with any of:
+
+| Text object | Selects |
 |---|---|
-| <kbd>x</kbd> | Delete char at cursor |
-| <kbd>X</kbd> | Delete char before cursor |
-| <kbd>D</kbd> | Delete to line end |
-| <kbd>C</kbd> | Change to line end (delete + INSERT) |
-| <kbd>u</kbd> | Undo |
-| <kbd>Ctrl</kbd>+<kbd>r</kbd> | Redo |
-| <kbd>yy</kbd> | Yank focused pane (query if input is focused, result if results pane is focused) |
-{: .shortcuts }
+| `w` | Word |
+| `"` `'` `` ` `` | Inside matching quote |
+| `(` `)` `b` | Inside parentheses |
+| `[` `]` | Inside brackets |
+| `{` `}` `B` | Inside braces |
+| `\|` | **Pipe segment** — the jq-specific one |
 
-### Operator + motion
+### The pipe segment
 
-<kbd>d</kbd> deletes, <kbd>c</kbd> changes (delete + INSERT). Both accept any motion or character search:
-
-| Key | Effect |
-|---|---|
-| <kbd>d</kbd><kbd>w</kbd> <kbd>d</kbd><kbd>b</kbd> <kbd>d</kbd><kbd>e</kbd> | Delete word forward / back / end |
-| <kbd>d</kbd><kbd>$</kbd> <kbd>d</kbd><kbd>0</kbd> <kbd>d</kbd><kbd>^</kbd> | Delete to line end / start |
-| <kbd>d</kbd><kbd>d</kbd> | Delete entire line |
-| <kbd>d</kbd><kbd>f</kbd>{c} <kbd>d</kbd><kbd>t</kbd>{c} | Delete to / till char (also <kbd>F</kbd> <kbd>T</kbd>) |
-| <kbd>c</kbd><kbd>w</kbd> <kbd>c</kbd><kbd>$</kbd> <kbd>c</kbd><kbd>c</kbd> | Change variants of the above |
-{: .shortcuts }
-
-### Text objects
-
-<kbd>d</kbd><kbd>i</kbd>{t} deletes inside, <kbd>d</kbd><kbd>a</kbd>{t} deletes around (including delimiters). <kbd>c</kbd><kbd>i</kbd> / <kbd>c</kbd><kbd>a</kbd> are the change variants.
-
-| Target | Selects |
-|---|---|
-| <kbd>w</kbd> | Word |
-| <kbd>"</kbd> <kbd>'</kbd> <kbd>`</kbd> | Inside matching quote |
-| <kbd>(</kbd> <kbd>)</kbd> <kbd>b</kbd> | Inside parentheses |
-| <kbd>[</kbd> <kbd>]</kbd> | Inside brackets |
-| <kbd>{</kbd> <kbd>}</kbd> <kbd>B</kbd> | Inside braces |
-| <kbd>\|</kbd> | **Pipe segment** (jq-aware) |
-{: .shortcuts }
-
-Pipe-segment treats `|` as a separator and acts on the segment under the cursor:
+The `|` text object treats each `|` in your query as a separator and acts on the segment under the cursor. This is especially useful in jq where you build queries by chaining pipe steps.
 
 <div class="io-pair">
   <div>
@@ -111,7 +88,7 @@ Pipe-segment treats `|` as a separator and acts on the segment under the cursor:
   </div>
 </div>
 
-`da|` also removes one adjacent pipe so the segment is gone cleanly:
+`da|` also removes one adjacent pipe so the step is gone cleanly:
 
 <div class="io-pair">
   <div>
@@ -125,10 +102,29 @@ Pipe-segment treats `|` as a separator and acts on the segment under the cursor:
   </div>
 </div>
 
-### NORMAL-mode shortcuts
+## Search for a character
+
+Jump to a specific character in the query:
+
+| Key | Jumps to |
+|---|---|
+| `f{c}` | Next occurrence of character `c` |
+| `F{c}` | Previous occurrence of character `c` |
+| `t{c}` | One before the next `c` |
+| `T{c}` | One after the previous `c` |
+| `;` | Repeat the last jump |
+| `,` | Repeat in the opposite direction |
+
+## Undo and redo
 
 | Key | Effect |
 |---|---|
-| <kbd>/</kbd> | Open results search |
-| <kbd>?</kbd> | Open help popup |
-{: .shortcuts }
+| `u` | Undo |
+| `Ctrl+r` | Redo |
+
+## Open search or help from NORMAL mode
+
+| Key | Effect |
+|---|---|
+| `/` | Open [search in results](./search) |
+| `?` | Open the help popup |

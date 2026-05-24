@@ -2,20 +2,21 @@
 title: Autocomplete
 parent: Features
 nav_order: 2
-description: Schema-aware field and function suggestions, with type hints and bracket-notation safety.
+description: Get field name and function suggestions as you type, drawn from your actual JSON.
 ---
 
 # Autocomplete
 
-Suggestions appear as you type. <kbd>Tab</kbd> accepts the highlighted entry.
+As you type a query, jiq shows a suggestion list below the input. Suggestions come from two sources: field names pulled directly from your loaded JSON, and jq's built-in functions.
 
-Five suggestion kinds, picked from cursor context:
+## Accept a suggestion
 
-- **Function** — jq builtins (`select`, `map`, `keys`, `to_entries`, `group_by`, `sort_by`, `unique_by`, `with_entries`, …). Inserts the open paren when the function takes arguments (`select(`).
-- **Field** — keys discovered in the actual JSON, with a JSON type hint (`String`, `Number`, `Boolean`, `Null`, `Object`, `Array`, `Array[String]`, …).
-- **Operator** — pipe and comparison tokens.
-- **Variable** — `$name` bindings declared earlier in the query (via `as $x`, `[$a, $b]`, `{k: $v}`) plus jq's built-ins `$ENV` and `$__loc__`.
-- **Iterator** — `[]` patterns in path-flow contexts.
+When the suggestion list appears:
+
+1. Use **↑** / **↓** to highlight the suggestion you want.
+2. Press **Tab** to insert it into the query.
+
+To dismiss the list without accepting anything, press **Esc**.
 
 <div class="tui-mockup with-title" data-title="Field suggestions after typing .users[0].">
 <pre>╭─ Input ───────────────────────────────────────╮
@@ -31,11 +32,21 @@ Five suggestion kinds, picked from cursor context:
   └──────────────────────────────────┘</pre>
 </div>
 
-Up to 10 entries visible at a time; longer lists scroll. Filter is case-insensitive substring match (variables are case-sensitive, like jq).
+## Understand what you're looking at
 
-## Schema-aware fields
+Each suggestion shows a type label on the right. These come from the actual values in your data — if a field holds a string, it says `String`; if it holds an array of strings, it says `Array[String]`.
 
-Field suggestions come from the value at the cursor's path in your loaded JSON. Walking deeper into the path narrows the list.
+Suggestion kinds:
+
+- **Field** — a key from your JSON, with its value type
+- **Function** — a jq built-in like `select`, `map`, `keys`, `group_by`. Functions that take arguments insert the opening parenthesis automatically (`select(`)
+- **Operator** — pipe and comparison tokens
+- **Variable** — `$name` bindings declared earlier in the query, plus jq's built-ins `$ENV` and `$__loc__`
+- **Iterator** — `[]` in path-flow contexts
+
+## Navigate deeper paths
+
+Field suggestions narrow as you type deeper into a path. Type `.users[0].profile.` and jiq shows only the fields inside `profile`.
 
 <div class="drill-chain">
   <div class="step">.</div>
@@ -47,54 +58,47 @@ Field suggestions come from the value at the cursor's path in your loaded JSON. 
   <div class="step active">.users[0].profile.</div>
 </div>
 
-For arrays whose elements have differing shapes, jiq samples up to `array_sample_size` elements (default 10, configurable) and unions their keys.
+Inside `to_entries` and `with_entries`, the suggestions automatically switch to `.key` and `.value`.
 
-Inside `to_entries` / `with_entries`, suggestions for entry access are `.key` and `.value`.
+## Handle unusual field names
 
-### Bracket notation
-
-jq's `.field` shorthand only accepts ASCII identifiers matching `[A-Za-z_][A-Za-z_0-9]*`. Anything else — CJK, emoji, accented Latin, hyphens, spaces, digit-start — is suggested in bracket form.
+jq's `.field` shorthand only works for simple ASCII names. If a field name contains hyphens, spaces, starts with a digit, or uses non-ASCII characters, jiq inserts it in bracket notation automatically.
 
 <div class="io-pair">
   <div>
-    <div class="io-label">Field name</div>
+    <div class="io-label">Field in your JSON</div>
     <div class="io-block">名前
 café
 my-field
-👋
 2nd</div>
   </div>
   <div class="io-arrow">→</div>
   <div>
-    <div class="io-label">Suggestion inserts</div>
+    <div class="io-label">What jiq inserts</div>
     <div class="io-block">.["名前"]
 .["café"]
 .["my-field"]
-.["👋"]
 .["2nd"]</div>
   </div>
 </div>
 
-Plain ASCII names insert as `.name` as expected.
+You don't need to think about this — jiq handles it for you.
 
-### Tuning
+## Tune suggestions for arrays with mixed shapes
 
-Bump `array_sample_size` in `~/.config/jiq/config.toml` for arrays that mix shapes:
+When your JSON has an array whose elements don't all have the same fields, jiq samples up to 10 elements to build the suggestion list. If that's not enough, increase the sample size in `~/.config/jiq/config.toml`:
 
 ```toml
 [autocomplete]
-array_sample_size = 25  # default 10, range 1–1000
+array_sample_size = 50   # default 10, range 1–1000
 ```
 
-See [Configuration](../configuration#autocomplete).
-
-## Shortcuts
-{: .shortcuts }
+## All keys
 
 | Key | Action |
 |---|---|
-| <kbd>Tab</kbd> | Accept the highlighted suggestion |
-| <kbd>↑</kbd> / <kbd>↓</kbd> | Navigate the list |
-| <kbd>Esc</kbd> | Close the popup |
+| `↑` / `↓` | Move through the list |
+| `Tab` | Accept the highlighted suggestion |
+| `Esc` | Close the list |
 | Mouse click | Highlight a suggestion |
-| Mouse double-click | Apply a suggestion |
+| Mouse double-click | Accept a suggestion |

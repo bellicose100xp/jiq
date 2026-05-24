@@ -2,38 +2,31 @@
 title: Query history
 parent: Features
 nav_order: 6
-description: Searchable, fuzzy-filterable history of every successful query, persisted across sessions.
+description: Go back to any query you've run before, without retyping it.
 ---
 
 # Query history
 
-Every query that produced output is saved across sessions. Up to 1000 entries, deduplicated, most recent first.
+Every query that produces output is saved automatically. jiq keeps up to 1,000 entries, deduplicated, most recent first. History persists across sessions — closing and reopening jiq doesn't clear it.
 
-## Where it's stored
+## Go back to the previous query
 
-| OS | Path |
-|---|---|
-| Linux | `~/.local/share/jiq/history` |
-| macOS | `~/Library/Application Support/jiq/history` |
-| Windows | `%APPDATA%\jiq\history` |
+Press **Ctrl+P** to step backward through recent queries, one at a time. The query input updates immediately and jiq re-runs it.
 
-One query per line. Saved automatically; no flag needed.
+Press **Ctrl+N** to step forward again.
 
-## Cycling without the popup
+This works without opening any popup — useful when you just want to get back one or two queries.
 
-From the input field, walk the history in place — no popup, no selection step.
+## Find a specific query from your history
 
-| Key | Action |
-|---|---|
-| <kbd>Ctrl</kbd>+<kbd>P</kbd> | Older query |
-| <kbd>Ctrl</kbd>+<kbd>N</kbd> | Newer query |
-{: .shortcuts }
+When you want to search further back:
 
-## The history popup
+1. Press **Ctrl+R** to open the history popup.
+2. Type any part of the query to filter the list.
+3. Use **↑** / **↓** to highlight the one you want.
+4. Press **Enter** or **Tab** to apply it.
 
-<kbd>Ctrl</kbd>+<kbd>R</kbd> opens a fuzzy-filterable list of recent queries.
-
-<div class="tui-mockup with-title" data-title="Ctrl+R — history popup">
+<div class="tui-mockup with-title" data-title="History popup — Ctrl+R">
 <pre>┌─ History ───────────────────────────────────────┐
 │ Filter: select                                  │
 │                                                 │
@@ -45,19 +38,34 @@ From the input field, walk the history in place — no popup, no selection step.
 └── Enter Apply · Ctrl+D Delete · Esc Close ─────┘</pre>
 </div>
 
-Type to filter. <kbd>Enter</kbd> or <kbd>Tab</kbd> applies the highlighted entry to the input and runs it. <kbd>Ctrl</kbd>+<kbd>D</kbd> removes the highlighted entry from disk. The popup closes when the last entry is deleted.
+## Delete a history entry
 
-Hovering a row reveals an `✕` on the right edge — click it to delete that row directly.
+To remove an entry you no longer want:
 
-## Shortcuts
+- In the popup, highlight it and press **Ctrl+D**.
+- Or hover over any row with the mouse — a `✕` button appears on the right. Click it to delete that entry.
+
+The popup closes automatically if you delete the last remaining entry.
+
+## Where history is stored
+
+| OS | File |
+|---|---|
+| Linux | `~/.local/share/jiq/history` |
+| macOS | `~/Library/Application Support/jiq/history` |
+| Windows | `%APPDATA%\jiq\history` |
+
+One query per line. You can edit or clear this file directly if needed.
+
+## All keys
 
 | Key | Action |
 |---|---|
-| <kbd>Ctrl</kbd>+<kbd>R</kbd> | Open the popup |
-| <kbd>↑</kbd> / <kbd>↓</kbd> | Move selection |
-| Type chars | Fuzzy filter |
-| <kbd>Enter</kbd> / <kbd>Tab</kbd> | Apply selection |
-| <kbd>Ctrl</kbd>+<kbd>D</kbd> | Delete selected |
-| Click `✕` | Delete hovered row |
-| <kbd>Esc</kbd> | Close |
-{: .shortcuts }
+| `Ctrl+P` | Go to the previous (older) query |
+| `Ctrl+N` | Go to the next (newer) query |
+| `Ctrl+R` | Open the history popup |
+| `↑` / `↓` | Move through the list |
+| Type | Filter the list |
+| `Enter` / `Tab` | Apply the selected query |
+| `Ctrl+D` | Delete the selected entry |
+| `Esc` | Close the popup |

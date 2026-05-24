@@ -2,29 +2,23 @@
 title: Snippet library
 parent: Features
 nav_order: 4
-description: Save and reuse jq queries across sessions, with fuzzy search.
+description: Save your most-used jq queries by name and apply them instantly.
 ---
 
 # Snippet library
 
-A persistent library of named jq queries. <kbd>Ctrl</kbd>+<kbd>S</kbd> opens it from anywhere.
+A snippet is a saved jq query with a name and an optional description. Use snippets for queries you run repeatedly — instead of retyping them or hunting through history.
 
-Stored as TOML at `~/.config/jiq/snippets.toml`. Each snippet has a name, a query, and an optional description.
+Snippets are stored as plain text at `~/.config/jiq/snippets.toml` and persist across sessions.
 
-```toml
-[[snippets]]
-name = "active-users"
-query = ".users[] | select(.active == true)"
-description = "Users where .active is true"
+## Apply a saved snippet
 
-[[snippets]]
-name = "by-name-asc"
-query = ".users | sort_by(.name)"
-```
+1. Press **Ctrl+S** to open the snippet library.
+2. Type any part of the name to filter the list.
+3. Use **↑** / **↓** to highlight the snippet you want.
+4. Press **Enter** to apply it.
 
-## Browse and apply
-
-<div class="tui-mockup with-title" data-title="Ctrl+S — snippet library">
+<div class="tui-mockup with-title" data-title="Snippet library — Ctrl+S">
 <pre>╭─ Snippets ─────────────────────────────────────╮
 │ Filter: act                                    │
 │                                                │
@@ -40,40 +34,71 @@ query = ".users | sort_by(.name)"
 ╰────────────────────────────────────────────────╯</pre>
 </div>
 
-Type any characters to filter — fuzzy match against names, ranked by score. <kbd>Enter</kbd> replaces the current query with the selected snippet's query and runs it.
+## Save the current query as a snippet
 
-## Create, edit, replace
+1. Press **Ctrl+S** to open the library.
+2. Press **Ctrl+N** to open the create form.
+3. Type a name for the snippet, then press **Tab** to move to the next field.
+4. The query field is pre-filled with your current input — edit if needed.
+5. Optionally add a description, then press **Enter** to save.
 
-| Action | Steps |
-|---|---|
-| **Save current query** | <kbd>Ctrl</kbd>+<kbd>S</kbd> → <kbd>Ctrl</kbd>+<kbd>N</kbd> → fill name / description → <kbd>Enter</kbd> |
-| **Edit a snippet** | <kbd>Ctrl</kbd>+<kbd>S</kbd> → highlight → <kbd>Ctrl</kbd>+<kbd>E</kbd> → step through fields with <kbd>Tab</kbd> → <kbd>Enter</kbd> |
-| **Replace a snippet's query with current input** | <kbd>Ctrl</kbd>+<kbd>S</kbd> → highlight → <kbd>Ctrl</kbd>+<kbd>R</kbd> → confirm |
-| **Delete** | <kbd>Ctrl</kbd>+<kbd>S</kbd> → highlight → <kbd>Ctrl</kbd>+<kbd>D</kbd> → confirm |
+## Edit a snippet
 
-In create / edit mode, <kbd>Tab</kbd> and <kbd>Shift</kbd>+<kbd>Tab</kbd> walk forward and back through the name → query → description fields. <kbd>Enter</kbd> saves; <kbd>Esc</kbd> cancels.
+1. Press **Ctrl+S** to open the library.
+2. Highlight the snippet you want to change.
+3. Press **Ctrl+E** to open the edit form.
+4. Use **Tab** / **Shift+Tab** to move between the name, query, and description fields.
+5. Press **Enter** to save your changes, or **Esc** to cancel.
 
-## Shortcuts
-{: .shortcuts }
+## Update a snippet's query to match your current input
 
-### Browse
+If you've refined a query and want to update the saved version:
+
+1. Press **Ctrl+S** to open the library.
+2. Highlight the snippet to update.
+3. Press **Ctrl+R** to replace its query with your current input.
+
+## Delete a snippet
+
+1. Press **Ctrl+S** to open the library.
+2. Highlight the snippet.
+3. Press **Ctrl+D** to delete it.
+
+## File format
+
+Snippets are stored as TOML. You can edit the file directly if you prefer:
+
+```toml
+[[snippets]]
+name        = "active-users"
+query       = ".users[] | select(.active == true)"
+description = "Users where .active is true"
+
+[[snippets]]
+name  = "by-name-asc"
+query = ".users | sort_by(.name)"
+```
+
+## All keys
+
+### In the library
 
 | Key | Action |
 |---|---|
-| <kbd>Ctrl</kbd>+<kbd>S</kbd> | Open / close |
-| <kbd>↑</kbd> / <kbd>↓</kbd> | Navigate |
-| Type chars | Fuzzy filter |
-| <kbd>Enter</kbd> | Apply |
-| <kbd>Ctrl</kbd>+<kbd>N</kbd> | New from current query |
-| <kbd>Ctrl</kbd>+<kbd>E</kbd> | Edit selected |
-| <kbd>Ctrl</kbd>+<kbd>R</kbd> | Replace selected query with current input |
-| <kbd>Ctrl</kbd>+<kbd>D</kbd> | Delete selected |
-| <kbd>Esc</kbd> | Close |
+| `Ctrl+S` | Open or close |
+| `↑` / `↓` | Move through the list |
+| Type | Filter by name |
+| `Enter` | Apply the selected snippet |
+| `Ctrl+N` | Create a new snippet from the current query |
+| `Ctrl+E` | Edit the selected snippet |
+| `Ctrl+R` | Replace the selected snippet's query with current input |
+| `Ctrl+D` | Delete the selected snippet |
+| `Esc` | Close |
 
-### Create / edit
+### In the create / edit form
 
 | Key | Action |
 |---|---|
-| <kbd>Tab</kbd> / <kbd>Shift</kbd>+<kbd>Tab</kbd> | Walk fields |
-| <kbd>Enter</kbd> | Save |
-| <kbd>Esc</kbd> | Cancel |
+| `Tab` / `Shift+Tab` | Move between fields |
+| `Enter` | Save |
+| `Esc` | Cancel |

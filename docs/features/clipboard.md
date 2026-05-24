@@ -2,24 +2,28 @@
 title: Clipboard & paste
 parent: Features
 nav_order: 8
-description: Three input paths — file, stdin, clipboard with paste-box fallback. Plus copy-out shortcuts.
+description: Load JSON from your clipboard, use the paste box when clipboard fails, and copy results out.
 ---
 
 # Clipboard & paste
 
-## Launch
+## Load JSON from your clipboard
+
+Run jiq with no arguments:
 
 ```bash
-jiq data.json          # 1. file
-... | jiq              # 2. piped stdin
-jiq                    # 3. clipboard, with paste-box fallback
+jiq
 ```
 
-With no file and no piped stdin, jiq reads from the clipboard. If the clipboard is empty, unreadable, or not valid JSON / JSONL, the **paste-recovery** view opens instead of failing.
+jiq reads your clipboard and loads whatever JSON it finds. You can then start querying immediately.
 
-The clipboard read tries the OS clipboard first; if that fails — typical for SSH sessions without X11/Wayland forwarding — it falls back to **OSC 52** with a 1-second timeout. OSC 52 picks up content copied inside the remote session (tmux selection, peer-app writes); host-clipboard contents usually don't round-trip because terminals refuse to forward those reads back through SSH.
+If your terminal is connected over SSH and the OS clipboard isn't available, jiq falls back to OSC 52 (a terminal protocol that works over SSH). This picks up content copied inside the remote terminal session.
 
-<div class="tui-mockup with-title" data-title="Paste-recovery view">
+## Use the paste box when the clipboard isn't available
+
+If jiq can't read the clipboard, or what it reads isn't valid JSON, the paste box opens automatically instead of failing.
+
+<div class="tui-mockup with-title" data-title="Paste box">
 <pre>┌─ No JSON loaded ─────────────────────────────┐
 │ Clipboard does not contain valid JSON.       │
 └──────────────────────────────────────────────┘
@@ -32,39 +36,41 @@ The clipboard read tries the OS clipboard first; if that fails — typical for S
 └── Esc Normal · Ctrl+X Clear · Enter Load ───┘</pre>
 </div>
 
-Paste with your terminal's normal shortcut. <kbd>Enter</kbd> validates and loads. On invalid input, the top block updates to `Invalid JSON: <detail>` and a red toast nudges your eye to the change.
+1. Paste your JSON with your terminal's paste shortcut.
+2. Press **Enter** to validate and load it.
 
-The textarea has every VIM binding the query input has — operators (`dd`, `cc`, `D`, `dw`), text objects (`ci"`, `da[`, `ci|`), char-search (`f`, `t`, `;`), undo/redo. `j` `k` `g` `G` move between lines.
+If the JSON is invalid, the top message updates to show the error. Fix it in the box and press **Enter** again.
+
+The paste box supports the same Vim editing as the query input — you can use `dd`, `ciw`, `da[`, undo, and so on to edit what you pasted.
 
 | Key | Action |
 |---|---|
-| <kbd>Enter</kbd> | Validate and load |
-| <kbd>Ctrl</kbd>+<kbd>X</kbd> | Clear the textarea |
-| <kbd>Esc</kbd> | Toggle Normal / Insert |
-| All VIM motions | Edit the paste |
-{: .shortcuts }
+| `Enter` | Validate and load |
+| `Ctrl+X` | Clear the textarea |
+| `Esc` | Toggle NORMAL / INSERT mode |
+| All Vim motions | Edit the pasted content |
 
-If your terminal doesn't forward bracketed paste (Cloud Desktop, plain tmux, mosh), pasted line breaks arrive as <kbd>Ctrl</kbd>+<kbd>J</kbd>; jiq intercepts those and inserts real newlines so the paste lands intact.
+## Copy the result out
 
-The paste cap is 16 MiB.
-
-## Copying out
+To copy jiq's output to your clipboard without exiting:
 
 | Key | What it copies |
 |---|---|
-| <kbd>Ctrl</kbd>+<kbd>Y</kbd> | Whatever is focused — query if input, results if results |
-| <kbd>Ctrl</kbd>+<kbd>O</kbd> | Results (regardless of focus) |
-| <kbd>yy</kbd> in NORMAL | Same as <kbd>Ctrl</kbd>+<kbd>Y</kbd> |
-{: .shortcuts }
+| `Ctrl+Y` | Whatever is focused — query if input, results if results pane |
+| `Ctrl+O` | The results, regardless of which pane is focused |
+| `yy` in NORMAL mode | Same as `Ctrl+Y` |
 
-In visual mode, <kbd>Ctrl</kbd>+<kbd>Y</kbd> / <kbd>Ctrl</kbd>+<kbd>O</kbd> copy only the selected lines.
+In visual selection mode, `Ctrl+Y` and `Ctrl+O` copy only the selected lines.
 
-The copy backend is configurable in `~/.config/jiq/config.toml`:
+## Configure the clipboard backend
 
 ```toml
+# ~/.config/jiq/config.toml
 [clipboard]
-# auto:    OS clipboard, fall back to OSC 52  (default)
-# system:  OS clipboard only
-# osc52:   OSC 52 only (best on remote SSH)
+# auto:    try OS clipboard first, fall back to OSC 52 (default)
+# system:  OS clipboard only — works on local terminals
+# osc52:   OSC 52 only — best for SSH sessions
 backend = "auto"
 ```
+
+Use `osc52` if you're always on SSH and the OS clipboard never works for you. Use `system` if you want to disable the OSC 52 fallback entirely.

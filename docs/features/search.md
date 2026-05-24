@@ -2,16 +2,20 @@
 title: Search in results
 parent: Features
 nav_order: 5
-description: Find and step through matches in the rendered result. Case-insensitive, full-text, with live highlight.
+description: Find a specific value in the rendered output and step through every match.
 ---
 
 # Search in results
 
-A case-insensitive substring search over the rendered result text. The search bar opens at the bottom of the results pane and runs on every keystroke.
+Use search when you're looking for a specific value in a large result. jiq highlights every match as you type and lets you jump between them with a single key.
 
-Open with <kbd>Ctrl</kbd>+<kbd>F</kbd> from anywhere, or <kbd>/</kbd> from the results pane. Close with <kbd>Esc</kbd>.
+## Open search
 
-<div class="tui-mockup with-title" data-title="Ctrl+F — search active">
+Press **Ctrl+F** from anywhere, or press **/** when the results pane is focused.
+
+A search bar appears at the bottom of the results pane.
+
+<div class="tui-mockup with-title" data-title="Search active — 2 of 7 matches">
 <pre>╭─ Results · 2/7 ─────────────────────────────────────╮
 │ [                                                    │
 │   {                                                  │
@@ -25,47 +29,41 @@ Open with <kbd>Ctrl</kbd>+<kbd>F</kbd> from anywhere, or <kbd>/</kbd> from the r
 ╰── Enter Next · N Prev · Esc Close ──────────────────╯</pre>
 </div>
 
-The match counter `2/7` shows where you are in the match list. The current match is brighter than the rest. As you type, the cursor scrolls to the first match; if there are no matches, the pane resets to the top.
+## Find and step through matches
 
-## Two modes
+1. Type your search term. jiq highlights every match in real time and scrolls to the first one. The counter in the title (`2/7`) shows your position.
+2. Press **Enter** to confirm the search and jump to the next match.
+3. Press **n** to move forward, **N** to move backward. Wraps around at the end.
 
-**Editing.** You're typing the query; matches re-compute on every keystroke. <kbd>Enter</kbd> or <kbd>Tab</kbd> confirms.
+Search is case-insensitive.
 
-**Confirmed.** <kbd>n</kbd> / <kbd>N</kbd> step through matches and wrap around. <kbd>Tab</kbd>, <kbd>Ctrl</kbd>+<kbd>F</kbd>, or <kbd>/</kbd> drops back to editing. All [results-pane navigation](./results-pane) (<kbd>j</kbd>, <kbd>k</kbd>, <kbd>g</kbd>, <kbd>G</kbd>, scroll, etc.) is delegated through.
+## Refine your search
 
-## Drill into a match
+To edit your search term after confirming it, press **Tab**, **Ctrl+F**, or **/** to return to editing mode.
 
-<kbd>&gt;</kbd>, <kbd>*</kbd>, and <kbd>}</kbd> while search is open act on the **current match's row** instead of the cursor row, and close the overlay on success. Search for a value, drill into it, keep going.
+## Drill into a matching row
 
-<div class="io-pair">
-  <div>
-    <div class="io-label">Search · current match on alice@</div>
-    <div class="io-block">.users
-"email": "alice@example.com"</div>
-  </div>
-  <div class="io-arrow">→</div>
-  <div>
-    <div class="io-label">After &gt;</div>
-    <div class="io-block">.users | .users[0].email
-"alice@example.com"</div>
-  </div>
-</div>
+With search open, you can drill into the row where a match lives — the same as drilling from the results pane normally.
 
-See [Results pane](./results-pane#drill-chords) for the full chord set.
+1. Step to the match you want with **n** / **N**.
+2. Press **`>`** to filter down to that value.
 
-## Shortcuts
+jiq applies the drill to the matched row and closes the search overlay.
+
+## Close search
+
+Press **Esc** to close the search bar and clear highlights.
+
+## All keys
 
 | Key | Action |
 |---|---|
-| <kbd>Ctrl</kbd>+<kbd>F</kbd> | Open search (any pane) |
-| <kbd>/</kbd> | Open search (from results pane) |
-| <kbd>Enter</kbd> / <kbd>Tab</kbd> | Confirm; jump to current match |
-| <kbd>n</kbd> / <kbd>Enter</kbd> | Next match |
-| <kbd>N</kbd> / <kbd>Shift</kbd>+<kbd>Enter</kbd> | Previous match |
-| <kbd>Tab</kbd> (confirmed) | Back to editing |
-| <kbd>Ctrl</kbd>+<kbd>F</kbd> / <kbd>/</kbd> (confirmed) | Back to editing |
-| <kbd>&gt;</kbd> <kbd>*</kbd> <kbd>}</kbd> | Drill into current match's row |
-| <kbd>&lt;</kbd> <kbd>^</kbd> | Drill back / parent (no overlay close) |
-| <kbd>Esc</kbd> | Close search |
-
-{: .shortcuts }
+| `Ctrl+F` | Open search from any pane |
+| `/` | Open search from results pane or NORMAL input |
+| Type | Filter matches in real time |
+| `Enter` | Confirm and jump to next match |
+| `n` / `Enter` | Next match |
+| `N` / `Shift+Enter` | Previous match |
+| `Tab` | Return to editing the search term |
+| `>` `*` `}` | Drill into the current match's row |
+| `Esc` | Close search |

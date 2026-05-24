@@ -2,76 +2,44 @@
 title: Mouse
 parent: Features
 nav_order: 7
-description: Click to focus, scroll any pane, drag-select in results, click suggestions and history rows.
+description: Use the mouse to focus panes, scroll, select output lines, and apply suggestions.
 ---
 
 # Mouse
 
-Every pane responds to the mouse. Wheel scrolls the pane under the cursor; left-click focuses or selects.
+Every pane in jiq responds to the mouse. You can use the keyboard and mouse together freely — switching between them at any point.
 
-## Per-pane behavior
+## Focus a pane
 
-### Input field
+Click anywhere inside a pane to give it focus. When the input field gains focus this way, it switches to INSERT mode.
 
-- **Click** when unfocused: takes focus, switches to INSERT mode.
-- **Click** when focused: positions the text cursor at the click column.
-- **Wheel**: horizontal scroll through the query.
+## Scroll any pane
 
-### Results pane
+Roll the mouse wheel over any pane to scroll it — the results pane, a popup, the help panel. You don't need to click first; the pane under the cursor scrolls regardless of which pane has focus.
 
-- **Click**: focuses the pane and moves the row cursor to the clicked line. If a search is active and unconfirmed, the click also confirms it.
-- **Drag** while in visual mode (<kbd>v</kbd> / <kbd>V</kbd>): extends the selection to the row under the mouse.
-- **Wheel**: scrolls the pane by 3 lines.
+## Select lines in the results
 
-### AI popup
+To select a range of output lines with the mouse:
 
-- **Click a suggestion**: applies it in one step.
-- **Wheel**: scrolls the suggestions.
+1. Press **v** to enter visual selection mode.
+2. Click and drag across the lines you want.
+3. Press **y** to copy them to your clipboard.
 
-### Snippet list
+## Apply a suggestion or history entry
 
-- **Click a row**: selects it (apply still needs <kbd>Enter</kbd>).
-- **Wheel**: scrolls the list.
+- **AI popup** — click a suggestion to apply it immediately.
+- **History popup** — click an entry to apply it and close the popup.
+- **Snippet list** — click a row to highlight it; press **Enter** to apply.
+- **Autocomplete dropdown** — double-click to accept. (Single click only highlights.)
 
-### Autocomplete dropdown
+## Delete a history entry with the mouse
 
-- **Wheel**: scrolls the suggestions. (No click handler — accept with <kbd>Tab</kbd>.)
+Hover over any row in the history popup. A `✕` button appears on the right edge. Click it to delete that entry.
 
-### History popup
+## Navigate the help popup
 
-- **Click a row**: applies that query and closes the popup.
-- **Click `✕`** on a hovered row: deletes that entry from history.
-- **Wheel**: scrolls the list.
+Click any tab at the top of the help popup to switch to it. Click outside the popup to close it.
 
-### Help popup
+## Position the cursor in the input
 
-- **Click a tab in the tab bar**: switches sections.
-- **Wheel**: scrolls the active section.
-- **Click outside the popup**: closes it.
-
-### Search bar
-
-- **Click** while a confirmed search is active: returns to edit mode so you can refine the pattern.
-
-## Hover
-
-Hovering changes which row jiq considers "active":
-
-- Results pane: highlights the row under the cursor.
-- AI / snippet / help popups: visually previews the row under the cursor.
-- History popup: reveals the `✕` delete button on the hovered row.
-
-## Shortcuts
-
-| Action | Mouse |
-|---|---|
-| Focus a pane | Left-click anywhere inside it |
-| Position cursor in input | Click while input is focused |
-| Move row cursor in results | Click on any line |
-| Scroll | Wheel up / down |
-| Drag-select in results | <kbd>v</kbd> first, then click + drag |
-| Apply AI suggestion | Click the suggestion |
-| Apply history entry | Click the entry |
-| Delete history entry | Click `✕` on the hovered row |
-| Switch help tab | Click the tab |
-{: .shortcuts }
+When the input field is already focused, clicking inside it moves the text cursor to the character at that position.
