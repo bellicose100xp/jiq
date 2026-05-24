@@ -38,21 +38,3 @@ Open a [GitHub issue](https://github.com/bellicose100xp/jiq/issues/new) with:
   ```
 
 - **Clipboard over SSH**: OSC 52 read works on modern terminals (Ghostty, kitty, WezTerm, foot) for content copied inside the session. Host-workstation copies don't round-trip.
-
-## Common questions
-
-### Pressed Enter, got no output
-
-jiq writes filtered JSON to **stdout** after the TUI tears down. If piping (`| jiq | wc -l`), confirm the downstream command reads stdout.
-
-### Clear query history
-
-Delete the on-disk file:
-
-| OS | Path |
-|:---|:---|
-| Linux | `~/.local/share/jiq/history` |
-| macOS | `~/Library/Application Support/jiq/history` |
-| Windows | `%APPDATA%\jiq\history` |
-
-Or use <kbd>Ctrl</kbd>+<kbd>D</kbd> in the history popup. See [Query history](./features/history).

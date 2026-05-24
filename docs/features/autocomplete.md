@@ -53,7 +53,7 @@ For arrays whose elements have differing shapes, jiq samples up to `array_sample
 
 Inside `to_entries` / `with_entries`, suggestions for entry access are `.key` and `.value`.
 
-## Bracket notation, automatically
+### Bracket notation
 
 jq's `.field` shorthand only accepts ASCII identifiers matching `[A-Za-z_][A-Za-z_0-9]*`. Anything else — CJK, emoji, accented Latin, hyphens, spaces, digit-start — is suggested in bracket form.
 
@@ -79,6 +79,17 @@ my-field
 
 Plain ASCII names insert as `.name` as expected.
 
+### Tuning
+
+Bump `array_sample_size` in `~/.config/jiq/config.toml` for arrays that mix shapes:
+
+```toml
+[autocomplete]
+array_sample_size = 25  # default 10, range 1–1000
+```
+
+See [Configuration](../configuration#autocomplete).
+
 ## Shortcuts
 {: .shortcuts }
 
@@ -89,14 +100,3 @@ Plain ASCII names insert as `.name` as expected.
 | <kbd>Esc</kbd> | Close the popup |
 | Mouse click | Highlight a suggestion |
 | Mouse double-click | Apply a suggestion |
-
-## Tuning
-
-Bump `array_sample_size` in `~/.config/jiq/config.toml` for arrays that mix shapes:
-
-```toml
-[autocomplete]
-array_sample_size = 25  # default 10, range 1–1000
-```
-
-See [Configuration](../configuration#autocomplete).

@@ -31,7 +31,7 @@ Functions take priority over operators. Move the cursor off the function or oper
 
 ## Error overlay — <kbd>Ctrl</kbd>+<kbd>E</kbd>
 
-When the current query fails, the input border turns red and the title shows `Syntax Error`. The full jq error stays hidden until you press <kbd>Ctrl</kbd>+<kbd>E</kbd>.
+When the current query fails, the input border turns red and the title shows `Syntax Error`. The full jq error stays hidden until you press <kbd>Ctrl</kbd>+<kbd>E</kbd>. <kbd>Ctrl</kbd>+<kbd>E</kbd> only toggles when the current query has an error; otherwise it's a no-op.
 
 <div class="tui-mockup">
 <pre>┌─ Error ─────────────────────────────────┐

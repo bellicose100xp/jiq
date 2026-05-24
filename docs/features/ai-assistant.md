@@ -15,8 +15,6 @@ Three suggestion modes, picked from current state:
 - `optimize` — when the query is valid; proposes shorter or clearer alternatives.
 - `next` — follow-up queries based on the result shape (filter, sort, project a subset, …).
 
-## What it looks like
-
 <div class="tui-mockup with-title" data-title="Ctrl+A — AI assistant">
 <pre>╭─ AI Assistant ─────────────────────────────────────╮
 │ Query: show active users with their emails         │

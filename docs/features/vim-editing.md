@@ -18,7 +18,9 @@ The query input has two modes: **INSERT** (default, cyan border) and **NORMAL** 
 | <kbd>A</kbd> | NORMAL → INSERT at line end |
 {: .shortcuts }
 
-## Motion
+## Keys
+
+### Motion
 
 | Key | Move to |
 |---|---|
@@ -30,7 +32,7 @@ The query input has two modes: **INSERT** (default, cyan border) and **NORMAL** 
 | <kbd>e</kbd> | Word end |
 {: .shortcuts }
 
-## Character search
+### Character search
 
 | Key | Effect |
 |---|---|
@@ -42,7 +44,7 @@ The query input has two modes: **INSERT** (default, cyan border) and **NORMAL** 
 | <kbd>,</kbd> | Repeat in opposite direction |
 {: .shortcuts }
 
-## Edit
+### Edit
 
 | Key | Effect |
 |---|---|
@@ -55,7 +57,7 @@ The query input has two modes: **INSERT** (default, cyan border) and **NORMAL** 
 | <kbd>yy</kbd> | Yank line to clipboard |
 {: .shortcuts }
 
-## Operator + motion
+### Operator + motion
 
 <kbd>d</kbd> deletes, <kbd>c</kbd> changes (delete + INSERT). Both accept any motion or character search:
 
@@ -68,7 +70,7 @@ The query input has two modes: **INSERT** (default, cyan border) and **NORMAL** 
 | <kbd>c</kbd><kbd>w</kbd> <kbd>c</kbd><kbd>$</kbd> <kbd>c</kbd><kbd>c</kbd> | Change variants of the above |
 {: .shortcuts }
 
-## Text objects
+### Text objects
 
 <kbd>d</kbd><kbd>i</kbd>{t} deletes inside, <kbd>d</kbd><kbd>a</kbd>{t} deletes around (including delimiters). <kbd>c</kbd><kbd>i</kbd> / <kbd>c</kbd><kbd>a</kbd> are the change variants.
 
@@ -82,7 +84,7 @@ The query input has two modes: **INSERT** (default, cyan border) and **NORMAL** 
 | <kbd>\|</kbd> | **Pipe segment** (jq-aware) |
 {: .shortcuts }
 
-The pipe-segment object is unique to jiq. It treats `|` as a separator and acts on the segment under the cursor:
+Pipe-segment treats `|` as a separator and acts on the segment under the cursor:
 
 <div class="io-pair">
   <div>
@@ -110,12 +112,10 @@ The pipe-segment object is unique to jiq. It treats `|` as a separator and acts 
   </div>
 </div>
 
-## NORMAL-mode shortcuts
+### NORMAL-mode shortcuts
 
 | Key | Effect |
 |---|---|
 | <kbd>/</kbd> | Open results search |
 | <kbd>?</kbd> | Open help popup |
 {: .shortcuts }
-
-Every edit re-runs the query immediately.

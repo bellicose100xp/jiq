@@ -51,7 +51,7 @@ The match counter `2/7` shows where you are in the match list. The current match
   </div>
 </div>
 
-See [path-at-cursor](./path-at-cursor) for the full chord set.
+See [Results pane](./results-pane#drill-chords) for the full chord set.
 
 ## Shortcuts
 

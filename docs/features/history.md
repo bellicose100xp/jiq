@@ -34,15 +34,15 @@ From the input field, walk the history in place — no popup, no selection step.
 <kbd>Ctrl</kbd>+<kbd>R</kbd> opens a fuzzy-filterable list of recent queries.
 
 <div class="tui-mockup with-title" data-title="Ctrl+R — history popup">
-<pre>┌─ History ──────────────────────────────────────────────────┐
-│ Filter: select                                             │
-│                                                            │
-│ ▸ .users[] | select(.active == true)                  ✕    │
-│   .events[] | select(.type == "click") | length            │
-│   .data | map(select(.tier == "gold"))                     │
-│   .items[] | select(.price &gt; 100) | .name                  │
-│                                                            │
-└── Enter Apply · Ctrl+D Delete · Esc Close ────────────────┘</pre>
+<pre>┌─ History ───────────────────────────────────────┐
+│ Filter: select                                  │
+│                                                 │
+│ ▸ .users[] | select(.active)             ✕      │
+│   .events[] | select(.type == "click")          │
+│   .data | map(select(.tier == "gold"))          │
+│   .items[] | select(.price &gt; 100)               │
+│                                                 │
+└── Enter Apply · Ctrl+D Delete · Esc Close ─────┘</pre>
 </div>
 
 Type to filter. <kbd>Enter</kbd> or <kbd>Tab</kbd> applies the highlighted entry to the input and runs it. <kbd>Ctrl</kbd>+<kbd>D</kbd> removes the highlighted entry from disk. The popup closes when the last entry is deleted.

@@ -10,13 +10,7 @@ description: config.toml reference — clipboard backend, autocomplete depth, AI
 
 ## Location
 
-Optional. Defaults are reasonable; only AI requires config.
-
-| OS | Path |
-|:---|:---|
-| Linux | `~/.config/jiq/config.toml` |
-| macOS | `~/Library/Application Support/jiq/config.toml` |
-| Windows | `%APPDATA%\jiq\config.toml` |
+Path: `~/.config/jiq/config.toml` (all platforms). Optional — defaults are reasonable; only AI requires config.
 
 ## Clipboard
 
@@ -40,13 +34,22 @@ array_sample_size = 10
 
 For heterogeneous arrays, increase to union more keys (range: 1–1000).
 
+## Tooltip
+
+```toml
+[tooltip]
+auto_show = true
+```
+
+When `true` (default), the function tooltip appears automatically as the cursor lands on a known jq function. Set to `false` to require <kbd>Ctrl</kbd>+<kbd>T</kbd> to open it.
+
 ## AI
 
 ```toml
 [ai]
 enabled            = true
 provider           = "anthropic"   # "openai" | "gemini" | "bedrock"
-max_context_length = 100000
+max_context_length = 100000        # characters of schema/sample context
 ```
 
 | Provider | Recommended model |
@@ -54,6 +57,7 @@ max_context_length = 100000
 | Anthropic | `claude-haiku-4-5-20251001` |
 | OpenAI | `gpt-4o-mini` |
 | Gemini | `gemini-3-flash` |
+| Bedrock | `global.anthropic.claude-haiku-4-5-20251001-v1:0` |
 
 See [AI assistant](./features/ai-assistant) for per-provider config.
 

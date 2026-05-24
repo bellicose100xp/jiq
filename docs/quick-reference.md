@@ -9,13 +9,6 @@ description: One-page cheat sheet of every jiq keybind, grouped by mode and pane
 Click any feature header for the deep-dive.
 {: .fs-5 .fw-300 }
 
-<details open markdown="block">
-  <summary>On this page</summary>
-  {: .text-delta }
-- TOC
-{: toc }
-</details>
-
 ## Global
 
 | Key | Action |
@@ -163,7 +156,7 @@ Focus with <kbd>Shift</kbd>+<kbd>Tab</kbd> or click.
 
 {: .shortcuts }
 
-### [Path-at-cursor chords](./features/path-at-cursor)
+### [Drill chords](./features/results-pane#drill-chords)
 
 | Key | Action |
 |:---|:---|

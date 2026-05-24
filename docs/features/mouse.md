@@ -23,12 +23,19 @@ Every pane responds to the mouse. Wheel scrolls the pane under the cursor; left-
 - **Drag** while in visual mode (<kbd>v</kbd> / <kbd>V</kbd>): extends the selection to the row under the mouse.
 - **Wheel**: scrolls the pane by 3 lines.
 
-### Autocomplete dropdown, AI popup, snippet list
+### AI popup
 
-- **Click a row**: selects that suggestion / item.
+- **Click a suggestion**: applies it in one step.
+- **Wheel**: scrolls the suggestions.
+
+### Snippet list
+
+- **Click a row**: selects it (apply still needs <kbd>Enter</kbd>).
 - **Wheel**: scrolls the list.
 
-For AI suggestions, clicking a row both selects and applies it.
+### Autocomplete dropdown
+
+- **Wheel**: scrolls the suggestions. (No click handler — accept with <kbd>Tab</kbd>.)
 
 ### History popup
 

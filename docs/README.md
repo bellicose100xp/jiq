@@ -18,7 +18,7 @@ bundle exec jekyll serve --livereload
 - `_config.yml` — Jekyll + theme configuration.
 - `index.md` — landing page.
 - `getting-started.md`, `quick-reference.md`, `configuration.md`, `troubleshooting.md`, `changelog.md` — top-level pages.
-- `features/` — one page per feature (path-at-cursor, autocomplete, AI, snippets, search, history, mouse, clipboard, VIM editing, results pane, tooltip).
+- `features/` — one page per feature (results pane, autocomplete, AI, snippets, search, history, mouse, clipboard, VIM editing, tooltip).
 - `_sass/custom/custom.scss` — site-specific styling (TUI mockups, IO blocks, keybind chips, drill chains).
 
 ## Editing rules

@@ -14,7 +14,7 @@ permalink: /
 
 ---
 
-## Install
+## Quick start
 
 ```bash
 brew install bellicose100xp/tap/jiq
@@ -24,20 +24,18 @@ cargo install jiq
 curl --proto '=https' --tlsv1.2 -LsSf https://github.com/bellicose100xp/jiq/releases/latest/download/jiq-installer.sh | sh
 ```
 
-## Run
-
 ```bash
 jiq data.json              # from a file
 curl -s api/data | jiq     # from stdin
 jiq                        # from clipboard, with paste-box fallback
 ```
 
-## What it does
+## Features
 
 ![jiq demo](https://raw.githubusercontent.com/bellicose100xp/assets/refs/heads/main/jiq/jiq-demo-v3.20.gif)
 
 <ul class="feature-list" markdown="0">
-  <li><a href="./features/path-at-cursor/">Path-at-cursor</a> <span class="desc">— drill in / step back with <code>&gt;</code> <code>&lt;</code> <code>*</code> <code>^</code> <code>}</code></span></li>
+  <li><a href="./features/results-pane/">Results pane</a> <span class="desc">— cursor, drill chords <code>&gt;</code> <code>&lt;</code> <code>*</code> <code>^</code> <code>}</code>, visual selection</span></li>
   <li><a href="./features/autocomplete/">Autocomplete</a> <span class="desc">— schema-aware, with type hints</span></li>
   <li><a href="./features/ai-assistant/">AI assistant</a> <span class="desc">— Claude, GPT, Gemini, Bedrock, or local models</span></li>
   <li><a href="./features/snippets/">Snippets</a> <span class="desc">— save and reuse jq queries</span></li>

@@ -7,7 +7,7 @@ description: Three input paths — file, stdin, clipboard with paste-box fallbac
 
 # Clipboard & paste
 
-## Input paths
+## Launch
 
 ```bash
 jiq data.json          # 1. file
@@ -19,19 +19,17 @@ With no file and no piped stdin, jiq reads from the clipboard. If the clipboard 
 
 The clipboard read tries the OS clipboard first; if that fails — typical for SSH sessions without X11/Wayland forwarding — it falls back to **OSC 52** with a 1-second timeout. OSC 52 picks up content copied inside the remote session (tmux selection, peer-app writes); host-clipboard contents usually don't round-trip because terminals refuse to forward those reads back through SSH.
 
-## Paste recovery
-
 <div class="tui-mockup with-title" data-title="Paste-recovery view">
-<pre>┌─ No JSON loaded ───────────────────────────────────────────┐
-│ Clipboard does not contain valid JSON.                     │
-└────────────────────────────────────────────────────────────┘
-┌─ Paste here, then Enter ───────────────────────────────────┐
-│ {                                                          │
-│   "users": [                                               │
-│     { "name": "alice", "active": true }                    │
-│   ]                                                        │
-│ }                                                          │
-└── Esc Normal · Ctrl+X Clear · Enter Load ─────────────────┘</pre>
+<pre>┌─ No JSON loaded ─────────────────────────────┐
+│ Clipboard does not contain valid JSON.       │
+└──────────────────────────────────────────────┘
+┌─ Paste here, then Enter ─────────────────────┐
+│ {                                            │
+│   "users": [                                 │
+│     { "name": "alice", "active": true }      │
+│   ]                                          │
+│ }                                            │
+└── Esc Normal · Ctrl+X Clear · Enter Load ───┘</pre>
 </div>
 
 Paste with your terminal's normal shortcut. <kbd>Enter</kbd> validates and loads. On invalid input, the top block updates to `Invalid JSON: <detail>` and a red toast nudges your eye to the change.
