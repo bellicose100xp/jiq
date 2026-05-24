@@ -6,6 +6,8 @@
 [![Crates.io](https://img.shields.io/crates/v/jiq)](https://crates.io/crates/jiq)
 [![License](https://img.shields.io/crates/l/jiq)](LICENSE-MIT)
 
+📖 **[Documentation site →](https://bellicose100xp.github.io/jiq/)** — feature guides, visuals, and a [quick-reference cheat sheet](https://bellicose100xp.github.io/jiq/quick-reference).
+
 ## Features
 
 - **Path-at-cursor + structural navigation** - Live jq path of the value under the cursor in the results pane; press `>` to go to that value, `<` to step back, `*` to iterate over the nearest array, `^` to step up one level in the typed query, `}` to wrap the cursor's leaf as a single-entry object. All chords just rewrite the query so the existing async pipeline picks them up. Works in search mode too, where `>` `*` `}` operate on the current match.

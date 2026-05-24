@@ -21,6 +21,21 @@ Execute in order:
 
 All checks must pass before staging files.
 
+## Documentation Site
+
+The user-facing documentation site lives in `docs/` (Jekyll + just-the-docs, served by GitHub Pages from this directory on `main` at <https://bellicose100xp.github.io/jiq/>). It is the canonical reference — README is the elevator pitch.
+
+**Whenever a change touches a user-visible feature, shortcut, or configuration option, the docs MUST be updated in the same change set:**
+
+- New / changed feature → update or add the relevant page under `docs/features/` and refresh the [Quick reference](docs/quick-reference.md).
+- New / changed shortcut → update both the per-feature page and `docs/quick-reference.md`.
+- New / changed config option → update `docs/configuration.md`.
+- Behavior change worth a callout → consider updating `docs/troubleshooting.md` if it's a likely user pitfall.
+
+The `jiq-release` skill has an explicit "Update docs" step before the version bump, but doc updates should not be deferred to release time — keep them in sync with the code change. Bug fixes, internal refactors, and performance work do not require doc updates unless they change observable behavior.
+
+When adding visuals, prefer inline SVG / HTML mockups over external images — the site is meant to stay self-contained. Custom helpers (`.tui-mockup`, `.io-pair`, `.drill-chain`, `.feature-grid`, `.shortcuts`, `<kbd>`) are defined in `docs/_sass/custom/custom.scss`.
+
 ## Releasing a Change
 
 Whenever the user asks to release, ship, or publish a change — for example "release the change", "release patch", "release minor", "release major", "ship jiq", "publish a new version", "tag a release" — invoke the **`jiq-release`** skill (project-local, in `.claude/skills/jiq-release/SKILL.md`). It drives the full flow end-to-end: branch, PR, CI, squash-merge, version bump, tag, `cargo publish`, and Homebrew tap update.

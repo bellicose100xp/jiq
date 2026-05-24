@@ -27,6 +27,7 @@ If no argument is passed, infer from the change set per step 6. If `major` is re
 - Major version bump: **never** without explicit user authorization. Reserved for breaking changes.
 - The user deletes remote feature branches manually — do **not** pass `--delete-branch=true` on merge, and remind the user at the end.
 - README is kept compact: edit it only for user-visible feature/shortcut changes. Bug fixes, refactors, performance, polish → README untouched.
+- **Docs site (`docs/`) is the canonical user-facing reference and must stay in sync with every release.** For any user-visible feature, shortcut, or config change, update the relevant `docs/features/*.md` page **and** `docs/quick-reference.md` **and** `docs/configuration.md` (when applicable). The changelog page `docs/changelog.md` is mirrored from `CHANGELOG.md` on every release (step 7a). Bug fixes / internal refactors → docs untouched (same rule as README).
 
 ---
 
@@ -106,9 +107,33 @@ Under `## [Unreleased]`, add:
 
 Match the prose voice of recent entries — concrete, specific, no hedging. Link the PR.
 
-## 8. Update `README.md` (conditional)
+## 7a. Mirror `CHANGELOG.md` to `docs/changelog.md` (always)
 
-Only when the change adds, removes, or modifies a **user-visible feature or keyboard shortcut**. Otherwise leave `README.md` untouched.
+The docs site has a `docs/changelog.md` page that mirrors the repo's `CHANGELOG.md`. Refresh it on every release so the site stays current:
+
+```sh
+{
+  printf -- '---\ntitle: Changelog\nnav_order: 7\ndescription: Release history, mirrored from CHANGELOG.md in the repo.\n---\n\n# Changelog\n{: .no_toc }\n\nThis page mirrors [`CHANGELOG.md`](https://github.com/bellicose100xp/jiq/blob/main/CHANGELOG.md) in the repository. The release skill keeps the two in sync — every release writes its entry here as well.\n\n'
+  tail -n +2 CHANGELOG.md
+} > docs/changelog.md
+```
+
+(`tail -n +2` strips the top `# Changelog` heading from the source so the docs page heading isn't duplicated.)
+
+## 8. Update `README.md` and `docs/` (conditional)
+
+Only when the change adds, removes, or modifies a **user-visible feature, keyboard shortcut, or config option**. Bug fixes / internal refactors / perf / polish → leave both untouched.
+
+When updating, both surfaces must move together:
+
+| Change kind | README | `docs/features/<page>.md` | `docs/quick-reference.md` | `docs/configuration.md` |
+|---|---|---|---|---|
+| New feature | yes | yes (new or existing page) | yes | only if it adds a config key |
+| New shortcut on existing feature | yes | yes (the page that owns it) | yes | no |
+| Config-only change | no | only if it changes a feature's behavior | no | yes |
+| Behavior tweak users can hit | conditional | yes | only if a key changed | no |
+
+Style: match the prose voice of existing pages — concrete, specific, no hedging. For any new feature page, use the same scaffolding as existing ones (front matter with `parent: Features`, `.io-pair` / `.tui-mockup` / `.shortcuts` helpers from `_sass/custom/custom.scss`, and a closing shortcut table).
 
 ## 9. Bump `Cargo.toml` and rebuild
 
@@ -126,8 +151,9 @@ grep -A1 '^name = "jiq"$' Cargo.lock
 ## 10. Commit + push to main
 
 ```sh
-git add CHANGELOG.md Cargo.toml Cargo.lock
+git add CHANGELOG.md Cargo.toml Cargo.lock docs/changelog.md
 # add README.md only if you changed it
+# add any docs/features/*.md, docs/quick-reference.md, docs/configuration.md you changed
 git commit -m "release vX.Y.Z"
 git push origin main
 ```
