@@ -158,6 +158,30 @@ git commit -m "release vX.Y.Z"
 git push origin main
 ```
 
+## 10a. Verify the GitHub Pages docs build
+
+The push to `main` triggers the `pages-build-deployment` workflow. Confirm it goes green before tagging — a broken docs site is just as bad as a broken release.
+
+```sh
+gh run list --workflow=pages-build-deployment --limit 1
+# wait for the latest run, then
+gh run watch <RUN_ID> --exit-status
+```
+
+If it fails, fetch the SASS / Liquid / Markdown error from the log:
+
+```sh
+gh run view <RUN_ID> --log 2>&1 | grep -E "Conversion error|SyntaxError|Liquid|UnitConversion|Incompatible units" | head -20
+```
+
+Common failure modes:
+
+- **`Incompatible units: 'rem' and 'px'`** — A variable in `docs/_sass/color_schemes/jiq.scss` (e.g. `$nav-list-item-height`) is in `px` but just-the-docs does math against it in `rem`. Fix: convert the value to `rem`.
+- **`Liquid syntax error`** — A `{{ }}` or `{% %}` slipped into a Markdown code block without escaping. Fix: wrap in `{% raw %}…{% endraw %}` or escape the braces.
+- **`undefined variable`** in SCSS — A just-the-docs variable name changed; check the [theme defaults](https://github.com/just-the-docs/just-the-docs/blob/main/_sass/support/_variables.scss).
+
+Fix locally, commit, push, re-run the watch. Do **not** tag until Pages is green.
+
 ## 11. Tag + push tag
 
 Existing tags are **lightweight** (verify once with `git cat-file -t v3.23.1` → `commit`). Match that:
