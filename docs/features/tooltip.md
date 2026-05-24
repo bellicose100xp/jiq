@@ -2,111 +2,63 @@
 title: Tooltip & overlays
 parent: Features
 nav_order: 11
-description: Quick-reference function tooltip, syntax error overlay, and the help popup with full keybind reference.
+description: Function tooltip, error overlay, and the help popup.
 ---
 
 # Tooltip & overlays
-{: .no_toc }
 
-Three overlays without leaving the query input: an inline function reference, full syntax-error detail, and the in-app keybind cheat sheet.
+Three popups anchored to the input.
 
-<details open markdown="block">
-<summary>Table of contents</summary>
+## Function tooltip — <kbd>Ctrl</kbd>+<kbd>T</kbd>
 
-1. TOC
-{:toc}
+When the cursor is on a jq function or operator, jiq shows the signature, a short description, and example uses. Toggling <kbd>Ctrl</kbd>+<kbd>T</kbd> turns auto-show on or off.
 
-</details>
+<div class="tui-mockup">
+<pre>Query: .users | map(.name)
+                     ^ cursor
 
----
-
-## Function tooltip
-
-With the cursor on a jq function name (`select`, `map`, `to_entries`, `group_by`, `sort_by`, etc.), <kbd>Ctrl</kbd>+<kbd>T</kbd> opens a card with the function's signature and a usage example.
-
-<div class="tui-mockup" markdown="0">
-<pre>
-╭─ Input · INSERT ─────────────────────────────────────────╮
-│ .users[] | select(.active)                               │
-╰─────────────────────────────────────────────────────────╯
-┌─ select ─────────────────────────────────────────────────┐
-│ select(filter)                                           │
-│   Pass through values where filter is truthy.            │
-│                                                          │
-│ Example:                                                 │
-│   .[] | select(.age > 18)                                │
-│                                                          │
-│ Ctrl+T to close                                          │
-└──────────────────────────────────────────────────────────┘
+  ┌─ map ─────────────────────────────────┐
+  │ map(f)  apply f to each array element │
+  │                                       │
+  │ Examples:                             │
+  │   .users | map(.name)                 │
+  │   .nums | map(. * 2)                  │
+  └───────────────────────────────────────┘
 </pre>
 </div>
 
-Toggles off on the next <kbd>Ctrl</kbd>+<kbd>T</kbd> or when the cursor moves off the function name. Only triggers on recognized jq builtins.
+Functions take priority over operators. Move the cursor off the function or operator and the tooltip dismisses.
 
----
+## Error overlay — <kbd>Ctrl</kbd>+<kbd>E</kbd>
 
-## Error overlay
+When the current query fails, the input border turns red and the title shows `Syntax Error`. The full jq error stays hidden until you press <kbd>Ctrl</kbd>+<kbd>E</kbd>.
 
-A syntax error turns the input border red and shows `⚠ Syntax Error` in the title bar. For the full jq error message with column and reason, press <kbd>Ctrl</kbd>+<kbd>E</kbd>.
-
-<div class="tui-mockup" markdown="0">
-<pre>
-╭─ Input · INSERT · ⚠ Syntax Error ────────────────────────╮ (red border)
-│ .users[] | select(.active                                │
-╰─────────────────────────────────────────────────────────╯
-┌─ Error ─────────────────────────────────────────────────┐
-│ jq: error: syntax error, unexpected $end (Unix shell    │
-│ quoting issues?) at &lt;top-level&gt;, line 1:                │
-│ .users[] | select(.active                               │
-│ jq: 1 compile error                                     │
-│                                                          │
-│ Ctrl+E to close                                         │
-└──────────────────────────────────────────────────────────┘
+<div class="tui-mockup">
+<pre>┌─ Error ─────────────────────────────────┐
+│ jq: error: syntax error, unexpected '|' │
+│ at &lt;top-level&gt;, line 1:                 │
+│   .users | | map(.name)                 │
+└─────────────────────────────────────────┘
 </pre>
 </div>
 
-The previous successful result stays dimmed behind the overlay. Closes on the next <kbd>Ctrl</kbd>+<kbd>E</kbd> or as soon as the query parses cleanly. <kbd>Ctrl</kbd>+<kbd>E</kbd> is a no-op when the input is valid.
+The previous successful result stays visible behind the overlay so you can keep reading while you fix the query. <kbd>Ctrl</kbd>+<kbd>E</kbd> again to dismiss.
 
----
+## Help popup — <kbd>F1</kbd> or <kbd>?</kbd>
 
-## Help popup
+Tabbed reference for every keybind. Tabs: Global, Input, Result, History, AI, Search, Snippet. The active tab is auto-selected based on what's currently open.
 
-<kbd>F1</kbd> or <kbd>?</kbd> opens a tabbed keybind reference grouped by mode and pane (Global, Input · INSERT, Input · NORMAL, Results, Search, History, Snippets, AI). Click a tab or use arrow keys to switch sections.
-
-<div class="tui-mockup" markdown="0">
-<pre>
-┌─ Help · Global  Input  Results  Search  History  Snippets  AI ────────┐
-│                                                                       │
-│  Global                                                               │
-│  ─────────────────────────────────────────────────────────────────    │
-│   F1 / ?           Toggle this help popup                             │
-│   Shift+Tab        Switch focus between Input and Results             │
-│   Ctrl+Y           Copy current query or results (focus-aware)        │
-│   Ctrl+O           Copy results regardless of focus                   │
-│   Ctrl+T           Toggle function tooltip                            │
-│   Ctrl+E           Toggle error overlay                               │
-│   Ctrl+A           Toggle AI assistant popup                          │
-│   Enter            Exit and output filtered JSON                      │
-│   Ctrl+Q           Exit and output query string only                  │
-│   q / Ctrl+C       Quit without output                                │
-│                                                                       │
-│  F1/?/Esc to close                                                    │
-└───────────────────────────────────────────────────────────────────────┘
-</pre>
-</div>
-
-Close with <kbd>F1</kbd>, <kbd>?</kbd>, or <kbd>Esc</kbd>.
-
-The in-app popup is the fast mid-flow lookup. This page and the [Quick reference](../quick-reference) cover edge cases and link to per-feature pages.
-
----
-
-## Shortcuts
-
-| Key | Action |
-|-----|--------|
-| <kbd>F1</kbd> / <kbd>?</kbd> | Toggle help popup |
-| <kbd>Ctrl</kbd>+<kbd>T</kbd> | Toggle function tooltip (when cursor is on a function) |
-| <kbd>Ctrl</kbd>+<kbd>E</kbd> | Toggle error overlay (when syntax error exists) |
-
+| Key | Effect |
+|---|---|
+| <kbd>F1</kbd> <kbd>?</kbd> | Open / close popup |
+| <kbd>Tab</kbd> <kbd>Shift</kbd>+<kbd>Tab</kbd> | Next / previous tab |
+| <kbd>h</kbd> <kbd>l</kbd> <kbd>←</kbd> <kbd>→</kbd> | Previous / next tab |
+| <kbd>1</kbd>..<kbd>7</kbd> | Jump to tab N |
+| <kbd>j</kbd> <kbd>k</kbd> <kbd>↑</kbd> <kbd>↓</kbd> | Scroll line |
+| <kbd>J</kbd> <kbd>K</kbd> | Scroll 10 lines |
+| <kbd>Ctrl</kbd>+<kbd>d</kbd> <kbd>Ctrl</kbd>+<kbd>u</kbd> | Page down / up |
+| <kbd>g</kbd> <kbd>G</kbd> | Jump to top / bottom |
+| <kbd>Esc</kbd> <kbd>q</kbd> | Close |
 {: .shortcuts }
+
+Scroll position is remembered per-tab.

@@ -5,7 +5,6 @@ description: One-page cheat sheet of every jiq keybind, grouped by mode and pane
 ---
 
 # Quick reference
-{: .no_toc }
 
 Click any feature header for the deep-dive.
 {: .fs-5 .fw-300 }
@@ -16,8 +15,6 @@ Click any feature header for the deep-dive.
 - TOC
 {: toc }
 </details>
-
----
 
 ## Global
 
@@ -39,8 +36,6 @@ Click any feature header for the deep-dive.
 
 {: .shortcuts }
 
----
-
 ## [Input — INSERT mode](./features/vim-editing)
 
 Cyan border. Just type — every keystroke re-runs jq.
@@ -60,8 +55,6 @@ Cyan border. Just type — every keystroke re-runs jq.
 | Mouse wheel | Horizontal scroll |
 
 {: .shortcuts }
-
----
 
 ## [Input — NORMAL mode](./features/vim-editing)
 
@@ -153,8 +146,6 @@ Yellow border. Vim motions, operators, text objects, undo/redo. Toggle from INSE
 
 {: .shortcuts }
 
----
-
 ## [Results pane](./features/results-pane)
 
 Focus with <kbd>Shift</kbd>+<kbd>Tab</kbd> or click.
@@ -207,8 +198,6 @@ Focus with <kbd>Shift</kbd>+<kbd>Tab</kbd> or click.
 
 {: .shortcuts }
 
----
-
 ## [Search in results](./features/search)
 
 | Key | Action |
@@ -224,9 +213,7 @@ Focus with <kbd>Shift</kbd>+<kbd>Tab</kbd> or click.
 
 {: .shortcuts }
 
-Case-insensitive. While editing with no matches, the results pane dims and shows `⚠ No Matches`.
-
----
+Case-insensitive.
 
 ## [Query history](./features/history)
 
@@ -252,8 +239,6 @@ Case-insensitive. While editing with no matches, the results pane dims and shows
 | <kbd>Esc</kbd> | Close |
 
 {: .shortcuts }
-
----
 
 ## [Snippet library](./features/snippets)
 
@@ -283,11 +268,7 @@ Case-insensitive. While editing with no matches, the results pane dims and shows
 
 {: .shortcuts }
 
----
-
 ## [AI assistant](./features/ai-assistant)
-
-Requires [configuration](./configuration#ai).
 
 | Key | Action |
 |:---|:---|
@@ -299,8 +280,6 @@ Requires [configuration](./configuration#ai).
 | <kbd>Ctrl</kbd>+<kbd>A</kbd> / <kbd>Esc</kbd> | Close |
 
 {: .shortcuts }
-
----
 
 ## [Mouse](./features/mouse)
 
@@ -317,11 +296,9 @@ Requires [configuration](./configuration#ai).
 
 {: .shortcuts }
 
----
-
 ## [Paste recovery](./features/clipboard)
 
-Opens when `jiq` is launched with no file, no pipe, and the clipboard isn't valid JSON. Full VIM editing in the paste box.
+Opens when launch-time clipboard auto-load fails. Full VIM editing inside.
 
 | Key | Action |
 |:---|:---|

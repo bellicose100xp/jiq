@@ -1,128 +1,70 @@
 ---
-title: Mouse support
+title: Mouse
 parent: Features
 nav_order: 7
-description: Click to focus, scroll, drag-select, and apply suggestions — full mouse interaction across the TUI.
+description: Click to focus, scroll any pane, drag-select in results, click suggestions and history rows.
 ---
 
-# Mouse support
-{: .no_toc }
+# Mouse
 
-<details open markdown="block">
-  <summary>On this page</summary>
-  {: .text-delta }
-- TOC
-{:toc}
-</details>
-
----
-
-jiq is keyboard-first, but every common mouse gesture is wired up: wheel-scroll, click-to-focus, click-and-drag selection, double-click to apply suggestions.
+Every pane responds to the mouse. Wheel scrolls the pane under the cursor; left-click focuses or selects.
 
 ## Per-pane behavior
 
-### Query input
+### Input field
 
-- **Click** → focuses the input and positions the cursor at the click location.
-- **Mouse wheel** → horizontal scroll through long queries.
-
-<div class="tui-mockup with-title" data-title="Click anywhere in the query to position the cursor">
-<pre>
-╭─ Query ─────────────────────────────────────────────────────╮
-│ .users[] | select(.active) | { name, email }                │
-│                       ▲                                     │
-│                       click here → cursor jumps here        │
-╰─────────────────────────────────────────────────────────────╯
-</pre>
-</div>
+- **Click** when unfocused: takes focus, switches to INSERT mode.
+- **Click** when focused: positions the text cursor at the click column.
+- **Wheel**: horizontal scroll through the query.
 
 ### Results pane
 
-- **Click** → focuses the results pane.
-- **Mouse wheel** → vertical scroll.
-- **Click + drag** → multi-line visual selection. Release, then press <kbd>y</kbd> to copy.
-- **Scrollbar** (right edge) → click and drag the thumb to scroll.
+- **Click**: focuses the pane and moves the row cursor to the clicked line. If a search is active and unconfirmed, the click also confirms it.
+- **Drag** while in visual mode (<kbd>v</kbd> / <kbd>V</kbd>): extends the selection to the row under the mouse.
+- **Wheel**: scrolls the pane by 3 lines.
 
-<div class="tui-mockup with-title" data-title="Right-edge scrollbar — click and drag the filled segment">
-<pre>
-╭─ Results ──────────────────╮▲
-│ {                          ││
-│   "users": [               │█
-│     { "name": "alice" },   │█
-│     { "name": "bob" },     │█
-│     ...                    ││
-│   ]                        ││
-│ }                          │▼
-╰────────────────────────────╯
-</pre>
-</div>
+### Autocomplete dropdown, AI popup, snippet list
 
-The filled segment (█) reflects scroll position. Click the track to jump, drag the thumb to scrub.
+- **Click a row**: selects that suggestion / item.
+- **Wheel**: scrolls the list.
 
-### Autocomplete dropdown
-
-- **Click** → selects a suggestion (highlights it).
-- **Double-click** → applies the suggestion (same as <kbd>Tab</kbd>).
-
-<div class="tui-mockup with-title" data-title="Double-click any row to apply">
-<pre>
-.users[] | .|
-            ╭─────────────────────╮
-            │ name      [string]  │   ← single-click highlights
-            │ email     [string]  │   ← double-click applies
-            │ active    [boolean] │
-            │ tags      [array]   │
-            ╰─────────────────────╯
-</pre>
-</div>
-
-### AI assistant popup
-
-- **Click** → selects a suggestion.
-- **Double-click** → applies it (same as <kbd>Enter</kbd> or <kbd>Alt</kbd>+<kbd>1</kbd>…<kbd>5</kbd>).
+For AI suggestions, clicking a row both selects and applies it.
 
 ### History popup
 
-- **Click** → selects an entry.
-- **Double-click** → applies it.
-- **Hover** over any row → reveals an <code>✕</code> delete button on the right; click it to remove just that entry from history.
-
-<div class="tui-mockup with-title" data-title="Hover reveals the ✕ delete button">
-<pre>
-╭─ History ────────────────────────────────────────────────╮
-│  .users[] | select(.active)                              │
-│  .items | length                                       ✕ │  ← hovered row
-│  [.events[] | .timestamp] | sort                         │
-│  .users | map(.email)                                    │
-╰─ Enter Select • Ctrl+D Delete • Esc Close ──────────────╯
-</pre>
-</div>
-
-### Snippets popup
-
-- **Click** → selects a snippet.
-- **Double-click** → applies it.
+- **Click a row**: applies that query and closes the popup.
+- **Click `✕`** on a hovered row: deletes that entry from history.
+- **Wheel**: scrolls the list.
 
 ### Help popup
 
-- **Click on a tab** → switches between sections (Global, Input, Results, etc.).
+- **Click a tab in the tab bar**: switches sections.
+- **Wheel**: scrolls the active section.
+- **Click outside the popup**: closes it.
 
----
+### Search bar
 
-## Edge cases
+- **Click** while a confirmed search is active: returns to edit mode so you can refine the pattern.
 
-{: .note }
-> - Clicking to focus the results pane **closes any open popup** (history, snippets, help).
-> - During an active search, **clicking the results pane confirms the search** — same as <kbd>Tab</kbd>. Matches stay highlighted; navigate with <kbd>n</kbd> / <kbd>N</kbd>.
+## Hover
 
----
+Hovering changes which row jiq considers "active":
 
-## Terminal compatibility
+- Results pane: highlights the row under the cursor.
+- AI / snippet / help popups: visually previews the row under the cursor.
+- History popup: reveals the `✕` delete button on the hovered row.
 
-Most modern terminals forward mouse events out of the box (iTerm2, Alacritty, Ghostty, kitty, WezTerm, foot, Windows Terminal, macOS/GNOME/KDE built-ins). Exceptions:
+## Shortcuts
 
-- Older `screen` versions need `mousetrack on` in `.screenrc`.
-- `tmux` has mouse on by default since 2.1; older setups need `set -g mouse on`.
-- Some SSH multiplexers strip mouse events — check the terminal's mouse-forwarding setting.
-
-Keyboard shortcuts cover every mouse action — see the [quick reference](../quick-reference).
+| Action | Mouse |
+|---|---|
+| Focus a pane | Left-click anywhere inside it |
+| Position cursor in input | Click while input is focused |
+| Move row cursor in results | Click on any line |
+| Scroll | Wheel up / down |
+| Drag-select in results | <kbd>v</kbd> first, then click + drag |
+| Apply AI suggestion | Click the suggestion |
+| Apply history entry | Click the entry |
+| Delete history entry | Click `✕` on the hovered row |
+| Switch help tab | Click the tab |
+{: .shortcuts }

@@ -2,88 +2,62 @@
 title: Query history
 parent: Features
 nav_order: 6
-description: Searchable history of every successful query with quick cycling, fuzzy filter, and per-entry delete.
+description: Searchable, fuzzy-filterable history of every successful query, persisted across sessions.
 ---
 
 # Query history
-{: .no_toc }
 
-1. TOC
-{:toc}
+Every query that produced output is saved across sessions. Up to 1000 entries, deduplicated, most recent first.
 
----
+## Where it's stored
 
-## What it stores
-
-Every successful query (one that produced output, not a syntax error) is appended to history and persisted across sessions. Capacity: last 1000 entries. Storage location:
-
-| Platform | Path |
+| OS | Path |
 |---|---|
 | Linux | `~/.local/share/jiq/history` |
 | macOS | `~/Library/Application Support/jiq/history` |
 | Windows | `%APPDATA%\jiq\history` |
 
----
+One query per line. Saved automatically; no flag needed.
 
-## Quick cycling
+## Cycling without the popup
 
-Cycle through history without leaving the input field. Each press replaces the current input with the adjacent entry.
+From the input field, walk the history in place — no popup, no selection step.
 
 | Key | Action |
 |---|---|
-| <kbd>Ctrl</kbd>+<kbd>P</kbd> | Previous (older) query |
-| <kbd>Ctrl</kbd>+<kbd>N</kbd> | Next (newer) query |
+| <kbd>Ctrl</kbd>+<kbd>P</kbd> | Older query |
+| <kbd>Ctrl</kbd>+<kbd>N</kbd> | Newer query |
 {: .shortcuts }
 
----
+## The history popup
 
-## History popup
+<kbd>Ctrl</kbd>+<kbd>R</kbd> opens a fuzzy-filterable list of recent queries.
 
-Open with <kbd>Ctrl</kbd>+<kbd>R</kbd> from any pane, or <kbd>↑</kbd> from the input field in NORMAL mode. Entries are rendered with jq syntax highlighting:
+<div class="tui-mockup with-title" data-title="Ctrl+R — history popup">
+<pre>┌─ History ──────────────────────────────────────────────────┐
+│ Filter: select                                             │
+│                                                            │
+│ ▸ .users[] | select(.active == true)                  ✕    │
+│   .events[] | select(.type == "click") | length            │
+│   .data | map(select(.tier == "gold"))                     │
+│   .items[] | select(.price &gt; 100) | .name                  │
+│                                                            │
+└── Enter Apply · Ctrl+D Delete · Esc Close ────────────────┘</pre>
+</div>
 
-```
-╭─ History ────────────────────────────────────────────────╮
-│ Filter: select                                           │
-│                                                          │
-│ ▸ .users[] | select(.active == true)              ✕      │
-│   .items[] | select(.price > 100) | .name         ✕      │
-│   [.events[] | select(.type == "click")] | length ✕      │
-│   .data | map(select(.tier == "gold"))            ✕      │
-│                                                          │
-│ Enter Select · Ctrl+D Delete · Esc Close                 │
-╰──────────────────────────────────────────────────────────╯
-```
+Type to filter. <kbd>Enter</kbd> or <kbd>Tab</kbd> applies the highlighted entry to the input and runs it. <kbd>Ctrl</kbd>+<kbd>D</kbd> removes the highlighted entry from disk. The popup closes when the last entry is deleted.
 
-Type to fuzzy-filter. The selected entry (`▸`) is applied on <kbd>Enter</kbd>.
+Hovering a row reveals an `✕` on the right edge — click it to delete that row directly.
 
----
-
-## Delete from history
-
-Press <kbd>Ctrl</kbd>+<kbd>D</kbd> to delete the selected row, or hover a row to reveal a clickable `✕` button. The popup auto-closes when the last entry is deleted. Deletes persist to disk immediately.
-
----
-
-## All shortcuts
-
-### Quick cycling
+## Shortcuts
 
 | Key | Action |
 |---|---|
-| <kbd>Ctrl</kbd>+<kbd>P</kbd> | Previous (older) query |
-| <kbd>Ctrl</kbd>+<kbd>N</kbd> | Next (newer) query |
-{: .shortcuts }
-
-### Popup
-
-| Key | Action |
-|---|---|
-| <kbd>Ctrl</kbd>+<kbd>R</kbd> | Open history popup |
-| <kbd>↑</kbd> (NORMAL mode) | Open history popup |
-| <kbd>↑</kbd> / <kbd>↓</kbd> | Navigate entries |
-| Type characters | Fuzzy search filter |
-| <kbd>Enter</kbd> / <kbd>Tab</kbd> | Apply selected entry and close |
-| <kbd>Ctrl</kbd>+<kbd>D</kbd> | Delete selected entry |
-| Click <kbd>✕</kbd> | Delete entry under mouse |
-| <kbd>Esc</kbd> | Close without selecting |
+| <kbd>Ctrl</kbd>+<kbd>R</kbd> | Open the popup |
+| <kbd>↑</kbd> / <kbd>↓</kbd> | Move selection |
+| Type chars | Fuzzy filter |
+| <kbd>Enter</kbd> / <kbd>Tab</kbd> | Apply selection |
+| <kbd>Ctrl</kbd>+<kbd>D</kbd> | Delete selected |
+| Click `✕` | Delete hovered row |
+| <kbd>Esc</kbd> | Close |
 {: .shortcuts }

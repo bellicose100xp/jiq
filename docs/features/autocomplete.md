@@ -2,185 +2,101 @@
 title: Autocomplete
 parent: Features
 nav_order: 2
-description: Schema-aware field and function suggestions with type hints, nested path navigation, and bracket-notation safety.
+description: Schema-aware field and function suggestions, with type hints and bracket-notation safety.
 ---
 
 # Autocomplete
-{: .no_toc }
 
-<details open markdown="block">
-  <summary>Contents</summary>
-  {: .text-delta }
-- TOC
-{:toc}
-</details>
+Suggestions appear as you type. <kbd>Tab</kbd> accepts the highlighted entry.
 
----
+Five suggestion kinds, picked from cursor context:
 
-## What it is
+- **Function** — jq builtins (`select`, `map`, `keys`, `to_entries`, `group_by`, `sort_by`, `unique_by`, `with_entries`, …). Inserts the open paren when the function takes arguments (`select(`).
+- **Field** — keys discovered in the actual JSON, with a JSON type hint (`String`, `Number`, `Boolean`, `Null`, `Object`, `Array`, `Array[String]`, …).
+- **Operator** — pipe and comparison tokens.
+- **Variable** — `$name` bindings declared earlier in the query (via `as $x`, `[$a, $b]`, `{k: $v}`) plus jq's built-ins `$ENV` and `$__loc__`.
+- **Iterator** — `[]` patterns in path-flow contexts.
 
-The dropdown that opens as you type. Two kinds of suggestions:
+## What it looks like
 
-- **Fields** — pulled from the loaded JSON, annotated with their JSON type (`string`, `number`, `bool`, `array`, `object`, `null`).
-- **Functions** — bare-word jq builtins (`select`, `map`, `length`, `keys`, `to_entries`, `group_by`, `unique`, etc.).
-
-Opens automatically when the cursor is at the end of a path or partial identifier. No manual trigger.
-
-<div class="tui-mockup with-title" data-title="autocomplete preview">
-<pre>
-╭─ Input · INSERT ──────────────────────────────────╮
-│ .users[0].                                         │
-╰────────────────────────────────────────────────────╯
-  ┌──────────────────────────────────────┐
-  │ <span style="background:#5d8fdb;color:#0e0e12;">▸ name           string         </span>│
-  │   age            number              │
-  │   email          string              │
-  │   tags           array               │
-  │   profile        object              │
-  │   active         bool                │
-  └──────────────────────────────────────┘
-</pre>
+<div class="tui-mockup with-title" data-title="Field suggestions after typing .users[0].">
+<pre>╭─ Input ───────────────────────────────────────╮
+│ .users[0].                                    │
+╰───────────────────────────────────────────────╯
+  ┌──────────────────────────────────┐
+  │ ▸ name           String          │
+  │   age            Number          │
+  │   email          String          │
+  │   tags           Array[String]   │
+  │   profile        Object          │
+  │   active         Boolean         │
+  └──────────────────────────────────┘</pre>
 </div>
 
-The highlighted row is what <kbd>Tab</kbd> commits. <kbd>↑</kbd> / <kbd>↓</kbd> move the highlight; <kbd>Esc</kbd> dismisses without inserting.
+Up to 10 entries visible at a time; longer lists scroll. Filter is case-insensitive substring match (variables are case-sensitive, like jq).
 
----
+## Schema-aware fields
 
-## Field discovery & array sampling
+Field suggestions come from the value at the cursor's path in your loaded JSON. Walking deeper into the path narrows the list.
 
-For objects, jiq lists the keys. For arrays with heterogeneous elements, jiq samples the first **N** and unions their keys.
+<div class="drill-chain">
+  <div class="step">.</div>
+  <div class="arrow">→</div>
+  <div class="step">.users</div>
+  <div class="arrow">→</div>
+  <div class="step">.users[0]</div>
+  <div class="arrow">→</div>
+  <div class="step active">.users[0].profile.</div>
+</div>
 
-`N` is `array_sample_size` — default **10**, range 1–1000.
+For arrays whose elements have differing shapes, jiq samples up to `array_sample_size` elements (default 10, configurable) and unions their keys.
+
+Inside `to_entries` / `with_entries`, suggestions for entry access are `.key` and `.value`.
+
+## Bracket notation, automatically
+
+jq's `.field` shorthand only accepts ASCII identifiers matching `[A-Za-z_][A-Za-z_0-9]*`. Anything else — CJK, emoji, accented Latin, hyphens, spaces, digit-start — is suggested in bracket form.
+
+<div class="io-pair">
+  <div>
+    <div class="io-label">Field name</div>
+    <div class="io-block">名前
+café
+my-field
+👋
+2nd</div>
+  </div>
+  <div class="io-arrow">→</div>
+  <div>
+    <div class="io-label">Suggestion inserts</div>
+    <div class="io-block">.["名前"]
+.["café"]
+.["my-field"]
+.["👋"]
+.["2nd"]</div>
+  </div>
+</div>
+
+Plain ASCII names insert as `.name` as expected.
+
+## Shortcuts
+{: .shortcuts }
+
+| Key | Action |
+|---|---|
+| <kbd>Tab</kbd> | Accept the highlighted suggestion |
+| <kbd>↑</kbd> / <kbd>↓</kbd> | Navigate the list |
+| <kbd>Esc</kbd> | Close the popup |
+| Mouse click | Highlight a suggestion |
+| Mouse double-click | Apply a suggestion |
+
+## Tuning
+
+Bump `array_sample_size` in `~/.config/jiq/config.toml` for arrays that mix shapes:
 
 ```toml
 [autocomplete]
-array_sample_size = 25
+array_sample_size = 25  # default 10, range 1–1000
 ```
 
-See the [Configuration page](../configuration#autocomplete) for the full reference.
-
-{: .note }
-Sampling only matters for heterogeneous arrays. Homogeneous arrays need `array_sample_size = 1` worth of work either way.
-
----
-
-## Nested-path navigation
-
-Each dot narrows the list to the keys at that path:
-
-<div class="drill-chain">
-  <span class="step">.</span>
-  <span class="arrow">→</span>
-  <span class="step">.users</span>
-  <span class="arrow">→</span>
-  <span class="step">.users[0]</span>
-  <span class="arrow">→</span>
-  <span class="step">.users[0].profile</span>
-  <span class="arrow">→</span>
-  <span class="step active">.users[0].profile.email</span>
-</div>
-
-The popup re-renders with only the keys reachable from the current path. Deep selectors can be composed entirely from <kbd>Tab</kbd> presses.
-
-<div class="io-pair">
-  <div>
-    <div class="io-label">type</div>
-    <div class="io-block">.users[0].pro</div>
-  </div>
-  <div class="io-arrow">→</div>
-  <div>
-    <div class="io-label">popup shows</div>
-    <div class="io-block">profile          object
-profile_url      string</div>
-  </div>
-</div>
-
----
-
-## Function suggestions
-
-When the cursor sits on a bare identifier (not after a dot), suggestions switch to jq builtins:
-
-<div class="tui-mockup">
-<pre>
-.users | map(sel
-            ┌──────────────────┐
-            │ ▸ select         │
-            │   sort_by        │
-            └──────────────────┘
-</pre>
-</div>
-
-Common entries: `select`, `map`, `length`, `keys`, `values`, `to_entries`, `with_entries`, `from_entries`, `group_by`, `unique`, `unique_by`, `sort_by`, `min_by`, `max_by`, `add`, `any`, `all`, `paths`, `leaf_paths`, `recurse`, `flatten`, `range`, `tostring`, `tonumber`, `type`.
-
-### Entry context inside `to_entries` / `with_entries`
-
-Inside the body of either function, the iteration value is a `{key, value}` object, so suggestions switch to `.key` and `.value`.
-
-<div class="io-pair">
-  <div>
-    <div class="io-label">type</div>
-    <div class="io-block">to_entries | map(.</div>
-  </div>
-  <div class="io-arrow">→</div>
-  <div>
-    <div class="io-label">popup shows</div>
-    <div class="io-block">key      string
-value    any</div>
-  </div>
-</div>
-
----
-
-## Non-ASCII and special-character keys
-
-jq's `.field` shorthand accepts only ASCII identifiers. CJK, emoji, accented Latin, hyphens, spaces, and digit-leading keys require bracket or quoted-dot notation.
-
-jiq auto-emits bracket form for these keys, so accepted suggestions are always valid jq.
-
-<div class="io-pair">
-  <div>
-    <div class="io-label">key in your data</div>
-    <div class="io-block">"名前": "Alice"
-"first-name": "Bob"
-"3rd": 3
-"👋": "wave"</div>
-  </div>
-  <div class="io-arrow">→</div>
-  <div>
-    <div class="io-label">jiq inserts</div>
-    <div class="io-block">.["名前"]
-.["first-name"]
-.["3rd"]
-.["👋"]</div>
-  </div>
-</div>
-
-| Form | Example | Status |
-|---|---|---|
-| `.["key"]` | `.["名前"]` | <span class="badge badge-green">Recommended</span> bracket notation, what jiq emits |
-| `."key"` | `."名前"` | <span class="badge badge-cyan">Valid</span> quoted-dot, valid jq alternative |
-| `.key` | `.名前` | <span class="badge badge-red">Invalid</span> jq syntax error for non-ASCII |
-{: .shortcuts }
-
-Applies to anything outside `[A-Za-z_][A-Za-z0-9_]*`: emoji, CJK (`中文`, `日本語`), accented Latin (`café`), hyphens (`first-name`), spaces (`full name`), digit-leading keys (`3rd`).
-
----
-
-## Editing in the middle of a query
-
-{: .note }
-> Editing in the middle of a query falls back to root-level suggestions. For context-aware completion, edit at the end of the path.
-
----
-
-## Shortcuts
-
-| Key | Action |
-|-----|--------|
-| <kbd>Tab</kbd> | Accept the highlighted suggestion |
-| <kbd>↑</kbd> / <kbd>↓</kbd> | Move the highlight up / down |
-| <kbd>Esc</kbd> | Close the popup without inserting |
-| Mouse click | Highlight a suggestion |
-| Mouse double-click | Accept the suggestion under the pointer |
-{: .shortcuts }
+See [Configuration](../configuration#autocomplete).

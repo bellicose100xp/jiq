@@ -6,9 +6,9 @@
 [![Crates.io](https://img.shields.io/crates/v/jiq)](https://crates.io/crates/jiq)
 [![License](https://img.shields.io/crates/l/jiq)](LICENSE-MIT)
 
-<p align="left">
-  <a href="https://bellicose100xp.github.io/jiq/"><img src="https://img.shields.io/badge/%E2%86%92%20Full%20jiq%20documentation%20site-6c8cff?style=for-the-badge&logoColor=white" alt="Full jiq documentation site" height="42" /></a>
-</p>
+<h2 align="left">
+  <a href="https://bellicose100xp.github.io/jiq/"><img src="https://img.shields.io/badge/%E2%86%92%20Full%20jiq%20documentation%20site-1f6feb?style=for-the-badge&logoColor=white" alt="Full jiq documentation site" height="60" /></a>
+</h2>
 
 ## Features
 
