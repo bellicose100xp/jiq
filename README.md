@@ -6,7 +6,7 @@
 [![Crates.io](https://img.shields.io/crates/v/jiq)](https://crates.io/crates/jiq)
 [![License](https://img.shields.io/crates/l/jiq)](LICENSE-MIT)
 
-📖 **[Documentation site →](https://bellicose100xp.github.io/jiq/)** — feature guides, visuals, and a [quick-reference cheat sheet](https://bellicose100xp.github.io/jiq/quick-reference).
+### [Documentation](https://bellicose100xp.github.io/jiq/)
 
 ## Features
 
