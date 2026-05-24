@@ -1,5 +1,6 @@
 ---
 source: src/app/app_render_tests/basic_ui_tests.rs
+assertion_line: 60
 expression: output
 ---
 "╭ Object  · . ──────────────────────────────────────────────────── L1-3/3 (0%) ╮"
@@ -21,7 +22,7 @@ expression: output
 "│                                                                              │"
 "│                                                                              │"
 "│                                                                              │"
-"╰── Tab Edit Query • i Edit Query • > value • * iterate • ^ parent • } wrap ───╯"
+"╰Edit Query • i Edit Query • > value • * iterate • ^ parent • } wrap • ]/[ sibl╯"
 "╭ Query [INSERT] ───────────────────────────────────────── Ctrl+A AI Assistant ╮"
 "│                                                                              │"
 "╰──────────────────────────────────────────────────────────────────────────────╯"

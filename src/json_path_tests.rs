@@ -402,3 +402,407 @@ fn path_at_line_respects_input_order() {
     assert_eq!(path_at_line(&v, 2).unwrap().to_jq(), ".a");
     assert_eq!(path_at_line(&v, 3).unwrap().to_jq(), ".m");
 }
+
+mod line_at_path_tests {
+    use super::*;
+
+    #[test]
+    fn root_path_is_line_zero() {
+        let v = json!({"a": 1, "b": 2});
+        assert_eq!(line_at_path(&v, &JsonPath::new()), Some(0));
+    }
+
+    #[test]
+    fn scalar_root_is_line_zero() {
+        let v = json!(42);
+        assert_eq!(line_at_path(&v, &JsonPath::new()), Some(0));
+    }
+
+    #[test]
+    fn object_key_lines_are_walked_in_input_order() {
+        let v: Value = serde_json::from_str(r#"{"z": 1, "a": 2, "m": 3}"#).unwrap();
+        let mut p = JsonPath::new();
+        p.push_key("z");
+        assert_eq!(line_at_path(&v, &p), Some(1));
+        let mut p = JsonPath::new();
+        p.push_key("a");
+        assert_eq!(line_at_path(&v, &p), Some(2));
+        let mut p = JsonPath::new();
+        p.push_key("m");
+        assert_eq!(line_at_path(&v, &p), Some(3));
+    }
+
+    #[test]
+    fn array_index_lines_are_walked() {
+        let v = json!([10, 20, 30]);
+        for i in 0..3 {
+            let mut p = JsonPath::new();
+            p.push_index(i);
+            assert_eq!(line_at_path(&v, &p), Some(i + 1));
+        }
+    }
+
+    #[test]
+    fn nested_object_lines_account_for_prior_siblings_recursively() {
+        let v = json!({"users": [{"name": "alice"}, {"name": "bob"}]});
+        let mut p = JsonPath::new();
+        p.push_key("users");
+        assert_eq!(line_at_path(&v, &p), Some(1));
+        p.push_index(0);
+        assert_eq!(line_at_path(&v, &p), Some(2));
+        p.push_key("name");
+        assert_eq!(line_at_path(&v, &p), Some(3));
+        let mut p2 = JsonPath::new();
+        p2.push_key("users");
+        p2.push_index(1);
+        assert_eq!(line_at_path(&v, &p2), Some(5));
+        p2.push_key("name");
+        assert_eq!(line_at_path(&v, &p2), Some(6));
+    }
+
+    #[test]
+    fn missing_key_returns_none() {
+        let v = json!({"a": 1});
+        let mut p = JsonPath::new();
+        p.push_key("missing");
+        assert_eq!(line_at_path(&v, &p), None);
+    }
+
+    #[test]
+    fn out_of_bounds_index_returns_none() {
+        let v = json!([1, 2]);
+        let mut p = JsonPath::new();
+        p.push_index(5);
+        assert_eq!(line_at_path(&v, &p), None);
+    }
+
+    #[test]
+    fn type_mismatch_returns_none() {
+        let v = json!({"a": 1});
+        let mut p = JsonPath::new();
+        p.push_index(0);
+        assert_eq!(line_at_path(&v, &p), None);
+    }
+
+    #[test]
+    fn round_trip_with_path_at_line_for_every_row() {
+        // For every line in the pretty-printed value, path_at_line(line)
+        // must return a path whose line_at_path lands at the same line
+        // (modulo closing-bracket lines, which map back to the parent).
+        let v = json!({
+            "users": [
+                {"name": "alice", "age": 30},
+                {"name": "bob", "age": 25},
+            ],
+            "meta": {"count": 2}
+        });
+        let pretty = serde_json::to_string_pretty(&v).unwrap();
+        for (i, _) in pretty.lines().enumerate() {
+            let path = path_at_line(&v, i).expect("path exists");
+            let back = line_at_path(&v, &path).expect("line exists");
+            // Closing brackets map back to the parent, so the round-trip
+            // is allowed to land on or before the original line.
+            assert!(
+                back <= i,
+                "line {} path {:?} mapped back to {}",
+                i,
+                path,
+                back
+            );
+        }
+    }
+
+    #[test]
+    fn special_keys_are_resolved() {
+        let v: Value = serde_json::from_str(r#"{"foo-bar": {"nested": 1}}"#).unwrap();
+        let mut p = JsonPath::new();
+        p.push_key("foo-bar");
+        assert_eq!(line_at_path(&v, &p), Some(1));
+        p.push_key("nested");
+        assert_eq!(line_at_path(&v, &p), Some(2));
+    }
+
+    #[test]
+    fn array_of_objects_indices_land_on_open_brace_lines() {
+        // Pretty layout for [{"a":1},{"b":2}]:
+        // 0: [
+        // 1:   {     ← .[0]
+        // 2:     "a": 1
+        // 3:   },
+        // 4:   {     ← .[1]
+        // 5:     "b": 2
+        // 6:   }
+        // 7: ]
+        let v = json!([{"a": 1}, {"b": 2}]);
+        let mut p0 = JsonPath::new();
+        p0.push_index(0);
+        assert_eq!(line_at_path(&v, &p0), Some(1));
+        let mut p1 = JsonPath::new();
+        p1.push_index(1);
+        assert_eq!(line_at_path(&v, &p1), Some(4));
+    }
+}
+
+mod sibling_at_tests {
+    use super::*;
+
+    fn key(k: &str) -> JsonPath {
+        let mut p = JsonPath::new();
+        p.push_key(k);
+        p
+    }
+
+    fn keys(parts: &[&str]) -> JsonPath {
+        let mut p = JsonPath::new();
+        for k in parts {
+            p.push_key(*k);
+        }
+        p
+    }
+
+    fn idx(i: usize) -> JsonPath {
+        let mut p = JsonPath::new();
+        p.push_index(i);
+        p
+    }
+
+    fn key_then_idx(k: &str, i: usize) -> JsonPath {
+        let mut p = JsonPath::new();
+        p.push_key(k);
+        p.push_index(i);
+        p
+    }
+
+    fn assert_sibling(out: SiblingOutcome, expected: &str) {
+        match out {
+            SiblingOutcome::Sibling(p) => assert_eq!(p.to_jq(), expected),
+            other => panic!("expected Sibling({}), got {:?}", expected, other),
+        }
+    }
+
+    #[test]
+    fn next_walks_object_keys_in_input_order() {
+        let v: Value = serde_json::from_str(r#"{"z": 1, "a": 2, "m": 3}"#).unwrap();
+        assert_sibling(sibling_at(&v, &key("z"), SiblingDir::Next), ".a");
+        assert_sibling(sibling_at(&v, &key("a"), SiblingDir::Next), ".m");
+    }
+
+    #[test]
+    fn prev_walks_object_keys_in_reverse_input_order() {
+        let v: Value = serde_json::from_str(r#"{"z": 1, "a": 2, "m": 3}"#).unwrap();
+        assert_sibling(sibling_at(&v, &key("m"), SiblingDir::Prev), ".a");
+        assert_sibling(sibling_at(&v, &key("a"), SiblingDir::Prev), ".z");
+    }
+
+    #[test]
+    fn next_wraps_at_last_object_key() {
+        let v: Value = serde_json::from_str(r#"{"z": 1, "a": 2, "m": 3}"#).unwrap();
+        assert_sibling(sibling_at(&v, &key("m"), SiblingDir::Next), ".z");
+    }
+
+    #[test]
+    fn prev_wraps_at_first_object_key() {
+        let v: Value = serde_json::from_str(r#"{"z": 1, "a": 2, "m": 3}"#).unwrap();
+        assert_sibling(sibling_at(&v, &key("z"), SiblingDir::Prev), ".m");
+    }
+
+    #[test]
+    fn next_walks_array_indices() {
+        let v = json!([10, 20, 30]);
+        assert_sibling(sibling_at(&v, &idx(0), SiblingDir::Next), ".[1]");
+        assert_sibling(sibling_at(&v, &idx(1), SiblingDir::Next), ".[2]");
+    }
+
+    #[test]
+    fn prev_walks_array_indices() {
+        let v = json!([10, 20, 30]);
+        assert_sibling(sibling_at(&v, &idx(2), SiblingDir::Prev), ".[1]");
+        assert_sibling(sibling_at(&v, &idx(1), SiblingDir::Prev), ".[0]");
+    }
+
+    #[test]
+    fn next_wraps_at_last_array_index() {
+        let v = json!([10, 20, 30]);
+        assert_sibling(sibling_at(&v, &idx(2), SiblingDir::Next), ".[0]");
+    }
+
+    #[test]
+    fn prev_wraps_at_first_array_index() {
+        let v = json!([10, 20, 30]);
+        assert_sibling(sibling_at(&v, &idx(0), SiblingDir::Prev), ".[2]");
+    }
+
+    #[test]
+    fn root_path_returns_no_parent() {
+        let v = json!({"a": 1});
+        assert_eq!(
+            sibling_at(&v, &JsonPath::new(), SiblingDir::Next),
+            SiblingOutcome::NoParent
+        );
+        assert_eq!(
+            sibling_at(&v, &JsonPath::new(), SiblingDir::Prev),
+            SiblingOutcome::NoParent
+        );
+    }
+
+    #[test]
+    fn single_object_child_returns_single() {
+        let v = json!({"only": 1});
+        assert_eq!(
+            sibling_at(&v, &key("only"), SiblingDir::Next),
+            SiblingOutcome::Single
+        );
+        assert_eq!(
+            sibling_at(&v, &key("only"), SiblingDir::Prev),
+            SiblingOutcome::Single
+        );
+    }
+
+    #[test]
+    fn single_array_element_returns_single() {
+        let v = json!([42]);
+        assert_eq!(
+            sibling_at(&v, &idx(0), SiblingDir::Next),
+            SiblingOutcome::Single
+        );
+        assert_eq!(
+            sibling_at(&v, &idx(0), SiblingDir::Prev),
+            SiblingOutcome::Single
+        );
+    }
+
+    #[test]
+    fn key_step_with_array_parent_is_invalid() {
+        let v = json!([1, 2, 3]);
+        assert_eq!(
+            sibling_at(&v, &key("foo"), SiblingDir::Next),
+            SiblingOutcome::Invalid
+        );
+    }
+
+    #[test]
+    fn index_step_with_object_parent_is_invalid() {
+        let v = json!({"a": 1, "b": 2});
+        assert_eq!(
+            sibling_at(&v, &idx(0), SiblingDir::Next),
+            SiblingOutcome::Invalid
+        );
+    }
+
+    #[test]
+    fn out_of_bounds_array_index_is_invalid() {
+        let v = json!([1, 2]);
+        assert_eq!(
+            sibling_at(&v, &idx(5), SiblingDir::Next),
+            SiblingOutcome::Invalid
+        );
+    }
+
+    #[test]
+    fn missing_object_key_is_invalid() {
+        let v = json!({"a": 1, "b": 2});
+        assert_eq!(
+            sibling_at(&v, &key("missing"), SiblingDir::Next),
+            SiblingOutcome::Invalid
+        );
+    }
+
+    #[test]
+    fn nested_array_in_object_walks_inner_siblings() {
+        let v = json!({"users": [{"name": "alice"}, {"name": "bob"}, {"name": "carol"}]});
+        assert_sibling(
+            sibling_at(&v, &key_then_idx("users", 0), SiblingDir::Next),
+            ".users[1]",
+        );
+        assert_sibling(
+            sibling_at(&v, &key_then_idx("users", 2), SiblingDir::Next),
+            ".users[0]",
+        );
+        assert_sibling(
+            sibling_at(&v, &key_then_idx("users", 0), SiblingDir::Prev),
+            ".users[2]",
+        );
+    }
+
+    #[test]
+    fn deeply_nested_object_keys_walk_correctly() {
+        let v = json!({"outer": {"a": 1, "b": 2, "c": 3}});
+        assert_sibling(
+            sibling_at(&v, &keys(&["outer", "a"]), SiblingDir::Next),
+            ".outer.b",
+        );
+        assert_sibling(
+            sibling_at(&v, &keys(&["outer", "c"]), SiblingDir::Next),
+            ".outer.a",
+        );
+    }
+
+    #[test]
+    fn special_chars_in_sibling_key_emit_bracket_notation() {
+        let v: Value = serde_json::from_str(r#"{"normal": 1, "foo-bar": 2, "café": 3}"#).unwrap();
+        assert_sibling(
+            sibling_at(&v, &key("normal"), SiblingDir::Next),
+            ".[\"foo-bar\"]",
+        );
+        assert_sibling(
+            sibling_at(&v, &key("foo-bar"), SiblingDir::Next),
+            ".[\"café\"]",
+        );
+        assert_sibling(sibling_at(&v, &key("café"), SiblingDir::Next), ".normal");
+    }
+
+    #[test]
+    fn invalid_then_valid_step_in_path_is_invalid() {
+        let v = json!({"users": [{"name": "alice"}]});
+        let mut p = JsonPath::new();
+        p.push_index(0);
+        p.push_key("name");
+        assert_eq!(
+            sibling_at(&v, &p, SiblingDir::Next),
+            SiblingOutcome::Invalid
+        );
+    }
+
+    #[test]
+    fn next_then_prev_round_trips_in_object() {
+        let v: Value = serde_json::from_str(r#"{"a": 1, "b": 2, "c": 3}"#).unwrap();
+        let next = match sibling_at(&v, &key("b"), SiblingDir::Next) {
+            SiblingOutcome::Sibling(p) => p,
+            other => panic!("{:?}", other),
+        };
+        assert_eq!(next.to_jq(), ".c");
+        let back = match sibling_at(&v, &next, SiblingDir::Prev) {
+            SiblingOutcome::Sibling(p) => p,
+            other => panic!("{:?}", other),
+        };
+        assert_eq!(back.to_jq(), ".b");
+    }
+
+    #[test]
+    fn next_then_prev_round_trips_with_wrap() {
+        let v: Value = serde_json::from_str(r#"{"a": 1, "b": 2, "c": 3}"#).unwrap();
+        let next = match sibling_at(&v, &key("c"), SiblingDir::Next) {
+            SiblingOutcome::Sibling(p) => p,
+            other => panic!("{:?}", other),
+        };
+        assert_eq!(next.to_jq(), ".a");
+        let back = match sibling_at(&v, &next, SiblingDir::Prev) {
+            SiblingOutcome::Sibling(p) => p,
+            other => panic!("{:?}", other),
+        };
+        assert_eq!(back.to_jq(), ".c");
+    }
+
+    #[test]
+    fn deep_nesting_does_not_blow_stack() {
+        let mut v = json!(0i64);
+        for _ in 0..200 {
+            v = json!({ "n": v });
+        }
+        let mut p = JsonPath::new();
+        for _ in 0..150 {
+            p.push_key("n");
+        }
+        assert_eq!(sibling_at(&v, &p, SiblingDir::Next), SiblingOutcome::Single);
+    }
+}

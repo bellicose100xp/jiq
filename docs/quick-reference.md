@@ -165,6 +165,7 @@ Focus with <kbd>Shift</kbd>+<kbd>Tab</kbd> or click.
 | <kbd>*</kbd> | Iterate nearest array (`[N]` → `[]`) |
 | <kbd>^</kbd> | Step up one level |
 | <kbd>}</kbd> | Wrap leaf as `{key}` object |
+| <kbd>]</kbd> <kbd>[</kbd> | Jump cursor to next / prev sibling (wraps) |
 
 {: .shortcuts }
 

@@ -225,3 +225,109 @@ fn search_match_path_resolves_to_match_row_not_cursor() {
     assert_eq!(match_path, ".beta");
     assert_eq!(cursor_path, ".");
 }
+
+#[test]
+fn next_sibling_chord_moves_cursor_using_match_row() {
+    // Match is on .beta (row 2). Cursor sits at root row 0. `]` should
+    // move the cursor to .gamma (row 3) using the match row, not the
+    // cursor row.
+    let (mut app, _) = open_search_with_match(r#"{"alpha": 1, "beta": 2, "gamma": 3}"#, "beta");
+    let total = app.results_line_count_u32();
+    app.results_cursor.update_total_lines(total);
+    app.results_cursor.move_to_line(0);
+    let prior_query = app.input.query().to_string();
+
+    handle_search_key(&mut app, key(KeyCode::Char(']')));
+
+    assert_eq!(app.results_cursor.cursor_line(), 3, "cursor at .gamma row");
+    assert!(app.search.is_visible(), "search stays open on cursor move");
+    assert_eq!(app.input.query(), prior_query, "query is untouched");
+}
+
+#[test]
+fn prev_sibling_chord_moves_cursor_using_match_row() {
+    let (mut app, _) = open_search_with_match(r#"{"alpha": 1, "beta": 2, "gamma": 3}"#, "beta");
+    let total = app.results_line_count_u32();
+    app.results_cursor.update_total_lines(total);
+    app.results_cursor.move_to_line(0);
+
+    handle_search_key(&mut app, key(KeyCode::Char('[')));
+
+    assert_eq!(app.results_cursor.cursor_line(), 1, "cursor at .alpha row");
+    assert!(app.search.is_visible());
+}
+
+#[test]
+fn sibling_chord_in_search_with_no_match_notifies() {
+    let mut app = test_app(r#"{"a": 1, "b": 2}"#);
+    if let Some(qs) = app.query.as_mut() {
+        qs.execute(".");
+    }
+    open_search(&mut app);
+    app.search.search_textarea_mut().insert_str("missing");
+    app.search.update_matches("{\"a\": 1, \"b\": 2}");
+
+    handle_search_key(&mut app, key(KeyCode::Char(']')));
+
+    assert!(app.search.is_visible(), "stays open with no match");
+    assert_eq!(
+        app.notification.current_message(),
+        Some("No match to navigate to")
+    );
+}
+
+#[test]
+fn sibling_chord_in_search_at_root_keeps_search_open() {
+    let (mut app, _) = open_search_with_match(r#"42"#, "42");
+
+    handle_search_key(&mut app, key(KeyCode::Char(']')));
+
+    assert!(app.search.is_visible(), "stays open at root");
+    assert_eq!(app.notification.current_message(), Some("Already at root"));
+}
+
+#[test]
+fn sibling_chord_in_search_with_single_child_notifies() {
+    let (mut app, _) = open_search_with_match(r#"{"only": 42}"#, "42");
+
+    handle_search_key(&mut app, key(KeyCode::Char(']')));
+
+    assert!(app.search.is_visible(), "stays open on no-sibling");
+    assert_eq!(
+        app.notification.current_message(),
+        Some("No sibling to navigate to")
+    );
+}
+
+#[test]
+fn sibling_chord_does_not_leak_into_search_query() {
+    let (mut app, _) = open_search_with_match(r#"{"a": 1, "b": 2}"#, "1");
+    assert!(!app.search.is_confirmed());
+
+    handle_search_key(&mut app, key(KeyCode::Char(']')));
+
+    assert!(!app.search.query().contains(']'));
+}
+
+#[test]
+fn sibling_chord_works_in_search_confirmed_mode() {
+    let (mut app, _) = open_search_with_match(r#"{"a": 1, "b": 2, "c": 3}"#, "2");
+    handle_search_key(&mut app, key(KeyCode::Enter));
+    assert!(app.search.is_confirmed());
+
+    handle_search_key(&mut app, key(KeyCode::Char(']')));
+
+    assert_eq!(app.results_cursor.cursor_line(), 3, "cursor at .c row");
+    assert!(app.search.is_visible(), "stays open after sibling move");
+}
+
+#[test]
+fn sibling_chord_in_search_does_not_modify_query_or_undo_ring() {
+    let (mut app, _) = open_search_with_match(r#"{"a": 1, "b": 2}"#, "1");
+    let prior_query = app.input.query().to_string();
+
+    handle_search_key(&mut app, key(KeyCode::Char(']')));
+
+    assert_eq!(app.input.query(), prior_query);
+    assert!(app.query_undo.is_empty());
+}

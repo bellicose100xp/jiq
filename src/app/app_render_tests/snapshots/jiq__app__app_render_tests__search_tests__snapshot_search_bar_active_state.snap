@@ -1,5 +1,6 @@
 ---
 source: src/app/app_render_tests/search_tests.rs
+assertion_line: 209
 expression: output
 ---
 "╭ Object  · .name ──────────────────────────────────────────────── L1-4/4 (0%) ╮"
@@ -21,7 +22,7 @@ expression: output
 "│                                                                              │"
 "│                                                                              │"
 "│                                                                              │"
-"╰────────────────── > value • * iterate • ^ parent • } wrap ───────────────────╯"
+"╰─────────── > value • * iterate • ^ parent • } wrap • ]/[ siblings ───────────╯"
 "╭ Search ─────────────────────────────────────────────────────────────   1/2   ╮"
 "│alice                                                                         │"
 "╰──── Enter Confirm • > value • * iterate • ^ parent • } wrap • Esc Close ─────╯"

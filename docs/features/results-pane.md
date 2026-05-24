@@ -106,6 +106,17 @@ When a value like `"alice"` is useful but you also want to see its key:
 
 jiq rewrites the query to wrap the value in an object: `.users[0].name` becomes `.users[0] | {name}`, showing `{"name": "alice"}`.
 
+## Walk between siblings
+
+When the cursor is on a child of an object or array, hop to its neighbor in the same parent without scrolling line by line:
+
+1. Move the cursor to a value.
+2. Press **`]`** to jump to the next sibling, **`[`** to jump to the previous one.
+
+The cursor lands on the sibling's row — the query is **not** rewritten. So in `{"users": [...], "meta": {...}}` with the cursor on `.users`, pressing `]` moves the cursor to the `.meta` row; pressing `[` moves it back. Inside an array, `]` walks `.[0]` → `.[1]` → `.[2]` ... and wraps at the end.
+
+Use this to scan an object's keys or array's elements quickly, then drill in with `>` once you've found the one you want.
+
 ## Select and copy specific lines
 
 To copy only part of the output rather than everything:
@@ -145,5 +156,6 @@ To copy the entire result without selecting, press **Ctrl+Y** or **Ctrl+O** from
 | `*` | Expand array at cursor |
 | `^` | Remove last path segment |
 | `}` | Wrap leaf value as `{key}` object |
+| `]` `[` | Jump cursor to next / previous sibling (wraps) |
 | `v` `V` | Enter visual line selection |
 | `y` | Copy selection (or full result if none) |
