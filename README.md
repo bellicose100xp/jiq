@@ -12,21 +12,15 @@
 
 ## Features
 
-- **Path-at-cursor + structural navigation** - Live jq path of the value under the cursor in the results pane; press `>` to go to that value, `<` to step back, `*` to iterate over the nearest array, `^` to step up one level in the typed query, `}` to wrap the cursor's leaf as a single-entry object. All chords just rewrite the query so the existing async pipeline picks them up. Works in search mode too, where `>` `*` `}` operate on the current match.
-- **Real-time query execution** - See results as you type
-- **AI assistant** - Get intelligent query suggestions, error fixes, and natural language interpretation
-- **Context-aware autocomplete** - Smart field suggestions with nested path navigation and JSON type hints
-- **Snippet library** - Save and reuse frequently used jq queries
-- **Function tooltip** - Quick reference help for jq functions with examples
-- **Search in results** - Find and navigate text in JSON output with highlighting
-- **Query history** - Searchable history of successful queries
-- **Mouse support** - Full mouse interaction including click-to-focus, scrolling, and selecting items in popups
-- **Clipboard support** - Copy query or results to clipboard (also supports OSC 52 for remote terminals)
-- **Paste recovery** - When the clipboard auto-load fails on launch, jiq drops into an in-app paste box where you can paste JSON and press Enter to load — full VIM editing inside the box
-- **VIM keybindings** - VIM-style editing for power users
-- **Syntax highlighting** - Colorized JSON output and jq query syntax
-- **Stats bar** - Shows result type and count (e.g., "Array [5 objects]", "Stream [3 values]")
-- **Flexible output** - Export results or query string
+- **Real-time query execution** — results update as you type
+- **AI assistant** — query suggestions, error fixes, natural-language input
+- **Context-aware autocomplete** — schema-aware fields with type hints
+- **Snippet library** — save and reuse jq queries
+- **Search in results** — find and navigate matches in the output
+- **Query history** — searchable history of successful queries
+- **VIM keybindings** — full motions, operators, text objects
+- **Mouse support** — click, scroll, drag-select
+- **Syntax highlighting** — colorized JSON output and jq query
 
 ## Demo
 
@@ -92,20 +86,7 @@ curl https://api.example.com/data | jiq
 jiq
 ```
 
-When launched with no file argument and no piped stdin, jiq reads JSON from
-the system clipboard. If the clipboard is empty, unreadable, or doesn't
-contain valid JSON, jiq opens an in-app paste box: paste your JSON (Cmd+V /
-Ctrl+Shift+V or your terminal's native shortcut), press `Enter`, and you're
-in. The paste box has full VIM editing — `dd`, `cc`, `D`, `dw`, `ci"`, etc.
-all work — and `Ctrl+X` clears the textarea so you can paste fresh content.
-
-Local desktops (macOS, Linux desktop, WSL) use the native clipboard. Remote
-SSH sessions fall back to OSC 52 read with a 1s timeout, so clipboard content
-copied *inside* the remote session (tmux selection buffers, OSC 52 writes
-from peer apps) is also picked up on modern terminals. Content copied on the
-host workstation typically does not round-trip because most terminals refuse
-to forward host-clipboard reads through the SSH tunnel — use the paste box
-in those cases.
+With no file and no piped stdin, jiq reads from the clipboard; if it's not valid JSON, the in-app paste box opens.
 
 ## Usage
 

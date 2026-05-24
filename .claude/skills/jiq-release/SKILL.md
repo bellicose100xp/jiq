@@ -27,6 +27,7 @@ If no argument is passed, infer from the change set per step 6. If `major` is re
 - Major version bump: **never** without explicit user authorization. Reserved for breaking changes.
 - The user deletes remote feature branches manually — do **not** pass `--delete-branch=true` on merge, and remind the user at the end.
 - README is kept compact: edit it only for user-visible feature/shortcut changes. Bug fixes, refactors, performance, polish → README untouched.
+- **README terseness rule**: every item in the README gets **at most one line of explanation**, no emoji. The Features list is a single-line bullet per *real, marketable* feature (snippet manager, AI assistant, autocomplete, history, search, mouse, VIM keybindings, syntax highlighting). Sub-features that ride on top of those (path-at-cursor chords, paste recovery, function tooltip, stats bar, OSC 52 SSH clipboard fallback, etc.) do **not** get their own bullet — they belong in the docs site, not the README. If a paragraph would be needed to explain something, it goes in the docs and the README links to it.
 - **Docs site (`docs/`) is the canonical user-facing reference and must stay in sync with every release.** For any user-visible feature, shortcut, or config change, update the relevant `docs/features/*.md` page **and** `docs/quick-reference.md` **and** `docs/configuration.md` (when applicable). The changelog page `docs/changelog.md` is mirrored from `CHANGELOG.md` on every release (step 7a). Bug fixes / internal refactors → docs untouched (same rule as README).
 
 ---
