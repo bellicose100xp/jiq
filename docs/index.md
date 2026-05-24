@@ -16,13 +16,16 @@ permalink: /
 
 ## Quick start
 
-```bash
-brew install bellicose100xp/tap/jiq
-# or
-cargo install jiq
-# or
-curl --proto '=https' --tlsv1.2 -LsSf https://github.com/bellicose100xp/jiq/releases/latest/download/jiq-installer.sh | sh
-```
+Pick one. Requires [`jq`](https://jqlang.org/download/) on `$PATH`.
+
+| Platform | Install |
+|---|---|
+| **macOS** | `brew install bellicose100xp/tap/jiq` |
+| **macOS / Linux** | `curl --proto '=https' --tlsv1.2 -LsSf https://github.com/bellicose100xp/jiq/releases/latest/download/jiq-installer.sh \| sh` |
+| **Any (with Rust)** | `cargo install jiq` |
+| **Windows / others** | [Pre-built binaries](https://github.com/bellicose100xp/jiq/releases/latest) |
+
+Then:
 
 ```bash
 jiq data.json              # from a file

@@ -2,7 +2,10 @@
 // Goal: readable on mobile, no gimmicks, one accent color.
 
 // ─── Type ────────────────────────────────────────────────────────────
+// Override just-the-docs's .fs-4 cascade on body. Without !important the
+// theme's `body { @extend .fs-4 }` keeps the page at ~12-14px.
 body {
+  font-size: 1.0625rem !important;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   font-feature-settings: "ss01", "cv01";
@@ -10,21 +13,40 @@ body {
 }
 
 .main-content {
-  font-size: 1rem;
+  font-size: 1.0625rem !important;
 
-  h1 { font-size: 2rem; font-weight: 700; letter-spacing: -0.02em; line-height: 1.2; margin-top: 0; }
-  h2 { font-size: 1.4rem; font-weight: 650; letter-spacing: -0.01em; margin-top: 2.4rem; padding-bottom: 0.4rem; border-bottom: 1px solid #21262d; }
-  h3 { font-size: 1.1rem; font-weight: 600; margin-top: 1.8rem; }
-  p, li { line-height: 1.7; }
+  h1 { font-size: 2.1rem !important; font-weight: 700; letter-spacing: -0.02em; line-height: 1.2; margin-top: 0; }
+  h2 { font-size: 1.45rem !important; font-weight: 650; letter-spacing: -0.01em; margin-top: 2.4rem; padding-bottom: 0.4rem; border-bottom: 1px solid #21262d; }
+  h3 { font-size: 1.15rem !important; font-weight: 600; margin-top: 1.8rem; }
+  p, li, td, th { font-size: 1.0625rem !important; line-height: 1.7; }
 }
 
-// Mobile: bigger base, snug headings
+// Mobile + iPad portrait: bump base to 17.5px and tighten headings
 @media (max-width: 50rem) {
+  body, .main-content {
+    font-size: 1.0625rem !important;
+  }
   .main-content {
-    font-size: 1.0625rem;
-    h1 { font-size: 1.65rem; }
-    h2 { font-size: 1.25rem; margin-top: 1.8rem; }
-    h3 { font-size: 1.05rem; }
+    h1 { font-size: 1.85rem !important; }
+    h2 { font-size: 1.3rem !important; margin-top: 1.8rem; }
+    h3 { font-size: 1.1rem !important; }
+    p, li, td, th { font-size: 1.0625rem !important; }
+  }
+}
+
+// Phone (portrait, < 30rem): larger again so it reads at arm's length
+@media (max-width: 30rem) {
+  body, .main-content,
+  .main-content p,
+  .main-content li,
+  .main-content td,
+  .main-content th {
+    font-size: 1.125rem !important;
+  }
+  .main-content {
+    h1 { font-size: 1.75rem !important; }
+    h2 { font-size: 1.25rem !important; }
+    h3 { font-size: 1.1rem !important; }
   }
 }
 
@@ -72,9 +94,9 @@ table code {
 // ─── Keybind chips ───────────────────────────────────────────────────
 kbd, .kbd {
   display: inline-block;
-  padding: 1px 6px;
+  padding: 2px 7px;
   font-family: $mono-font-family;
-  font-size: 0.84em;
+  font-size: 0.9em;
   background: #161b22;
   color: #c9d1d9;
   border: 1px solid #30363d;
@@ -93,7 +115,7 @@ kbd, .kbd {
   border-spacing: 0;
   overflow: hidden;
   width: 100%;
-  font-size: 0.95rem;
+  font-size: 1rem !important;
 
   th, td {
     border: none;
@@ -101,6 +123,7 @@ kbd, .kbd {
     padding: 9px 14px;
     text-align: left;
     vertical-align: top;
+    font-size: 1rem !important;
   }
 
   th {
@@ -115,8 +138,11 @@ kbd, .kbd {
 
 @media (max-width: 50rem) {
   .main-content table {
-    font-size: 0.92rem;
-    th, td { padding: 7px 10px; }
+    font-size: 1rem !important;
+    th, td {
+      padding: 8px 10px;
+      font-size: 1rem !important;
+    }
   }
 }
 
@@ -150,7 +176,7 @@ kbd, .kbd {
   background: #0a0e14;
   color: #c9d1d9;
   font-family: $mono-font-family;
-  font-size: 0.86rem;
+  font-size: 0.95rem;
   line-height: 1.55;
   padding: 14px 16px;
   border: 1px solid #21262d;
@@ -174,9 +200,9 @@ kbd, .kbd {
     &::before {
       content: attr(data-title);
       display: block;
-      padding: 7px 14px;
+      padding: 8px 14px;
       font-family: $body-font-family;
-      font-size: 0.78rem;
+      font-size: 0.85rem;
       letter-spacing: 0.04em;
       text-transform: uppercase;
       color: #8b949e;
@@ -189,7 +215,7 @@ kbd, .kbd {
 }
 
 @media (max-width: 50rem) {
-  .tui-mockup { font-size: 0.78rem; padding: 12px 14px; }
+  .tui-mockup { font-size: 0.85rem; padding: 12px 14px; }
 }
 
 // ─── Before / after pair ─────────────────────────────────────────────
@@ -210,7 +236,7 @@ kbd, .kbd {
     border-radius: 6px;
     padding: 12px 14px;
     font-family: $mono-font-family;
-    font-size: 0.86rem;
+    font-size: 0.95rem;
     line-height: 1.55;
     color: #c9d1d9;
     overflow-x: auto;
@@ -219,7 +245,7 @@ kbd, .kbd {
 
   .io-label {
     font-family: $body-font-family;
-    font-size: 0.72rem;
+    font-size: 0.78rem;
     letter-spacing: 0.06em;
     text-transform: uppercase;
     color: #8b949e;

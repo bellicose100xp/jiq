@@ -14,31 +14,37 @@ Install jiq, run a query, see the loop.
 
 ## Install
 
-### Script (macOS / Linux)
+### Homebrew — macOS
+
+```bash
+brew install bellicose100xp/tap/jiq
+```
+
+### Install script — macOS, Linux
 
 ```bash
 curl --proto '=https' --tlsv1.2 -LsSf \
   https://github.com/bellicose100xp/jiq/releases/latest/download/jiq-installer.sh | sh
 ```
 
-### Homebrew (macOS)
-
-```bash
-brew install bellicose100xp/tap/jiq
-```
-
-### Cargo
+### Cargo — any platform with Rust
 
 ```bash
 cargo install jiq
 ```
 
-### From source
+### Pre-built binary — Windows, Linux, macOS
+
+Download from the [releases page](https://github.com/bellicose100xp/jiq/releases/latest), unpack, and put the `jiq` (or `jiq.exe`) binary on your `PATH`.
+
+### From source — any platform with Rust
 
 ```bash
 git clone https://github.com/bellicose100xp/jiq
 cd jiq && cargo build --release
+# Linux / macOS:
 sudo cp target/release/jiq /usr/local/bin/
+# Windows: copy target\release\jiq.exe to a directory on PATH
 ```
 
 ## Input
