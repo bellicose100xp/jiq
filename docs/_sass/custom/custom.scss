@@ -1,428 +1,64 @@
-// jiq docs — modern overrides on top of just-the-docs
+// jiq docs — minimal overrides on top of just-the-docs.
+// Goal: readable on mobile, no gimmicks, one accent color.
 
-// ─────────────────────────────────────────────────────────
-// Typography polish
-// ─────────────────────────────────────────────────────────
+// ─── Type ────────────────────────────────────────────────────────────
 body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  letter-spacing: -0.005em;
+  font-feature-settings: "ss01", "cv01";
+  line-height: 1.7;
 }
 
-.main-content h1,
-.main-content h2,
-.main-content h3,
-.main-content h4 {
-  letter-spacing: -0.02em;
-  font-weight: 650;
+.main-content {
+  font-size: 1rem;
+
+  h1 { font-size: 2rem; font-weight: 700; letter-spacing: -0.02em; line-height: 1.2; margin-top: 0; }
+  h2 { font-size: 1.4rem; font-weight: 650; letter-spacing: -0.01em; margin-top: 2.4rem; padding-bottom: 0.4rem; border-bottom: 1px solid #21262d; }
+  h3 { font-size: 1.1rem; font-weight: 600; margin-top: 1.8rem; }
+  p, li { line-height: 1.7; }
 }
 
-.main-content h1 { font-size: 2.4rem; line-height: 1.15; }
-.main-content h2 {
-  font-size: 1.6rem;
-  margin-top: 2.2rem;
-  padding-bottom: 0.4rem;
-  border-bottom: 1px solid #1d2230;
+// Mobile: bigger base, snug headings
+@media (max-width: 50rem) {
+  .main-content {
+    font-size: 1.0625rem;
+    h1 { font-size: 1.65rem; }
+    h2 { font-size: 1.25rem; margin-top: 1.8rem; }
+    h3 { font-size: 1.05rem; }
+  }
 }
-.main-content h3 { font-size: 1.2rem; margin-top: 1.6rem; }
 
+// ─── Links ───────────────────────────────────────────────────────────
 .main-content a {
-  text-decoration: none;
-  border-bottom: 1px solid rgba(122, 167, 255, 0.25);
-  transition: border-color 0.15s ease, color 0.15s ease;
+  text-decoration: underline;
+  text-decoration-color: rgba(88, 166, 255, 0.35);
+  text-underline-offset: 3px;
 
   &:hover {
-    border-bottom-color: #7aa7ff;
-    color: #a8c4ff;
+    text-decoration-color: #58a6ff;
   }
 }
 
-// Tighten the sidebar
-.side-bar {
-  border-right: 1px solid #1d2230;
-}
-
-.site-title {
-  font-weight: 700;
-  letter-spacing: -0.02em;
-}
-
-// Buttons — more modern
-.btn {
-  border-radius: 8px;
-  font-weight: 550;
-  letter-spacing: -0.01em;
-  border-bottom: none;
-  transition: transform 0.12s ease, box-shadow 0.12s ease;
-
-  &:hover {
-    transform: translateY(-1px);
-    border-bottom: none;
-  }
-}
-
-.btn-primary {
-  background: linear-gradient(180deg, #6c8cff 0%, #4f6ee0 100%);
-  color: #fff;
-  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.08) inset, 0 4px 12px rgba(76, 108, 224, 0.25);
-
-  &:hover {
-    background: linear-gradient(180deg, #7e9bff 0%, #5e7dec 100%);
-    color: #fff;
-    box-shadow: 0 1px 0 rgba(255, 255, 255, 0.1) inset, 0 6px 18px rgba(76, 108, 224, 0.3);
-  }
-}
-
-// ─────────────────────────────────────────────────────────
-// Hero block (landing)
-// ─────────────────────────────────────────────────────────
-.hero {
-  margin: -0.5rem 0 2.5rem 0;
-  padding: 2.4rem 0 2rem 0;
-  border-bottom: 1px solid #1d2230;
-  position: relative;
-
-  &::before {
-    content: "";
-    position: absolute;
-    left: 0; right: 0; top: 0; bottom: 0;
-    background:
-      radial-gradient(800px 360px at 10% 0%, rgba(108, 140, 255, 0.10), transparent 60%),
-      radial-gradient(600px 300px at 90% 100%, rgba(168, 196, 255, 0.06), transparent 60%);
-    pointer-events: none;
-    z-index: -1;
-  }
-
-  .hero-eyebrow {
-    display: inline-block;
-    font-size: 0.78rem;
-    text-transform: uppercase;
-    letter-spacing: 0.14em;
-    color: #7aa7ff;
-    background: rgba(108, 140, 255, 0.08);
-    border: 1px solid rgba(108, 140, 255, 0.22);
-    padding: 4px 10px;
-    border-radius: 100px;
-    margin-bottom: 1rem;
-  }
-
-  .hero-title {
-    font-size: 3.2rem;
-    line-height: 1.05;
-    font-weight: 700;
-    letter-spacing: -0.035em;
-    margin: 0 0 0.8rem 0;
-    background: linear-gradient(180deg, #f4f6fa 0%, #b8c5e0 100%);
-    -webkit-background-clip: text;
-    background-clip: text;
-    color: transparent;
-  }
-
-  .hero-tagline {
-    font-size: 1.15rem;
-    color: #95a1b8;
-    max-width: 640px;
-    margin: 0 0 1.6rem 0;
-    line-height: 1.55;
-  }
-
-  .hero-actions {
-    display: flex;
-    gap: 10px;
-    flex-wrap: wrap;
-  }
-}
-
-// ─────────────────────────────────────────────────────────
-// Feature card grid
-// ─────────────────────────────────────────────────────────
-.feature-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-  gap: 14px;
-  margin: 1.5rem 0 2rem 0;
-
-  .feature-card {
-    background: #0e1117;
-    border: 1px solid #1d2230;
-    border-radius: 12px;
-    padding: 16px 18px;
-    transition: transform 0.15s ease, border-color 0.15s ease, background 0.15s ease;
-    position: relative;
-    overflow: hidden;
-
-    &::before {
-      content: "";
-      position: absolute;
-      left: 0; right: 0; top: 0;
-      height: 1px;
-      background: linear-gradient(90deg, transparent, rgba(108, 140, 255, 0.4), transparent);
-      opacity: 0;
-      transition: opacity 0.2s ease;
-    }
-
-    &:hover {
-      transform: translateY(-2px);
-      border-color: #2a3245;
-      background: #11151d;
-
-      &::before { opacity: 1; }
-
-      h3 a { color: #a8c4ff; }
-    }
-
-    h3 {
-      margin: 0 0 6px 0;
-      font-size: 1rem;
-      font-weight: 600;
-      letter-spacing: -0.015em;
-
-      a {
-        color: #f4f6fa;
-        border-bottom: none;
-        transition: color 0.15s ease;
-      }
-    }
-
-    p {
-      margin: 0;
-      font-size: 0.88rem;
-      color: #95a1b8;
-      line-height: 1.55;
-    }
-  }
-}
-
-// ─────────────────────────────────────────────────────────
-// TUI mockup blocks
-// ─────────────────────────────────────────────────────────
-.tui-mockup {
-  background: #0e1117;
-  color: #d8dde6;
-  font-family: "JetBrains Mono", "Fira Code", "SF Mono", ui-monospace, Menlo, Consolas, monospace;
-  font-size: 12.5px;
-  line-height: 1.5;
-  padding: 18px 22px;
-  border-radius: 10px;
-  border: 1px solid #1d2230;
-  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.03) inset, 0 12px 32px -8px rgba(0, 0, 0, 0.5);
-  overflow-x: auto;
-  margin: 1.4rem 0;
-  position: relative;
-
-  pre {
-    background: transparent;
-    color: inherit;
-    margin: 0;
-    padding: 0;
-    border: none;
-    font-size: inherit;
-    line-height: inherit;
-    white-space: pre;
-  }
-
-  &.with-title {
-    padding-top: 44px;
-
-    &::before {
-      content: attr(data-title);
-      position: absolute;
-      top: 0; left: 0; right: 0;
-      padding: 9px 22px;
-      background: #0a0c11;
-      border-bottom: 1px solid #1d2230;
-      border-radius: 10px 10px 0 0;
-      color: #95a1b8;
-      font-size: 11px;
-      letter-spacing: 0.05em;
-      text-transform: uppercase;
-    }
-
-    &::after {
-      content: "";
-      position: absolute;
-      top: 14px;
-      left: 18px;
-      width: 12px;
-      height: 12px;
-      border-radius: 50%;
-      background: #ff5f57;
-      box-shadow:
-        18px 0 0 #febc2e,
-        36px 0 0 #28c840;
-    }
-  }
-}
-
-// ─────────────────────────────────────────────────────────
-// Input → output pair
-// ─────────────────────────────────────────────────────────
-.io-pair {
-  display: grid;
-  grid-template-columns: 1fr auto 1fr;
-  gap: 14px;
-  align-items: stretch;
-  margin: 1.6rem 0;
-
-  @media (max-width: 720px) {
-    grid-template-columns: 1fr;
-  }
-
-  .io-block {
-    background: #0e1117;
-    border: 1px solid #1d2230;
-    border-radius: 10px;
-    padding: 14px 16px;
-    font-family: "JetBrains Mono", "Fira Code", "SF Mono", ui-monospace, Menlo, Consolas, monospace;
-    font-size: 12.5px;
-    line-height: 1.55;
-    color: #d8dde6;
-    white-space: pre;
-    overflow-x: auto;
-    min-height: 80px;
-  }
-
-  .io-label {
-    font-size: 10.5px;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: #6e7a92;
-    margin-bottom: 8px;
-    padding-bottom: 6px;
-    border-bottom: 1px dashed #1d2230;
-  }
-
-  .io-arrow {
-    align-self: center;
-    color: #6c8cff;
-    font-size: 22px;
-    font-weight: bold;
-    text-align: center;
-
-    @media (max-width: 720px) {
-      transform: rotate(90deg);
-    }
-  }
-}
-
-// ─────────────────────────────────────────────────────────
-// Keybind chips
-// ─────────────────────────────────────────────────────────
-kbd, .kbd {
-  display: inline-block;
-  padding: 1px 7px;
-  font-family: "JetBrains Mono", "Fira Code", "SF Mono", ui-monospace, Menlo, Consolas, monospace;
-  font-size: 0.82em;
-  background: #161b25;
-  color: #d8dde6;
-  border: 1px solid #2a3245;
-  border-bottom-width: 2px;
-  border-radius: 5px;
-  white-space: nowrap;
-  line-height: 1.4;
-  vertical-align: middle;
-  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.4);
-}
-
-// ─────────────────────────────────────────────────────────
-// Tables
-// ─────────────────────────────────────────────────────────
-.main-content table {
-  border-radius: 10px;
-  overflow: hidden;
-  border: 1px solid #1d2230;
-  background: #0e1117;
-
-  th {
-    background: #14181f;
-    font-weight: 600;
-    letter-spacing: -0.01em;
-    border-bottom: 1px solid #1d2230;
-  }
-
-  tr:nth-child(even) td { background: #11151d; }
-  tr:nth-child(odd) td { background: #0e1117; }
-  td { border: none; padding: 8px 12px; font-size: 0.9rem; }
-}
-
-table.shortcuts,
-table.shortcuts.shortcuts { // keep specificity over base table
-  th, td { padding: 7px 12px; font-size: 0.88rem; }
-  td:first-child { white-space: nowrap; width: 1%; }
-}
-
-// ─────────────────────────────────────────────────────────
-// Drill chord visual
-// ─────────────────────────────────────────────────────────
-.drill-chain {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
-  font-family: "JetBrains Mono", "Fira Code", "SF Mono", ui-monospace, Menlo, Consolas, monospace;
-  font-size: 13px;
-  margin: 1.2rem 0;
-
-  .step {
-    background: #0e1117;
-    border: 1px solid #1d2230;
-    border-radius: 8px;
-    padding: 8px 12px;
-    color: #d8dde6;
-  }
-
-  .step.active {
-    border-color: #6c8cff;
-    background: rgba(108, 140, 255, 0.08);
-    box-shadow: 0 0 0 3px rgba(108, 140, 255, 0.12);
-  }
-
-  .arrow {
-    color: #6c8cff;
-    font-weight: bold;
-  }
-}
-
-// ─────────────────────────────────────────────────────────
-// Status badges
-// ─────────────────────────────────────────────────────────
-.badge {
-  display: inline-block;
-  padding: 2px 9px;
-  border-radius: 100px;
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.02em;
-  text-transform: uppercase;
-  vertical-align: middle;
-
-  &.badge-cyan   { background: rgba(60, 200, 255, 0.12); color: #6dd6ff; border: 1px solid rgba(60, 200, 255, 0.25); }
-  &.badge-yellow { background: rgba(255, 200, 60, 0.10); color: #ffce66; border: 1px solid rgba(255, 200, 60, 0.22); }
-  &.badge-red    { background: rgba(255, 100, 100, 0.10); color: #ff8b8b; border: 1px solid rgba(255, 100, 100, 0.22); }
-  &.badge-green  { background: rgba(80, 220, 120, 0.10); color: #6fe4a0; border: 1px solid rgba(80, 220, 120, 0.22); }
-  &.badge-purple { background: rgba(190, 120, 255, 0.10); color: #c89cff; border: 1px solid rgba(190, 120, 255, 0.22); }
-}
-
-// ─────────────────────────────────────────────────────────
-// Code blocks
-// ─────────────────────────────────────────────────────────
-.main-content pre.highlight,
-.main-content figure.highlight {
-  background: #0e1117;
-  border: 1px solid #1d2230;
-  border-radius: 10px;
-  padding: 14px 16px;
-  font-size: 0.85rem;
-  line-height: 1.55;
-}
-
+// ─── Code & code blocks ──────────────────────────────────────────────
 .main-content code {
-  background: #14181f;
-  border: 1px solid #1d2230;
-  color: #d8dde6;
-  font-size: 0.86em;
-  padding: 1px 6px;
-  border-radius: 5px;
+  background: #161b22;
+  border: 1px solid #21262d;
+  color: #c9d1d9;
+  font-size: 0.92em;
+  padding: 0.5px 5px;
+  border-radius: 4px;
+}
+
+.main-content pre.highlight,
+.main-content figure.highlight,
+.main-content pre {
+  background: #0a0e14;
+  border: 1px solid #21262d;
+  border-radius: 6px;
+  padding: 14px 16px;
+  font-size: 0.92rem;
+  line-height: 1.6;
+  overflow-x: auto;
 }
 
 .main-content pre code,
@@ -430,29 +66,277 @@ table code {
   background: transparent;
   border: none;
   padding: 0;
+  font-size: 1em;
 }
 
-// ─────────────────────────────────────────────────────────
-// Callouts
-// ─────────────────────────────────────────────────────────
-.main-content blockquote.note,
-.main-content .note,
-.main-content blockquote.tip,
-.main-content .tip,
-.main-content blockquote.warning,
-.main-content .warning,
-.main-content blockquote.important,
-.main-content .important {
-  border-radius: 10px;
-  border-left-width: 3px;
+// ─── Keybind chips ───────────────────────────────────────────────────
+kbd, .kbd {
+  display: inline-block;
+  padding: 1px 6px;
+  font-family: $mono-font-family;
+  font-size: 0.84em;
+  background: #161b22;
+  color: #c9d1d9;
+  border: 1px solid #30363d;
+  border-bottom-width: 2px;
+  border-radius: 4px;
+  white-space: nowrap;
+  vertical-align: baseline;
+  line-height: 1.4;
 }
 
-// SVG sizing fix
-svg.tui-svg {
-  max-width: 100%;
-  height: auto;
-  display: block;
-  margin: 1rem auto;
-  border-radius: 10px;
-  background: #0e1117;
+// ─── Tables ──────────────────────────────────────────────────────────
+.main-content table {
+  border: 1px solid #21262d;
+  border-radius: 6px;
+  border-collapse: separate;
+  border-spacing: 0;
+  overflow: hidden;
+  width: 100%;
+  font-size: 0.95rem;
+
+  th, td {
+    border: none;
+    border-bottom: 1px solid #21262d;
+    padding: 9px 14px;
+    text-align: left;
+    vertical-align: top;
+  }
+
+  th {
+    background: #161b22;
+    font-weight: 600;
+    color: #f0f6fc;
+  }
+
+  tr:last-child td { border-bottom: none; }
+  tr:nth-child(even) td { background: #0f1319; }
+}
+
+@media (max-width: 50rem) {
+  .main-content table {
+    font-size: 0.92rem;
+    th, td { padding: 7px 10px; }
+  }
+}
+
+// ─── Buttons ─────────────────────────────────────────────────────────
+.btn {
+  border-radius: 6px;
+  font-weight: 550;
+  padding: 7px 14px;
+  text-decoration: none;
+  border: 1px solid #30363d;
+  transition: background 0.12s ease, border-color 0.12s ease;
+
+  &:hover { text-decoration: none; }
+}
+
+.btn-primary {
+  background: #1f6feb;
+  color: #fff;
+  border-color: #1f6feb;
+
+  &:hover {
+    background: #2879f5;
+    border-color: #2879f5;
+    color: #fff;
+  }
+}
+
+// ─── Terminal mockup (used on feature pages) ─────────────────────────
+// Plain readable monospace block. No gimmicks.
+.tui-mockup {
+  background: #0a0e14;
+  color: #c9d1d9;
+  font-family: $mono-font-family;
+  font-size: 0.86rem;
+  line-height: 1.55;
+  padding: 14px 16px;
+  border: 1px solid #21262d;
+  border-radius: 6px;
+  overflow-x: auto;
+  margin: 1.2rem 0;
+
+  pre {
+    background: transparent;
+    border: none;
+    margin: 0;
+    padding: 0;
+    font-size: inherit;
+    line-height: inherit;
+    color: inherit;
+  }
+
+  &.with-title {
+    padding: 0;
+
+    &::before {
+      content: attr(data-title);
+      display: block;
+      padding: 7px 14px;
+      font-family: $body-font-family;
+      font-size: 0.78rem;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: #8b949e;
+      background: #0d1117;
+      border-bottom: 1px solid #21262d;
+    }
+
+    pre { padding: 14px 16px; }
+  }
+}
+
+@media (max-width: 50rem) {
+  .tui-mockup { font-size: 0.78rem; padding: 12px 14px; }
+}
+
+// ─── Before / after pair ─────────────────────────────────────────────
+.io-pair {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  gap: 12px;
+  align-items: stretch;
+  margin: 1.4rem 0;
+
+  @media (max-width: 50rem) {
+    grid-template-columns: 1fr;
+  }
+
+  .io-block {
+    background: #0a0e14;
+    border: 1px solid #21262d;
+    border-radius: 6px;
+    padding: 12px 14px;
+    font-family: $mono-font-family;
+    font-size: 0.86rem;
+    line-height: 1.55;
+    color: #c9d1d9;
+    overflow-x: auto;
+    white-space: pre;
+  }
+
+  .io-label {
+    font-family: $body-font-family;
+    font-size: 0.72rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: #8b949e;
+    margin-bottom: 6px;
+  }
+
+  .io-arrow {
+    align-self: center;
+    color: #58a6ff;
+    font-size: 1.4rem;
+    text-align: center;
+
+    @media (max-width: 50rem) { transform: rotate(90deg); }
+  }
+}
+
+@media (max-width: 50rem) {
+  .io-pair .io-block { font-size: 0.78rem; }
+}
+
+// ─── Drill chain ─────────────────────────────────────────────────────
+.drill-chain {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  font-family: $mono-font-family;
+  font-size: 0.92rem;
+  margin: 1.2rem 0;
+
+  .step {
+    background: #161b22;
+    border: 1px solid #21262d;
+    border-radius: 4px;
+    padding: 5px 9px;
+    color: #c9d1d9;
+  }
+
+  .step.active {
+    border-color: #58a6ff;
+    color: #f0f6fc;
+  }
+
+  .arrow {
+    color: #8b949e;
+  }
+}
+
+// ─── Feature list (landing) ──────────────────────────────────────────
+.feature-list {
+  list-style: none;
+  padding: 0;
+  margin: 1rem 0 1.5rem 0;
+
+  li {
+    padding: 0.55rem 0;
+    border-bottom: 1px solid #21262d;
+
+    a {
+      font-weight: 600;
+      text-decoration: none;
+      color: #f0f6fc;
+
+      &:hover { color: #58a6ff; }
+    }
+
+    .desc {
+      color: #8b949e;
+      font-size: 0.95rem;
+      margin-left: 0.4rem;
+    }
+
+    &:last-child { border-bottom: none; }
+  }
+}
+
+@media (max-width: 50rem) {
+  .feature-list li {
+    padding: 0.65rem 0;
+
+    .desc {
+      display: block;
+      margin-left: 0;
+      margin-top: 2px;
+      font-size: 0.92rem;
+    }
+  }
+}
+
+// ─── Tagline ─────────────────────────────────────────────────────────
+.tagline {
+  font-size: 1.2rem;
+  color: #8b949e;
+  line-height: 1.5;
+  margin: 0 0 1.5rem 0;
+  max-width: 38rem;
+}
+
+@media (max-width: 50rem) {
+  .tagline { font-size: 1.05rem; }
+}
+
+// ─── Sidebar polish ──────────────────────────────────────────────────
+.side-bar {
+  border-right: 1px solid #21262d;
+}
+
+.site-title {
+  font-weight: 700;
+  font-size: 1.15rem;
+}
+
+// Quiet down callouts
+.main-content blockquote {
+  border-left: 3px solid #30363d;
+  background: #0f1319;
+  border-radius: 0 6px 6px 0;
+  padding: 10px 14px;
+  color: #c9d1d9;
 }

@@ -1,24 +1,24 @@
-// jiq custom color scheme — modern dark palette
-// Overrides just-the-docs core variables before the base theme renders.
+// jiq — quiet dark color scheme. Override just-the-docs variables only.
 
-$body-background-color: #0b0d12;
-$sidebar-color: #0e1117;
-$body-text-color: #d8dde6;
-$body-heading-color: #f4f6fa;
-$link-color: #7aa7ff;
-$btn-primary-color: #6c8cff;
-$base-button-color: #1a1f2b;
-$body-font-family: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-$mono-font-family: "JetBrains Mono", "Fira Code", "SF Mono", ui-monospace, Menlo, Consolas, monospace;
-$root-font-size: 16px;
-$content-width: 920px;
-$nav-width: 268px;
-$nav-list-item-height: 2.25rem;
-$border-color: #1d2230;
-$border-radius: 8px;
-$code-background-color: #0e1117;
-$base-grey-color-100: #14181f;
-$base-grey-color-200: #1a1f2a;
-$base-grey-color-300: #232938;
-$table-background-color: #0e1117;
-$feedback-color: darken(#0b0d12, 1%);
+$body-background-color: #0d1117;
+$sidebar-color: #0d1117;
+$body-text-color: #c9d1d9;
+$body-heading-color: #f0f6fc;
+$nav-child-link-color: #8b949e;
+$link-color: #58a6ff;
+$btn-primary-color: #58a6ff;
+$base-button-color: #161b22;
+$body-font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Inter", system-ui, sans-serif;
+$mono-font-family: "JetBrains Mono", "SF Mono", ui-monospace, Menlo, Consolas, monospace;
+$root-font-size: 17px;
+$content-width: 800px;
+$nav-width: 248px;
+$nav-list-item-height: 2rem;
+$border-color: #21262d;
+$border-radius: 6px;
+$code-background-color: #0a0e14;
+$base-grey-color-100: #161b22;
+$base-grey-color-200: #21262d;
+$base-grey-color-300: #30363d;
+$table-background-color: #0d1117;
+$feedback-color: #0d1117;
