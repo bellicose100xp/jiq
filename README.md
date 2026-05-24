@@ -8,7 +8,7 @@
 
 ## Features
 
-- **Path-at-cursor + drill in/back** - Live jq path of the value under the cursor in the results pane; press `>` to drill into that value (pipe-composes the path onto the current query) and `<` to step back. Works in search mode too, where `>` drills into the current match.
+- **Path-at-cursor + structural navigation** - Live jq path of the value under the cursor in the results pane; press `>` to go to that value, `<` to step back, `*` to iterate over the nearest array, `^` to step up one level in the typed query, `}` to wrap the cursor's leaf as a single-entry object. All chords just rewrite the query so the existing async pipeline picks them up. Works in search mode too, where `>` `*` `}` operate on the current match.
 - **Real-time query execution** - See results as you type
 - **AI assistant** - Get intelligent query suggestions, error fixes, and natural language interpretation
 - **Context-aware autocomplete** - Smart field suggestions with nested path navigation and JSON type hints
@@ -229,15 +229,18 @@ terminals refuse to forward host-clipboard reads through the SSH tunnel.
 | `Ctrl+u` / `PageUp` | Move cursor half page up (also works from input field) |
 | `g` / `Home` | Jump cursor to top |
 | `G` / `End` | Jump cursor to bottom |
-| `>` | Drill into value at cursor (pipe-composes its path onto the current query) |
+| `>` | Go to value at cursor (pipe-composes its path onto the current query) |
 | `<` | Step back to the prior query (only enabled after at least one `>`) |
+| `*` | Iterate over the nearest array level (replace last `[N]` with `[]`) |
+| `^` | Step up one level (drop the last step from the trailing path segment of the typed query) |
+| `}` | Wrap the cursor's leaf as a single-entry object: `<parent> \| {key}` |
 
 **Horizontal Scrolling**
 | Key | Action |
 |-----|--------|
 | `h` / `l` / `←` / `→` | Scroll 1 column |
 | `H` / `L` | Scroll 10 columns |
-| `0` / `^` | Jump to left edge |
+| `0` | Jump to left edge |
 | `$` | Jump to right edge |
 
 **Visual Line Selection**

@@ -626,7 +626,7 @@ proptest! {
         viewport_width in 20u16..80,
         max_h_offset in 20u16..200,
         initial_h_offset_factor in 0.0f64..1.0,
-        key_type in 0u8..7,
+        key_type in 0u8..6,
     ) {
         let mut app = test_app(r#"{"name": "test"}"#);
 
@@ -658,19 +658,18 @@ proptest! {
             2 => key(KeyCode::Char('H')),
             3 => key(KeyCode::Char('L')),
             4 => key(KeyCode::Char('0')),
-            5 => key(KeyCode::Char('^')),
-            6 => key(KeyCode::Left),
+            5 => key(KeyCode::Left),
             _ => key(KeyCode::Char('h')),
         };
 
         handle_search_key(&mut app, test_key);
 
         let expected_h_offset = match key_type {
-            0 | 6 => h_offset_before.saturating_sub(1),
+            0 | 5 => h_offset_before.saturating_sub(1),
             1 => h_offset_before.saturating_add(1).min(max_h_offset),
             2 => h_offset_before.saturating_sub(10),
             3 => h_offset_before.saturating_add(10).min(max_h_offset),
-            4 | 5 => 0,
+            4 => 0,
             _ => h_offset_before,
         };
 

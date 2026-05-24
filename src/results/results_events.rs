@@ -4,7 +4,10 @@ use crate::app::App;
 use crate::clipboard;
 use crate::editor::EditorMode;
 use crate::help::HelpTab;
-use crate::path_at_cursor_apply::{ApplyOutcome, PathSource, UndoOutcome, apply_path, pop_undo};
+use crate::path_at_cursor_apply::{
+    ApplyOutcome, PathSource, StepOutOutcome, UndoOutcome, apply_iterate, apply_keep_kv,
+    apply_path, apply_step_out, pop_undo,
+};
 
 pub fn handle_results_pane_key(app: &mut App, key: KeyEvent) {
     if app.results_cursor.is_visual_mode() && handle_visual_mode_key(app, key) {
@@ -78,7 +81,7 @@ pub fn handle_results_pane_key(app: &mut App, key: KeyEvent) {
             app.results_scroll.scroll_right(10);
         }
 
-        KeyCode::Char('0') | KeyCode::Char('^') => {
+        KeyCode::Char('0') => {
             app.results_scroll.jump_to_left();
         }
 
@@ -121,29 +124,74 @@ pub fn handle_results_pane_key(app: &mut App, key: KeyEvent) {
             drill_back(app);
         }
 
+        KeyCode::Char('*') => {
+            iterate(app, PathSource::CursorRow);
+        }
+
+        KeyCode::Char('^') => {
+            step_out(app);
+        }
+
+        KeyCode::Char('}') => {
+            keep_kv(app, PathSource::CursorRow);
+        }
+
         _ => {}
     }
 }
 
-/// Resolve `source` to a path, pipe-compose onto the query, and surface the
-/// outcome via the notification overlay. Used by both the results-pane key
-/// handler and the search-mode `>` interceptor.
-pub(crate) fn drill_in(app: &mut App, source: PathSource) {
-    match apply_path(app, source) {
+/// Map an `ApplyOutcome` to a notification. Used by all chords that go
+/// through `apply_*` helpers (`>`, `*`, `}`) so the user-facing strings
+/// stay in one place.
+fn report_apply_outcome(app: &mut App, outcome: ApplyOutcome) {
+    match outcome {
         ApplyOutcome::Applied(_) => {}
         ApplyOutcome::AtRoot => app.notification.show("Already at root"),
         ApplyOutcome::NoPath => app.notification.show("No path at cursor"),
+        ApplyOutcome::NoArrayToIterate => app.notification.show("No array in path to iterate"),
+        ApplyOutcome::NoKeyToWrap => app.notification.show("No key at cursor to wrap"),
     }
 }
 
-/// Pop the most recent drill-in snapshot, surfacing the outcome.
+/// `>` — pipe-compose the cursor row's path onto the query and snapshot
+/// for `<`. Public so the search-mode dispatcher can call it directly.
+pub(crate) fn drill_in(app: &mut App, source: PathSource) {
+    let outcome = apply_path(app, source);
+    report_apply_outcome(app, outcome);
+}
+
+/// `*` — pipe-compose the cursor row's path with the rightmost array
+/// index replaced by `[]`. Snapshots for `<`.
+pub(crate) fn iterate(app: &mut App, source: PathSource) {
+    let outcome = apply_iterate(app, source);
+    report_apply_outcome(app, outcome);
+}
+
+/// `}` — wrap the cursor's leaf as a single-entry object literal,
+/// `<parent> | {key}`. Snapshots like `>` and `*`.
+pub(crate) fn keep_kv(app: &mut App, source: PathSource) {
+    let outcome = apply_keep_kv(app, source);
+    report_apply_outcome(app, outcome);
+}
+
+/// `^` — drop one step from the trailing path segment of the current
+/// typed query. Ring-free, pipe-aware. Operates on the textarea
+/// contents, not the cursor row, so repeated presses walk the query
+/// independently of where the result-pane cursor is.
+pub(crate) fn step_out(app: &mut App) {
+    match apply_step_out(app) {
+        StepOutOutcome::Stepped(_) => {}
+        StepOutOutcome::AtRoot => app.notification.show("Already at root"),
+        StepOutOutcome::Unparseable => app.notification.show("Can't step out of complex query"),
+    }
+}
+
+/// `<` — pop the most recent drill-in snapshot, restoring the prior
+/// query and viewport.
 pub(crate) fn drill_back(app: &mut App) {
     match pop_undo(app) {
         UndoOutcome::Restored(_) => {}
         UndoOutcome::Empty => app.notification.show("Nothing to go back to"),
-        UndoOutcome::Invalidated => app
-            .notification
-            .show("Query was edited — undo history cleared"),
     }
 }
 

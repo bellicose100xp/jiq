@@ -56,11 +56,16 @@ pub fn render_bar(app: &mut App, frame: &mut Frame, area: Rect) {
             .alignment(Alignment::Right),
         );
         let mut hints: Vec<(&'static str, &'static str)> =
-            vec![("Enter", "Confirm"), (">", "Drill in")];
+            vec![("Enter", "Confirm"), (">", "value")];
         if !app.query_undo.is_empty() {
-            hints.push(("<", "Back"));
+            hints.push(("<", "back"));
         }
-        hints.push(("Esc", "Close"));
+        hints.extend([
+            ("*", "iterate"),
+            ("^", "parent"),
+            ("}", "wrap"),
+            ("Esc", "Close"),
+        ]);
         block = block.title_bottom(
             theme::border_hints::build_hints(&hints, theme::search::HINTS)
                 .alignment(Alignment::Center),

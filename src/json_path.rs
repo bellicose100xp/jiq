@@ -48,6 +48,9 @@ pub fn format_field_name(prefix: &str, name: &str) -> String {
 pub enum JsonPathStep {
     Key(String),
     Index(usize),
+    /// Iterate-all marker (`[]` in jq). Produced by the `*` chord when
+    /// turning a specific array index into a "match every element" step.
+    Splat,
 }
 
 /// A structured path inside a JSON document.
@@ -71,6 +74,20 @@ impl JsonPath {
 
     pub fn pop(&mut self) {
         self.steps.pop();
+    }
+
+    /// Replace the rightmost `Index` step with [`JsonPathStep::Splat`] and
+    /// return `true`. If the path contains no `Index`, leave it unchanged
+    /// and return `false`. Used by the `*` (iterate) chord to turn
+    /// `.users[2].tags[1]` into `.users[2].tags[]`.
+    pub fn splat_nearest_index(&mut self) -> bool {
+        for step in self.steps.iter_mut().rev() {
+            if let JsonPathStep::Index(_) = step {
+                *step = JsonPathStep::Splat;
+                return true;
+            }
+        }
+        false
     }
 
     #[allow(dead_code)]
@@ -108,10 +125,121 @@ impl JsonPath {
                     }
                     out.push_str(&format!("[{}]", i));
                 }
+                JsonPathStep::Splat => {
+                    if out.ends_with('.') && out.len() > 1 {
+                        out.pop();
+                    }
+                    out.push_str("[]");
+                }
             }
         }
         out
     }
+}
+
+/// Parse a jq path expression that this module's `to_jq` could have
+/// produced — `.`, `.foo`, `.["foo-bar"]`, `[5]`, `[]`, and concatenations
+/// thereof — into a [`JsonPath`]. Returns `None` for any input outside
+/// that grammar (pipes, filters, function calls, etc.).
+///
+/// Used by the `[` (step out) chord, which parses the user's *current
+/// query* (or the trailing segment after the last pipe), drops the last
+/// step, and renders back. The parser deliberately does NOT try to
+/// understand full jq programs — anything it can't recognize bails out
+/// and the chord becomes a no-op with a "can't step out of complex
+/// query" notification.
+pub fn parse_jq_path(input: &str) -> Option<JsonPath> {
+    let s = input.trim();
+    if s.is_empty() || s == "." {
+        return Some(JsonPath::new());
+    }
+    let mut path = JsonPath::new();
+    let bytes = s.as_bytes();
+    let mut i = 0;
+    while i < bytes.len() {
+        match bytes[i] {
+            b'.' => {
+                i += 1;
+                if i >= bytes.len() {
+                    // Trailing dot is not part of our emitted syntax.
+                    return None;
+                }
+                if bytes[i] == b'[' {
+                    // `.[...]` — fall through to the bracket branch.
+                    continue;
+                }
+                let start = i;
+                while i < bytes.len() {
+                    let c = bytes[i];
+                    if c.is_ascii_alphanumeric() || c == b'_' {
+                        i += 1;
+                    } else {
+                        break;
+                    }
+                }
+                if start == i {
+                    return None;
+                }
+                let key = std::str::from_utf8(&bytes[start..i]).ok()?;
+                if !is_simple_jq_identifier(key) {
+                    return None;
+                }
+                path.push_key(key);
+            }
+            b'[' => {
+                i += 1;
+                if i >= bytes.len() {
+                    return None;
+                }
+                if bytes[i] == b']' {
+                    path.steps.push(JsonPathStep::Splat);
+                    i += 1;
+                } else if bytes[i] == b'"' {
+                    // Quoted key, JSON string semantics. Find the matching
+                    // closing quote with backslash-escape awareness.
+                    let key_start = i;
+                    i += 1;
+                    while i < bytes.len() && bytes[i] != b'"' {
+                        if bytes[i] == b'\\' {
+                            i += 1;
+                            if i >= bytes.len() {
+                                return None;
+                            }
+                        }
+                        i += 1;
+                    }
+                    if i >= bytes.len() {
+                        return None;
+                    }
+                    let key_end = i + 1; // include the closing quote
+                    let raw = std::str::from_utf8(&bytes[key_start..key_end]).ok()?;
+                    let key: String = serde_json::from_str(raw).ok()?;
+                    i += 1;
+                    if i >= bytes.len() || bytes[i] != b']' {
+                        return None;
+                    }
+                    i += 1;
+                    path.push_key(key);
+                } else if bytes[i].is_ascii_digit() {
+                    let start = i;
+                    while i < bytes.len() && bytes[i].is_ascii_digit() {
+                        i += 1;
+                    }
+                    if i >= bytes.len() || bytes[i] != b']' {
+                        return None;
+                    }
+                    let idx_str = std::str::from_utf8(&bytes[start..i]).ok()?;
+                    let idx: usize = idx_str.parse().ok()?;
+                    i += 1;
+                    path.push_index(idx);
+                } else {
+                    return None;
+                }
+            }
+            _ => return None,
+        }
+    }
+    Some(path)
 }
 
 /// Locate the path of the value pretty-printed on a given line.

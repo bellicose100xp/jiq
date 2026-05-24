@@ -21,7 +21,7 @@ expression: output
 "│                                                                              │"
 "│                                                                              │"
 "│                                                                              │"
-"╰───── n/N Next/Prev • Enter Next • > Drill in • Ctrl+F Edit • Esc Close 1/2   ╯"
+"╰/Prev • Enter Next • > value • * iterate • ^ parent • } wrap • Ctrl+F Edit • E╯"
 "╭ Search ──────────────────────────────────────────────────────────────────────╮"
 "│alice                                                                         │"
 "╰──────────────────────────────────────────────────────────────────────────────╯"
