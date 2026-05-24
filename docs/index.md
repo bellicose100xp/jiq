@@ -52,42 +52,42 @@ jiq                  # clipboard, with paste-box fallback
 <div class="feature-grid" markdown="0">
   <a class="feature-card" href="./features/results-pane/">
     <span class="feature-card-title">Results pane</span>
-    <p class="feature-card-desc">Move the cursor to any row and press one key to zoom into that value — jiq rewrites the query for you. Step back out the same way.</p>
+    <p class="feature-card-desc">Exploring a deeply nested JSON response? Navigate the output with j/k, press &gt; on any row to filter down to just that piece of data. No path typing needed; &lt; takes you back.</p>
   </a>
   <a class="feature-card" href="./features/autocomplete/">
     <span class="feature-card-title">Autocomplete</span>
-    <p class="feature-card-desc">Suggestions appear as you type a field path, pulled from your actual JSON. Each field shows its type. Tab to accept.</p>
+    <p class="feature-card-desc">Don't know your JSON's field names off the top of your head? jiq suggests them as you type — pulled from your actual data, with the value type shown alongside.</p>
   </a>
   <a class="feature-card" href="./features/ai-assistant/">
     <span class="feature-card-title">AI assistant</span>
-    <p class="feature-card-desc">Press one shortcut and the AI returns 2–5 query suggestions based on your data and current error. Apply any of them instantly.</p>
+    <p class="feature-card-desc">Don't know the right jq syntax? Press Ctrl+A and the AI sees your query, the error, and a sample of your data — then suggests 2–5 fixes you can apply with one key.</p>
   </a>
   <a class="feature-card" href="./features/snippets/">
     <span class="feature-card-title">Snippet library</span>
-    <p class="feature-card-desc">Save your most-used queries by name. Open the library, type to filter the list, press Enter to run. Persists across sessions.</p>
+    <p class="feature-card-desc">Got a jq query you run all the time? Save it by name. One shortcut opens your library; type to filter, Enter to run. Never retype the same query twice.</p>
   </a>
   <a class="feature-card" href="./features/search/">
     <span class="feature-card-title">Search in results</span>
-    <p class="feature-card-desc">Search the rendered output as you type. Matches highlight in real time; n/N steps between them. Works across thousands of lines.</p>
+    <p class="feature-card-desc">Looking for a specific value buried in hundreds of lines of output? Ctrl+F highlights every match as you type. n/N jumps between them.</p>
   </a>
   <a class="feature-card" href="./features/history/">
     <span class="feature-card-title">Query history</span>
-    <p class="feature-card-desc">Every query that produced output is saved automatically. Cycle through recent ones inline, or open a popup to search your full history.</p>
+    <p class="feature-card-desc">Ran the right query ten queries ago and want it back? Every query is saved. Ctrl+P cycles backward; Ctrl+R opens a searchable list of everything you've run.</p>
   </a>
   <a class="feature-card" href="./features/vim-editing/">
     <span class="feature-card-title">Vim editing</span>
-    <p class="feature-card-desc">The query input supports Vim keybindings — move by word, delete with operators, undo and redo. INSERT mode works like a normal text field if you skip this.</p>
+    <p class="feature-card-desc">Know Vim? Every motion and operator works in the query input. Don't know Vim? INSERT mode is just a regular text field — nothing to learn.</p>
   </a>
   <a class="feature-card" href="./features/clipboard/">
     <span class="feature-card-title">Clipboard &amp; paste</span>
-    <p class="feature-card-desc">Run <code>jiq</code> with no file and it reads JSON straight from your clipboard. If the clipboard is empty or invalid, a paste box opens instead of failing.</p>
+    <p class="feature-card-desc">Copied some JSON from a browser or terminal? Just run <code>jiq</code> — it reads your clipboard automatically. If the JSON is malformed, a paste box opens so you can fix it first.</p>
   </a>
   <a class="feature-card" href="./features/mouse/">
     <span class="feature-card-title">Mouse support</span>
-    <p class="feature-card-desc">Click to focus any pane, scroll to navigate, drag to select lines in the results. Click a suggestion or history entry to apply it.</p>
+    <p class="feature-card-desc">Prefer the mouse for some things? Every pane responds — click to focus, scroll to browse, drag to select output lines. Keyboard and mouse work together throughout.</p>
   </a>
   <a class="feature-card" href="./features/tooltip/">
     <span class="feature-card-title">Tooltip &amp; overlays</span>
-    <p class="feature-card-desc">Cursor on a jq function? A tooltip shows its signature and examples. Ctrl+E shows the full error message. F1 opens the keybind reference.</p>
+    <p class="feature-card-desc">Forgotten how <code>group_by</code> works? Put the cursor on any jq function and a tooltip shows its signature and examples inline. Ctrl+E shows the full error when a query fails.</p>
   </a>
 </div>
