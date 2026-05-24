@@ -320,16 +320,6 @@ fn test_zero_jumps_to_left_edge() {
 }
 
 #[test]
-fn test_caret_jumps_to_left_edge() {
-    let mut app = app_with_wide_content();
-    app.results_scroll.h_offset = 50;
-
-    app.handle_key_event(key(KeyCode::Char('^')));
-
-    assert_eq!(app.results_scroll.h_offset, 0);
-}
-
-#[test]
 fn test_dollar_jumps_to_cursor_line_end() {
     let mut app = app_with_wide_content();
     app.results_scroll.h_offset = 0;
@@ -631,19 +621,22 @@ mod drill_tests {
     }
 
     #[test]
-    fn drill_back_after_manual_edit_clears_ring_and_notifies() {
+    fn drill_back_after_manual_edit_pops_immediately_discarding_edits() {
+        // `<` always undoes the most recent `>`, even when the user typed
+        // something into the textarea in between. Simpler mental model:
+        // `<` reverses `>`, edits between the two are lost.
         let mut app = test_app(r#"{"a": 1, "b": 2}"#);
         place(&mut app, 1);
 
         app.handle_key_event(key(KeyCode::Char('>')));
-        // Simulate manual textarea edit by inserting into the query.
         app.input.textarea.insert_str(" | .extra");
 
         app.handle_key_event(key(KeyCode::Char('<')));
 
         assert_eq!(
-            app.notification.current_message(),
-            Some("Query was edited — undo history cleared")
+            app.input.query(),
+            "",
+            "edits discarded; prior input restored"
         );
         assert!(app.query_undo.is_empty());
     }

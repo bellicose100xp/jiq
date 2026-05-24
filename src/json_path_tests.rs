@@ -107,6 +107,131 @@ fn jq_path_pop() {
 }
 
 #[test]
+fn splat_replaces_rightmost_index() {
+    let mut p = JsonPath::new();
+    p.push_key("users");
+    p.push_index(2);
+    p.push_key("tags");
+    p.push_index(1);
+    assert!(p.splat_nearest_index());
+    assert_eq!(p.to_jq(), ".users[2].tags[]");
+}
+
+#[test]
+fn splat_on_simple_indexed_path() {
+    let mut p = JsonPath::new();
+    p.push_index(5);
+    assert!(p.splat_nearest_index());
+    assert_eq!(p.to_jq(), ".[]");
+}
+
+#[test]
+fn splat_returns_false_with_no_index() {
+    let mut p = JsonPath::new();
+    p.push_key("a");
+    p.push_key("b");
+    assert!(!p.splat_nearest_index());
+    assert_eq!(p.to_jq(), ".a.b");
+}
+
+#[test]
+fn splat_on_empty_path_returns_false() {
+    let mut p = JsonPath::new();
+    assert!(!p.splat_nearest_index());
+    assert_eq!(p.to_jq(), ".");
+}
+
+#[test]
+fn parse_root_returns_empty_path() {
+    let p = parse_jq_path(".").unwrap();
+    assert!(p.is_empty());
+    let p = parse_jq_path("").unwrap();
+    assert!(p.is_empty());
+    let p = parse_jq_path("   ").unwrap();
+    assert!(p.is_empty());
+}
+
+#[test]
+fn parse_simple_keys() {
+    let p = parse_jq_path(".users").unwrap();
+    assert_eq!(p.to_jq(), ".users");
+    let p = parse_jq_path(".users.profile.email").unwrap();
+    assert_eq!(p.to_jq(), ".users.profile.email");
+}
+
+#[test]
+fn parse_indices() {
+    let p = parse_jq_path(".[5]").unwrap();
+    assert_eq!(p.to_jq(), ".[5]");
+    let p = parse_jq_path(".users[2].name").unwrap();
+    assert_eq!(p.to_jq(), ".users[2].name");
+}
+
+#[test]
+fn parse_splat() {
+    let p = parse_jq_path(".[]").unwrap();
+    assert_eq!(p.to_jq(), ".[]");
+    let p = parse_jq_path(".users[].name").unwrap();
+    assert_eq!(p.to_jq(), ".users[].name");
+}
+
+#[test]
+fn parse_quoted_keys() {
+    let p = parse_jq_path(".[\"foo-bar\"]").unwrap();
+    assert_eq!(p.to_jq(), ".[\"foo-bar\"]");
+    let p = parse_jq_path(".users[2][\"zip-code\"]").unwrap();
+    assert_eq!(p.to_jq(), ".users[2][\"zip-code\"]");
+}
+
+#[test]
+fn parse_unicode_quoted_keys() {
+    let p = parse_jq_path(".[\"café\"][0][\"名前\"]").unwrap();
+    assert_eq!(p.to_jq(), ".[\"café\"][0][\"名前\"]");
+}
+
+#[test]
+fn parse_rejects_pipes_and_filters() {
+    assert!(parse_jq_path(".users | .[2]").is_none());
+    assert!(parse_jq_path("map(.x)").is_none());
+    assert!(parse_jq_path(".users | length").is_none());
+}
+
+#[test]
+fn parse_rejects_trailing_dot_and_unbalanced_brackets() {
+    assert!(parse_jq_path(".users.").is_none());
+    assert!(parse_jq_path(".[5").is_none());
+    assert!(parse_jq_path(".[\"foo").is_none());
+    assert!(parse_jq_path(".[5]extra").is_none());
+}
+
+#[test]
+fn parse_round_trips_to_jq_emitted_paths() {
+    let cases = [
+        ".",
+        ".a",
+        ".users[2].profile.email",
+        ".[\"foo-bar\"]",
+        ".users[].tags[0]",
+        ".users[0][\"zip-code\"]",
+        ".[\"a/b\"][0]",
+    ];
+    for case in cases {
+        let parsed = parse_jq_path(case).unwrap_or_else(|| panic!("parse failed: {}", case));
+        assert_eq!(parsed.to_jq(), case, "round-trip mismatch for {}", case);
+    }
+}
+
+#[test]
+fn splat_followed_by_key_renders_correctly() {
+    let mut p = JsonPath::new();
+    p.push_key("users");
+    p.push_index(0);
+    p.push_key("name");
+    assert!(p.splat_nearest_index());
+    assert_eq!(p.to_jq(), ".users[].name");
+}
+
+#[test]
 fn pretty_line_count_scalar() {
     assert_eq!(pretty_line_count(&json!(42)), 1);
     assert_eq!(pretty_line_count(&json!("hello")), 1);

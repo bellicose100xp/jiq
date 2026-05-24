@@ -24,37 +24,38 @@ const PATH_AT_CURSOR_MIN_WIDTH: usize = 5;
 /// border before head-truncating the path text itself.
 const PATH_AT_CURSOR_CHROME_WIDTH: usize = 4;
 
-fn build_results_pane_hints(can_undo: bool) -> Line<'static> {
-    let mut hints: Vec<(&'static str, &'static str)> = vec![
-        ("Tab", "Edit Query"),
-        ("i", "Edit Query"),
-        (">", "Drill in"),
-    ];
+/// Build the path-navigation chord segment shared by every bottom border
+/// that advertises `>` / `<` / `*` / `^` / `}`. The `<` slot only renders
+/// when the undo ring is non-empty so the hint never misleads.
+fn path_chord_hints(can_undo: bool) -> Vec<(&'static str, &'static str)> {
+    let mut hints: Vec<(&'static str, &'static str)> = vec![(">", "value")];
     if can_undo {
-        hints.push(("<", "Back"));
+        hints.push(("<", "back"));
     }
+    hints.extend([("*", "iterate"), ("^", "parent"), ("}", "wrap")]);
+    hints
+}
+
+fn build_results_pane_hints(can_undo: bool) -> Line<'static> {
+    let mut hints: Vec<(&'static str, &'static str)> =
+        vec![("Tab", "Edit Query"), ("i", "Edit Query")];
+    hints.extend(path_chord_hints(can_undo));
     theme::border_hints::build_hints(&hints, theme::results::HINT_KEY)
 }
 
 fn build_search_hints(can_undo: bool) -> Line<'static> {
     let mut hints: Vec<(&'static str, &'static str)> =
-        vec![("n/N", "Next/Prev"), ("Enter", "Next"), (">", "Drill in")];
-    if can_undo {
-        hints.push(("<", "Back"));
-    }
+        vec![("n/N", "Next/Prev"), ("Enter", "Next")];
+    hints.extend(path_chord_hints(can_undo));
     hints.extend([("Ctrl+F", "Edit"), ("Esc", "Close")]);
     theme::border_hints::build_hints(&hints, theme::results::SEARCH_ACTIVE)
 }
 
 /// Drill-only hint set for the results-pane bottom border in search-editing
 /// mode. The search bar itself carries `Enter Confirm · Esc Close`, so the
-/// results pane only advertises the jiq-specific `>` / `<` chords here.
+/// results pane only advertises the jiq-specific path chords here.
 fn build_drill_only_hints(can_undo: bool) -> Line<'static> {
-    let mut hints: Vec<(&'static str, &'static str)> = vec![(">", "Drill in")];
-    if can_undo {
-        hints.push(("<", "Back"));
-    }
-    theme::border_hints::build_hints(&hints, theme::results::SEARCH_INACTIVE)
+    theme::border_hints::build_hints(&path_chord_hints(can_undo), theme::results::SEARCH_INACTIVE)
 }
 
 fn get_spinner(frame_count: u64) -> (char, Color) {

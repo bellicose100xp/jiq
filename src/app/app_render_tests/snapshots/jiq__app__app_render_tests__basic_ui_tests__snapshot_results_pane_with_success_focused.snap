@@ -21,7 +21,7 @@ expression: output
 "│                                                                              │"
 "│                                                                              │"
 "│                                                                              │"
-"╰───────────────── Tab Edit Query • i Edit Query • > Drill in ─────────────────╯"
+"╰── Tab Edit Query • i Edit Query • > value • * iterate • ^ parent • } wrap ───╯"
 "╭ Query [INSERT] ───────────────────────────────────────── Ctrl+A AI Assistant ╮"
 "│.name                                                                         │"
 "╰──────────────────────────────────────────────────────────────────────────────╯"

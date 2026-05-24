@@ -13,94 +13,55 @@ fn vp_at(cursor_row: u32, scroll_offset: u16, h_offset: u16) -> ViewportState {
 }
 
 #[test]
-fn empty_ring_pops_as_empty() {
+fn empty_ring_pops_as_none() {
     let mut ring = QueryUndoRing::new();
     assert!(ring.is_empty());
-    assert_eq!(ring.pop_if_matches("."), PopOutcome::Empty);
+    assert!(ring.pop().is_none());
 }
 
 #[test]
-fn push_then_pop_round_trips_when_unchanged() {
+fn push_then_pop_round_trips() {
     let mut ring = QueryUndoRing::new();
-    ring.push(".", ".users", vp_at(7, 4, 2));
+    ring.push(".", vp_at(7, 4, 2));
     assert!(!ring.is_empty());
-    assert_eq!(
-        ring.pop_if_matches(".users"),
-        PopOutcome::Restored {
-            query: ".".into(),
-            viewport: vp_at(7, 4, 2),
-        }
-    );
+    let (prev, viewport) = ring.pop().unwrap();
+    assert_eq!(prev, ".");
+    assert_eq!(viewport, vp_at(7, 4, 2));
     assert!(ring.is_empty());
 }
 
 #[test]
-fn manual_edit_invalidates_ring() {
+fn pop_works_regardless_of_intervening_edits() {
+    // The ring no longer tracks `expected_after`; `<` always pops the
+    // most recent snapshot, even if the user manually edited the
+    // textarea between drill-ins. The simpler mental model is the
+    // explicit trade-off.
     let mut ring = QueryUndoRing::new();
-    ring.push(".", ".users", vp());
-    // User typed extra characters in the textarea after the drill-in.
-    assert_eq!(ring.pop_if_matches(".users[0]"), PopOutcome::Invalidated);
-    assert!(ring.is_empty(), "invalidation must clear the whole ring");
-}
-
-#[test]
-fn manual_edit_clears_chain_not_just_top() {
-    let mut ring = QueryUndoRing::new();
-    ring.push(".", ".a", vp());
-    ring.push(".a", ".a | .b", vp());
-    ring.push(".a | .b", ".a | .b | .c", vp());
-    // User edits between two drill-ins; only the top entry's expected
-    // string matters for the invalidation check.
-    assert_eq!(
-        ring.pop_if_matches(".a | .b | tweaked"),
-        PopOutcome::Invalidated
-    );
-    assert_eq!(ring.depth(), 0);
+    ring.push(".", vp());
+    let (prev, _) = ring.pop().unwrap();
+    assert_eq!(prev, ".");
+    assert!(ring.is_empty());
 }
 
 #[test]
 fn deep_chain_pops_in_reverse_order() {
     let mut ring = QueryUndoRing::new();
-    ring.push(".", ".a", vp_at(1, 0, 0));
-    ring.push(".a", ".a | .b", vp_at(2, 0, 0));
-    ring.push(".a | .b", ".a | .b | .c", vp_at(3, 0, 0));
-    assert_eq!(
-        ring.pop_if_matches(".a | .b | .c"),
-        PopOutcome::Restored {
-            query: ".a | .b".into(),
-            viewport: vp_at(3, 0, 0),
-        }
-    );
-    assert_eq!(
-        ring.pop_if_matches(".a | .b"),
-        PopOutcome::Restored {
-            query: ".a".into(),
-            viewport: vp_at(2, 0, 0),
-        }
-    );
-    assert_eq!(
-        ring.pop_if_matches(".a"),
-        PopOutcome::Restored {
-            query: ".".into(),
-            viewport: vp_at(1, 0, 0),
-        }
-    );
-    assert_eq!(ring.pop_if_matches("."), PopOutcome::Empty);
+    ring.push(".", vp_at(1, 0, 0));
+    ring.push(".a", vp_at(2, 0, 0));
+    ring.push(".a | .b", vp_at(3, 0, 0));
+    assert_eq!(ring.pop().unwrap(), (".a | .b".into(), vp_at(3, 0, 0)));
+    assert_eq!(ring.pop().unwrap(), (".a".into(), vp_at(2, 0, 0)));
+    assert_eq!(ring.pop().unwrap(), (".".into(), vp_at(1, 0, 0)));
+    assert!(ring.pop().is_none());
 }
 
 #[test]
 fn ring_caps_at_max_depth() {
     let mut ring = QueryUndoRing::new();
     for i in 0..100 {
-        ring.push(format!("p{}", i), format!("e{}", i), vp());
+        ring.push(format!("p{}", i), vp());
     }
     assert_eq!(ring.depth(), 20);
-    // Top should still be the most-recent entry.
-    assert_eq!(
-        ring.pop_if_matches("e99"),
-        PopOutcome::Restored {
-            query: "p99".into(),
-            viewport: vp(),
-        }
-    );
+    let (prev, _) = ring.pop().unwrap();
+    assert_eq!(prev, "p99");
 }

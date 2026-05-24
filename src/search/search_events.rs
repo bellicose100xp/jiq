@@ -1,8 +1,8 @@
 use ratatui::crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 
 use crate::app::{App, Focus};
-use crate::path_at_cursor_apply::PathSource;
-use crate::results::results_events::{drill_back, handle_results_pane_key};
+use crate::path_at_cursor_apply::{ApplyOutcome, PathSource, apply_iterate, apply_keep_kv};
+use crate::results::results_events::{drill_back, handle_results_pane_key, step_out};
 
 #[path = "search_events/scroll.rs"]
 mod scroll;
@@ -109,6 +109,21 @@ pub fn handle_search_key(app: &mut App, key: KeyEvent) -> bool {
             true
         }
 
+        KeyCode::Char('*') => {
+            iterate_from_search(app);
+            true
+        }
+
+        KeyCode::Char('^') => {
+            step_out(app);
+            true
+        }
+
+        KeyCode::Char('}') => {
+            keep_kv_from_search(app);
+            true
+        }
+
         // Delegate navigation keys to results pane when confirmed
         _ if app.search.is_confirmed() => {
             handle_results_pane_key(app, key);
@@ -161,19 +176,64 @@ pub fn close_search(app: &mut App) {
 /// (no meaningful drill-in), the notification fires and the search overlay
 /// stays open so the user can pick a different match.
 fn drill_in_from_search(app: &mut App) {
-    use crate::path_at_cursor_apply::{ApplyOutcome, apply_path};
+    use crate::path_at_cursor_apply::apply_path;
 
-    let match_row = match app.search.current_match() {
-        Some(m) => m.line,
-        None => {
-            app.notification.show("No match to navigate to");
-            return;
-        }
+    let match_row = match resolve_match_row(app) {
+        Some(r) => r,
+        None => return,
     };
     match apply_path(app, PathSource::Row(match_row)) {
         ApplyOutcome::Applied(_) => close_search(app),
         ApplyOutcome::AtRoot => app.notification.show("Already at root"),
         ApplyOutcome::NoPath => app.notification.show("No path at cursor"),
+        ApplyOutcome::NoArrayToIterate => unreachable!("apply_path never returns this"),
+        ApplyOutcome::NoKeyToWrap => unreachable!("apply_path never returns this"),
+    }
+}
+
+/// `*` from search — iterate-splat the current match's path. Like
+/// `drill_in_from_search`, closes the overlay on success so the user
+/// lands directly on the splat-drilled view.
+fn iterate_from_search(app: &mut App) {
+    let match_row = match resolve_match_row(app) {
+        Some(r) => r,
+        None => return,
+    };
+    match apply_iterate(app, PathSource::Row(match_row)) {
+        ApplyOutcome::Applied(_) => close_search(app),
+        ApplyOutcome::AtRoot => app.notification.show("Already at root"),
+        ApplyOutcome::NoPath => app.notification.show("No path at cursor"),
+        ApplyOutcome::NoArrayToIterate => app.notification.show("No array in path to iterate"),
+        ApplyOutcome::NoKeyToWrap => unreachable!("apply_iterate never returns this"),
+    }
+}
+
+/// `}` from search — wrap the match row's leaf as `<parent> | {key}`.
+/// Closes the overlay on success; surfaces a notification if the match
+/// row has no key to wrap (e.g. it's an array element row).
+fn keep_kv_from_search(app: &mut App) {
+    let match_row = match resolve_match_row(app) {
+        Some(r) => r,
+        None => return,
+    };
+    match apply_keep_kv(app, PathSource::Row(match_row)) {
+        ApplyOutcome::Applied(_) => close_search(app),
+        ApplyOutcome::AtRoot => app.notification.show("Already at root"),
+        ApplyOutcome::NoPath => app.notification.show("No path at cursor"),
+        ApplyOutcome::NoArrayToIterate => unreachable!("apply_keep_kv never returns this"),
+        ApplyOutcome::NoKeyToWrap => app.notification.show("No key at cursor to wrap"),
+    }
+}
+
+/// Find the line of the current match, surfacing the "no match" notification
+/// when there isn't one. Returns `None` when the caller should bail.
+fn resolve_match_row(app: &mut App) -> Option<u32> {
+    match app.search.current_match() {
+        Some(m) => Some(m.line),
+        None => {
+            app.notification.show("No match to navigate to");
+            None
+        }
     }
 }
 
