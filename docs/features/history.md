@@ -8,9 +8,6 @@ description: Searchable history of every successful query with quick cycling, fu
 # Query history
 {: .no_toc }
 
-[Features](./) · [Quick reference](../quick-reference)
-{: .fs-3 }
-
 1. TOC
 {:toc}
 
@@ -18,9 +15,7 @@ description: Searchable history of every successful query with quick cycling, fu
 
 ## What it stores
 
-Every **successful** query — one that produced output, not a syntax error — is appended to history. The list is persisted across sessions, so closing and re-opening jiq keeps your last 1000 queries available.
-
-Storage location depends on your platform:
+Every successful query (one that produced output, not a syntax error) is appended to history and persisted across sessions. Capacity: last 1000 entries. Storage location:
 
 | Platform | Path |
 |---|---|
@@ -28,13 +23,11 @@ Storage location depends on your platform:
 | macOS | `~/Library/Application Support/jiq/history` |
 | Windows | `%APPDATA%\jiq\history` |
 
-Capacity is the **last 1000 entries**. Older queries are dropped as new ones come in.
-
 ---
 
 ## Quick cycling
 
-Cycle through history **without leaving the input field**:
+Cycle through history without leaving the input field. Each press replaces the current input with the adjacent entry.
 
 | Key | Action |
 |---|---|
@@ -42,18 +35,11 @@ Cycle through history **without leaving the input field**:
 | <kbd>Ctrl</kbd>+<kbd>N</kbd> | Next (newer) query |
 {: .shortcuts }
 
-Each press replaces the current input with the adjacent history entry. Useful when you remember "I had something like this two queries ago" and don't want to break flow to open the popup.
-
 ---
 
 ## History popup
 
-For fuzzy search across the whole history, open the popup:
-
-- <kbd>Ctrl</kbd>+<kbd>R</kbd> — from any pane
-- <kbd>↑</kbd> — from the input field in NORMAL mode
-
-Entries are rendered with full jq syntax highlighting so you can scan the list visually:
+Open with <kbd>Ctrl</kbd>+<kbd>R</kbd> from any pane, or <kbd>↑</kbd> from the input field in NORMAL mode. Entries are rendered with jq syntax highlighting:
 
 ```
 ╭─ History ────────────────────────────────────────────────╮
@@ -68,14 +54,13 @@ Entries are rendered with full jq syntax highlighting so you can scan the list v
 ╰──────────────────────────────────────────────────────────╯
 ```
 
-Type characters to fuzzy-filter the list down to matches. The selected entry (`▸`) is the one that will be applied on <kbd>Enter</kbd>.
+Type to fuzzy-filter. The selected entry (`▸`) is applied on <kbd>Enter</kbd>.
 
 ---
 
 ## Delete from history
 
-{: .note }
-> **Two ways to remove an entry.** Press <kbd>Ctrl</kbd>+<kbd>D</kbd> to delete the currently selected row, or hover any row with the mouse to reveal a clickable `✕` button on the right side and click it to delete that one. The popup auto-closes when you delete the last entry. Deletes are persisted to the on-disk history file immediately.
+Press <kbd>Ctrl</kbd>+<kbd>D</kbd> to delete the selected row, or hover a row to reveal a clickable `✕` button. The popup auto-closes when the last entry is deleted. Deletes persist to disk immediately.
 
 ---
 

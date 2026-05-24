@@ -2,106 +2,95 @@
 title: Home
 layout: home
 nav_order: 1
-description: "jiq — Interactive JSON query tool with real-time output. Type a jq query, see the results live, drill into nested values with a single keystroke."
+description: "jiq — Interactive JSON query tool with real-time output. Type a jq query, see results live, drill into nested values with a single keystroke."
 permalink: /
 ---
 
-# jiq
-{: .fs-9 }
+<div class="hero" markdown="0">
+  <span class="hero-eyebrow">v3.26 · TUI</span>
+  <h1 class="hero-title">Build jq queries, live.</h1>
+  <p class="hero-tagline">Type a query. See results as you type. Drill into nested values with a single keystroke.</p>
+  <div class="hero-actions">
+    <a class="btn btn-primary fs-5" href="./getting-started/">Get started</a>
+    <a class="btn fs-5" href="./quick-reference/">Quick reference</a>
+    <a class="btn fs-5" href="https://github.com/bellicose100xp/jiq">GitHub</a>
+  </div>
+</div>
 
-Interactive JSON query tool with real-time output. Type a jq query, see results live, drill into nested values with a single keystroke.
-{: .fs-5 .fw-300 }
-
-[Get started now](./getting-started){: .btn .btn-primary .fs-5 .mr-2 }
-[Quick reference](./quick-reference){: .btn .fs-5 .mr-2 }
-[View on GitHub](https://github.com/bellicose100xp/jiq){: .btn .fs-5 }
-
----
-
-## Why jiq?
-
-`jq` is the right tool for transforming JSON, but **building** the query is iterative — guess, edit, run, repeat. jiq turns that loop into a TUI: every keystroke re-runs `jq` against your data, so the result pane updates as fast as you can type. Then it adds the things `jq` itself doesn't do — autocomplete on your real schema, AI suggestions, drill-in navigation, snippets, history, and a clipboard-aware launch path so you can pipe almost anything into it.
+## Features
 
 <div class="feature-grid" markdown="1">
 
 <div class="feature-card" markdown="1">
 ### [Path-at-cursor](./features/path-at-cursor)
-Drill in / step back through nested values with `>` `<` `*` `^` `}`.
+Drill in, step back, iterate, walk parents with `>` `<` `*` `^` `}`.
 </div>
 
 <div class="feature-card" markdown="1">
 ### [Autocomplete](./features/autocomplete)
-Schema-aware field and function suggestions with type hints.
+Schema-aware fields and functions with type hints.
 </div>
 
 <div class="feature-card" markdown="1">
 ### [AI assistant](./features/ai-assistant)
-Natural-language queries, error fixes, and suggestions powered by your model of choice.
+Natural-language queries and error fixes from Claude, GPT, Gemini, Bedrock, or local models.
 </div>
 
 <div class="feature-card" markdown="1">
 ### [Snippets](./features/snippets)
-Save and reuse jq queries across sessions.
+Save and reuse queries across sessions.
 </div>
 
 <div class="feature-card" markdown="1">
-### [Search in results](./features/search)
-Find and jump through matches in the output pane.
+### [Search](./features/search)
+Find and step through matches in the output pane.
 </div>
 
 <div class="feature-card" markdown="1">
-### [Query history](./features/history)
+### [History](./features/history)
 Searchable history of every successful query.
 </div>
 
 <div class="feature-card" markdown="1">
-### [Mouse support](./features/mouse)
-Click-to-focus, scroll, drag-select, click on suggestions.
+### [Mouse](./features/mouse)
+Click, scroll, drag-select, click suggestions.
 </div>
 
 <div class="feature-card" markdown="1">
-### [Clipboard & paste recovery](./features/clipboard)
-Auto-load from clipboard; in-app paste box when that fails.
+### [Clipboard & paste](./features/clipboard)
+Auto-load from the clipboard; in-app paste box on failure.
 </div>
 
 <div class="feature-card" markdown="1">
 ### [VIM editing](./features/vim-editing)
-Full motions, operators, text objects, undo/redo in the query input.
+Motions, operators, text objects, undo/redo.
 </div>
 
 <div class="feature-card" markdown="1">
-### [Results navigation](./features/results-pane)
-Cursor + scroll + visual selection on the output pane.
+### [Results pane](./features/results-pane)
+Cursor, scroll, visual line selection.
 </div>
 
 <div class="feature-card" markdown="1">
-### [Function tooltip](./features/tooltip)
-Inline reference for any jq function under the cursor.
+### [Tooltip & overlays](./features/tooltip)
+Function help, error overlay, in-app keybind reference.
 </div>
 
 <div class="feature-card" markdown="1">
 ### [Configuration](./configuration)
-`config.toml` reference: clipboard backend, AI providers, autocomplete depth.
+Clipboard backend, AI providers, autocomplete depth.
 </div>
 
 </div>
 
----
-
-## At a glance
+## Launch
 
 ```bash
-# From a file
-jiq data.json
-
-# From stdin
-curl https://api.example.com/data | jiq
-
-# From the clipboard (no args, no pipe)
-jiq
+jiq data.json                     # from a file
+curl https://api.example.com | jiq # from stdin
+jiq                                # from clipboard, falls back to paste box
 ```
 
-A single TUI window appears. Start typing — every keystroke is a jq query. Press <kbd>Enter</kbd> to print the filtered JSON to stdout, <kbd>Ctrl</kbd>+<kbd>Q</kbd> to print just the query string, <kbd>Ctrl</kbd>+<kbd>C</kbd> or <kbd>q</kbd> to quit silently.
+When run with no file and no piped input, jiq reads JSON from the clipboard. If the clipboard is empty or not valid JSON, it opens an in-app paste box — paste your JSON, press <kbd>Enter</kbd>, and you're in.
 
-[Install jiq →](./getting-started#install)
-{: .fs-4 }
+[Install →](./getting-started#install)

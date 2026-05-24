@@ -8,10 +8,6 @@ description: Find and navigate text matches in JSON output with live highlightin
 # Search in results
 {: .no_toc }
 
-[Features](./){: .btn .btn-outline .fs-3 .mr-2 }
-[Quick reference](../quick-reference){: .btn .btn-outline .fs-3 .mr-2 }
-[Path-at-cursor](./path-at-cursor){: .btn .btn-outline .fs-3 }
-
 <details markdown="1">
 <summary>Table of contents</summary>
 
@@ -24,9 +20,9 @@ description: Find and navigate text matches in JSON output with live highlightin
 
 ## What it does
 
-Live, case-insensitive full-text search over the rendered output. Type to filter, press <kbd>Enter</kbd> to commit, then walk the matches with <kbd>n</kbd> / <kbd>N</kbd> (or <kbd>Enter</kbd> / <kbd>Shift</kbd>+<kbd>Enter</kbd>). The current match count and position appear right in the results pane title.
+Live, case-insensitive full-text search over the rendered output. Type to filter, press <kbd>Enter</kbd> to commit, then walk matches with <kbd>n</kbd> / <kbd>N</kbd> (or <kbd>Enter</kbd> / <kbd>Shift</kbd>+<kbd>Enter</kbd>). Match count and position appear in the results pane title.
 
-Path-at-cursor chords (`>`, `*`, `}`) operate on the **current match** while search is active — so you can find a value, drill into it, and continue exploring without leaving the keyboard. See [Path-at-cursor](./path-at-cursor) for the full chord set.
+Path-at-cursor chords (`>`, `*`, `}`) operate on the **current match** while search is active. See [Path-at-cursor](./path-at-cursor) for the full chord set.
 
 <div class="tui-mockup">
 <pre>
@@ -50,7 +46,7 @@ Path-at-cursor chords (`>`, `*`, `}`) operate on the **current match** while sea
 
 Trigger with <kbd>Ctrl</kbd>+<kbd>F</kbd> from anywhere, or <kbd>/</kbd> from the results pane (and from NORMAL mode in the input). Typing live-filters and re-highlights every keystroke.
 
-If the current query matches **nothing**, the results pane dims and shows a <span class="badge badge-yellow">⚠ No Matches</span> badge in the title — visually consistent with the existing <span class="badge badge-red">⚠ Syntax Error</span> and <span class="badge badge-purple">∅ No Results</span> badges. The viewport resets to the top so you don't sit on a stale partial-match scroll position.
+If the current query matches nothing, the results pane dims and shows a <span class="badge badge-yellow">⚠ No Matches</span> badge in the title, alongside <span class="badge badge-red">⚠ Syntax Error</span> and <span class="badge badge-purple">∅ No Results</span>. The viewport resets to the top.
 
 ### Navigating
 
@@ -58,32 +54,32 @@ After <kbd>Enter</kbd>, the cursor jumps to the next match. From there:
 
 - <kbd>n</kbd> or <kbd>Enter</kbd> — next match
 - <kbd>N</kbd> or <kbd>Shift</kbd>+<kbd>Enter</kbd> — previous match
-- <kbd>Ctrl</kbd>+<kbd>F</kbd> or <kbd>/</kbd> — re-enter edit mode (refine the query)
+- <kbd>Ctrl</kbd>+<kbd>F</kbd> or <kbd>/</kbd> — re-enter edit mode
 
-Highlighting persists across cursor movement — moving onto a row that contains a match keeps the match highlighted, which used to drop in earlier versions.
+Highlighting persists across cursor movement.
 
 ### Closed
 
-<kbd>Esc</kbd> closes the search overlay, clears highlights, and restores the results pane to full brightness.
+<kbd>Esc</kbd> closes the search overlay, clears highlights, and restores full brightness.
 
 ---
 
 ## Drill-in during search
 
-While search is active, the path-at-cursor chords switch their anchor from "the cursor's row" to "the **current match's** row":
+While search is active, path-at-cursor chords anchor on the **current match's** row instead of the cursor's row:
 
 - <kbd>&gt;</kbd> — drill into the value at the current match. Closes the search overlay.
 - <kbd>&#42;</kbd> — iterate the nearest array level around the current match.
 - <kbd>}</kbd> — wrap the current match's leaf as a single-entry object.
-- <kbd>&lt;</kbd> — works identically inside or outside search (steps back through the drill ring).
+- <kbd>&lt;</kbd> — steps back through the drill ring (identical inside or outside search).
 
-This makes "find the thing, then go look at it" a two-keystroke workflow: <kbd>/</kbd>`pattern`<kbd>Enter</kbd><kbd>&gt;</kbd>.
+Two-keystroke workflow: <kbd>/</kbd>`pattern`<kbd>Enter</kbd><kbd>&gt;</kbd>.
 
 ---
 
 ## Mouse
 
-While search is editing, clicking the results pane **confirms** the search (and switches focus there) — the same outcome as pressing <kbd>Tab</kbd>. So if you've typed enough to find what you wanted, you can just click it.
+While editing, clicking the results pane confirms the search and switches focus — same as <kbd>Tab</kbd>.
 
 ---
 
@@ -104,4 +100,4 @@ While search is editing, clicking the results pane **confirms** the search (and 
 ---
 
 {: .note }
-> Search is **case-insensitive** and matches against the **rendered output** — post-jq, post-pretty-print — not the raw input. Whitespace, key/value formatting, and comma punctuation in the rendered output are all fair game.
+> Search is **case-insensitive** and matches against the **rendered output** — post-jq, post-pretty-print — not the raw input.

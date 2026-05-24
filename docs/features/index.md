@@ -8,7 +8,7 @@ permalink: /features/
 
 # Features
 
-Every feature gets its own deep-dive page. For a one-page cheat sheet of every keybind, see the [Quick reference](../quick-reference).
+For every keybind on one page, see the [Quick reference](../quick-reference).
 
 <div class="feature-grid" markdown="1">
 

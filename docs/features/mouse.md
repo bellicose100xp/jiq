@@ -8,8 +8,6 @@ description: Click to focus, scroll, drag-select, and apply suggestions — full
 # Mouse support
 {: .no_toc }
 
-[Features](./) · [Quick reference](../quick-reference)
-
 <details open markdown="block">
   <summary>On this page</summary>
   {: .text-delta }
@@ -19,7 +17,7 @@ description: Click to focus, scroll, drag-select, and apply suggestions — full
 
 ---
 
-jiq is keyboard-first, but every common mouse gesture is wired up. Useful for casual exploration, live demos, and switching focus between the input and the results pane without thinking about <kbd>Shift</kbd>+<kbd>Tab</kbd>. Wheel-scroll the result, click into a long query to fix a typo, double-click an autocomplete suggestion — they all work.
+jiq is keyboard-first, but every common mouse gesture is wired up: wheel-scroll, click-to-focus, click-and-drag selection, double-click to apply suggestions.
 
 ## Per-pane behavior
 
@@ -42,8 +40,8 @@ jiq is keyboard-first, but every common mouse gesture is wired up. Useful for ca
 
 - **Click** → focuses the results pane.
 - **Mouse wheel** → vertical scroll.
-- **Click + drag** → multi-line visual selection. Release the mouse to end the selection, then press <kbd>y</kbd> to copy the selected lines to the clipboard.
-- **Scrollbar** (rendered on the right edge) → click and drag the thumb to scroll.
+- **Click + drag** → multi-line visual selection. Release, then press <kbd>y</kbd> to copy.
+- **Scrollbar** (right edge) → click and drag the thumb to scroll.
 
 <div class="tui-mockup with-title" data-title="Right-edge scrollbar — click and drag the filled segment">
 <pre>
@@ -59,7 +57,7 @@ jiq is keyboard-first, but every common mouse gesture is wired up. Useful for ca
 </pre>
 </div>
 
-The filled segment (█) reflects the current scroll position within the full result. Click anywhere on the track to jump there, or drag the thumb to scrub through the output.
+The filled segment (█) reflects scroll position. Click the track to jump, drag the thumb to scrub.
 
 ### Autocomplete dropdown
 
@@ -114,18 +112,17 @@ The filled segment (█) reflects the current scroll position within the full re
 ## Edge cases
 
 {: .note }
-> - Clicking to switch focus to the results pane **closes any open popup** (history, snippets, help). This keeps the interaction predictable: a click "commits" you to the results pane.
-> - During an active search, **clicking the results pane confirms the search** — the same effect as pressing <kbd>Tab</kbd> in the search bar. The matches stay highlighted; you continue navigating with <kbd>n</kbd> / <kbd>N</kbd>.
+> - Clicking to focus the results pane **closes any open popup** (history, snippets, help).
+> - During an active search, **clicking the results pane confirms the search** — same as <kbd>Tab</kbd>. Matches stay highlighted; navigate with <kbd>n</kbd> / <kbd>N</kbd>.
 
 ---
 
 ## Terminal compatibility
 
-{: .tip }
-Most modern terminals (iTerm2, Alacritty, Ghostty, kitty, WezTerm, foot, Windows Terminal, the macOS / GNOME / KDE built-ins) forward mouse events out of the box. A few do not:
->
-> - Older `screen` versions need `mousetrack on` in `.screenrc`.
-> - `tmux` has it on by default since 2.1, but very old setups may need `set -g mouse on`.
-> - Some SSH multiplexers strip mouse events; if clicks don't register over SSH, check the terminal's mouse-forwarding setting.
+Most modern terminals forward mouse events out of the box (iTerm2, Alacritty, Ghostty, kitty, WezTerm, foot, Windows Terminal, macOS/GNOME/KDE built-ins). Exceptions:
 
-If your terminal is in this group, the keyboard shortcuts cover everything mouse interaction does — see the [quick reference](../quick-reference).
+- Older `screen` versions need `mousetrack on` in `.screenrc`.
+- `tmux` has mouse on by default since 2.1; older setups need `set -g mouse on`.
+- Some SSH multiplexers strip mouse events — check the terminal's mouse-forwarding setting.
+
+Keyboard shortcuts cover every mouse action — see the [quick reference](../quick-reference).

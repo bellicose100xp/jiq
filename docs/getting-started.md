@@ -20,8 +20,6 @@ description: Install jiq, run your first query, learn the loop in two minutes.
 
 - **`jq`** — the JSON processor jiq runs under the hood. [Install jq](https://jqlang.org/download/) (`jq` 1.6+ works; 1.8.1+ recommended).
 
-That's it. Everything else ships with jiq.
-
 ---
 
 ## Install
@@ -60,22 +58,22 @@ sudo cp target/release/jiq /usr/local/bin/
 
 ---
 
-## Three ways to feed JSON to jiq
+## Input
 
 ```bash
-# 1. From a file
+# From a file
 jiq data.json
 
-# 2. From stdin
+# From stdin
 cat data.json | jiq
 echo '{"name": "Alice", "age": 30}' | jiq
 curl https://api.example.com/data | jiq
 
-# 3. From the clipboard (no args, no pipe)
+# From the clipboard, with paste-box fallback
 jiq
 ```
 
-The clipboard path tries the OS clipboard first, falls back to OSC 52 over SSH, and drops into the [paste-recovery view](./features/clipboard) if all of that fails. Read the full clipboard page for SSH/tmux specifics.
+With no file and no piped stdin, jiq reads from the clipboard. If the clipboard is empty or not valid JSON, the in-app paste box opens — paste, press <kbd>Enter</kbd>. See [Clipboard & paste recovery](./features/clipboard) for SSH/tmux specifics.
 
 ---
 
@@ -99,72 +97,48 @@ Launch jiq:
 jiq users.json
 ```
 
-The TUI opens in **INSERT mode** (cyan border on the input). Try this:
+The TUI opens in **INSERT mode** (cyan border on the input).
 
-1. Type `.users[]`. Watch the results pane stream all three user objects.
-2. Add ` | select(.active)`. Bob disappears in real time.
-3. Add ` | .email`. Just two emails left.
-4. Press <kbd>Tab</kbd> to step into the **Results pane**.
-5. Move your cursor onto `alice@example.com` with <kbd>j</kbd> / <kbd>k</kbd>.
-6. Press <kbd>Enter</kbd> to print the filtered JSON to stdout, or <kbd>Ctrl</kbd>+<kbd>Q</kbd> to print just the query string.
-
-That's the loop. The rest of jiq makes the loop faster.
+1. Type `.users[]` — the results pane streams all three user objects.
+2. Add ` | select(.active)` — Bob disappears.
+3. Add ` | .email` — two emails left.
+4. <kbd>Tab</kbd> into the **Results pane**.
+5. Move the cursor onto `alice@example.com` with <kbd>j</kbd> / <kbd>k</kbd>.
+6. <kbd>Enter</kbd> prints the filtered JSON to stdout. <kbd>Ctrl</kbd>+<kbd>Q</kbd> prints just the query string.
 
 ---
 
-## Speed up the loop — five things to learn next
+## Next
 
-| Time spent | Read this |
+| Time | Read |
 |:---|:---|
-| 30 seconds | The [Quick reference](./quick-reference) — keybind cheat sheet |
-| 2 minutes | [Path-at-cursor](./features/path-at-cursor) — single-keystroke drill-in / step-back |
-| 2 minutes | [Autocomplete](./features/autocomplete) — `Tab` accepts whatever your data actually has |
-| 5 minutes | [VIM editing](./features/vim-editing) — `ci\|` to refactor a single pipe stage |
-| 5 minutes | [AI assistant](./features/ai-assistant) — natural-language → jq query |
+| 30s | [Quick reference](./quick-reference) — keybind cheat sheet |
+| 2m | [Path-at-cursor](./features/path-at-cursor) — drill-in / step-back |
+| 2m | [Autocomplete](./features/autocomplete) — `Tab` to accept |
+| 5m | [VIM editing](./features/vim-editing) — `ci\|` to edit one pipe stage |
+| 5m | [AI assistant](./features/ai-assistant) — natural-language → jq |
 
 ---
 
-## Workflow patterns
-
-### Build a query, then use it in a script
+## Pipe anything
 
 ```bash
-# Open jiq, build the query interactively, exit with Ctrl+Q
-QUERY=$(curl -s https://api.example.com/data | jiq)
-
-# Now reuse it
-curl -s https://api.example.com/data | jq "$QUERY"
-```
-
-### Pipe almost anything
-
-```bash
-# One-line POJO inspection
 echo '{"a":1,"b":[2,3,4]}' | jiq
-
-# kubectl
 kubectl get pods -o json | jiq
-
-# AWS CLI
 aws ec2 describe-instances | jiq
-
-# Web API
 curl -s https://httpbin.org/json | jiq
 ```
 
-### Recover from an unexpected paste
+Build a query interactively, exit with <kbd>Ctrl</kbd>+<kbd>Q</kbd>, reuse the string:
 
 ```bash
-# Copy something to clipboard, then:
-jiq
-
-# If the clipboard had non-JSON, the paste-recovery view opens.
-# Paste your JSON, press Enter, you're in.
+QUERY=$(curl -s https://api.example.com/data | jiq)
+curl -s https://api.example.com/data | jq "$QUERY"
 ```
 
 ---
 
-## Modes at a glance
+## Modes
 
 | State | Border | What's typing? |
 |:---|:---|:---|
@@ -191,9 +165,9 @@ Toggle INSERT ↔ NORMAL with <kbd>Esc</kbd> and `i` / `a` / `I` / `A`.
 
 ---
 
-## Next up
+## More
 
-- [Quick reference](./quick-reference) — every keybind on one page.
+- [Quick reference](./quick-reference) — every keybind.
 - [Features](./features/) — deep-dive per feature.
-- [Configuration](./configuration) — `config.toml` reference.
+- [Configuration](./configuration) — `config.toml`.
 - [Troubleshooting](./troubleshooting) — debug logs, known limitations.

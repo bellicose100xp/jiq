@@ -7,7 +7,7 @@ description: One-page cheat sheet of every jiq keybind, grouped by mode and pane
 # Quick reference
 {: .no_toc }
 
-Scan this page to find the key. Click any feature header for the deep-dive.
+Click any feature header for the deep-dive.
 {: .fs-5 .fw-300 }
 
 <details open markdown="block">
@@ -20,8 +20,6 @@ Scan this page to find the key. Click any feature header for the deep-dive.
 ---
 
 ## Global
-
-Work anywhere in the TUI.
 
 | Key | Action |
 |:---|:---|
@@ -323,7 +321,7 @@ Requires [configuration](./configuration#ai).
 
 ## [Paste recovery](./features/clipboard)
 
-When `jiq` is launched with no file, no pipe, and the clipboard auto-load fails, the paste-recovery view appears. Full VIM editing inside the paste box.
+Opens when `jiq` is launched with no file, no pipe, and the clipboard isn't valid JSON. Full VIM editing in the paste box.
 
 | Key | Action |
 |:---|:---|

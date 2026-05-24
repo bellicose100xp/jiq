@@ -8,10 +8,7 @@ description: Full vim motions, operators, text objects, character search, and un
 # VIM editing
 {: .no_toc }
 
-[Features](./){: .btn .btn-outline .fs-3 .mr-2 }
-[Quick reference](../quick-reference){: .btn .btn-outline .fs-3 }
-
-The query input is a real vim-style editor: motions, operators, text objects, character search, and a proper undo ring. INSERT mode lets you type queries with live autocomplete; NORMAL mode lets you restructure them without retyping.
+The query input is a vim-style editor: motions, operators, text objects, character search, and undo. INSERT mode types queries with live autocomplete; NORMAL mode restructures them without retyping.
 
 <details open markdown="block">
   <summary>Table of contents</summary>
@@ -48,11 +45,11 @@ Border colors are theme-controlled — they shift with the configured theme but 
 
 ## jq-aware text objects
 
-The standout text object is the **pipe segment**: `ci|` / `di|` / `ca|` / `da|` operate on everything between two `|` characters. Most jq edits are stage-by-stage refactors, and these chords let you swap one stage without touching anything else.
+The pipe segment is a custom text object: `ci|` / `di|` / `ca|` / `da|` operate on everything between two `|` characters.
 
-`ci|` / `di|` (**inside** the pipe segment): keeps both surrounding `|` and the spacing untouched.
+`ci|` / `di|` (**inside**): keeps both surrounding `|` and spacing untouched.
 
-`ca|` / `da|` (**around** the pipe segment): also eats **one** of the surrounding `|`, collapsing the stage out of the chain.
+`ca|` / `da|` (**around**): also eats **one** surrounding `|`, collapsing the stage out of the chain.
 
 <div class="io-pair" markdown="0">
   <div>
@@ -209,13 +206,3 @@ For a results-aware copy regardless of focus, see <kbd>Ctrl</kbd>+<kbd>O</kbd> i
 | `/` | Open search in results |
 
 Visual line selection is not available inside the input — it lives on the results pane. See [Results pane](./results-pane) for `v` / `V` / drag selection.
-
----
-
-## Why this matters for jq
-
-Most jq edits are pipe-segment edits: replace `select(...)` with a different filter, swap a `map(...)` for a `[ ]` comprehension, drop a stage entirely. The pipe-aware text objects (`ci|` / `da|`) make those edits one chord apiece.
-
-For inner-function tweaks — changing `select(.active)` to `select(.active and .verified)` — `f(` then `ci(` walks straight to the predicate and clears it for retyping. The `f` / `t` family pairs naturally with jq's punctuation-heavy syntax.
-
-The editor is built around mid-flow query refactoring, not general text editing — so motions and objects map directly to the structures jq queries are made of.

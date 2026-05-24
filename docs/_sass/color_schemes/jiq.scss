@@ -1,0 +1,24 @@
+// jiq custom color scheme — modern dark palette
+// Overrides just-the-docs core variables before the base theme renders.
+
+$body-background-color: #0b0d12;
+$sidebar-color: #0e1117;
+$body-text-color: #d8dde6;
+$body-heading-color: #f4f6fa;
+$link-color: #7aa7ff;
+$btn-primary-color: #6c8cff;
+$base-button-color: #1a1f2b;
+$body-font-family: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+$mono-font-family: "JetBrains Mono", "Fira Code", "SF Mono", ui-monospace, Menlo, Consolas, monospace;
+$root-font-size: 16px;
+$content-width: 920px;
+$nav-width: 268px;
+$nav-list-item-height: 36px;
+$border-color: #1d2230;
+$border-radius: 8px;
+$code-background-color: #0e1117;
+$base-grey-color-100: #14181f;
+$base-grey-color-200: #1a1f2a;
+$base-grey-color-300: #232938;
+$table-background-color: #0e1117;
+$feedback-color: darken(#0b0d12, 1%);

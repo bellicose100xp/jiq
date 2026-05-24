@@ -8,11 +8,7 @@ description: Cursor navigation, horizontal scrolling, visual line selection, and
 # Results pane
 {: .no_toc }
 
-[Features](./) · [Quick reference](../quick-reference) · [Path-at-cursor](./path-at-cursor)
-{: .fs-3 .fw-300 }
-
-The results pane is the bottom (or right, depending on layout) window that shows the output of your jq query. It's not just a viewer — it's where you scroll, drill, search, and copy.
-{: .fs-5 .fw-300 }
+The results pane shows the output of your jq query. Scroll, drill, search, and copy from here.
 
 <details markdown="block">
   <summary>Table of contents</summary>
@@ -54,7 +50,7 @@ The results pane is the bottom (or right, depending on layout) window that shows
 
 ## Type badges
 
-The middle of the title shows what jq returned. The badge updates on every successful run.
+The middle of the title shows what jq returned.
 
 | Badge | Meaning |
 |---|---|
@@ -77,7 +73,7 @@ When something is off, the badge is replaced with a status indicator:
 
 ## Execution time
 
-The bottom-left corner shows how long the last query took, color-coded so you can spot expensive operations at a glance.
+The bottom-left corner shows how long the last query took.
 
 | Range | Color | Example |
 |---|---|---|
@@ -85,15 +81,15 @@ The bottom-left corner shows how long the last query took, color-coded so you ca
 | 200ms - 1s | {: .badge .badge-yellow } **yellow** | `680ms` |
 | > 1s | {: .badge .badge-red } **red** | `1.2s` |
 
-This is the actual execution time of jq plus jiq's preprocessing — it does **not** include the keystroke debounce delay, so you're seeing the true cost of the query, not the typing pause.
+Measures jq plus jiq's preprocessing. Excludes the keystroke debounce delay.
 
 ---
 
 ## Cursor navigation
 
-The cursor in the results pane is a **row marker** — it highlights one line at a time and follows wherever you move it. There's no glyph cursor; the row itself is the cursor. The marker is the anchor used by [`>` drill-in](./path-at-cursor), [`v`/`V` selection](#visual-line-selection), and [search](./search) jumps.
+The cursor is a **row marker** — one highlighted line that follows your motions. It's the anchor for [`>` drill-in](./path-at-cursor), [`v`/`V` selection](#visual-line-selection), and [search](./search) jumps.
 
-Switch focus to the results pane with <kbd>Shift</kbd>+<kbd>Tab</kbd>, or click the pane.
+Focus the results pane with <kbd>Shift</kbd>+<kbd>Tab</kbd> or click.
 
 | Key | Action |
 |---|---|
@@ -109,7 +105,7 @@ Switch focus to the results pane with <kbd>Shift</kbd>+<kbd>Tab</kbd>, or click 
 
 ## Horizontal scrolling
 
-For wide objects and long string values that don't fit, scroll horizontally instead of wrapping.
+Wide objects and long strings scroll instead of wrapping.
 
 | Key | Action |
 |---|---|
@@ -123,7 +119,7 @@ For wide objects and long string values that don't fit, scroll horizontally inst
 
 ## Visual line selection
 
-Pick contiguous lines and copy them — useful for grabbing one record from an array result without copying the whole pane.
+Pick contiguous lines and copy them.
 
 | Key | Action |
 |---|---|
@@ -141,7 +137,7 @@ Pick contiguous lines and copy them — useful for grabbing one record from an a
 
 ## Path-at-cursor chords
 
-The cursor's path is live in the title bar. From the results pane, these chords rewrite your typed query so the existing async pipeline picks up the change:
+The cursor's path is live in the title bar. These chords rewrite your typed query:
 
 | Key | Action |
 |---|---|

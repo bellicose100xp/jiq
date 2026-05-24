@@ -16,9 +16,7 @@ description: config.toml reference — clipboard backend, autocomplete depth, AI
 
 ---
 
-## Where the config lives
-
-jiq looks for `config.toml` at the platform default location:
+## Location
 
 | OS | Path |
 |:---|:---|
@@ -26,7 +24,7 @@ jiq looks for `config.toml` at the platform default location:
 | macOS | `~/Library/Application Support/jiq/config.toml` |
 | Windows | `%APPDATA%\jiq\config.toml` |
 
-The file is optional. Out of the box, jiq runs with sensible defaults — only the AI section requires explicit configuration to enable AI features.
+Optional. Defaults are reasonable; only AI requires config.
 
 ---
 
@@ -43,11 +41,11 @@ backend = "auto"
 
 | Value | Use when |
 |:---|:---|
-| `auto` (default) | You don't know which to pick — tries OS clipboard, falls back to OSC 52. |
-| `system` | Local desktop only — fastest, no terminal cooperation needed. |
-| `osc52` | Persistent SSH / tmux / mosh — your terminal forwards OSC 52 (Ghostty, kitty, WezTerm, foot). |
+| `auto` (default) | OS clipboard first, OSC 52 fallback. |
+| `system` | Local desktop only. |
+| `osc52` | SSH / tmux / mosh on a terminal that forwards OSC 52 (Ghostty, kitty, WezTerm, foot). |
 
-See [Clipboard & paste recovery](./features/clipboard) for the full SSH/OSC 52 story.
+See [Clipboard & paste recovery](./features/clipboard).
 
 ---
 
@@ -62,7 +60,7 @@ See [Clipboard & paste recovery](./features/clipboard) for the full SSH/OSC 52 s
 array_sample_size = 10
 ```
 
-When the cursor is positioned to suggest fields *inside* an array's elements, jiq samples up to `array_sample_size` elements and unions their keys. With heterogeneous arrays (e.g., a feed of mixed event types), bumping this surfaces more fields at the cost of a small startup-time hit per autocomplete trigger.
+For field suggestions inside array elements, jiq samples up to `array_sample_size` elements and unions their keys. Bump this for heterogeneous arrays at a small startup cost per trigger.
 
 ---
 
@@ -79,7 +77,7 @@ provider = "anthropic"
 max_context_length = 100000
 ```
 
-For faster responses, prefer lightweight models:
+Lightweight models are faster:
 
 | Provider | Recommended model |
 |:---|:---|
@@ -87,7 +85,7 @@ For faster responses, prefer lightweight models:
 | OpenAI | `gpt-4o-mini` |
 | Gemini | `gemini-3-flash` |
 
-See [AI assistant](./features/ai-assistant) for the full feature walkthrough.
+See [AI assistant](./features/ai-assistant).
 
 ### Anthropic
 
@@ -109,9 +107,7 @@ model = "gpt-4o-mini"
 
 ### OpenAI-compatible (Ollama, LM Studio, x.ai Grok, others)
 
-Any API that follows the OpenAI request/response format works by setting `provider = "openai"` and overriding `base_url`.
-
-**Pattern:**
+Set `provider = "openai"` and override `base_url`.
 
 ```toml
 [ai.openai]
@@ -120,7 +116,7 @@ api_key  = "your-api-key"      # optional if the provider doesn't require one
 model    = "model-name"
 ```
 
-**Ollama (local, no API key):**
+Ollama:
 
 ```toml
 [ai.openai]
@@ -128,7 +124,7 @@ base_url = "http://localhost:11434/v1"
 model    = "llama3"
 ```
 
-**LM Studio (local, no API key):**
+LM Studio:
 
 ```toml
 [ai.openai]
@@ -136,7 +132,7 @@ base_url = "http://localhost:1234/v1"
 model    = "local-model"
 ```
 
-**x.ai Grok:**
+x.ai Grok:
 
 ```toml
 [ai.openai]
@@ -164,13 +160,11 @@ profile = "default"   # optional — uses default credential chain if omitted
 ```
 
 {: .warning }
-> **Sensitive data?** AI providers receive your query text and a portion of the JSON schema/sample. For sensitive payloads, prefer a local model via Ollama or LM Studio.
+> AI providers receive your query and a portion of the JSON schema/sample. For sensitive payloads, use a local model via Ollama or LM Studio.
 
 ---
 
 ## Full example
-
-A complete `config.toml` with everything dialed in:
 
 ```toml
 [clipboard]
@@ -197,4 +191,4 @@ model   = "claude-haiku-4-5-20251001"
 |:---|:---|
 | `JIQ_DEBUG=1` | Same as `--debug`: write debug logs to `/tmp/jiq-debug.log`. |
 
-See [Troubleshooting](./troubleshooting) for what those logs contain and how to attach them to a bug report.
+See [Troubleshooting](./troubleshooting).

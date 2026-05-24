@@ -6,7 +6,9 @@
 [![Crates.io](https://img.shields.io/crates/v/jiq)](https://crates.io/crates/jiq)
 [![License](https://img.shields.io/crates/l/jiq)](LICENSE-MIT)
 
-### [Documentation](https://bellicose100xp.github.io/jiq/)
+<p align="left">
+  <a href="https://bellicose100xp.github.io/jiq/"><img src="https://img.shields.io/badge/%E2%86%92%20Full%20jiq%20documentation%20site-6c8cff?style=for-the-badge&logoColor=white" alt="Full jiq documentation site" height="42" /></a>
+</p>
 
 ## Features
 
@@ -86,17 +88,24 @@ cat data.json | jiq
 echo '{"name": "Alice", "age": 30}' | jiq
 curl https://api.example.com/data | jiq
 
-# From clipboard (no argument, no stdin)
+# From clipboard, with paste-box fallback (no argument, no stdin)
 jiq
 ```
 
-When launched with no file argument and no piped stdin, jiq reads JSON from the
-system clipboard. Local desktops (macOS, Linux desktop, WSL) use the native
-clipboard. Remote SSH sessions fall back to OSC 52 read with a 1s timeout, so
-clipboard content copied *inside* the remote session (tmux selection buffers,
-OSC 52 writes from peer apps) is also picked up on modern terminals. Content
-copied on the host workstation typically does not round-trip because most
-terminals refuse to forward host-clipboard reads through the SSH tunnel.
+When launched with no file argument and no piped stdin, jiq reads JSON from
+the system clipboard. If the clipboard is empty, unreadable, or doesn't
+contain valid JSON, jiq opens an in-app paste box: paste your JSON (Cmd+V /
+Ctrl+Shift+V or your terminal's native shortcut), press `Enter`, and you're
+in. The paste box has full VIM editing — `dd`, `cc`, `D`, `dw`, `ci"`, etc.
+all work — and `Ctrl+X` clears the textarea so you can paste fresh content.
+
+Local desktops (macOS, Linux desktop, WSL) use the native clipboard. Remote
+SSH sessions fall back to OSC 52 read with a 1s timeout, so clipboard content
+copied *inside* the remote session (tmux selection buffers, OSC 52 writes
+from peer apps) is also picked up on modern terminals. Content copied on the
+host workstation typically does not round-trip because most terminals refuse
+to forward host-clipboard reads through the SSH tunnel — use the paste box
+in those cases.
 
 ## Usage
 
