@@ -23,34 +23,18 @@ All checks must pass before staging files.
 
 ## Documentation Site
 
-The user-facing documentation site lives in `docs/` (Jekyll + just-the-docs, served by GitHub Pages from this directory on `main` at <https://bellicose100xp.github.io/jiq/>). It is the canonical reference — README is the elevator pitch.
+`docs/` is the canonical user-facing reference (Jekyll + just-the-docs, GitHub Pages, <https://bellicose100xp.github.io/jiq/>). README is one-liner intent only.
 
-**Whenever a change touches a user-visible feature, shortcut, or configuration option, the docs MUST be updated in the same change set:**
+User-visible feature/shortcut/config change → update docs in the same change set:
+- Feature → `docs/features/<page>.md` + `docs/quick-reference.md`
+- Shortcut → both above
+- Config → `docs/configuration.md`
 
-- New / changed feature → update or add the relevant page under `docs/features/` and refresh the [Quick reference](docs/quick-reference.md).
-- New / changed shortcut → update both the per-feature page and `docs/quick-reference.md`.
-- New / changed config option → update `docs/configuration.md`.
-- Behavior change worth a callout → consider updating `docs/troubleshooting.md` if it's a likely user pitfall.
-
-The `jiq-release` skill has an explicit "Update docs" step before the version bump, but doc updates should not be deferred to release time — keep them in sync with the code change. Bug fixes, internal refactors, and performance work do not require doc updates unless they change observable behavior.
-
-When adding visuals, prefer inline SVG / HTML mockups over external images — the site is meant to stay self-contained. Custom helpers (`.tui-mockup`, `.io-pair`, `.drill-chain`, `.feature-grid`, `.shortcuts`, `<kbd>`) are defined in `docs/_sass/custom/custom.scss`.
+Visuals: inline SVG / HTML via helpers in `docs/_sass/custom/custom.scss` (`.tui-mockup`, `.io-pair`, `.drill-chain`, `.feature-grid`, `.shortcuts`, `<kbd>`).
 
 ## Releasing a Change
 
-Whenever the user asks to release, ship, or publish a change — for example "release the change", "release patch", "release minor", "release major", "ship jiq", "publish a new version", "tag a release" — invoke the **`jiq-release`** skill (project-local, in `.claude/skills/jiq-release/SKILL.md`). It drives the full flow end-to-end: branch, PR, CI, squash-merge, version bump, tag, `cargo publish`, and Homebrew tap update.
-
-The skill accepts an optional bump argument:
-
-| Phrasing | Skill argument |
-|---|---|
-| "release the change", "release patch" | `patch` (default) |
-| "release minor", "release as a minor" | `minor` |
-| "release major" (only with explicit user authorization) | `major` |
-
-If the user does not say which bump, the skill infers from the change set (bug fix → patch, new feature → minor, breaking change → major-with-confirmation).
-
-Do not reinvent the release flow inline. Reach for the skill.
+When the user asks to release / ship / publish / tag, invoke the **`jiq-release`** skill (`.claude/skills/jiq-release/SKILL.md`). Pass `patch` / `minor` / `major` if specified; otherwise the skill infers. Never reinvent the flow inline.
 
 ## Rust Module Structure
 - Use `{module_name}.rs`, never `mod.rs`
