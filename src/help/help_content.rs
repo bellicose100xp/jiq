@@ -99,7 +99,7 @@ pub const HELP_CATEGORIES: &[HelpCategory] = &[
                 ("J/K", "Scroll 10 lines"),
                 ("h/l/←/→", "Scroll column by column"),
                 ("H/L", "Scroll 10 columns"),
-                ("0/^", "Jump to left edge"),
+                ("0", "Jump to left edge"),
                 ("$", "Jump to right edge"),
                 ("g/Home", "Jump to top"),
                 ("G/End", "Jump to bottom"),

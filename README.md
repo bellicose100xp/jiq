@@ -240,7 +240,7 @@ terminals refuse to forward host-clipboard reads through the SSH tunnel.
 |-----|--------|
 | `h` / `l` / `←` / `→` | Scroll 1 column |
 | `H` / `L` | Scroll 10 columns |
-| `0` / `^` | Jump to left edge |
+| `0` | Jump to left edge |
 | `$` | Jump to right edge |
 
 **Visual Line Selection**
