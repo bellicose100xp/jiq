@@ -59,6 +59,8 @@ With no file and no piped stdin, jiq reads from the clipboard; if it's empty or 
 
 ## First query
 
+Save the following as `users.json` and run `jiq users.json`:
+
 ```json
 { "users": [
   { "name": "alice", "active": true,  "email": "alice@example.com" },
@@ -67,11 +69,41 @@ With no file and no piped stdin, jiq reads from the clipboard; if it's empty or 
 ] }
 ```
 
-```bash
-jiq users.json
-```
+**Step 1 — type `.users[]`**
 
-1. Type `.users[]` — all three users stream into the results pane.
-2. Add ` | select(.active)` — Bob disappears.
-3. Add ` | .email` — two emails left.
-4. <kbd>Enter</kbd> prints the filtered JSON. <kbd>Ctrl</kbd>+<kbd>Q</kbd> prints the query string.
+<div class="tui-mockup with-title" data-title="Query · .users[]">
+<pre>╭─ Input [INSERT] ───────────────────────────────╮
+│ .users[]                                        │
+╰─────────────────────────────────────────────────╯
+╭─ Array [3] · .[] ──────────────────────────────╮
+│ {"name":"alice","active":true,"email":"alice…"} │
+│ {"name":"bob","active":false,"email":"bob@…"}   │
+│ {"name":"carol","active":true,"email":"carol…"} │
+╰─────────────────────────────────────────────────╯</pre>
+</div>
+
+**Step 2 — add `| select(.active)`**
+
+<div class="tui-mockup with-title" data-title="Query · .users[] | select(.active)">
+<pre>╭─ Input [INSERT] ───────────────────────────────╮
+│ .users[] | select(.active)                      │
+╰─────────────────────────────────────────────────╯
+╭─ Object · .[] ─────────────────────────────────╮
+│ {"name":"alice","active":true,"email":"alice…"} │
+│ {"name":"carol","active":true,"email":"carol…"} │
+╰─────────────────────────────────────────────────╯</pre>
+</div>
+
+**Step 3 — add `| .email`**
+
+<div class="tui-mockup with-title" data-title="Query · .users[] | select(.active) | .email">
+<pre>╭─ Input [INSERT] ───────────────────────────────╮
+│ .users[] | select(.active) | .email             │
+╰─────────────────────────────────────────────────╯
+╭─ String · .email ──────────────────────────────╮
+│ "alice@example.com"                             │
+│ "carol@example.com"                             │
+╰─────────────────────────────────────────────────╯</pre>
+</div>
+
+Press <kbd>Enter</kbd> to exit and print the filtered JSON to stdout. Press <kbd>Ctrl</kbd>+<kbd>Q</kbd> to print just the query string instead.

@@ -1,53 +1,52 @@
-// jiq docs — minimal overrides on top of just-the-docs.
-// Goal: readable on mobile, no gimmicks, one accent color.
+// jiq docs — clean, minimal, readable on every screen size.
+// Minimum font size rule: prose ≥ 15px (0.9375rem), decorative labels ≥ 13px.
 
-// ─── Type ────────────────────────────────────────────────────────────
-// Override just-the-docs's .fs-4 cascade on body. Without !important the
-// theme's `body { @extend .fs-4 }` keeps the page at ~12-14px.
+// ─── Type scale ──────────────────────────────────────────────────────
+// Body is 17px. Headings follow a strict proportional scale at every breakpoint.
+// Nothing in the reading flow drops below 15px; only uppercase decorative labels
+// may be 13px (they visually read larger due to letter-spacing).
+
 body {
-  font-size: 1.0625rem !important;
+  font-size: 1.0625rem !important; // 17px
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  font-feature-settings: "ss01", "cv01";
-  line-height: 1.7;
+  line-height: 1.75;
 }
 
 .main-content {
   font-size: 1.0625rem !important;
 
-  h1 { font-size: 2.1rem !important; font-weight: 700; letter-spacing: -0.02em; line-height: 1.2; margin-top: 0; }
-  h2 { font-size: 1.45rem !important; font-weight: 650; letter-spacing: -0.01em; margin-top: 2.4rem; padding-bottom: 0.4rem; border-bottom: 1px solid #21262d; }
-  h3 { font-size: 1.15rem !important; font-weight: 600; margin-top: 1.8rem; }
-  p, li, td, th { font-size: 1.0625rem !important; line-height: 1.7; }
+  h1 { font-size: 2rem !important;  font-weight: 700; letter-spacing: -0.025em; line-height: 1.15; margin-top: 0; margin-bottom: 0.5rem; }
+  h2 { font-size: 1.4rem !important; font-weight: 650; letter-spacing: -0.015em; line-height: 1.3; margin-top: 2.5rem; padding-bottom: 0.5rem; border-bottom: 1px solid #21262d; }
+  h3 { font-size: 1.1rem !important; font-weight: 600; letter-spacing: -0.01em; margin-top: 1.75rem; }
+  p, li, td, th { font-size: 1.0625rem !important; line-height: 1.75; }
 }
 
-// Mobile + iPad portrait: bump base to 17.5px and tighten headings
+// Tablet ≤800px
 @media (max-width: 50rem) {
-  body, .main-content {
-    font-size: 1.0625rem !important;
-  }
+  body, .main-content { font-size: 1.0625rem !important; }
   .main-content {
-    h1 { font-size: 1.85rem !important; }
-    h2 { font-size: 1.3rem !important; margin-top: 1.8rem; }
-    h3 { font-size: 1.1rem !important; }
+    h1 { font-size: 1.8rem !important; }
+    h2 { font-size: 1.3rem !important; margin-top: 2rem; }
+    h3 { font-size: 1.05rem !important; margin-top: 1.5rem; }
     p, li, td, th { font-size: 1.0625rem !important; }
   }
 }
 
-// Phone (portrait, < 30rem): larger again so it reads at arm's length
+// Phone ≤480px — same size, arm's length reading
 @media (max-width: 30rem) {
-  body, .main-content,
-  .main-content p,
-  .main-content li,
-  .main-content td,
-  .main-content th {
-    font-size: 1.125rem !important;
-  }
+  body, .main-content { font-size: 1.0625rem !important; }
   .main-content {
-    h1 { font-size: 1.75rem !important; }
-    h2 { font-size: 1.25rem !important; }
-    h3 { font-size: 1.1rem !important; }
+    h1 { font-size: 1.6rem !important; }
+    h2 { font-size: 1.2rem !important; }
+    h3 { font-size: 1.05rem !important; }
+    p, li, td, th { font-size: 1.0625rem !important; }
   }
+}
+
+// Sidebar nav — bump from theme default (~14px) to 15px
+.nav-list .nav-list-link {
+  font-size: 0.9375rem;
 }
 
 // ─── Links ───────────────────────────────────────────────────────────
@@ -55,10 +54,9 @@ body {
   text-decoration: underline;
   text-decoration-color: rgba(88, 166, 255, 0.35);
   text-underline-offset: 3px;
+  transition: text-decoration-color 0.12s;
 
-  &:hover {
-    text-decoration-color: #58a6ff;
-  }
+  &:hover { text-decoration-color: #58a6ff; }
 }
 
 // ─── Code & code blocks ──────────────────────────────────────────────
@@ -67,7 +65,7 @@ body {
   border: 1px solid #21262d;
   color: #c9d1d9;
   font-size: 0.92em;
-  padding: 0.5px 5px;
+  padding: 1px 5px;
   border-radius: 4px;
 }
 
@@ -76,10 +74,10 @@ body {
 .main-content pre {
   background: #0a0e14;
   border: 1px solid #21262d;
-  border-radius: 6px;
-  padding: 14px 16px;
-  font-size: 0.92rem;
-  line-height: 1.6;
+  border-radius: 8px;
+  padding: 16px 18px;
+  font-size: 0.9375rem; // 15px — never goes smaller
+  line-height: 1.65;
   overflow-x: auto;
 }
 
@@ -91,36 +89,35 @@ table code {
   font-size: 1em;
 }
 
-// ─── Keybind chips ───────────────────────────────────────────────────
+// ─── Keyboard chips ──────────────────────────────────────────────────
 kbd, .kbd {
   display: inline-block;
   padding: 2px 7px;
   font-family: $mono-font-family;
-  font-size: 0.9em;
+  font-size: 0.875em;
   background: #161b22;
-  color: #c9d1d9;
+  color: #e6edf3;
   border: 1px solid #30363d;
   border-bottom-width: 2px;
-  border-radius: 4px;
+  border-radius: 5px;
   white-space: nowrap;
   vertical-align: baseline;
-  line-height: 1.4;
+  line-height: 1.45;
 }
 
 // ─── Tables ──────────────────────────────────────────────────────────
 .main-content table {
   border: 1px solid #21262d;
-  border-radius: 6px;
+  border-radius: 8px;
   border-collapse: separate;
   border-spacing: 0;
   overflow: hidden;
   width: 100%;
-  font-size: 1rem !important;
 
   th, td {
     border: none;
     border-bottom: 1px solid #21262d;
-    padding: 9px 14px;
+    padding: 10px 14px;
     text-align: left;
     vertical-align: top;
     font-size: 1rem !important;
@@ -133,27 +130,23 @@ kbd, .kbd {
   }
 
   tr:last-child td { border-bottom: none; }
-  tr:nth-child(even) td { background: #0f1319; }
+  tr:nth-child(even) td { background: rgba(255, 255, 255, 0.02); }
 }
 
 @media (max-width: 50rem) {
-  .main-content table {
-    font-size: 1rem !important;
-    th, td {
-      padding: 8px 10px;
-      font-size: 1rem !important;
-    }
-  }
+  .main-content table th,
+  .main-content table td { padding: 9px 11px; }
 }
 
 // ─── Buttons ─────────────────────────────────────────────────────────
 .btn {
   border-radius: 6px;
   font-weight: 550;
-  padding: 7px 14px;
+  font-size: 0.9375rem;
+  padding: 8px 16px;
   text-decoration: none;
   border: 1px solid #30363d;
-  transition: background 0.12s ease, border-color 0.12s ease;
+  transition: background 0.12s, border-color 0.12s;
 
   &:hover { text-decoration: none; }
 }
@@ -163,62 +156,56 @@ kbd, .kbd {
   color: #fff;
   border-color: #1f6feb;
 
-  &:hover {
-    background: #2879f5;
-    border-color: #2879f5;
-    color: #fff;
-  }
+  &:hover { background: #2879f5; border-color: #2879f5; color: #fff; }
 }
 
-// ─── Terminal mockup (used on feature pages) ─────────────────────────
-// Plain readable monospace block. No gimmicks.
+// ─── TUI mockup ──────────────────────────────────────────────────────
 .tui-mockup {
   background: #0a0e14;
   color: #c9d1d9;
   font-family: $mono-font-family;
-  font-size: 0.95rem;
-  line-height: 1.55;
-  padding: 14px 16px;
+  font-size: 0.9375rem; // 15px minimum
+  line-height: 1.6;
   border: 1px solid #21262d;
-  border-radius: 6px;
+  border-radius: 8px;
   overflow-x: auto;
-  margin: 1.2rem 0;
+  margin: 1.4rem 0;
 
   pre {
     background: transparent;
     border: none;
     margin: 0;
-    padding: 0;
+    padding: 14px 16px;
     font-size: inherit;
     line-height: inherit;
     color: inherit;
+    overflow-x: auto;
   }
 
-  &.with-title {
-    padding: 0;
-
-    &::before {
-      content: attr(data-title);
-      display: block;
-      padding: 8px 14px;
-      font-family: $body-font-family;
-      font-size: 0.85rem;
-      letter-spacing: 0.04em;
-      text-transform: uppercase;
-      color: #8b949e;
-      background: #0d1117;
-      border-bottom: 1px solid #21262d;
-    }
-
-    pre { padding: 14px 16px; }
+  &.with-title::before {
+    content: attr(data-title);
+    display: block;
+    padding: 8px 14px;
+    font-family: $body-font-family;
+    font-size: 0.8125rem; // 13px uppercase label — visually reads larger
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: #8b949e;
+    background: #0d1117;
+    border-bottom: 1px solid #21262d;
+    border-radius: 8px 8px 0 0;
   }
 }
 
-@media (max-width: 50rem) {
-  .tui-mockup { font-size: 0.85rem; padding: 12px 14px; }
+// Never scale tui-mockup below 14px on phones
+@media (max-width: 30rem) {
+  .tui-mockup {
+    font-size: 0.875rem; // 14px — acceptable for ASCII art at arm's length
+    pre { padding: 12px 14px; }
+  }
 }
 
-// ─── Before / after pair ─────────────────────────────────────────────
+// ─── I/O pair ────────────────────────────────────────────────────────
 .io-pair {
   display: grid;
   grid-template-columns: 1fr auto 1fr;
@@ -228,16 +215,17 @@ kbd, .kbd {
 
   @media (max-width: 50rem) {
     grid-template-columns: 1fr;
+    gap: 8px;
   }
 
   .io-block {
     background: #0a0e14;
     border: 1px solid #21262d;
-    border-radius: 6px;
+    border-radius: 8px;
     padding: 12px 14px;
     font-family: $mono-font-family;
-    font-size: 0.95rem;
-    line-height: 1.55;
+    font-size: 0.9375rem; // 15px — never scaled down (was 0.78rem = 12.5px on mobile, broken)
+    line-height: 1.6;
     color: #c9d1d9;
     overflow-x: auto;
     white-space: pre;
@@ -245,8 +233,8 @@ kbd, .kbd {
 
   .io-label {
     font-family: $body-font-family;
-    font-size: 0.78rem;
-    letter-spacing: 0.06em;
+    font-size: 0.8125rem; // 13px uppercase — reads proportionally larger
+    letter-spacing: 0.05em;
     text-transform: uppercase;
     color: #8b949e;
     margin-bottom: 6px;
@@ -255,15 +243,11 @@ kbd, .kbd {
   .io-arrow {
     align-self: center;
     color: #58a6ff;
-    font-size: 1.4rem;
+    font-size: 1.3rem;
     text-align: center;
 
     @media (max-width: 50rem) { transform: rotate(90deg); }
   }
-}
-
-@media (max-width: 50rem) {
-  .io-pair .io-block { font-size: 0.78rem; }
 }
 
 // ─── Drill chain ─────────────────────────────────────────────────────
@@ -273,96 +257,132 @@ kbd, .kbd {
   gap: 8px;
   flex-wrap: wrap;
   font-family: $mono-font-family;
-  font-size: 0.92rem;
-  margin: 1.2rem 0;
+  font-size: 0.9375rem; // 15px
+  margin: 1.4rem 0;
 
   .step {
     background: #161b22;
     border: 1px solid #21262d;
-    border-radius: 4px;
-    padding: 5px 9px;
+    border-radius: 5px;
+    padding: 5px 10px;
     color: #c9d1d9;
   }
 
   .step.active {
     border-color: #58a6ff;
     color: #f0f6fc;
+    background: rgba(88, 166, 255, 0.08);
   }
 
-  .arrow {
+  .arrow { color: #8b949e; }
+}
+
+// ─── Feature grid (landing & features index) ─────────────────────────
+.feature-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+  margin: 1.5rem 0 2rem;
+
+  @media (max-width: 40rem) { grid-template-columns: 1fr; }
+}
+
+a.feature-card {
+  display: block;
+  background: #0f1319;
+  border: 1px solid #21262d;
+  border-radius: 8px;
+  padding: 16px 18px;
+  text-decoration: none;
+  color: inherit;
+  transition: border-color 0.15s, background 0.15s;
+
+  &:hover {
+    border-color: #30363d;
+    background: #161b22;
+    text-decoration: none;
+  }
+
+  .feature-card-title {
+    font-weight: 600;
+    font-size: 1rem; // 16px — slightly tighter than body, card context
+    color: #f0f6fc;
+    display: block;
+    margin-bottom: 5px;
+  }
+
+  &:hover .feature-card-title { color: #58a6ff; }
+
+  .feature-card-desc {
     color: #8b949e;
+    font-size: 0.9375rem; // 15px minimum
+    line-height: 1.55;
+    margin: 0;
   }
 }
 
-// ─── Feature list (landing) ──────────────────────────────────────────
-.feature-list {
-  list-style: none;
-  padding: 0;
-  margin: 1rem 0 1.5rem 0;
-
-  li {
-    padding: 0.55rem 0;
-    border-bottom: 1px solid #21262d;
-
-    a {
-      font-weight: 600;
-      text-decoration: none;
-      color: #f0f6fc;
-
-      &:hover { color: #58a6ff; }
-    }
-
-    .desc {
-      color: #8b949e;
-      font-size: 0.95rem;
-      margin-left: 0.4rem;
-    }
-
-    &:last-child { border-bottom: none; }
-  }
+// ─── VIM mode badge ──────────────────────────────────────────────────
+.mode-demo {
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin: 1.4rem 0;
 }
 
-@media (max-width: 50rem) {
-  .feature-list li {
-    padding: 0.65rem 0;
+.mode-badge {
+  border: 2px solid;
+  border-radius: 8px;
+  padding: 12px 16px;
+  font-family: $mono-font-family;
+  font-size: 0.9375rem; // 15px
+  line-height: 1.5;
+  background: #0a0e14;
+  flex: 1;
+  min-width: 200px;
 
-    .desc {
-      display: block;
-      margin-left: 0;
-      margin-top: 2px;
-      font-size: 0.92rem;
-    }
+  .mode-label {
+    font-family: $body-font-family;
+    font-size: 0.8125rem; // 13px uppercase
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    font-weight: 700;
+    margin-bottom: 8px;
   }
+
+  .mode-content { color: #c9d1d9; }
+
+  &.insert { border-color: #39d0c9; .mode-label { color: #39d0c9; } }
+  &.normal  { border-color: #e5c07b; .mode-label { color: #e5c07b; } }
 }
 
 // ─── Tagline ─────────────────────────────────────────────────────────
 .tagline {
-  font-size: 1.2rem;
+  font-size: 1.15rem; // ~18px
   color: #8b949e;
-  line-height: 1.5;
-  margin: 0 0 1.5rem 0;
-  max-width: 38rem;
+  line-height: 1.65;
+  margin: 0.5rem 0 1.75rem;
+  max-width: 40rem;
 }
 
 @media (max-width: 50rem) {
-  .tagline { font-size: 1.05rem; }
+  .tagline { font-size: 1.0625rem; } // matches body — no smaller
 }
 
-// ─── Sidebar polish ──────────────────────────────────────────────────
-.side-bar {
-  border-right: 1px solid #21262d;
-}
+// ─── Sidebar ─────────────────────────────────────────────────────────
+.side-bar { border-right: 1px solid #21262d; }
 
 .site-title {
   font-weight: 700;
-  font-size: 1.15rem;
+  font-size: 1.1rem;
+  letter-spacing: -0.01em;
 }
 
-// Quiet down callouts
+// ─── Blockquotes / callouts ──────────────────────────────────────────
 .main-content blockquote {
   border-left: 3px solid #30363d;
   background: #0f1319;
-  border-radius: 0 6px 6px 0;
-  padding: 10px 14px;
+  border-radius: 0 8px 8px 0;
+  padding: 12px 16px;
   color: #c9d1d9;
+  margin: 1.25rem 0;
 }

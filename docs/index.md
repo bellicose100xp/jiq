@@ -16,7 +16,7 @@ permalink: /
 
 ## Quick start
 
-Pick one. Requires [`jq`](https://jqlang.org/download/) on `$PATH`.
+Requires [`jq`](https://jqlang.org/download/) on `$PATH`.
 
 | Platform | Install |
 |---|---|
@@ -25,28 +25,57 @@ Pick one. Requires [`jq`](https://jqlang.org/download/) on `$PATH`.
 | **Any (with Rust)** | `cargo install jiq` |
 | **Windows / others** | [Pre-built binaries](https://github.com/bellicose100xp/jiq/releases/latest) |
 
-Then:
-
 ```bash
-jiq data.json              # from a file
-curl -s api/data | jiq     # from stdin
-jiq                        # from clipboard, with paste-box fallback
+jiq data.json        # file
+curl -s api | jiq    # stdin
+jiq                  # clipboard, with paste-box fallback
 ```
 
-## Features
+## See it in action
 
 ![jiq demo](https://raw.githubusercontent.com/bellicose100xp/assets/refs/heads/main/jiq/jiq-demo-v3.20.gif)
 
-<ul class="feature-list" markdown="0">
-  <li><a href="./features/results-pane/">Results pane</a> <span class="desc">— cursor, drill chords <code>&gt;</code> <code>&lt;</code> <code>*</code> <code>^</code> <code>}</code>, visual selection</span></li>
-  <li><a href="./features/autocomplete/">Autocomplete</a> <span class="desc">— schema-aware, with type hints</span></li>
-  <li><a href="./features/ai-assistant/">AI assistant</a> <span class="desc">— Claude, GPT, Gemini, Bedrock, or local models</span></li>
-  <li><a href="./features/snippets/">Snippets</a> <span class="desc">— save and reuse jq queries</span></li>
-  <li><a href="./features/search/">Search</a> <span class="desc">— find and step through matches</span></li>
-  <li><a href="./features/history/">History</a> <span class="desc">— searchable query history</span></li>
-  <li><a href="./features/vim-editing/">VIM editing</a> <span class="desc">— motions, operators, text objects</span></li>
-  <li><a href="./features/clipboard/">Clipboard &amp; paste</a> <span class="desc">— auto-load on launch, paste-box fallback</span></li>
-  <li><a href="./features/mouse/">Mouse</a> <span class="desc">— click, scroll, drag-select</span></li>
-</ul>
+## Features
 
-[All features →](./features/)
+<div class="feature-grid" markdown="0">
+  <a class="feature-card" href="./features/results-pane/">
+    <span class="feature-card-title">Results pane</span>
+    <p class="feature-card-desc">Cursor navigation, drill chords <code>&gt; &lt; * ^ }</code>, and visual line selection across jq output.</p>
+  </a>
+  <a class="feature-card" href="./features/autocomplete/">
+    <span class="feature-card-title">Autocomplete</span>
+    <p class="feature-card-desc">Schema-aware field and function suggestions with JSON type hints — drawn from your actual data.</p>
+  </a>
+  <a class="feature-card" href="./features/ai-assistant/">
+    <span class="feature-card-title">AI assistant</span>
+    <p class="feature-card-desc">Fix errors, optimize queries, or ask for next steps. Works with Claude, GPT, Gemini, Bedrock, or local models.</p>
+  </a>
+  <a class="feature-card" href="./features/snippets/">
+    <span class="feature-card-title">Snippet library</span>
+    <p class="feature-card-desc">Save and reuse named jq queries across sessions. Fuzzy search to find and apply instantly.</p>
+  </a>
+  <a class="feature-card" href="./features/search/">
+    <span class="feature-card-title">Search in results</span>
+    <p class="feature-card-desc">Case-insensitive full-text search across rendered output, with live highlighting and match counter.</p>
+  </a>
+  <a class="feature-card" href="./features/history/">
+    <span class="feature-card-title">Query history</span>
+    <p class="feature-card-desc">Every successful query is saved and searchable. Cycle inline or browse a fuzzy-filtered popup.</p>
+  </a>
+  <a class="feature-card" href="./features/vim-editing/">
+    <span class="feature-card-title">VIM editing</span>
+    <p class="feature-card-desc">Full motions, operators, text objects, and undo/redo in the query input — including a jq-aware pipe segment.</p>
+  </a>
+  <a class="feature-card" href="./features/clipboard/">
+    <span class="feature-card-title">Clipboard &amp; paste</span>
+    <p class="feature-card-desc">Auto-loads JSON from clipboard on launch. Paste-box fallback when clipboard is empty or invalid.</p>
+  </a>
+  <a class="feature-card" href="./features/mouse/">
+    <span class="feature-card-title">Mouse</span>
+    <p class="feature-card-desc">Click to focus, scroll any pane, drag-select in results, click suggestions and history entries.</p>
+  </a>
+  <a class="feature-card" href="./features/tooltip/">
+    <span class="feature-card-title">Tooltip &amp; overlays</span>
+    <p class="feature-card-desc">Function tooltip, full error overlay, and a tabbed help popup covering every keybind.</p>
+  </a>
+</div>

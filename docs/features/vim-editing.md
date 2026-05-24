@@ -7,7 +7,20 @@ description: VIM motions, operators, text objects, undo/redo in the query input.
 
 # VIM editing
 
-The query input has two modes: **INSERT** (default, cyan border) and **NORMAL** (yellow border).
+The query input has two modes. Press <kbd>Esc</kbd> to enter NORMAL; press <kbd>i</kbd> / <kbd>a</kbd> / <kbd>I</kbd> / <kbd>A</kbd> to return to INSERT.
+
+<div class="mode-demo" markdown="0">
+  <div class="mode-badge insert">
+    <div class="mode-label">INSERT</div>
+    <div class="mode-content">.users[] | select(.ac█)</div>
+  </div>
+  <div class="mode-badge normal">
+    <div class="mode-label">NORMAL</div>
+    <div class="mode-content">.users[] | select(.active)</div>
+  </div>
+</div>
+
+The cyan border means INSERT — every keystroke edits the query. The yellow border means NORMAL — every keystroke is a motion or command.
 
 | Key | Effect |
 |---|---|
