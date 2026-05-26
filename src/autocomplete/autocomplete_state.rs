@@ -216,6 +216,18 @@ impl AutocompleteState {
         self.selected_index
     }
 
+    /// Highlight a specific suggestion, clamped to the available list.
+    /// Used by mouse interactions where the click target is computed from
+    /// the rendered viewport.
+    pub fn set_selected_index(&mut self, index: usize) {
+        if self.suggestions.is_empty() {
+            return;
+        }
+        let clamped = index.min(self.suggestions.len() - 1);
+        self.selected_index = clamped;
+        self.adjust_scroll_to_selection();
+    }
+
     #[allow(dead_code)]
     pub fn scroll_offset(&self) -> usize {
         self.scroll_offset

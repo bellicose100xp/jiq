@@ -11,6 +11,7 @@ use crate::layout::Region;
 ///
 /// Updates hover state based on cursor position within components.
 pub fn handle_hover(app: &mut App, region: Option<Region>, mouse: MouseEvent) {
+    app.double_click.reset();
     match region {
         Some(Region::ResultsPane) => hover_results_pane(app, mouse),
         Some(Region::AiWindow) => hover_ai_window(app, mouse),
