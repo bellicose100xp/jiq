@@ -15,6 +15,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+## [3.27.1] - 2026-05-26
+
+### Added
+- **Double-click to drill / accept** ([#171](https://github.com/bellicose100xp/jiq/pull/171)) - Double-click any row in the results pane to drill into the value on that row, the same effect as putting the cursor there and pressing `>`. Double-click any suggestion in the autocomplete dropdown to accept it - closing the gap where the behavior was already advertised in the docs but had no implementation. Single-click behavior is unchanged: it positions the cursor in the results pane and only highlights in the autocomplete dropdown. Detection lives in a shared `DoubleClickTracker` (400 ms threshold, configurable per-consumer granularity of same-row or same-cell, region-aware) so any future double-click consumer reuses the same primitive instead of growing a third hand-rolled implementation. Hover and scroll between two clicks invalidate the pending pair, so a wandering pointer or wheel-tick can't accidentally trigger a drill, and a successful double-click does not chain into a triple.
+
 ## [3.27.0] - 2026-05-24
 
 ### Added
