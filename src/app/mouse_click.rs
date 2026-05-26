@@ -5,9 +5,12 @@
 use ratatui::crossterm::event::MouseEvent;
 
 use super::app_state::{App, Focus};
+use super::double_click::Granularity;
 use crate::ai::ai_events;
 use crate::editor::EditorMode;
 use crate::layout::Region;
+use crate::path_at_cursor_apply::PathSource;
+use crate::results::results_events;
 use crate::snippets::SnippetMode;
 
 /// Handle left mouse button click for the given region
@@ -31,6 +34,7 @@ pub fn handle_click(app: &mut App, region: Option<Region>, mouse: MouseEvent) {
         Some(Region::InputField) => click_input_field(app, mouse),
         Some(Region::SearchBar) => click_search_bar(app),
         Some(Region::AiWindow) => click_ai_window(app, mouse),
+        Some(Region::Autocomplete) => click_autocomplete(app, mouse),
         Some(Region::SnippetList) => click_snippet_list(app, mouse),
         Some(Region::HelpPopup) => click_help_popup(app, mouse),
         Some(Region::HistoryPopup) => click_history_popup(app, mouse),
@@ -100,6 +104,47 @@ fn click_results_pane(app: &mut App, mouse: MouseEvent) {
 
     if clicked_line < app.results_cursor.total_lines() {
         app.results_cursor.click_select(clicked_line);
+    }
+
+    let is_double_click =
+        app.double_click
+            .check_and_record(mouse, Region::ResultsPane, Granularity::SameRow);
+    if is_double_click && clicked_line < app.results_cursor.total_lines() {
+        results_events::drill_in(app, PathSource::CursorRow);
+    }
+}
+
+fn click_autocomplete(app: &mut App, mouse: MouseEvent) {
+    if !app.autocomplete.is_visible() {
+        return;
+    }
+
+    let Some(rect) = app.layout_regions.autocomplete else {
+        return;
+    };
+
+    let inner_y = rect.y.saturating_add(1);
+    let inner_height = rect.height.saturating_sub(2);
+
+    if mouse.row < inner_y || mouse.row >= inner_y.saturating_add(inner_height) {
+        return;
+    }
+
+    let relative_y = mouse.row.saturating_sub(inner_y) as usize;
+    let visible_index = app.autocomplete.scroll_offset() + relative_y;
+    if visible_index >= app.autocomplete.suggestions().len() {
+        return;
+    }
+
+    app.autocomplete.set_selected_index(visible_index);
+
+    let is_double_click =
+        app.double_click
+            .check_and_record(mouse, Region::Autocomplete, Granularity::SameCell);
+    if is_double_click && let Some(suggestion) = app.autocomplete.selected().cloned() {
+        app.insert_autocomplete_suggestion(&suggestion);
+        app.debouncer.mark_executed();
+        app.update_tooltip();
     }
 }
 

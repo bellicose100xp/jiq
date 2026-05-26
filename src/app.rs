@@ -1,6 +1,7 @@
 mod app_events;
 mod app_render;
 mod app_state;
+mod double_click;
 mod mouse_click;
 mod mouse_events;
 mod mouse_hover;

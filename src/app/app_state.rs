@@ -70,6 +70,7 @@ pub struct App {
     pub needs_render: bool,
     pub layout_regions: LayoutRegions,
     pub array_sample_size: usize,
+    pub double_click: super::double_click::DoubleClickTracker,
 }
 
 impl App {
@@ -179,6 +180,7 @@ impl App {
             needs_render: true,
             layout_regions: LayoutRegions::new(),
             array_sample_size: config.autocomplete.array_sample_size,
+            double_click: super::double_click::DoubleClickTracker::new(),
         }
     }
 

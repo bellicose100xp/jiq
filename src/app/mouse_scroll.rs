@@ -18,6 +18,7 @@ pub enum ScrollDirection {
 /// Routes scroll to the component under the cursor.
 /// Falls back to results pane when cursor is outside all regions.
 pub fn handle_scroll(app: &mut App, region: Option<Region>, direction: ScrollDirection) {
+    app.double_click.reset();
     match region {
         Some(Region::ResultsPane) | None => scroll_results(app, direction),
         Some(Region::HelpPopup) => scroll_help(app, direction),

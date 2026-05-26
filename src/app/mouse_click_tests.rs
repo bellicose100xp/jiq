@@ -684,3 +684,105 @@ fn test_click_history_popup_closes_when_last_entry_deleted() {
     assert!(!app.history.is_visible());
     assert_eq!(app.history.total_count(), 0);
 }
+
+#[test]
+fn test_double_click_results_pane_drills_in() {
+    use crate::test_utils::test_helpers::{execute_query_and_wait, test_app};
+
+    let mut app = test_app(r#"{"a": {"b": 1}}"#);
+    app.input.textarea.insert_str(".");
+    execute_query_and_wait(&mut app);
+    let total = app.results_line_count_u32();
+    app.results_cursor.update_total_lines(total);
+    app.layout_regions.results_pane = Some(ratatui::layout::Rect::new(0, 0, 40, 10));
+
+    // First click positions the cursor on the inner-row 1 (the `"a"` row);
+    // second click within the threshold is the double-click that drills in.
+    let mouse = create_mouse_event(5, 2);
+    handle_click(&mut app, Some(Region::ResultsPane), mouse);
+    let query_before = app.input.query().to_string();
+    handle_click(&mut app, Some(Region::ResultsPane), mouse);
+
+    assert_ne!(
+        app.input.query(),
+        query_before,
+        "double-click on results row should pipe-compose the row's path onto the query"
+    );
+}
+
+#[test]
+fn test_single_click_results_pane_does_not_drill() {
+    use crate::test_utils::test_helpers::{execute_query_and_wait, test_app};
+
+    let mut app = test_app(r#"{"a": {"b": 1}}"#);
+    app.input.textarea.insert_str(".");
+    execute_query_and_wait(&mut app);
+    let total = app.results_line_count_u32();
+    app.results_cursor.update_total_lines(total);
+    app.layout_regions.results_pane = Some(ratatui::layout::Rect::new(0, 0, 40, 10));
+
+    let original_query = app.input.query().to_string();
+    let mouse = create_mouse_event(5, 2);
+    handle_click(&mut app, Some(Region::ResultsPane), mouse);
+
+    assert_eq!(
+        app.input.query(),
+        original_query,
+        "a single click must only move the cursor — never drill"
+    );
+}
+
+#[test]
+fn test_double_click_autocomplete_accepts_suggestion() {
+    use crate::autocomplete::autocomplete_state::{Suggestion, SuggestionType};
+
+    let mut app = setup_app();
+    app.focus = Focus::InputField;
+    app.input.textarea.insert_str(".");
+    app.autocomplete.update_suggestions(vec![
+        Suggestion::new("name", SuggestionType::Field),
+        Suggestion::new("age", SuggestionType::Field),
+    ]);
+    app.layout_regions.autocomplete = Some(ratatui::layout::Rect::new(0, 0, 30, 6));
+
+    // Row 1 inside the popup border targets the first suggestion ("name").
+    let mouse = create_mouse_event(5, 1);
+    handle_click(&mut app, Some(Region::Autocomplete), mouse);
+    handle_click(&mut app, Some(Region::Autocomplete), mouse);
+
+    assert!(
+        app.input.query().contains("name"),
+        "double-click on a suggestion must insert it into the query, got `{}`",
+        app.input.query()
+    );
+}
+
+#[test]
+fn test_single_click_autocomplete_only_highlights() {
+    use crate::autocomplete::autocomplete_state::{Suggestion, SuggestionType};
+
+    let mut app = setup_app();
+    app.focus = Focus::InputField;
+    app.input.textarea.insert_str(".");
+    let original_query = app.input.query().to_string();
+    app.autocomplete.update_suggestions(vec![
+        Suggestion::new("name", SuggestionType::Field),
+        Suggestion::new("age", SuggestionType::Field),
+    ]);
+    app.layout_regions.autocomplete = Some(ratatui::layout::Rect::new(0, 0, 30, 6));
+
+    // Row 2 inside the popup border targets the second suggestion ("age").
+    let mouse = create_mouse_event(5, 2);
+    handle_click(&mut app, Some(Region::Autocomplete), mouse);
+
+    assert_eq!(
+        app.input.query(),
+        original_query,
+        "single click must not insert anything"
+    );
+    assert_eq!(
+        app.autocomplete.selected_index(),
+        1,
+        "single click must highlight the clicked suggestion"
+    );
+}

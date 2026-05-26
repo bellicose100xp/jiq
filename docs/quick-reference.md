@@ -281,6 +281,7 @@ Case-insensitive.
 |:---|:---|
 | Click pane | Focus |
 | Click + drag (results) | Multi-line visual selection |
+| Double-click result row | Drill into value (same as <kbd>&gt;</kbd>) |
 | Mouse wheel | Vertical scroll |
 | Click suggestion | Select |
 | Double-click suggestion | Apply |
