@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.27.2] - 2026-05-26
+
+### Changed
+- **Global hint strip slimmed; `Shift+Tab` moved onto the query box border** ([#172](https://github.com/bellicose100xp/jiq/pull/172)) - The independent hint line at the very bottom of the TUI no longer duplicates shortcuts that are already shown on the query input's bottom border. While the query box is focused (INSERT or NORMAL), the global strip now reads `F1 Help • Ctrl+S Snippets • Ctrl+F Search • Enter Output Result • Ctrl+Q Output Query • Ctrl+C Quit` - dropping `Shift+Tab Navigate Results`, `Ctrl+P/N Cycle History`, and `Ctrl+R History`, and adding `Enter`/`Ctrl+Q` so the two most common exit shortcuts are visible globally. `Shift+Tab Navigate Results` moves to the query input's own bottom border, alongside the state-aware hints already shown there (`Enter`/`Ctrl+Q` when the query is non-empty, `Ctrl+P`/`Ctrl+N`/`Ctrl+R` when empty, `Ctrl+E Show Error` when there's a parse error). No keybindings change - this is purely a hint-placement cleanup so each shortcut is announced exactly once on screen.
+
 ## [3.27.1] - 2026-05-26
 
 ### Added
