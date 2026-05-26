@@ -225,7 +225,7 @@ With no file and no piped stdin, jiq reads JSON from your clipboard. If the clip
 **Query Navigation (navigate into and between values)**
 | Key | Action |
 |-----|--------|
-| `>` | Zoom into value at cursor (appends its path to your query) |
+| `>` (or double-click row) | Zoom into value at cursor (appends its path to your query) |
 | `<` | Step back to the prior query (undo the last `>`) |
 | `*` | Iterate over the nearest array (replace `[N]` with `[]` to show all elements) |
 | `^` | Step up one level (remove the last path segment from your query) |
