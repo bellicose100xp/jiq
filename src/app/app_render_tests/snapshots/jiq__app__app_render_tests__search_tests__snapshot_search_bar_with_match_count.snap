@@ -3,7 +3,7 @@ source: src/app/app_render_tests/search_tests.rs
 assertion_line: 56
 expression: output
 ---
-"╭ Array [3 objects]  · .[0].name ─────────────────────────────── L1-11/11 (0%) ╮"
+"╭ Array [3 objects]  · .[0].name ──────────────────────────────────────────────╮"
 "▌[                                                                             │"
 "│  {                                                                           │"
 "│    "name": "alice"                                                           │"
@@ -22,8 +22,8 @@ expression: output
 "│                                                                              │"
 "│                                                                              │"
 "│                                                                              │"
-"╰─────────── > value • * iterate • ^ parent • } wrap • ]/[ siblings ───────────╯"
+"╰─────────────────────────────────────────────────────────────── L1-11/11 (0%) ╯"
 "╭ Search ─────────────────────────────────────────────────────────────   1/2   ╮"
 "│alice                                                                         │"
-"╰──── Enter Confirm • > value • * iterate • ^ parent • } wrap • Esc Close ─────╯"
+"╰────────────────── Enter Confirm • Tab Confirm • Esc Close ───────────────────╯"
 " F1/? Help • Esc Close • Enter Confirm Search                                   "

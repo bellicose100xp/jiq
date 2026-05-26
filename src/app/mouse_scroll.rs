@@ -20,7 +20,9 @@ pub enum ScrollDirection {
 pub fn handle_scroll(app: &mut App, region: Option<Region>, direction: ScrollDirection) {
     app.double_click.reset();
     match region {
-        Some(Region::ResultsPane) | None => scroll_results(app, direction),
+        Some(Region::ResultsPane) | Some(Region::BackButton) | None => {
+            scroll_results(app, direction)
+        }
         Some(Region::HelpPopup) => scroll_help(app, direction),
         Some(Region::AiWindow) => scroll_ai(app, direction),
         Some(Region::SnippetList) => scroll_snippets(app, direction),

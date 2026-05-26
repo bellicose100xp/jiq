@@ -146,3 +146,16 @@ fn test_boundary_conditions() {
     assert_eq!(region_at(&regions, 9, 10), None);
     assert_eq!(region_at(&regions, 10, 9), None);
 }
+
+#[test]
+fn test_back_button_takes_priority_over_results_pane() {
+    // The back-button rect lives on the results-pane top border, so it
+    // must be hit-tested before the underlying results-pane rect.
+    let mut regions = create_test_regions();
+    regions.back_button = Some(Rect::new(2, 0, 10, 1));
+
+    assert_eq!(region_at(&regions, 5, 0), Some(Region::BackButton));
+    // Just outside the back-button rect: falls through to results pane.
+    assert_eq!(region_at(&regions, 12, 0), Some(Region::ResultsPane));
+    assert_eq!(region_at(&regions, 5, 1), Some(Region::ResultsPane));
+}

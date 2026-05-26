@@ -703,3 +703,108 @@ mod search_no_match_dim_tests {
         assert_eq!(dim, 0, "confirmed mode must not dim, even with no matches");
     }
 }
+
+#[cfg(test)]
+mod back_button_tests {
+    use super::*;
+    use crate::test_utils::test_helpers::{key, test_app};
+    use ratatui::crossterm::event::KeyCode;
+
+    fn render(app: &mut App, width: u16, height: u16) -> String {
+        let mut terminal = create_test_terminal(width, height);
+        terminal.draw(|f| app.render(f)).unwrap();
+        terminal.backend().to_string()
+    }
+
+    /// Drill once via `>` so the undo ring is non-empty. Mirrors the setup
+    /// in mouse_click_tests.
+    fn push_one_drill(app: &mut App) {
+        app.focus = crate::app::Focus::ResultsPane;
+        app.input.textarea.insert_str(".");
+        if let Some(qs) = app.query.as_mut() {
+            qs.execute(".");
+        }
+        let total = app.results_line_count_u32();
+        app.results_cursor.update_total_lines(total);
+        app.results_cursor.move_to_line(1);
+        app.handle_key_event(key(KeyCode::Char('>')));
+    }
+
+    #[test]
+    fn back_badge_hidden_when_undo_ring_empty() {
+        let mut app = test_app(r#"{"a": 1, "b": 2}"#);
+        let output = render(&mut app, 80, 12);
+        assert!(
+            !output.contains("[ < Back ]"),
+            "back badge must not render when there is nothing to undo:\n{}",
+            output
+        );
+        assert!(
+            app.layout_regions.back_button.is_none(),
+            "back-button rect must be None when the badge is hidden",
+        );
+    }
+
+    #[test]
+    fn back_badge_renders_when_undo_ring_nonempty() {
+        let mut app = test_app(r#"{"a": 1, "b": 2}"#);
+        push_one_drill(&mut app);
+
+        let output = render(&mut app, 80, 12);
+        assert!(
+            output.contains("[ < Back ]"),
+            "back badge must render when the undo ring is non-empty:\n{}",
+            output
+        );
+        let rect = app
+            .layout_regions
+            .back_button
+            .expect("back-button rect must be tracked when the badge is visible");
+        assert_eq!(rect.height, 1);
+        assert_eq!(rect.width, "[ < Back ]".len() as u16);
+    }
+
+    #[test]
+    fn back_badge_coexists_with_chord_hint_in_strip() {
+        // The bottom-border hint strip teaches the keyboard chord; the
+        // top-border badge is a click target. Both surface `<` so the user
+        // sees the visual affordance and learns the shortcut.
+        let mut app = test_app(r#"{"a": 1, "b": 2}"#);
+        push_one_drill(&mut app);
+
+        let output = render(&mut app, 120, 12);
+        assert!(
+            output.contains("[ < Back ]"),
+            "top-border badge must render:\n{}",
+            output,
+        );
+        assert!(
+            output.contains("< back"),
+            "bottom-border strip should still teach the `< back` chord:\n{}",
+            output,
+        );
+    }
+
+    #[test]
+    fn position_indicator_renders_on_bottom_right() {
+        // Position info anchors the bottom-right border so the top-left
+        // can stay anchored by the path-at-cursor span and the back badge.
+        let mut app = test_app(r#"{"a": 1, "b": 2}"#);
+        let output = render(&mut app, 100, 12);
+        assert!(
+            output.contains("L1-"),
+            "position indicator must render somewhere:\n{}",
+            output,
+        );
+        // Specifically: the position indicator should appear on the
+        // bottom border row (last results-pane border line, before the
+        // input field), not the top.
+        let lines: Vec<&str> = output.lines().collect();
+        let top_border = lines.first().copied().unwrap_or_default();
+        assert!(
+            !top_border.contains("L1-"),
+            "position indicator must not be on the top border anymore:\n{}",
+            output,
+        );
+    }
+}

@@ -74,6 +74,14 @@ pub fn region_at(regions: &LayoutRegions, x: u16, y: u16) -> Option<Region> {
     }
 
     // Base layout regions
+    // Back button on the results-pane top border (sits inside the
+    // results_pane rect, so check before ResultsPane).
+    if let Some(rect) = &regions.back_button
+        && contains(rect, x, y)
+    {
+        return Some(Region::BackButton);
+    }
+
     // Search bar (at bottom of results when visible)
     if let Some(rect) = &regions.search_bar
         && contains(rect, x, y)

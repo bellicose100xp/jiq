@@ -161,7 +161,7 @@ Focus with <kbd>Shift</kbd>+<kbd>Tab</kbd> or click.
 | Key | Action |
 |:---|:---|
 | <kbd>&gt;</kbd> | Zoom into value at cursor |
-| <kbd>&lt;</kbd> | Step back to prior query |
+| <kbd>&lt;</kbd> | Step back to prior query (or click the `[ < Back ]` badge on the results border) |
 | <kbd>*</kbd> | Iterate nearest array (`[N]` → `[]`) |
 | <kbd>^</kbd> | Step up one level |
 | <kbd>}</kbd> | Wrap value as `{key}` object |

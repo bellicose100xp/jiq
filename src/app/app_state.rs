@@ -71,6 +71,9 @@ pub struct App {
     pub layout_regions: LayoutRegions,
     pub array_sample_size: usize,
     pub double_click: super::double_click::DoubleClickTracker,
+    /// Whether the mouse is currently hovering the clickable Back badge on
+    /// the results-pane top border. Drives the badge's hover styling.
+    pub back_button_hovered: bool,
 }
 
 impl App {
@@ -181,6 +184,7 @@ impl App {
             layout_regions: LayoutRegions::new(),
             array_sample_size: config.autocomplete.array_sample_size,
             double_click: super::double_click::DoubleClickTracker::new(),
+            back_button_hovered: false,
         }
     }
 

@@ -3,7 +3,7 @@ source: src/app/app_render_tests/result_state_tests.rs
 assertion_line: 84
 expression: output
 ---
-"╭   ⚠ Syntax Error   Object | Showing last successful result ───────────────────────────────────────────── L1-3/3 (0%) ╮"
+"╭   ⚠ Syntax Error   Object | Showing last successful result ──────────────────────────────────────────────────────────╮"
 "▌{                                                                                                                     │"
 "│  "test": true                                                                                                        │"
 "│}                                                                                                                     │"
@@ -28,7 +28,7 @@ expression: output
 "│                                                                                                                      │"
 "│                                                                                                                      │"
 "│                                                                                                                      │"
-"╰─────────────── Tab Edit Query • i Edit Query • > value • * iterate • ^ parent • } wrap • ]/[ siblings ───────────────╯"
+"╰─────────────── Tab Edit Query • i Edit Query • > value • * iterate • ^ parent • } wrap • ]/[ siblings ── L1-3/3 (0%) ╯"
 "╭ Query [INSERT] ───────────────────────────────────────────────────────────────────────────────── Ctrl+A AI Assistant ╮"
 "│.invalid syntax here                                                                                                  │"
 "╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯"

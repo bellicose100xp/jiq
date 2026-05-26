@@ -3,7 +3,7 @@ source: src/app/app_render_tests/popup_tests.rs
 assertion_line: 247
 expression: output
 ---
-"╭ Object ───────────────────────────────────────────────────────── L1-4/4 (0%) ╮"
+"╭ Object ──────────────────────────────────────────────────────────────────────╮"
 "│{                                                                             │"
 "│  "name": "Alice",                                                            │"
 "│  "age": 30                                                                   │"
@@ -22,7 +22,7 @@ expression: output
 "│                 │                                                          │ │"
 "│                 │ 💡 For null-safe checks, use select(.field? // false)    │ │" Hidden by multi-width symbols: [(21, " ")]
 "│                 │                                                          │ │"
-"╰─────────────────╰───────────────────── Ctrl+T Dismiss ─────────────────────╯─╯"
+"╰─────────────────╰───────────────────── Ctrl+T Dismiss ─────────────────────╯ ╯"
 "╭ Query [INSERT] ───────────────────────────────────────── Ctrl+A AI Assistant ╮"
 "│                                                                              │"
 "╰t+Tab Navigate Results • Ctrl+P Previous Query • Ctrl+N Next Query • Ctrl+R Hi╯"

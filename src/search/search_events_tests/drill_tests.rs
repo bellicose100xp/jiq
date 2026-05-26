@@ -47,6 +47,7 @@ fn drill_in_uses_match_row_not_cursor_row() {
     // non-root row. `>` must drill into the match, not the cursor.
     let (mut app, match_row) =
         open_search_with_match(r#"{"alpha": 1, "beta": 2, "gamma": 3}"#, "gamma");
+    app.search.confirm();
     let total = app.results_line_count_u32();
     app.results_cursor.update_total_lines(total);
     app.results_cursor.move_to_line(0);
@@ -64,6 +65,7 @@ fn drill_in_uses_match_row_not_cursor_row() {
 #[test]
 fn drill_in_closes_search_on_success() {
     let (mut app, _) = open_search_with_match(r#"{"target": 1}"#, "target");
+    app.search.confirm();
 
     handle_search_key(&mut app, key(KeyCode::Char('>')));
 
@@ -80,6 +82,7 @@ fn drill_in_with_no_matches_notifies_and_keeps_search_open() {
     open_search(&mut app);
     app.search.search_textarea_mut().insert_str("missing-token");
     app.search.update_matches("{\"a\": 1}");
+    app.search.confirm();
     assert!(app.search.matches().is_empty());
 
     handle_search_key(&mut app, key(KeyCode::Char('>')));
@@ -111,6 +114,7 @@ fn drill_in_when_match_resolves_to_root_keeps_search_open() {
         .unwrap_or_default();
     app.search.search_textarea_mut().insert_str("42");
     app.search.update_matches(&unformatted);
+    app.search.confirm();
     assert!(app.search.current_match().is_some());
 
     handle_search_key(&mut app, key(KeyCode::Char('>')));
@@ -120,16 +124,26 @@ fn drill_in_when_match_resolves_to_root_keeps_search_open() {
 }
 
 #[test]
-fn drill_in_works_in_search_editing_mode() {
-    // The handler dispatches `>` ahead of the textarea-input fall-through
-    // even when search is unconfirmed. Confirms `>` is not buffered into
-    // the search query.
+fn drill_in_typed_into_search_query_while_editing() {
+    // While editing the search query, `>` is a literal character that
+    // gets typed into the textarea — users routinely search for keys or
+    // values containing `>`, `<`, `*`, etc. Drill chords only fire after
+    // the search is confirmed (Enter / Tab).
     let (mut app, _) = open_search_with_match(r#"{"target": 1}"#, "target");
     assert!(!app.search.is_confirmed(), "test guard: still editing");
+    let query_before = app.input.query().to_string();
 
     handle_search_key(&mut app, key(KeyCode::Char('>')));
 
-    assert_eq!(app.input.query(), ".target");
+    assert_eq!(
+        app.input.query(),
+        query_before,
+        "input query untouched while editing search"
+    );
+    assert!(
+        app.search.query().contains('>'),
+        "search textarea should contain the typed `>`"
+    );
 }
 
 #[test]
@@ -146,14 +160,16 @@ fn drill_in_works_in_search_confirmed_mode() {
 
 #[test]
 fn drill_back_in_search_does_not_close_search() {
-    // First drill in (which closes search), then re-open search and drill
-    // back. `<` should pop the snapshot and leave the freshly-reopened
-    // search overlay alone.
+    // First drill in (which closes search), then re-open search, confirm,
+    // and drill back. `<` should pop the snapshot and leave the
+    // freshly-reopened (confirmed) search overlay alone.
     let (mut app, _) = open_search_with_match(r#"{"target": 1, "other": 2}"#, "target");
+    handle_search_key(&mut app, key(KeyCode::Enter));
     handle_search_key(&mut app, key(KeyCode::Char('>')));
     assert_eq!(app.input.query(), ".target");
 
     open_search(&mut app);
+    app.search.confirm();
 
     handle_search_key(&mut app, key(KeyCode::Char('<')));
 
@@ -168,6 +184,7 @@ fn drill_back_on_empty_ring_notifies_in_search() {
         qs.execute(".");
     }
     open_search(&mut app);
+    app.search.confirm();
 
     handle_search_key(&mut app, key(KeyCode::Char('<')));
 
@@ -179,9 +196,11 @@ fn drill_back_on_empty_ring_notifies_in_search() {
 }
 
 #[test]
-fn drill_in_does_not_appear_in_search_query_text() {
-    // Regression: confirm `>` is intercepted and never reaches the search
-    // textarea, even after the user has typed a few chars.
+fn drill_chord_chars_are_typed_into_search_query_while_editing() {
+    // Users routinely grep JSON that contains `>`, `<`, `*`, `^`, `}`,
+    // `[`, `]` (HTML/XML, glob-like keys, regex-like values, etc.). While
+    // the search bar is unconfirmed, every printable character — including
+    // these — must reach the textarea so the search can match them.
     let mut app = test_app(r#"{"a": 1}"#);
     if let Some(qs) = app.query.as_mut() {
         qs.execute(".");
@@ -190,23 +209,15 @@ fn drill_in_does_not_appear_in_search_query_text() {
     app.search.search_textarea_mut().insert_str("a");
     app.search.update_matches("{\"a\": 1}");
 
-    handle_search_key(&mut app, key(KeyCode::Char('>')));
-
-    assert!(!app.search.query().contains('>'));
-}
-
-#[test]
-fn drill_back_does_not_appear_in_search_query_text() {
-    let mut app = test_app(r#"{"a": 1}"#);
-    if let Some(qs) = app.query.as_mut() {
-        qs.execute(".");
+    for ch in ['>', '<', '*', '^', '}', '[', ']'] {
+        handle_search_key(&mut app, key(KeyCode::Char(ch)));
+        assert!(
+            app.search.query().contains(ch),
+            "search textarea should contain the typed `{}`, got `{}`",
+            ch,
+            app.search.query()
+        );
     }
-    open_search(&mut app);
-    app.search.search_textarea_mut().insert_str("a");
-
-    handle_search_key(&mut app, key(KeyCode::Char('<')));
-
-    assert!(!app.search.query().contains('<'));
 }
 
 #[test]
@@ -232,6 +243,7 @@ fn next_sibling_chord_moves_cursor_using_match_row() {
     // move the cursor to .gamma (row 3) using the match row, not the
     // cursor row.
     let (mut app, _) = open_search_with_match(r#"{"alpha": 1, "beta": 2, "gamma": 3}"#, "beta");
+    app.search.confirm();
     let total = app.results_line_count_u32();
     app.results_cursor.update_total_lines(total);
     app.results_cursor.move_to_line(0);
@@ -247,6 +259,7 @@ fn next_sibling_chord_moves_cursor_using_match_row() {
 #[test]
 fn prev_sibling_chord_moves_cursor_using_match_row() {
     let (mut app, _) = open_search_with_match(r#"{"alpha": 1, "beta": 2, "gamma": 3}"#, "beta");
+    app.search.confirm();
     let total = app.results_line_count_u32();
     app.results_cursor.update_total_lines(total);
     app.results_cursor.move_to_line(0);
@@ -266,6 +279,7 @@ fn sibling_chord_in_search_with_no_match_notifies() {
     open_search(&mut app);
     app.search.search_textarea_mut().insert_str("missing");
     app.search.update_matches("{\"a\": 1, \"b\": 2}");
+    app.search.confirm();
 
     handle_search_key(&mut app, key(KeyCode::Char(']')));
 
@@ -279,6 +293,7 @@ fn sibling_chord_in_search_with_no_match_notifies() {
 #[test]
 fn sibling_chord_in_search_at_root_keeps_search_open() {
     let (mut app, _) = open_search_with_match(r#"42"#, "42");
+    app.search.confirm();
 
     handle_search_key(&mut app, key(KeyCode::Char(']')));
 
@@ -289,6 +304,7 @@ fn sibling_chord_in_search_at_root_keeps_search_open() {
 #[test]
 fn sibling_chord_in_search_with_single_child_notifies() {
     let (mut app, _) = open_search_with_match(r#"{"only": 42}"#, "42");
+    app.search.confirm();
 
     handle_search_key(&mut app, key(KeyCode::Char(']')));
 
@@ -300,13 +316,18 @@ fn sibling_chord_in_search_with_single_child_notifies() {
 }
 
 #[test]
-fn sibling_chord_does_not_leak_into_search_query() {
+fn sibling_chord_typed_into_search_query_while_editing() {
+    // While editing the search query, `]` and `[` are literal characters
+    // — common in JSON values referencing arrays, regex char classes, etc.
     let (mut app, _) = open_search_with_match(r#"{"a": 1, "b": 2}"#, "1");
     assert!(!app.search.is_confirmed());
 
     handle_search_key(&mut app, key(KeyCode::Char(']')));
 
-    assert!(!app.search.query().contains(']'));
+    assert!(
+        app.search.query().contains(']'),
+        "search textarea should contain the typed `]`"
+    );
 }
 
 #[test]
@@ -324,6 +345,7 @@ fn sibling_chord_works_in_search_confirmed_mode() {
 #[test]
 fn sibling_chord_in_search_does_not_modify_query_or_undo_ring() {
     let (mut app, _) = open_search_with_match(r#"{"a": 1, "b": 2}"#, "1");
+    app.search.confirm();
     let prior_query = app.input.query().to_string();
 
     handle_search_key(&mut app, key(KeyCode::Char(']')));
