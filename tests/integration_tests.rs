@@ -67,6 +67,106 @@ fn test_cli_version_flag() {
         .stdout(predicate::str::contains("jiq"));
 }
 
+// ============================================================================
+// Phase 1 — H1 hard-error: --clipboard / --paste with piped stdin
+//
+// Piped stdin combined with an explicit source flag is contradictory; jiq
+// refuses to launch and exits with code 2. The error must land on stderr
+// before the alt screen is entered, so the message is visible in the
+// user's normal terminal.
+// ============================================================================
+
+#[test]
+fn test_cli_clipboard_with_piped_stdin_errors() {
+    cargo_bin_cmd!()
+        .arg("--clipboard")
+        .write_stdin(r#"{"a": 1}"#)
+        .assert()
+        .code(2)
+        .stderr(predicate::str::contains("ambiguous input source"))
+        .stderr(predicate::str::contains("--clipboard"))
+        .stderr(predicate::str::contains("piped stdin"))
+        // Error must list the valid invocations so the user can pick one.
+        .stderr(predicate::str::contains("jiq <file>"))
+        .stderr(predicate::str::contains("cat <file> | jiq"))
+        .stderr(predicate::str::contains("jiq --paste"));
+}
+
+#[test]
+fn test_cli_paste_with_piped_stdin_errors() {
+    cargo_bin_cmd!()
+        .arg("--paste")
+        .write_stdin(r#"{"a": 1}"#)
+        .assert()
+        .code(2)
+        .stderr(predicate::str::contains("ambiguous input source"))
+        .stderr(predicate::str::contains("--paste"))
+        .stderr(predicate::str::contains("piped stdin"));
+}
+
+#[test]
+fn test_cli_file_with_clipboard_flag_errors() {
+    let fixture = fixture_path("simple.json");
+    // assert_cmd always pipes stdin, so "piped stdin" will also be
+    // listed alongside the file arg + flag. The user-facing case from
+    // a real terminal is just "a file argument AND --clipboard".
+    cargo_bin_cmd!()
+        .arg(&fixture)
+        .arg("--clipboard")
+        .assert()
+        .code(2)
+        .stderr(predicate::str::contains("ambiguous input source"))
+        .stderr(predicate::str::contains("file argument"))
+        .stderr(predicate::str::contains("--clipboard"));
+}
+
+#[test]
+fn test_cli_file_with_paste_flag_errors() {
+    let fixture = fixture_path("simple.json");
+    cargo_bin_cmd!()
+        .arg(&fixture)
+        .arg("--paste")
+        .assert()
+        .code(2)
+        .stderr(predicate::str::contains("ambiguous input source"))
+        .stderr(predicate::str::contains("file argument"))
+        .stderr(predicate::str::contains("--paste"));
+}
+
+#[test]
+fn test_cli_file_with_piped_stdin_does_not_error() {
+    // No flag involved → file wins, piped stdin is ignored. Preserves
+    // today's behavior for scripts where stdin is redirected (e.g.
+    // `jiq foo.json < /dev/null` from cron). Only the new ambiguous
+    // case (file + flag, with or without pipe) errors out.
+    //
+    // We can't easily assert success here because the binary boots into
+    // the TUI; just confirm we don't get the H1 error message.
+    let fixture = fixture_path("simple.json");
+    let assert = cargo_bin_cmd!()
+        .arg(&fixture)
+        .write_stdin(r#"{"a": 1}"#)
+        .timeout(std::time::Duration::from_millis(100))
+        .assert();
+    let stderr = String::from_utf8_lossy(&assert.get_output().stderr).to_string();
+    assert!(
+        !stderr.contains("ambiguous input source"),
+        "did not expect ambiguous-source error, got stderr: {}",
+        stderr
+    );
+}
+
+#[test]
+fn test_cli_clipboard_and_paste_mutually_exclusive() {
+    // clap should reject this at parse time (conflicts_with), so exit
+    // code is non-zero and stderr mentions both flags.
+    cargo_bin_cmd!()
+        .args(["--clipboard", "--paste"])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("--paste").or(predicate::str::contains("--clipboard")));
+}
+
 #[test]
 fn test_fixture_files_exist() {
     // Verify all our test fixtures are present

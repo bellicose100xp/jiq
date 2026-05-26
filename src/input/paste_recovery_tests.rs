@@ -36,6 +36,56 @@ fn try_submit_with_embedded_newlines_in_strings() {
     assert!(state.try_submit(r#"{"a": "line1\nline2"}"#).is_ok());
 }
 
+// ============================================================================
+// Primitive-guard tests (Phase 1 — H2)
+//
+// Manual paste must reject bare primitives (42, "foo", true, null) for the
+// same reason clipboard load does: jq queries operate on objects/arrays.
+// Both paths use the shared `scan_json_or_jsonl` helper.
+// ============================================================================
+
+#[test]
+fn try_submit_rejects_bare_number() {
+    let mut state = PasteRecoveryState::new("err");
+    let result = state.try_submit("42");
+    assert!(result.is_err());
+    assert!(
+        state.error_message.contains("object or array"),
+        "got: {}",
+        state.error_message
+    );
+}
+
+#[test]
+fn try_submit_rejects_bare_string() {
+    let mut state = PasteRecoveryState::new("err");
+    assert!(state.try_submit(r#""hello""#).is_err());
+}
+
+#[test]
+fn try_submit_rejects_bare_bool() {
+    let mut state = PasteRecoveryState::new("err");
+    assert!(state.try_submit("true").is_err());
+}
+
+#[test]
+fn try_submit_rejects_bare_null() {
+    let mut state = PasteRecoveryState::new("err");
+    assert!(state.try_submit("null").is_err());
+}
+
+#[test]
+fn try_submit_rejects_jsonl_with_one_primitive() {
+    let mut state = PasteRecoveryState::new("err");
+    let result = state.try_submit("{\"a\": 1}\n42");
+    assert!(result.is_err());
+    assert!(
+        state.error_message.contains("object or array"),
+        "got: {}",
+        state.error_message
+    );
+}
+
 #[test]
 fn try_submit_with_invalid_json_updates_error_message() {
     let mut state = PasteRecoveryState::new("original error");

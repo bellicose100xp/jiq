@@ -57,6 +57,19 @@ struct Args {
     /// Input JSON file (if not provided, reads from stdin)
     input: Option<PathBuf>,
 
+    /// Force reading JSON from the system clipboard. Mutually exclusive
+    /// with --paste; cannot be combined with piped stdin (the
+    /// invocation is contradictory and is rejected with exit code 2).
+    #[arg(long, conflicts_with = "paste")]
+    clipboard: bool,
+
+    /// Drop straight into manual-paste mode without reading the
+    /// clipboard. Mutually exclusive with --clipboard; cannot be
+    /// combined with piped stdin (rejected with exit code 2). No-op
+    /// until the explicit-paste UI lands in Phase 2.
+    #[arg(long, conflicts_with = "clipboard")]
+    paste: bool,
+
     /// Enable debug logging to /tmp/jiq-debug.log
     #[arg(long)]
     debug: bool,
@@ -75,9 +88,53 @@ fn main() -> Result<()> {
     validate_jq_exists()?;
     log::debug!("jq binary found in PATH");
 
+    // H1 hard-error: an explicit source flag combined with ANY other
+    // source is contradictory. The user typed `--clipboard` / `--paste`
+    // to override the default; a file argument or piped stdin
+    // contradicts the override. Refuse to launch rather than silently
+    // dropping one.
+    //
+    // (clap already rejects --clipboard + --paste at parse time via
+    // conflicts_with, so we don't need to check that combination here.)
+    //
+    // We deliberately do NOT trip on `file + piped stdin` without a
+    // flag. That preserves today's behavior (file arg wins) for
+    // scripts/CI invocations where stdin happens to be redirected
+    // (e.g. `jiq foo.json < /dev/null` from cron).
+    //
+    // Runs *before* init_terminal so the message lands on the user's
+    // normal terminal, not inside the alt screen.
+    let has_file = args.input.is_some();
+    let has_pipe = !std::io::IsTerminal::is_terminal(&std::io::stdin());
+    let flag: Option<&str> = if args.clipboard {
+        Some("--clipboard")
+    } else if args.paste {
+        Some("--paste")
+    } else {
+        None
+    };
+    if let Some(f) = flag
+        && (has_file || has_pipe)
+    {
+        let mut got = Vec::with_capacity(3);
+        if has_file {
+            got.push("a file argument".to_string());
+        }
+        if has_pipe {
+            got.push("piped stdin".to_string());
+        }
+        got.push(f.to_string());
+        print_ambiguous_source_error(&got);
+        std::process::exit(2);
+    }
+
     // Clipboard fallback runs *before* init_terminal so OSC 52 read can briefly
     // own raw stdin without racing the main event loop. File and stdin paths
     // stay deferred so a large input never blocks the splash screen.
+    //
+    // `--paste` is parsed but a no-op in Phase 1 — bare TTY plus
+    // `--paste` falls through to the same clipboard read as today,
+    // pending Phase 2's explicit-paste UI.
     let loader = if let Some(ref path) = args.input {
         log::debug!("File loader spawned for: {:?}", path);
         FileLoader::spawn_load(path.clone())
@@ -109,6 +166,52 @@ fn main() -> Result<()> {
 fn validate_jq_exists() -> Result<(), JiqError> {
     which::which("jq").map_err(|_| JiqError::JqNotFound)?;
     Ok(())
+}
+
+/// Render the H1 "ambiguous input source" error to stderr with ANSI
+/// colors when stderr is a TTY, plain text otherwise (so redirecting
+/// `2>file` produces clean output without escape codes). Colors mirror
+/// the rest of jiq's palette: red for the error label, yellow for the
+/// rejected sources, dim for shell-comments, bold for the heading.
+///
+/// `got` is the list of sources jiq detected on this invocation
+/// (file argument / piped stdin / `--clipboard` / `--paste`); jiq
+/// accepts at most one, so any list of length ≥ 2 trips this error.
+fn print_ambiguous_source_error(got: &[String]) {
+    let tty = std::io::IsTerminal::is_terminal(&std::io::stderr());
+
+    // ANSI escapes — only emitted when stderr is a TTY.
+    let (red, yellow, cyan, dim, bold, reset) = if tty {
+        (
+            "\x1b[31m", "\x1b[33m", "\x1b[36m", "\x1b[2m", "\x1b[1m", "\x1b[0m",
+        )
+    } else {
+        ("", "", "", "", "", "")
+    };
+
+    let got_list = match got.len() {
+        0 | 1 => unreachable!("ambiguous error requires at least 2 sources"),
+        2 => format!("{yellow}{}{reset} AND {yellow}{}{reset}", got[0], got[1]),
+        _ => {
+            let last = got.len() - 1;
+            let head = got[..last]
+                .iter()
+                .map(|s| format!("{yellow}{s}{reset}"))
+                .collect::<Vec<_>>()
+                .join(", ");
+            format!("{head}, AND {yellow}{}{reset}", got[last])
+        }
+    };
+
+    eprintln!(
+        "{bold}{red}error:{reset}{bold} ambiguous input source{reset} — got {got_list} at the same time.\n\n\
+         jiq accepts exactly one input source per invocation. Pick one:\n\
+         \x20 {cyan}jiq <file>{reset}            {dim}# load from a file{reset}\n\
+         \x20 {cyan}cat <file> | jiq{reset}      {dim}# load from piped stdin{reset}\n\
+         \x20 {cyan}jiq{reset}                   {dim}# load from system clipboard (default){reset}\n\
+         \x20 {cyan}jiq --clipboard{reset}       {dim}# load from system clipboard (explicit){reset}\n\
+         \x20 {cyan}jiq --paste{reset}           {dim}# open the manual-paste editor{reset}"
+    );
 }
 
 /// Initialize terminal with raw mode, alternate screen, and bracketed paste

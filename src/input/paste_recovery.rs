@@ -19,12 +19,20 @@
 
 use crate::error::JiqError;
 
-use super::loader::validate_json_or_jsonl;
+use super::loader::scan_json_or_jsonl;
 
 /// Soft cap on pasted content. Larger pastes are rejected with a clear
 /// message rather than being shoved into the textarea (which would block
 /// the event loop on each insert).
 pub const PASTE_RECOVERY_MAX_BYTES: usize = 16 * 1024 * 1024;
+
+/// Banner text shown above the textarea when the user enters paste-
+/// recovery deliberately (via `--paste` flag or the smart picker's Paste
+/// option), as opposed to the failure-recovery path. Single source of
+/// truth so Phase 2's `new_explicit` constructor and any future
+/// caller stay in sync.
+#[allow(dead_code)] // Wired in Phase 2 (--paste UI).
+pub const EXPLICIT_PASTE_BANNER: &str = "Paste JSON below and press Enter to load.";
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PasteRecoveryState {
@@ -55,8 +63,14 @@ impl PasteRecoveryState {
             return Err(msg);
         }
 
-        match validate_json_or_jsonl(content) {
-            Ok(()) => Ok(content.to_string()),
+        match scan_json_or_jsonl(content) {
+            Ok(scan) if scan.all_containers => Ok(content.to_string()),
+            Ok(_) => {
+                let msg =
+                    "Input must be a JSON object or array, not a primitive value.".to_string();
+                self.error_message = msg.clone();
+                Err(msg)
+            }
             Err(JiqError::InvalidJson(detail)) => {
                 let msg = format!("Invalid JSON: {}", detail);
                 self.error_message = msg.clone();

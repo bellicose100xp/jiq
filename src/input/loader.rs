@@ -144,21 +144,50 @@ impl FileLoader {
     }
 }
 
-/// Validate that content is valid JSON or JSONL
-///
-/// Uses StreamDeserializer to handle both single JSON values and JSONL (multiple values).
-pub(crate) fn validate_json_or_jsonl(content: &str) -> Result<(), JiqError> {
+/// Outcome of a single-pass scan over `content`. Reports both validity
+/// and whether every top-level value is an object or array.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) struct JsonScan {
+    pub count: usize,
+    pub all_containers: bool,
+}
+
+/// Walk every top-level JSON value in `content` once, reporting count
+/// and whether every value is an object or array. Single-pass
+/// replacement for the old "validate then re-walk to check container
+/// shape" pattern; cheaper on large clipboard inputs and rules out
+/// the "scan disagreed with itself across two passes" failure mode.
+pub(crate) fn scan_json_or_jsonl(content: &str) -> Result<JsonScan, JiqError> {
     let deserializer = serde_json::Deserializer::from_str(content).into_iter::<serde_json::Value>();
     let mut count = 0;
+    let mut all_containers = true;
     for result in deserializer {
-        result.map_err(|e| JiqError::InvalidJson(e.to_string()))?;
+        let value = result.map_err(|e| JiqError::InvalidJson(e.to_string()))?;
+        if !value.is_object() && !value.is_array() {
+            all_containers = false;
+        }
         count += 1;
     }
     if count == 0 {
         return Err(JiqError::InvalidJson("Empty input".to_string()));
     }
-    log::debug!("JSON validation: {} top-level value(s)", count);
-    Ok(())
+    log::debug!(
+        "JSON validation: {} top-level value(s), all_containers={}",
+        count,
+        all_containers
+    );
+    Ok(JsonScan {
+        count,
+        all_containers,
+    })
+}
+
+/// Validate that content is valid JSON or JSONL.
+///
+/// Thin wrapper over [`scan_json_or_jsonl`] for callers that only care
+/// about parse validity (file/stdin loaders, paste-recovery accept).
+pub(crate) fn validate_json_or_jsonl(content: &str) -> Result<(), JiqError> {
+    scan_json_or_jsonl(content).map(|_| ())
 }
 
 /// Synchronous file loading (runs in background thread)
@@ -231,9 +260,17 @@ fn load_clipboard_sync() -> Result<String, JiqError> {
         return Err(input_load_error(InputErrorReason::ClipboardEmpty));
     }
 
-    if validate_json_or_jsonl(&contents).is_err() {
-        log::debug!("Clipboard contents are not valid JSON or JSONL");
-        return Err(input_load_error(InputErrorReason::ClipboardInvalidJson));
+    let scan = match scan_json_or_jsonl(&contents) {
+        Ok(s) => s,
+        Err(_) => {
+            log::debug!("Clipboard contents are not valid JSON or JSONL");
+            return Err(input_load_error(InputErrorReason::ClipboardInvalidJson));
+        }
+    };
+
+    if !scan.all_containers {
+        log::debug!("Clipboard contains a JSON primitive, not an object or array");
+        return Err(input_load_error(InputErrorReason::ClipboardPrimitive));
     }
 
     Ok(contents)
@@ -270,6 +307,11 @@ pub(crate) enum InputErrorReason {
     ClipboardEmpty,
     /// Clipboard had non-empty content but it didn't parse as JSON/JSONL.
     ClipboardInvalidJson,
+    /// Clipboard parsed as valid JSON but the top-level value is a
+    /// primitive (number, string, bool, null) rather than an object or
+    /// array. Useful jq queries operate on objects or arrays, so we
+    /// reject primitives and route the user to the manual-paste flow.
+    ClipboardPrimitive,
     /// Piped stdin was actually a terminal (no real data to read).
     NoStdin,
 }
@@ -286,6 +328,9 @@ fn format_input_load_error(reason: InputErrorReason) -> String {
         InputErrorReason::ClipboardEmpty => "No input provided. Clipboard is empty.",
         InputErrorReason::ClipboardInvalidJson => {
             "No input provided. Clipboard does not contain valid JSON."
+        }
+        InputErrorReason::ClipboardPrimitive => {
+            "Clipboard contained a non-JSON value (object or array required)."
         }
         InputErrorReason::NoStdin => "No input provided.",
     };
