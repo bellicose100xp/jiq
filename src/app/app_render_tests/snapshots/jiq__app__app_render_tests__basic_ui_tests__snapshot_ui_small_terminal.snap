@@ -1,5 +1,6 @@
 ---
 source: src/app/app_render_tests/basic_ui_tests.rs
+assertion_line: 122
 expression: output
 ---
 "╭ Object ───────────────── L1-3/3 (0%) ╮"
@@ -10,5 +11,5 @@ expression: output
 "╰──────────────────────────────────────╯"
 "╭ Query [INSERT] ─ Ctrl+A AI Assistant ╮"
 "│                                      │"
-"╰vious Query • Ctrl+N Next Query • Ctrl╯"
-" F1 Help • Shift+Tab Navigate Results • "
+"╰ts • Ctrl+P Previous Query • Ctrl+N Ne╯"
+" F1 Help • Ctrl+S Snippets • Ctrl+F Sear"

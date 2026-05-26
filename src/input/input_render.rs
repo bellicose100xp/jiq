@@ -104,7 +104,7 @@ pub fn render_field(app: &mut App, frame: &mut Frame, area: Rect) -> Rect {
         if has_error {
             block = block.title_bottom(
                 theme::border_hints::build_hints(
-                    &[("Ctrl+E", "Show Error")],
+                    &[("Shift+Tab", "Navigate Results"), ("Ctrl+E", "Show Error")],
                     theme::input::BORDER_ERROR,
                 )
                 .alignment(Alignment::Center),
@@ -112,7 +112,11 @@ pub fn render_field(app: &mut App, frame: &mut Frame, area: Rect) -> Rect {
         } else if !app.query().is_empty() {
             block = block.title_bottom(
                 theme::border_hints::build_hints(
-                    &[("Enter", "Output Result"), ("Ctrl+Q", "Output Query")],
+                    &[
+                        ("Shift+Tab", "Navigate Results"),
+                        ("Enter", "Output Result"),
+                        ("Ctrl+Q", "Output Query"),
+                    ],
                     mode_color,
                 )
                 .alignment(Alignment::Center),
@@ -121,6 +125,7 @@ pub fn render_field(app: &mut App, frame: &mut Frame, area: Rect) -> Rect {
             block = block.title_bottom(
                 theme::border_hints::build_hints(
                     &[
+                        ("Shift+Tab", "Navigate Results"),
                         ("Ctrl+P", "Previous Query"),
                         ("Ctrl+N", "Next Query"),
                         ("Ctrl+R", "History"),
