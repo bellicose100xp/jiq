@@ -17,6 +17,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.27.3] - 2026-05-26
+
+### Added
+- **Clickable `[ < Back ]` badge on the results pane** ([#173](https://github.com/bellicose100xp/jiq/pull/173)) - The `<` chord is now also a visual affordance: a styled `[ < Back ]` badge appears on the top-left of the results pane border whenever the undo ring is non-empty. Cyan by default, purple+bold on hover. Clicking it focuses the results pane (confirming search if open) and pops the most recent drill snapshot - same effect as pressing `<`. The keyboard chord remains in the bottom hint strip alongside `> value`, `* iterate`, `^ parent`, `} wrap`, `]/[ siblings` so the shortcut stays discoverable.
+
+### Changed
+- **Position indicator moves to the bottom-right border** ([#173](https://github.com/bellicose100xp/jiq/pull/173)) - `L1-65/5957 (0%)` now lives on the bottom-right of the results pane instead of the top-right, freeing the top-left for the back badge and the path-at-cursor span. The centered hint strip on the bottom border is explicitly width-budgeted and trims at hint boundaries so it never collides with the position indicator on any terminal width. When search is confirmed, the bottom-right slot switches from position to the match-count badge.
+- **Drill chords are typed as text while editing the search query** ([#173](https://github.com/bellicose100xp/jiq/pull/173)) - Previously `>`, `<`, `*`, `^`, `}`, `[`, `]` would trigger drill operations even while the search bar was unconfirmed - making it impossible to grep for those characters in JSON containing HTML/XML, regex char classes, glob keys, etc. They now reach the search textarea as literal characters until you confirm with `Enter` or `Tab`, after which the chords work as before. The search bar's bottom hints update accordingly to advertise only the keys that actually fire in editing mode (`Enter Confirm • Tab Confirm • Esc Close`); the results-pane chord strip is suppressed in the same state.
+
 ## [3.27.2] - 2026-05-26
 
 ### Changed
