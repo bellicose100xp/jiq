@@ -2,70 +2,100 @@
 title: Query history
 parent: Features
 nav_order: 6
-description: Go back to any query you've run before, without retyping it.
+description: Every successful query is saved automatically. Recall any previous query instantly.
 ---
 
 # Query history
 
-Every query that produces output is saved automatically. jiq keeps up to 1,000 entries, deduplicated, most recent first. History persists across sessions — closing and reopening jiq doesn't clear it.
+Every query that produces output is saved automatically — recall any previous query without retyping it.
 
-## Go back to the previous query
+<div class="before-after">
+  <input type="radio" name="ba-history" id="ba-history-before" checked>
+  <input type="radio" name="ba-history" id="ba-history-after">
+  <div class="ba-header">
+    <label for="ba-history-before" class="ba-toggle">Without history</label>
+    <label for="ba-history-after" class="ba-toggle">With history</label>
+  </div>
+  <div class="ba-state">
+    <p class="ba-caption">You ran a useful query ten queries ago. Now you need it again but can't remember the exact syntax.</p>
+    <div class="ba-terminal">$ # Was it .users[] | select(.age > 30) | .name ?
+$ # Or .users[] | select(.age >= 30) | {name, email} ?
+$ # Try again from scratch...</div>
+  </div>
+  <div class="ba-state">
+    <p class="ba-caption">Press Ctrl+R, type a fragment, select the one you want.</p>
+    <div class="ba-terminal">Query: <span style="color:#58a6ff">.users[] | select(.age >= 30) | {name, email}</span>
+       recalled from history in 2 seconds</div>
+  </div>
+</div>
 
-Press **Ctrl+P** to step backward through recent queries, one at a time. The query input updates immediately and jiq re-runs it.
+## Cycle through recent queries
 
-Press **Ctrl+N** to step forward again.
+Without opening any popup, step through your history one query at a time:
 
-This works without opening any popup — useful when you just want to get back one or two queries.
+- Press <kbd>Ctrl</kbd>+<kbd>P</kbd> to go back (older)
+- Press <kbd>Ctrl</kbd>+<kbd>N</kbd> to go forward (newer)
 
-## Find a specific query from your history
+The query replaces your current input. Results update immediately.
 
-When you want to search further back:
+## Search your full history
 
-1. Press **Ctrl+R** to open the history popup.
-2. Type any part of the query to filter the list.
-3. Use **↑** / **↓** to highlight the one you want.
-4. Press **Enter** or **Tab** to apply it.
+For deeper recall:
 
-<div class="tui-mockup with-title" data-title="History popup — Ctrl+R">
-<pre>┌─ History ───────────────────────────────────────┐
-│ Filter: select                                  │
-│                                                 │
-│ ▸ .users[] | select(.active)             ✕      │
-│   .events[] | select(.type == "click")          │
-│   .data | map(select(.tier == "gold"))          │
-│   .items[] | select(.price &gt; 100)               │
-│                                                 │
-└── Enter Apply · Ctrl+D Delete · Esc Close ─────┘</pre>
+1. Press <kbd>Ctrl</kbd>+<kbd>R</kbd> to open the history popup. (<kbd>Up</kbd> also works when you're not in the middle of typing.)
+2. Type any fragment — the list filters by fuzzy match.
+3. Use <kbd>Up</kbd> / <kbd>Down</kbd> to highlight an entry.
+4. Press <kbd>Enter</kbd> or <kbd>Tab</kbd> to apply it.
+
+<div class="animated-terminal">
+  <div class="terminal-chrome">
+    <span class="dot red"></span>
+    <span class="dot yellow"></span>
+    <span class="dot green"></span>
+    <span class="terminal-title">History popup</span>
+  </div>
+  <div class="terminal-body">
+    <div class="term-line"><span class="term-dim">Filter:</span> <span class="term-highlight">select</span><span class="term-cursor"></span></div>
+    <div class="term-line">&nbsp;</div>
+    <div class="term-line"><span class="term-output">  .users[] | select(.active) | .email</span></div>
+    <div class="term-line"><span class="term-highlight">&#9656; .users[] | select(.age >= 30) | {name, email}</span></div>
+    <div class="term-line"><span class="term-output">  .items[] | select(.price > 100)</span></div>
+    <div class="term-line">&nbsp;</div>
+    <div class="term-line"><span class="term-dim">Enter Apply  Ctrl+D Delete  Esc Close</span></div>
+  </div>
 </div>
 
 ## Delete a history entry
 
-To remove an entry you no longer want:
-
-- In the popup, highlight it and press **Ctrl+D**.
-- Or hover over any row with the mouse — a `✕` button appears on the right. Click it to delete that entry.
-
-The popup closes automatically if you delete the last remaining entry.
+In the history popup, highlight an entry and press <kbd>Ctrl</kbd>+<kbd>D</kbd> to remove it. You can also hover a row to reveal the delete button and click it.
 
 ## Where history is stored
 
-| OS | File |
+Up to 1,000 queries are saved (duplicates deduplicated). The file location depends on your OS:
+
+| OS | Path |
 |---|---|
 | Linux | `~/.local/share/jiq/history` |
 | macOS | `~/Library/Application Support/jiq/history` |
 | Windows | `%APPDATA%\jiq\history` |
 
-One query per line. You can edit or clear this file directly if needed.
-
 ## All keys
+
+### Quick cycling (no popup)
 
 | Key | Action |
 |---|---|
-| `Ctrl+P` | Go to the previous (older) query |
-| `Ctrl+N` | Go to the next (newer) query |
-| `Ctrl+R` | Open the history popup |
-| `↑` / `↓` | Move through the list |
-| Type | Filter the list |
-| `Enter` / `Tab` | Apply the selected query |
-| `Ctrl+D` | Delete the selected entry |
-| `Esc` | Close the popup |
+| `Ctrl+P` | Previous (older) query |
+| `Ctrl+N` | Next (newer) query |
+
+### History popup
+
+| Key | Action |
+|---|---|
+| `Ctrl+R` / `Up` | Open popup |
+| `Up` / `Down` | Navigate entries |
+| Type | Fuzzy filter |
+| `Enter` / `Tab` | Apply selected |
+| `Ctrl+D` | Delete selected entry |
+| Click delete button | Delete entry under mouse |
+| `Esc` | Close without selecting |

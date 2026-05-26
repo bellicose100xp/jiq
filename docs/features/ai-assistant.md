@@ -2,143 +2,207 @@
 title: AI assistant
 parent: Features
 nav_order: 3
-description: Get AI-generated query suggestions when you're stuck, have an error, or want to go further.
+description: Get context-aware jq query suggestions from an AI that sees your data, your query, and the error.
 ---
 
 # AI assistant
 
-When you're not sure how to write a query, press **Ctrl+A**. jiq sends your current query, any active error, and a sample of your JSON to the configured model, then shows 2–5 suggestions you can apply instantly.
+The AI assistant fixes broken queries for you — it sees what went wrong, understands your data shape, and offers working alternatives you apply with a single keystroke.
 
-The assistant works in three situations:
+<div class="before-after">
+  <input type="radio" name="ba-ai" id="ba-ai-before" checked>
+  <input type="radio" name="ba-ai" id="ba-ai-after">
+  <div class="ba-header">
+    <label for="ba-ai-before" class="ba-toggle">Without AI</label>
+    <label for="ba-ai-after" class="ba-toggle">With AI</label>
+  </div>
+  <div class="ba-state">
+    <p class="ba-caption">You get a syntax error. Now you're searching the web, reading jq docs, trying variations one by one.</p>
+    <div class="ba-terminal">$ jiq data.json
+Query: .users | group_by .role
+       ^^^^^^^^^^^^^^^^^^^^^^^^^^
+       Syntax Error
 
-- **Error in the query** — suggests corrected versions (`select(.active = true)` → `select(.active == true)`)
-- **Valid query** — proposes shorter or clearer alternatives
-- **After a result** — suggests follow-up queries based on what you're looking at
+# Tab to browser...
+# Search: "jq group_by syntax"
+# Read docs... try group_by(.role)... no wait...
+# Try 5 more variations...
+# 10 minutes later: finally works</div>
+  </div>
+  <div class="ba-state">
+    <p class="ba-caption">Press Ctrl+A. The AI sees your query, the error, and your data — then offers working fixes.</p>
+    <div class="ba-terminal">Query: .users | group_by .role
+       Syntax Error
 
-<div class="tui-mockup with-title" data-title="AI assistant — Ctrl+A">
-<pre>╭─ AI Assistant ─────────────────────────────────────╮
-│ Query: show active users with their emails         │
-│                                                    │
-│ ▸ 1. .users[] | select(.active) | .email           │
-│   2. [.users[] | select(.active) | .email]         │
-│   3. .users | map(select(.active) | .email)        │
-│   4. .users[] | select(.active == true).email      │
-│   5. .users[] | select(.active) | {name, email}    │
-│                                                    │
-│ Alt+1-5 apply · Alt+↑↓ navigate · Enter apply      │
-╰────────────────────────────────────────────────────╯</pre>
+# Press Ctrl+A...
+
+AI Suggestions:
+  1. .users | group_by(.role)
+  2. [.users[] | group_by(.role)]
+  3. .users | group_by(.role) | map({key: .[0].role, val: .})
+
+# Press Alt+1 — done. 3 seconds.</div>
+  </div>
 </div>
 
-## Apply a suggestion
+## How it works
 
-With the popup open:
+<div class="step-flow">
+  <div class="step-item done">
+    <div class="step-circle">1</div>
+    <div class="step-text">Error appears</div>
+    <div class="step-connector"></div>
+  </div>
+  <div class="step-item done">
+    <div class="step-circle">2</div>
+    <div class="step-text">Press Ctrl+A</div>
+    <div class="step-connector"></div>
+  </div>
+  <div class="step-item active">
+    <div class="step-circle">3</div>
+    <div class="step-text">AI analyzes context</div>
+    <div class="step-connector"></div>
+  </div>
+  <div class="step-item">
+    <div class="step-circle">4</div>
+    <div class="step-text">Pick a suggestion</div>
+    <div class="step-connector"></div>
+  </div>
+  <div class="step-item">
+    <div class="step-circle">5</div>
+    <div class="step-text">Applied</div>
+  </div>
+</div>
 
-- Press **Alt+1** through **Alt+5** to apply that numbered suggestion directly.
-- Or use **Alt+↑** / **Alt+↓** to highlight a suggestion, then press **Enter** to apply it.
+The AI sends your current query, the error message, and a sample of your JSON to the configured provider. It returns 2-5 suggestions ranked by relevance. The entire round trip typically takes 1-3 seconds.
 
-Applying a suggestion replaces your current query and re-runs it immediately.
+## Get a fix for a failing query
 
-## Close the popup
+1. Write a query that produces an error (the `Syntax Error` banner appears).
+2. Press **Ctrl+A** to open the AI popup.
+3. Wait for suggestions to appear (a loading indicator shows progress).
+4. Press **Alt+1** through **Alt+5** to apply a suggestion directly — or use **Alt+j**/**Alt+k** to navigate, then **Enter** to apply.
 
-Press **Ctrl+A** again or **Esc** to close without applying anything.
+<div class="animated-terminal">
+  <div class="terminal-chrome">
+    <span class="dot red"></span>
+    <span class="dot yellow"></span>
+    <span class="dot green"></span>
+    <span class="terminal-title">AI suggestions popup</span>
+  </div>
+  <div class="terminal-body">
+    <div class="term-line"><span class="term-dim">Query:</span> <span class="term-error">.items | map(select(.price > 100) | .name, .price)</span></div>
+    <div class="term-line"><span class="term-error">Syntax Error: unexpected ',' at line 1</span></div>
+    <div class="term-line">&nbsp;</div>
+    <div class="term-line"><span class="term-dim">AI Suggestions:</span></div>
+    <div class="term-line"><span class="term-highlight"> 1.</span> <span class="term-output">.items[] | select(.price > 100) | {name, price}</span></div>
+    <div class="term-line"><span class="term-highlight"> 2.</span> <span class="term-output">[.items[] | select(.price > 100) | {name: .name, price: .price}]</span></div>
+    <div class="term-line"><span class="term-highlight"> 3.</span> <span class="term-output">.items | map(select(.price > 100) | {name, price})</span></div>
+    <div class="term-line">&nbsp;</div>
+    <div class="term-line"><span class="term-dim">Alt+1..3 Apply  |  Alt+j/k Navigate  |  Enter Apply selected</span></div>
+  </div>
+</div>
 
-## Set up a provider
+## Ask for help with a working query
 
-The AI assistant is off by default. To enable it, add an `[ai]` section and a provider block to `~/.config/jiq/config.toml`.
+The AI assistant is not limited to fixing errors. Even when your query works, press **Ctrl+A** and the AI may suggest improvements — a more concise form, a different approach, or natural language interpretation of what you typed.
 
-### Anthropic (Claude)
+## Navigate and dismiss suggestions
+
+| Action | Key |
+|---|---|
+| Move between suggestions | **Alt+Up** / **Alt+Down** or **Alt+j** / **Alt+k** |
+| Apply the highlighted suggestion | **Enter** |
+| Apply suggestion N directly | **Alt+1** through **Alt+5** |
+| Close without applying | **Ctrl+A** or **Esc** |
+
+## Configure the AI provider
+
+The AI assistant requires a provider configuration in `~/.config/jiq/config.toml`. jiq supports Anthropic, OpenAI, Gemini, AWS Bedrock, and any OpenAI-compatible API.
 
 ```toml
 [ai]
-enabled  = true
-provider = "anthropic"
-
-[ai.anthropic]
-api_key = "sk-ant-..."
-model   = "claude-haiku-4-5-20251001"
+enabled = true
+provider = "anthropic"    # "anthropic", "openai", "gemini", or "bedrock"
+max_context_length = 100000  # characters of JSON context sent to AI (default 100k)
 ```
 
-[Get an Anthropic API key →](https://console.anthropic.com/settings/keys)
+### Anthropic
+
+```toml
+[ai.anthropic]
+api_key = "sk-ant-..."
+model = "claude-haiku-4-5-20251001"
+```
 
 ### OpenAI
 
 ```toml
-[ai]
-enabled  = true
-provider = "openai"
-
 [ai.openai]
 api_key = "sk-proj-..."
-model   = "gpt-4o-mini"
+model = "gpt-4o-mini"
 ```
-
-[Get an OpenAI API key →](https://platform.openai.com/api-keys)
 
 ### Gemini
 
 ```toml
-[ai]
-enabled  = true
-provider = "gemini"
-
 [ai.gemini]
 api_key = "AIza..."
-model   = "gemini-3-flash-preview"
+model = "gemini-3-flash-preview"
 ```
-
-[Get a Gemini API key →](https://aistudio.google.com/apikey)
 
 ### AWS Bedrock
 
 ```toml
-[ai]
-enabled  = true
-provider = "bedrock"
-
 [ai.bedrock]
-region  = "us-east-1"
-model   = "anthropic.claude-3-haiku-20240307-v1:0"
-profile = "default"   # optional; uses default credential chain if omitted
+region = "us-east-1"
+model = "global.anthropic.claude-haiku-4-5-20251001-v1:0"
+profile = "default"  # optional: uses default credential chain if omitted
 ```
 
-### Local models (Ollama, LM Studio)
+### OpenAI-compatible APIs (Ollama, LM Studio, x.ai)
 
-Set `provider = "openai"` and point `base_url` at your local server. No API key needed.
+Any API that follows the OpenAI chat completions format works by setting `provider = "openai"` with a custom `base_url`:
 
 ```toml
-[ai]
-enabled  = true
-provider = "openai"
-
-# Ollama
+# Ollama (local)
 [ai.openai]
 base_url = "http://localhost:11434/v1"
-model    = "llama3"
+model = "llama3"
 
-# LM Studio
+# LM Studio (local)
 [ai.openai]
 base_url = "http://localhost:1234/v1"
-model    = "local-model"
+model = "local-model"
+
+# x.ai Grok
+[ai.openai]
+api_key = "your-xai-api-key"
+base_url = "https://api.x.ai/v1"
+model = "grok-4-fast-non-reasoning"
 ```
 
-## Limit how much data is sent
+For local providers that don't require authentication, omit the `api_key` field entirely.
 
-By default jiq sends up to 100,000 characters of your JSON as context. Reduce this if you're working with sensitive data or want to lower API costs:
+### Tuning context size
+
+The `max_context_length` setting controls how much of your JSON data is sent to the AI. Larger values give the AI more context for better suggestions but increase token usage and cost. Smaller values reduce cost and latency.
 
 ```toml
 [ai]
-max_context_length = 20000   # characters; default 100000
+max_context_length = 50000   # send less context (faster, cheaper)
+max_context_length = 200000  # send more context (better suggestions for large files)
 ```
 
-For sensitive data, a local model via Ollama or LM Studio sends nothing outside your machine.
+For sensitive data, a local model via Ollama or LM Studio keeps everything on your machine.
 
 ## All keys
 
 | Key | Action |
 |---|---|
-| `Ctrl+A` | Open or close the popup |
-| `Alt+1` … `Alt+5` | Apply suggestion 1–5 |
-| `Alt+↑` / `Alt+↓` | Move through the list |
-| `Alt+j` / `Alt+k` | Move through the list (Vim) |
-| `Enter` | Apply highlighted suggestion |
-| `Esc` | Close without applying |
+| `Ctrl+A` | Toggle AI assistant popup |
+| `Alt+1`..`Alt+5` | Apply suggestion 1-5 directly |
+| `Alt+Up` / `Alt+Down` | Navigate suggestions |
+| `Alt+j` / `Alt+k` | Navigate suggestions (vim style) |
+| `Enter` | Apply selected suggestion |
+| `Ctrl+A` / `Esc` | Close popup |

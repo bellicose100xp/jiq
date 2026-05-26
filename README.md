@@ -82,11 +82,11 @@ cat data.json | jiq
 echo '{"name": "Alice", "age": 30}' | jiq
 curl https://api.example.com/data | jiq
 
-# From clipboard, with paste-box fallback (no argument, no stdin)
+# reads clipboard; opens a paste editor if needed
 jiq
 ```
 
-With no file and no piped stdin, jiq reads from the clipboard; if it's not valid JSON, the in-app paste box opens.
+With no file and no piped stdin, jiq reads JSON from your clipboard. If the clipboard doesn't contain valid JSON, an interactive paste editor opens so you can paste or fix the input manually.
 
 ## Usage
 
@@ -221,11 +221,16 @@ With no file and no piped stdin, jiq reads from the clipboard; if it's not valid
 | `Ctrl+u` / `PageUp` | Move cursor half page up (also works from input field) |
 | `g` / `Home` | Jump cursor to top |
 | `G` / `End` | Jump cursor to bottom |
-| `>` | Go to value at cursor (pipe-composes its path onto the current query) |
-| `<` | Step back to the prior query (only enabled after at least one `>`) |
-| `*` | Iterate over the nearest array level (replace last `[N]` with `[]`) |
-| `^` | Step up one level (drop the last step from the trailing path segment of the typed query) |
-| `}` | Wrap the cursor's leaf as a single-entry object: `<parent> \| {key}` |
+
+**Query Navigation (navigate into and between values)**
+| Key | Action |
+|-----|--------|
+| `>` | Zoom into value at cursor (appends its path to your query) |
+| `<` | Step back to the prior query (undo the last `>`) |
+| `*` | Iterate over the nearest array (replace `[N]` with `[]` to show all elements) |
+| `^` | Step up one level (remove the last path segment from your query) |
+| `}` | Wrap the cursor's value as an object: `.path` becomes `.parent \| {key}` |
+| `]` / `[` | Jump cursor to next / previous sibling (wraps around) |
 
 **Horizontal Scrolling**
 | Key | Action |

@@ -6,10 +6,10 @@ description: One-page cheat sheet of every jiq keybind, grouped by mode and pane
 
 # Quick reference
 
-Click any feature header for the deep-dive.
+Every keybind in one place. Click any section header for the full guide.
 {: .fs-5 .fw-300 }
 
-## Global
+## Global <span class="mode-indicator mode-indicator--global">ALL MODES</span>
 
 | Key | Action |
 |:---|:---|
@@ -29,7 +29,7 @@ Click any feature header for the deep-dive.
 
 {: .shortcuts }
 
-## [Input — INSERT mode](./features/vim-editing)
+## [Input — INSERT mode](./features/vim-editing) <span class="mode-indicator mode-indicator--insert">INSERT</span>
 
 Cyan border. Just type — every keystroke re-runs jq.
 
@@ -49,7 +49,7 @@ Cyan border. Just type — every keystroke re-runs jq.
 
 {: .shortcuts }
 
-## [Input — NORMAL mode](./features/vim-editing)
+## [Input — NORMAL mode](./features/vim-editing) <span class="mode-indicator mode-indicator--normal">NORMAL</span>
 
 Yellow border. Vim motions, operators, text objects, undo/redo. Toggle from INSERT with <kbd>Esc</kbd>.
 
@@ -139,7 +139,7 @@ Yellow border. Vim motions, operators, text objects, undo/redo. Toggle from INSE
 
 {: .shortcuts }
 
-## [Results pane](./features/results-pane)
+## [Results pane](./features/results-pane) <span class="mode-indicator mode-indicator--results">RESULTS</span>
 
 Focus with <kbd>Shift</kbd>+<kbd>Tab</kbd> or click.
 
@@ -156,16 +156,16 @@ Focus with <kbd>Shift</kbd>+<kbd>Tab</kbd> or click.
 
 {: .shortcuts }
 
-### [Drill chords](./features/results-pane#drill-chords)
+### [Query navigation](./features/results-pane)
 
 | Key | Action |
 |:---|:---|
-| <kbd>&gt;</kbd> | Drill into value at cursor |
+| <kbd>&gt;</kbd> | Zoom into value at cursor |
 | <kbd>&lt;</kbd> | Step back to prior query |
 | <kbd>*</kbd> | Iterate nearest array (`[N]` → `[]`) |
 | <kbd>^</kbd> | Step up one level |
-| <kbd>}</kbd> | Wrap leaf as `{key}` object |
-| <kbd>]</kbd> <kbd>[</kbd> | Jump cursor to next / prev sibling (wraps) |
+| <kbd>}</kbd> | Wrap value as `{key}` object |
+| <kbd>]</kbd> <kbd>[</kbd> | Jump to next / prev sibling (wraps) |
 
 {: .shortcuts }
 
@@ -192,7 +192,7 @@ Focus with <kbd>Shift</kbd>+<kbd>Tab</kbd> or click.
 
 {: .shortcuts }
 
-## [Search in results](./features/search)
+## [Search in results](./features/search) <span class="mode-indicator mode-indicator--search">SEARCH</span>
 
 | Key | Action |
 |:---|:---|
@@ -262,7 +262,7 @@ Case-insensitive.
 
 {: .shortcuts }
 
-## [AI assistant](./features/ai-assistant)
+## [AI assistant](./features/ai-assistant) <span class="mode-indicator mode-indicator--ai">AI</span>
 
 | Key | Action |
 |:---|:---|

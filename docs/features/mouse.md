@@ -1,45 +1,47 @@
 ---
 title: Mouse
 parent: Features
-nav_order: 7
+nav_order: 9
 description: Use the mouse to focus panes, scroll, select output lines, and apply suggestions.
 ---
 
-# Mouse
+# Mouse support
 
-Every pane in jiq responds to the mouse. You can use the keyboard and mouse together freely — switching between them at any point.
+jiq has two main areas: the query input (where you type) and the output area (where results appear). Both respond to the mouse — click, scroll, and drag work alongside keyboard shortcuts.
 
-## Focus a pane
+## What you can do with the mouse
 
-Click anywhere inside a pane to give it focus. When the input field gains focus this way, it switches to INSERT mode.
+| Gesture | Where | What happens |
+|---|---|---|
+| Click | Query input or output area | Make that area active for keyboard input |
+| Click | Input field | Position cursor at click location |
+| Click | Autocomplete | Highlight a suggestion |
+| Double-click | Autocomplete | Apply a suggestion |
+| Click + drag | Output area | Select multiple lines |
+| Scroll wheel | Output area | Scroll vertically |
+| Scroll wheel | Input field | Scroll horizontally through long queries |
+| Hover | History popup row | Reveal the delete button |
+| Click delete button | History popup | Delete that entry |
+| Click | Help popup tab | Switch to that tab |
+| Click | Scrollbar | Reposition the scroll thumb |
+| Drag | Scrollbar thumb | Drag to scroll |
 
-## Scroll any pane
+## Select and copy with the mouse
 
-Roll the mouse wheel over any pane to scroll it — the results pane, a popup, the help panel. You don't need to click first; the pane under the cursor scrolls regardless of which pane has focus.
+To copy specific output lines:
 
-## Select lines in the results
+1. Click and drag across the lines you want in the output area.
+2. The selected lines highlight as you drag.
+3. Press <kbd>y</kbd> to copy the selection to your clipboard.
 
-To select a range of output lines with the mouse:
+You can also start a selection with the keyboard by pressing `v`, then extend with `j`/`k`.
 
-1. Press **v** to enter visual selection mode.
-2. Click and drag across the lines you want.
-3. Press **y** to copy them to your clipboard.
+## Mouse and keyboard together
 
-## Apply a suggestion or history entry
+Mouse actions don't interfere with keyboard state. You can:
 
-- **AI popup** — click a suggestion to apply it immediately.
-- **History popup** — click an entry to apply it and close the popup.
-- **Snippet list** — click a row to highlight it; press **Enter** to apply.
-- **Autocomplete dropdown** — double-click to accept. (Single click only highlights.)
+- Click a suggestion in autocomplete, then keep typing
+- Scroll results with the wheel, then press `>` to zoom into the value under your cursor
+- Drag-select lines, press `y` to copy, then continue editing the query
 
-## Delete a history entry with the mouse
-
-Hover over any row in the history popup. A `✕` button appears on the right edge. Click it to delete that entry.
-
-## Navigate the help popup
-
-Click any tab at the top of the help popup to switch to it. Click outside the popup to close it.
-
-## Position the cursor in the input
-
-When the input field is already focused, clicking inside it moves the text cursor to the character at that position.
+Whichever area you last clicked receives keyboard input. Click to switch, or use <kbd>Shift</kbd>+<kbd>Tab</kbd>.

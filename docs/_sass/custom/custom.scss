@@ -92,12 +92,12 @@ body {
 // ─── Keyboard chips ──────────────────────────────────────────────────
 kbd, .kbd {
   display: inline-block;
-  padding: 2px 7px;
+  padding: 2px 8px;
   font-family: $mono-font-family;
   font-size: 0.875em;
-  background: #161b22;
-  color: #e6edf3;
-  border: 1px solid #30363d;
+  background: rgba(210, 153, 34, 0.12);
+  color: #e5c07b;
+  border: 1px solid rgba(210, 153, 34, 0.35);
   border-bottom-width: 2px;
   border-radius: 5px;
   white-space: nowrap;
@@ -400,4 +400,554 @@ a.feature-card {
   padding: 12px 16px;
   color: #c9d1d9;
   margin: 1.25rem 0;
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// ANIMATED COMPONENTS — Phase 1 of docs visual overhaul
+// ═══════════════════════════════════════════════════════════════════════
+
+// ─── Animated terminal ──────────────────────────────────────────────
+// CSS-only typing animation with blinking cursor and line reveals.
+// Usage: .animated-terminal > .terminal-chrome + .terminal-body > .term-line
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+@keyframes fade-in-up {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 0 rgba(88, 166, 255, 0); }
+  50%      { box-shadow: 0 0 12px rgba(88, 166, 255, 0.15); }
+}
+
+.animated-terminal {
+  background: #0a0e14;
+  border: 1px solid #21262d;
+  border-radius: 10px;
+  overflow: hidden;
+  margin: 1.75rem 0;
+  position: relative;
+
+  .terminal-chrome {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 10px 14px;
+    background: #161b22;
+    border-bottom: 1px solid #21262d;
+
+    .dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      &.red { background: #f85149; }
+      &.yellow { background: #d29922; }
+      &.green { background: #3fb950; }
+    }
+
+    .terminal-title {
+      flex: 1;
+      text-align: center;
+      font-size: 0.8125rem;
+      color: #8b949e;
+      font-family: $body-font-family;
+      letter-spacing: 0.02em;
+    }
+  }
+
+  .terminal-body {
+    padding: 16px 18px;
+    font-family: $mono-font-family;
+    font-size: 0.9375rem;
+    line-height: 1.7;
+    color: #c9d1d9;
+    min-height: 120px;
+  }
+
+  .term-line {
+    opacity: 0;
+    animation: fade-in-up 0.3s ease forwards;
+    white-space: pre;
+    overflow-x: auto;
+  }
+
+  .term-prompt {
+    color: #3fb950;
+    &::before { content: "$ "; }
+  }
+
+  .term-input {
+    color: #f0f6fc;
+  }
+
+  .term-cursor {
+    display: inline-block;
+    width: 8px;
+    height: 1.1em;
+    background: #58a6ff;
+    vertical-align: text-bottom;
+    animation: blink 1s step-end infinite;
+    margin-left: 1px;
+  }
+
+  .term-output {
+    color: #c9d1d9;
+  }
+
+  .term-highlight {
+    color: #58a6ff;
+    font-weight: 500;
+  }
+
+  .term-dim {
+    color: #6e7681;
+  }
+
+  .term-success {
+    color: #3fb950;
+  }
+
+  .term-error {
+    color: #f85149;
+  }
+
+  .term-key {
+    display: inline-block;
+    padding: 1px 5px;
+    background: #21262d;
+    border: 1px solid #30363d;
+    border-radius: 3px;
+    font-size: 0.85em;
+    color: #e6edf3;
+  }
+}
+
+// Staggered line delays (add data-delay="N" or use nth-child)
+@for $i from 1 through 20 {
+  .animated-terminal .term-line:nth-child(#{$i}) {
+    animation-delay: #{($i - 1) * 0.4}s;
+  }
+}
+
+// Hero-specific animation: longer, more dramatic
+.hero-terminal .term-line:nth-child(1) { animation-delay: 0.2s; }
+.hero-terminal .term-line:nth-child(2) { animation-delay: 0.8s; }
+.hero-terminal .term-line:nth-child(3) { animation-delay: 1.6s; }
+.hero-terminal .term-line:nth-child(4) { animation-delay: 2.0s; }
+.hero-terminal .term-line:nth-child(5) { animation-delay: 2.3s; }
+.hero-terminal .term-line:nth-child(6) { animation-delay: 2.6s; }
+.hero-terminal .term-line:nth-child(7) { animation-delay: 2.9s; }
+.hero-terminal .term-line:nth-child(8) { animation-delay: 3.2s; }
+.hero-terminal .term-line:nth-child(9) { animation-delay: 3.5s; }
+.hero-terminal .term-line:nth-child(10) { animation-delay: 3.8s; }
+
+// ─── Before / After toggle ──────────────────────────────────────────
+// CSS-only radio-button pattern for comparing approaches.
+
+.before-after {
+  margin: 1.75rem 0;
+  border: 1px solid #21262d;
+  border-radius: 10px;
+  overflow: hidden;
+  background: #0d1117;
+
+  // Hide radio inputs
+  input[type="radio"] { display: none; }
+
+  .ba-header {
+    display: flex;
+    border-bottom: 1px solid #21262d;
+    background: #161b22;
+  }
+
+  .ba-toggle {
+    flex: 1;
+    text-align: center;
+    padding: 10px 16px;
+    cursor: pointer;
+    font-size: 0.9375rem;
+    font-weight: 500;
+    color: #8b949e;
+    transition: color 0.2s, background 0.2s, border-color 0.2s;
+    border-bottom: 2px solid transparent;
+    user-select: none;
+
+    &:hover { color: #c9d1d9; background: rgba(255,255,255,0.02); }
+  }
+
+  .ba-state {
+    display: none;
+    padding: 18px 20px;
+    animation: fade-in-up 0.25s ease;
+  }
+
+  // Toggle logic: first radio controls first .ba-state, second controls second.
+  // .ba-header is div:nth-of-type(1), first .ba-state is div:nth-of-type(2), second is div:nth-of-type(3)
+  input:nth-of-type(1):checked ~ .ba-header label:nth-of-type(1) {
+    color: #f0f6fc;
+    border-bottom-color: #f85149;
+    background: rgba(248, 81, 73, 0.05);
+  }
+  input:nth-of-type(1):checked ~ div.ba-state:nth-of-type(2) {
+    display: block;
+  }
+
+  input:nth-of-type(2):checked ~ .ba-header label:nth-of-type(2) {
+    color: #f0f6fc;
+    border-bottom-color: #3fb950;
+    background: rgba(63, 185, 80, 0.05);
+  }
+  input:nth-of-type(2):checked ~ div.ba-state:nth-of-type(3) {
+    display: block;
+  }
+
+  .ba-terminal {
+    background: #0a0e14;
+    border: 1px solid #21262d;
+    border-radius: 8px;
+    padding: 14px 16px;
+    font-family: $mono-font-family;
+    font-size: 0.9375rem;
+    line-height: 1.65;
+    color: #c9d1d9;
+    overflow-x: auto;
+    white-space: pre;
+  }
+
+  .ba-caption {
+    font-size: 0.9375rem;
+    color: #8b949e;
+    margin-bottom: 10px;
+    line-height: 1.5;
+  }
+}
+
+// ─── CSS-only tabs ──────────────────────────────────────────────────
+// Radio-button technique for multi-panel switching without JS.
+
+.tab-container {
+  margin: 1.75rem 0;
+  border: 1px solid #21262d;
+  border-radius: 10px;
+  overflow: hidden;
+  background: #0d1117;
+
+  input[type="radio"] { display: none; }
+
+  .tab-bar {
+    display: flex;
+    border-bottom: 1px solid #21262d;
+    background: #161b22;
+    overflow-x: auto;
+  }
+
+  .tab-label {
+    padding: 10px 18px;
+    cursor: pointer;
+    font-size: 0.9375rem;
+    font-weight: 500;
+    color: #8b949e;
+    white-space: nowrap;
+    border-bottom: 2px solid transparent;
+    transition: color 0.15s, border-color 0.15s, background 0.15s;
+    user-select: none;
+
+    &:hover { color: #c9d1d9; background: rgba(255,255,255,0.02); }
+  }
+
+  .tab-panel {
+    display: none;
+    padding: 18px 20px;
+    animation: fade-in-up 0.2s ease;
+  }
+
+  // Generate tab selectors for up to 5 tabs
+  @for $i from 1 through 5 {
+    input:nth-of-type(#{$i}):checked ~ .tab-bar label:nth-of-type(#{$i}) {
+      color: #f0f6fc;
+      border-bottom-color: #58a6ff;
+      background: rgba(88, 166, 255, 0.05);
+    }
+    input:nth-of-type(#{$i}):checked ~ .tab-panel:nth-of-type(#{$i}) {
+      display: block;
+    }
+  }
+}
+
+// ─── Goal grid ──────────────────────────────────────────────────────
+// Task-oriented cards: "I want to do X" → feature link
+
+.goal-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+  margin: 1.5rem 0 2rem;
+
+  @media (max-width: 50rem) { grid-template-columns: 1fr; }
+}
+
+a.goal-card {
+  display: block;
+  background: #0f1319;
+  border: 1px solid #21262d;
+  border-left: 3px solid #30363d;
+  border-radius: 8px;
+  padding: 14px 16px;
+  text-decoration: none;
+  color: inherit;
+  transition: border-color 0.2s, background 0.2s, transform 0.2s;
+
+  &:hover {
+    border-color: #30363d;
+    border-left-color: #58a6ff;
+    background: #161b22;
+    transform: translateY(-1px);
+    text-decoration: none;
+  }
+
+  .goal-scenario {
+    font-weight: 600;
+    font-size: 1rem;
+    color: #f0f6fc;
+    margin-bottom: 4px;
+    line-height: 1.4;
+  }
+
+  &:hover .goal-scenario { color: #58a6ff; }
+
+  .goal-solution {
+    font-size: 0.9375rem;
+    color: #8b949e;
+    line-height: 1.5;
+
+    code {
+      background: #161b22;
+      border: 1px solid #21262d;
+      padding: 1px 4px;
+      border-radius: 3px;
+      font-size: 0.88em;
+    }
+  }
+}
+
+// ─── Step flow ──────────────────────────────────────────────────────
+// Horizontal numbered steps with connector lines.
+
+.step-flow {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  margin: 1.75rem 0;
+  overflow-x: auto;
+  padding: 8px 0;
+
+  .step-item {
+    display: flex;
+    align-items: center;
+    gap: 0;
+
+    .step-circle {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: #161b22;
+      border: 2px solid #30363d;
+      font-size: 0.8125rem;
+      font-weight: 600;
+      color: #8b949e;
+      flex-shrink: 0;
+    }
+
+    .step-text {
+      font-size: 0.875rem;
+      color: #c9d1d9;
+      margin-left: 8px;
+      white-space: nowrap;
+    }
+
+    .step-connector {
+      width: 24px;
+      height: 2px;
+      background: #30363d;
+      margin: 0 4px;
+      flex-shrink: 0;
+    }
+
+    &.active .step-circle {
+      background: rgba(88, 166, 255, 0.12);
+      border-color: #58a6ff;
+      color: #58a6ff;
+    }
+
+    &.active .step-text {
+      color: #f0f6fc;
+      font-weight: 500;
+    }
+
+    &.done .step-circle {
+      background: rgba(63, 185, 80, 0.12);
+      border-color: #3fb950;
+      color: #3fb950;
+    }
+  }
+}
+
+@media (max-width: 30rem) {
+  .step-flow {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+
+    .step-item {
+      .step-connector { display: none; }
+    }
+  }
+}
+
+// ─── Enhanced feature cards ─────────────────────────────────────────
+// Upgrade existing .feature-card with entrance animations and better hover.
+
+@keyframes card-enter {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+a.feature-card {
+  animation: card-enter 0.4s ease forwards;
+  opacity: 0;
+  transition: border-color 0.2s, background 0.2s, transform 0.2s, box-shadow 0.2s;
+
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3), 0 0 0 1px #30363d;
+  }
+}
+
+// Staggered card entrance
+@for $i from 1 through 12 {
+  .feature-grid a.feature-card:nth-child(#{$i}) {
+    animation-delay: #{($i - 1) * 0.06}s;
+  }
+}
+
+// ─── Mode indicators ────────────────────────────────────────────────
+// Colored pill badges for mode sections in quick-reference.
+
+.mode-indicator {
+  display: inline-block;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 3px 8px;
+  border-radius: 4px;
+  vertical-align: middle;
+  margin-left: 8px;
+
+  &--insert {
+    background: rgba(57, 208, 201, 0.12);
+    color: #39d0c9;
+    border: 1px solid rgba(57, 208, 201, 0.3);
+  }
+
+  &--normal {
+    background: rgba(229, 192, 123, 0.12);
+    color: #e5c07b;
+    border: 1px solid rgba(229, 192, 123, 0.3);
+  }
+
+  &--results {
+    background: rgba(88, 166, 255, 0.12);
+    color: #58a6ff;
+    border: 1px solid rgba(88, 166, 255, 0.3);
+  }
+
+  &--global {
+    background: rgba(139, 148, 158, 0.12);
+    color: #8b949e;
+    border: 1px solid rgba(139, 148, 158, 0.3);
+  }
+
+  &--search {
+    background: rgba(210, 153, 34, 0.12);
+    color: #d29922;
+    border: 1px solid rgba(210, 153, 34, 0.3);
+  }
+
+  &--ai {
+    background: rgba(163, 113, 247, 0.12);
+    color: #a371f7;
+    border: 1px solid rgba(163, 113, 247, 0.3);
+  }
+}
+
+// ─── Hero section ───────────────────────────────────────────────────
+// Landing page hero with glow background.
+
+.hero-section {
+  position: relative;
+  margin-bottom: 2.5rem;
+
+  &::before {
+    content: "";
+    position: absolute;
+    top: -40px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 600px;
+    height: 300px;
+    background: radial-gradient(ellipse at center, rgba(88, 166, 255, 0.06) 0%, transparent 70%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  > * { position: relative; z-index: 1; }
+}
+
+// ─── Section dividers ───────────────────────────────────────────────
+// Gradient accent line between major sections.
+
+.accent-divider {
+  height: 1px;
+  border: none;
+  background: linear-gradient(90deg, transparent, #58a6ff 50%, transparent);
+  margin: 2.5rem 0;
+  opacity: 0.4;
+}
+
+// ─── Key combo display ──────────────────────────────────────────────
+// Larger inline key display for feature pages.
+
+.key-combo {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+
+  kbd {
+    font-size: 0.9375rem;
+    padding: 3px 8px;
+  }
+
+  .key-then {
+    color: #6e7681;
+    font-size: 0.8125rem;
+  }
+}
+
+// ─── Accessibility ──────────────────────────────────────────────────
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }

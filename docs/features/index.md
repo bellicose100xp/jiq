@@ -10,44 +10,44 @@ permalink: /features/
 
 <div class="feature-grid" markdown="0">
   <a class="feature-card" href="./results-pane/">
-    <span class="feature-card-title">Results pane</span>
-    <p class="feature-card-desc">Exploring a deeply nested JSON response? Navigate the output with j/k, press &gt; on any row to filter down to just that piece of data. No path typing needed; &lt; takes you back.</p>
+    <span class="feature-card-title">Live query execution</span>
+    <p class="feature-card-desc">Results update with every keystroke. No edit-run-check loop — you see exactly what your query produces as you type it, so you can iterate in seconds instead of minutes.</p>
   </a>
   <a class="feature-card" href="./autocomplete/">
-    <span class="feature-card-title">Autocomplete</span>
-    <p class="feature-card-desc">Don't know your JSON's field names off the top of your head? jiq suggests them as you type — pulled from your actual data, with the value type shown alongside.</p>
+    <span class="feature-card-title">Context-aware autocomplete</span>
+    <p class="feature-card-desc">Suggests field names drawn from your actual data, with types shown alongside. No need to memorize your JSON structure — jiq shows you what's available at every level.</p>
   </a>
   <a class="feature-card" href="./ai-assistant/">
-    <span class="feature-card-title">AI assistant</span>
-    <p class="feature-card-desc">Don't know the right jq syntax? Press Ctrl+A and the AI sees your query, the error, and a sample of your data — then suggests 2–5 fixes you can apply with one key.</p>
+    <span class="feature-card-title">AI-powered query help</span>
+    <p class="feature-card-desc">When a query fails or you're unsure of the syntax, the AI sees your data and the error, then offers working alternatives you can apply instantly.</p>
   </a>
   <a class="feature-card" href="./snippets/">
-    <span class="feature-card-title">Snippet library</span>
-    <p class="feature-card-desc">Got a jq query you run all the time? Save it by name. One shortcut opens your library; type to filter, Enter to run. Never retype the same query twice.</p>
+    <span class="feature-card-title">Saved query library</span>
+    <p class="feature-card-desc">Store queries you use often and recall them by name. Stop rewriting the same complex filters from memory every time you need them.</p>
   </a>
   <a class="feature-card" href="./search/">
-    <span class="feature-card-title">Search in results</span>
-    <p class="feature-card-desc">Looking for a specific value buried in hundreds of lines of output? Ctrl+F highlights every match as you type. n/N jumps between them.</p>
+    <span class="feature-card-title">Search within output</span>
+    <p class="feature-card-desc">Find specific values in large results instantly. Matches highlight in real time and you can step through them one by one — no manual scrolling required.</p>
   </a>
   <a class="feature-card" href="./history/">
-    <span class="feature-card-title">Query history</span>
-    <p class="feature-card-desc">Ran the right query ten queries ago and want it back? Every query is saved. Ctrl+P cycles backward; Ctrl+R opens a searchable list of everything you've run.</p>
+    <span class="feature-card-title">Persistent query history</span>
+    <p class="feature-card-desc">Every successful query is remembered across sessions. Recall any previous query by searching through your history — even ones from days ago.</p>
   </a>
   <a class="feature-card" href="./mouse/">
-    <span class="feature-card-title">Mouse support</span>
-    <p class="feature-card-desc">Prefer the mouse for some things? Every pane responds — click to focus, scroll to browse, drag to select output lines. Keyboard and mouse work together throughout.</p>
+    <span class="feature-card-title">Full mouse support</span>
+    <p class="feature-card-desc">Point and click wherever you prefer it over the keyboard. Select output lines by dragging, scroll through results, click suggestions to apply them.</p>
   </a>
   <a class="feature-card" href="./clipboard/">
-    <span class="feature-card-title">Clipboard &amp; paste</span>
-    <p class="feature-card-desc">Copied some JSON from a browser or terminal? Just run <code>jiq</code> — it reads your clipboard automatically. If the JSON is malformed, a paste box opens so you can fix it first.</p>
+    <span class="feature-card-title">Clipboard integration</span>
+    <p class="feature-card-desc">Copied JSON from a browser or API response? Just launch jiq — it reads your clipboard directly. No need to save to a file first.</p>
   </a>
   <a class="feature-card" href="./vim-editing/">
-    <span class="feature-card-title">Vim editing</span>
-    <p class="feature-card-desc">Know Vim? Every motion and operator works in the query input. Don't know Vim? INSERT mode is just a regular text field — nothing to learn.</p>
+    <span class="feature-card-title">Efficient query editing</span>
+    <p class="feature-card-desc">Reshape complex queries in a few keystrokes using Vim-style motions and text objects. Or just type normally — advanced editing is there when you need it, invisible when you don't.</p>
   </a>
   <a class="feature-card" href="./tooltip/">
-    <span class="feature-card-title">Tooltip &amp; overlays</span>
-    <p class="feature-card-desc">Forgotten how <code>group_by</code> works? Put the cursor on any jq function and a tooltip shows its signature and examples inline. Ctrl+E shows the full error when a query fails.</p>
+    <span class="feature-card-title">Inline documentation</span>
+    <p class="feature-card-desc">Forgot how a jq function works? A tooltip shows its signature and usage examples right in the editor — no context switch to a browser needed.</p>
   </a>
 </div>
 

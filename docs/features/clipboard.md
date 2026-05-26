@@ -5,72 +5,91 @@ nav_order: 8
 description: Load JSON from your clipboard, use the paste box when clipboard fails, and copy results out.
 ---
 
-# Clipboard & paste
+# Clipboard and paste
 
-## Load JSON from your clipboard
+Run `jiq` with no arguments and it loads JSON directly from your clipboard — no file needed.
 
-Run jiq with no arguments:
-
-```bash
-jiq
-```
-
-jiq reads your clipboard and loads whatever JSON it finds. You can then start querying immediately.
-
-If your terminal is connected over SSH and the OS clipboard isn't available, jiq falls back to OSC 52 (a terminal protocol that works over SSH). This picks up content copied inside the remote terminal session.
-
-## Use the paste box when the clipboard isn't available
-
-If jiq can't read the clipboard, or what it reads isn't valid JSON, the paste box opens automatically instead of failing.
-
-<div class="tui-mockup with-title" data-title="Paste box">
-<pre>┌─ No JSON loaded ─────────────────────────────┐
-│ Clipboard does not contain valid JSON.       │
-└──────────────────────────────────────────────┘
-┌─ Paste here, then Enter ─────────────────────┐
-│ {                                            │
-│   "users": [                                 │
-│     { "name": "alice", "active": true }      │
-│   ]                                          │
-│ }                                            │
-└── Esc Normal · Ctrl+X Clear · Enter Load ───┘</pre>
+<div class="before-after">
+  <input type="radio" name="ba-clipboard" id="ba-clipboard-before" checked>
+  <input type="radio" name="ba-clipboard" id="ba-clipboard-after">
+  <div class="ba-header">
+    <label for="ba-clipboard-before" class="ba-toggle">Without clipboard loading</label>
+    <label for="ba-clipboard-after" class="ba-toggle">With jiq</label>
+  </div>
+  <div class="ba-state">
+    <p class="ba-caption">You copied JSON from a browser or API tool. Now you need to explore it.</p>
+    <div class="ba-terminal">$ pbpaste > /tmp/data.json
+$ jiq /tmp/data.json
+# or: pbpaste | jiq</div>
+  </div>
+  <div class="ba-state">
+    <p class="ba-caption">Just run <code>jiq</code>. It reads your clipboard automatically.</p>
+    <div class="ba-terminal">$ jiq
+# Clipboard JSON loaded directly — start querying</div>
+  </div>
 </div>
 
-1. Paste your JSON with your terminal's paste shortcut.
-2. Press **Enter** to validate and load it.
+## How clipboard loading works
 
-If the JSON is invalid, the top message updates to show the error. Fix it in the box and press **Enter** again.
+When you run `jiq` with no file argument and no piped stdin:
 
-The paste box supports the same Vim editing as the query input — you can use `dd`, `ciw`, `da[`, undo, and so on to edit what you pasted.
+1. jiq reads your system clipboard.
+2. If the clipboard contains valid JSON, it loads immediately.
+3. If the clipboard is empty or invalid, the **paste recovery box** opens.
 
-| Key | Action |
+## Use the paste recovery box
+
+When clipboard auto-load fails, jiq shows a full-screen text area where you can paste manually:
+
+<div class="animated-terminal">
+  <div class="terminal-chrome">
+    <span class="dot red"></span>
+    <span class="dot yellow"></span>
+    <span class="dot green"></span>
+    <span class="terminal-title">Paste recovery</span>
+  </div>
+  <div class="terminal-body">
+    <div class="term-line"><span class="term-dim">Paste your JSON below (Cmd+V or Ctrl+Shift+V):</span></div>
+    <div class="term-line">&nbsp;</div>
+    <div class="term-line"><span class="term-output">{"users": [{"name": "alice"}, {"name": "bob"}]}</span><span class="term-cursor"></span></div>
+    <div class="term-line">&nbsp;</div>
+    <div class="term-line"><span class="term-dim">Enter: validate and load  |  Ctrl+X: clear  |  Esc: toggle mode</span></div>
+  </div>
+</div>
+
+The paste editor supports the same keyboard shortcuts as the query input, including Vim-style editing if you use it (press Esc for navigation mode, `i` to return to typing).
+
+## Copy results to your clipboard
+
+| What you want | Press |
 |---|---|
-| `Enter` | Validate and load |
-| `Ctrl+X` | Clear the textarea |
-| `Esc` | Toggle NORMAL / INSERT mode |
-| All Vim motions | Edit the pasted content |
-
-## Copy the result out
-
-To copy jiq's output to your clipboard without exiting:
-
-| Key | What it copies |
-|---|---|
-| `Ctrl+Y` | Whatever is focused — query if input, results if results pane |
-| `Ctrl+O` | The results, regardless of which pane is focused |
-| `yy` in NORMAL mode | Same as `Ctrl+Y` |
-
-In visual selection mode, `Ctrl+Y` and `Ctrl+O` copy only the selected lines.
+| Copy results (from any focus) | <kbd>Ctrl</kbd>+<kbd>O</kbd> |
+| Copy the focused pane (query if input, results if results) | <kbd>Ctrl</kbd>+<kbd>Y</kbd> |
+| Copy specific lines | <kbd>v</kbd> to select, <kbd>y</kbd> to copy |
 
 ## Configure the clipboard backend
 
+In `~/.config/jiq/config.toml`:
+
 ```toml
-# ~/.config/jiq/config.toml
 [clipboard]
-# auto:    try OS clipboard first, fall back to OSC 52 (default)
-# system:  OS clipboard only — works on local terminals
-# osc52:   OSC 52 only — best for SSH sessions
-backend = "auto"
+backend = "auto"   # "auto", "system", or "osc52"
 ```
 
-Use `osc52` if you're always on SSH and the OS clipboard never works for you. Use `system` if you want to disable the OSC 52 fallback entirely.
+| Backend | When to use |
+|---|---|
+| `auto` | Tries system clipboard first, falls back to OSC 52 |
+| `system` | Force OS clipboard only (may not work over SSH) |
+| `osc52` | Terminal escape sequences — works in most modern terminals over SSH/tmux |
+
+## All keys (paste recovery)
+
+| Key | Action |
+|---|---|
+| Paste (Cmd+V / Ctrl+Shift+V) | Insert JSON into the box |
+| `Enter` | Validate and load the pasted JSON |
+| `Ctrl+X` | Clear the text area |
+| `Esc` | Switch to navigation mode (move cursor without typing) |
+| `i` | Switch back to typing mode |
+| Vim shortcuts | Same editing keys as the query input (see [Vim editing](./vim-editing)) |
+| `Ctrl+C` | Quit |

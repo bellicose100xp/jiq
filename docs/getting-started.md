@@ -10,7 +10,7 @@ jiq is an interactive terminal tool for exploring and querying JSON. You type a 
 
 ## Before you begin
 
-Install [`jq`](https://jqlang.org/download/) 1.6 or later and make sure it's on your `PATH`. jiq runs your queries through jq.
+Install [`jq`](https://jqlang.org/download/) and make sure it's on your `PATH`. jiq runs your queries through jq.
 
 ## Install jiq
 
@@ -52,7 +52,7 @@ Or run it with no arguments — jiq reads JSON directly from your clipboard:
 jiq
 ```
 
-If the clipboard is empty or doesn't contain valid JSON, a paste box opens so you can paste it manually.
+If the clipboard is empty or doesn't contain valid JSON, an interactive paste editor opens where you can paste or correct the input.
 
 ## Write your first query
 
@@ -89,6 +89,6 @@ When you have the output you want:
 
 ## What to explore next
 
-- [Navigate the output](./features/results-pane) — drill into nested values without typing paths
+- [Navigate the output](./features/results-pane) — zoom into nested values without typing paths
 - [Autocomplete](./features/autocomplete) — get field name suggestions from your actual data
 - [Quick reference](./quick-reference) — all keyboard shortcuts on one page
