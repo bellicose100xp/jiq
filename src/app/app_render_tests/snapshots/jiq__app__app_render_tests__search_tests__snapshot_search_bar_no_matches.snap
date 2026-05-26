@@ -3,7 +3,7 @@ source: src/app/app_render_tests/search_tests.rs
 assertion_line: 81
 expression: output
 ---
-"╭   ⚠ No Matches    Object ─────────────────────────────────────── L1-4/4 (0%) ╮"
+"╭   ⚠ No Matches    Object ────────────────────────────────────────────────────╮"
 "▌{                                                                             │"
 "│  "name": "Alice",                                                            │"
 "│  "age": 30                                                                   │"
@@ -22,8 +22,8 @@ expression: output
 "│                                                                              │"
 "│                                                                              │"
 "│                                                                              │"
-"╰─────────── > value • * iterate • ^ parent • } wrap • ]/[ siblings ───────────╯"
+"╰───────────────────────────────────────────────────────────────── L1-4/4 (0%) ╯"
 "╭ Search ─────────────────────────────────────────────────────────────   0/0   ╮"
 "│xyz                                                                           │"
-"╰──── Enter Confirm • > value • * iterate • ^ parent • } wrap • Esc Close ─────╯"
+"╰────────────────── Enter Confirm • Tab Confirm • Esc Close ───────────────────╯"
 " F1/? Help • Esc Close • Enter Confirm Search                                   "

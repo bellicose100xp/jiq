@@ -3,7 +3,7 @@ source: src/app/app_render_tests/popup_tests.rs
 assertion_line: 128
 expression: output
 ---
-"╭ Object ───────────────────────────────────────────────────────── L1-4/4 (0%) ╮"
+"╭ Object ──────────────────────────────────────────────────────────────────────╮"
 "│{                                                                             │"
 "│  "name": "Alice",                                                            │"
 "│  "age": 30                                                                   │"
@@ -22,7 +22,7 @@ expression: output
 "│ │  map(expr)    [function]  │                                                │"
 "│ │  max          [function]  │                                                │"
 "│ │  max_by(expr) [function]  │                                                │"
-"╰─╰───────────────────────────╯────────────────────────────────────────────────╯"
+"╰─╰───────────────────────────╯─────────────────────────────────── L1-4/4 (0%) ╯"
 "╭ Query [INSERT] ───────────────────────────────────────── Ctrl+A AI Assistant ╮"
 "│                                                                              │"
 "╰t+Tab Navigate Results • Ctrl+P Previous Query • Ctrl+N Next Query • Ctrl+R Hi╯"

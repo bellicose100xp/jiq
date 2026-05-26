@@ -3,7 +3,7 @@ source: src/app/app_render_tests/popup_tests.rs
 assertion_line: 23
 expression: output
 ---
-"╭ Object ───────────────────────────────────────────────────────── L1-3/3 (0%) ╮"
+"╭ Object ──────────────────────────────────────────────────────────────────────╮"
 "│{                                                                             │"
 "│  "test": true                                                                │"
 "│}                                                                             │"

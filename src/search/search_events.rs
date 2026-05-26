@@ -103,37 +103,42 @@ pub fn handle_search_key(app: &mut App, key: KeyEvent) -> bool {
             true
         }
 
-        KeyCode::Char('>') => {
+        // Drill chords only fire after the search is confirmed. While
+        // editing the query, these characters must reach the textarea so
+        // the user can search for `>`, `<`, `*`, `^`, `}`, `[`, `]` as
+        // literal text — common when grepping JSON that embeds operator
+        // characters or HTML/XML.
+        KeyCode::Char('>') if app.search.is_confirmed() => {
             drill_in_from_search(app);
             true
         }
 
-        KeyCode::Char('<') => {
+        KeyCode::Char('<') if app.search.is_confirmed() => {
             drill_back(app);
             true
         }
 
-        KeyCode::Char('*') => {
+        KeyCode::Char('*') if app.search.is_confirmed() => {
             iterate_from_search(app);
             true
         }
 
-        KeyCode::Char('^') => {
+        KeyCode::Char('^') if app.search.is_confirmed() => {
             step_out(app);
             true
         }
 
-        KeyCode::Char('}') => {
+        KeyCode::Char('}') if app.search.is_confirmed() => {
             keep_kv_from_search(app);
             true
         }
 
-        KeyCode::Char('[') => {
+        KeyCode::Char('[') if app.search.is_confirmed() => {
             sibling_from_search(app, SiblingDir::Prev);
             true
         }
 
-        KeyCode::Char(']') => {
+        KeyCode::Char(']') if app.search.is_confirmed() => {
             sibling_from_search(app, SiblingDir::Next);
             true
         }

@@ -111,6 +111,8 @@ jiq appends the path of that value to your current query and re-runs it. The out
 
 Press <kbd>&lt;</kbd> to undo the last zoom. jiq restores the previous query, cursor position, and scroll offset.
 
+A clickable `[ < Back ]` badge also appears on the top-left of the results pane border whenever there is something to step back to. Click it to undo the last zoom — same effect as the keyboard chord.
+
 You can zoom in multiple levels — each `>` is remembered, and each `<` steps back one level.
 
 <div class="drill-chain">

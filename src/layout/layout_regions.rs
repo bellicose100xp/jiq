@@ -24,6 +24,9 @@ pub enum Region {
     // Snippet manager sub-regions
     SnippetList,
     SnippetPreview,
+
+    // Clickable back button on the results-pane top border
+    BackButton,
 }
 
 /// Tracks rendered areas of UI components
@@ -48,6 +51,11 @@ pub struct LayoutRegions {
     // Snippet manager sub-regions
     pub snippet_list: Option<Rect>,
     pub snippet_preview: Option<Rect>,
+
+    /// Clickable back button on the results-pane top border. Populated only
+    /// when the undo ring is non-empty so hit-testing matches the rendered
+    /// affordance.
+    pub back_button: Option<Rect>,
 }
 
 impl LayoutRegions {

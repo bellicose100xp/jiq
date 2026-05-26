@@ -38,8 +38,21 @@ pub fn handle_click(app: &mut App, region: Option<Region>, mouse: MouseEvent) {
         Some(Region::SnippetList) => click_snippet_list(app, mouse),
         Some(Region::HelpPopup) => click_help_popup(app, mouse),
         Some(Region::HistoryPopup) => click_history_popup(app, mouse),
+        Some(Region::BackButton) => click_back_button(app),
         _ => {}
     }
+}
+
+/// Click the `[ < Back ]` badge on the results-pane top border. Mirrors
+/// the `<` chord: focus the pane (so subsequent keyboard chords go to
+/// results), confirm any in-flight search, and pop the most recent
+/// drill-in snapshot.
+fn click_back_button(app: &mut App) {
+    app.focus_results_pane();
+    if app.search.is_visible() && !app.search.is_confirmed() {
+        app.search.confirm();
+    }
+    results_events::drill_back(app);
 }
 
 fn click_history_popup(app: &mut App, mouse: MouseEvent) {

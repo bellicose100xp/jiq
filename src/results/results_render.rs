@@ -24,9 +24,22 @@ const PATH_AT_CURSOR_MIN_WIDTH: usize = 5;
 /// border before head-truncating the path text itself.
 const PATH_AT_CURSOR_CHROME_WIDTH: usize = 4;
 
+/// Visible text of the clickable Back badge on the top border. The leading
+/// `<` doubles as the keyboard chord, so the visual reads as both shortcut
+/// and button.
+const BACK_BADGE_TEXT: &str = "[ < Back ]";
+
+/// Width consumed by the back-badge slot in the title: a leading space,
+/// the badge body, and the natural separation provided by following
+/// spans. Subtracted from the path-at-cursor budget so the truncation
+/// computation accounts for the new chrome.
+const BACK_BADGE_RENDERED_WIDTH: usize = 11;
+
 /// Build the path-navigation chord segment shared by every bottom border
 /// that advertises `>` / `<` / `*` / `^` / `}` / `]` / `[`. The `<` slot
-/// only renders when the undo ring is non-empty so the hint never misleads.
+/// reinforces the clickable Back badge by teaching the keyboard chord;
+/// it only appears when the undo ring is non-empty so the hint never
+/// misleads.
 fn path_chord_hints(can_undo: bool) -> Vec<(&'static str, &'static str)> {
     let mut hints: Vec<(&'static str, &'static str)> = vec![(">", "value")];
     if can_undo {
@@ -56,11 +69,113 @@ fn build_search_hints(can_undo: bool) -> Line<'static> {
     theme::border_hints::build_hints(&hints, theme::results::SEARCH_ACTIVE)
 }
 
-/// Drill-only hint set for the results-pane bottom border in search-editing
-/// mode. The search bar itself carries `Enter Confirm · Esc Close`, so the
-/// results pane only advertises the jiq-specific path chords here.
-fn build_drill_only_hints(can_undo: bool) -> Line<'static> {
-    theme::border_hints::build_hints(&path_chord_hints(can_undo), theme::results::SEARCH_INACTIVE)
+/// Cells of clear space the centered hint strip leaves on each side so the
+/// left-aligned timing badge and right-aligned position indicator stay
+/// readable. Without this gap a centered title that runs to the edge will
+/// be visually contiguous with the side titles.
+const BOTTOM_CHROME_PADDING_PER_SIDE: u16 = 2;
+
+/// Compute the maximum width the centered bottom hint strip may occupy
+/// without colliding with the left timing badge or the right position /
+/// match-count title.
+///
+/// ratatui's `Block` centers its title using half-widths around the row's
+/// midpoint, so the constraint that the right edge of the center title
+/// stays clear of the right title is:
+///   `total_width / 2 + right_title_width + padding <= row_width / 2`.
+/// Equivalently the center width must fit within
+/// `row_width - 2 * (max(left_width, right_width) + padding)`. We use the
+/// max of the two side widths (rather than their sum) because the center
+/// is symmetric about the midpoint — the wider side is what binds.
+fn bottom_center_budget(
+    area_width: u16,
+    left_title: Option<&Line<'_>>,
+    right_title: Option<&Line<'_>>,
+) -> u16 {
+    use unicode_width::UnicodeWidthStr;
+    let title_width = |title: Option<&Line<'_>>| -> u16 {
+        title
+            .map(|l| {
+                l.spans
+                    .iter()
+                    .map(|s| UnicodeWidthStr::width(s.content.as_ref()) as u16)
+                    .sum()
+            })
+            .unwrap_or(0)
+    };
+    let left_w = title_width(left_title);
+    let right_w = title_width(right_title);
+    let bind = left_w.max(right_w) + BOTTOM_CHROME_PADDING_PER_SIDE;
+    // 2 cells for the rounded corners; the centered title is symmetric
+    // around the row midpoint, so reserve 2 * bind off the row.
+    area_width.saturating_sub(2).saturating_sub(2 * bind)
+}
+
+/// Trim trailing hints from a centered hint `Line` until its rendered
+/// width fits inside `max_width`. The builder produces a leading `" "`
+/// span followed by triples of `(separator, key, description)`, so we
+/// pop spans three at a time so the remaining strip always ends on a
+/// fully-rendered hint rather than a stray separator or key. Ratatui's
+/// title renderer overlays alignment slots on the same row, and a
+/// centered title that runs to the edge clobbers the right title; this
+/// guarantees the centered line never reaches that edge.
+fn truncate_hints_to_width(line: Line<'static>, max_width: u16) -> Line<'static> {
+    use unicode_width::UnicodeWidthStr;
+    let mut spans = line.spans;
+    let line_width = |spans: &[Span<'_>]| -> u16 {
+        spans
+            .iter()
+            .map(|s| UnicodeWidthStr::width(s.content.as_ref()) as u16)
+            .sum()
+    };
+    while line_width(&spans) > max_width && spans.len() >= 4 {
+        // Pop one full hint triple (separator + key + description) per
+        // iteration. Stop at <= 3 spans, which leaves the leading raw
+        // space + first hint pair (key + desc) in place for readability.
+        for _ in 0..3 {
+            spans.pop();
+        }
+    }
+    // If it still doesn't fit (terminal pathologically narrow), fall back
+    // to per-span truncation so we never return a wider line than asked.
+    while line_width(&spans) > max_width && !spans.is_empty() {
+        spans.pop();
+    }
+    Line::from(spans)
+}
+
+/// Build the styled `[ < Back ]` badge spans, plus the screen rect they
+/// occupy on the results-pane top border. The caller is responsible for
+/// inserting the spans into the title at the right slot (after the
+/// optional spinner) and storing the rect in [`LayoutRegions::back_button`]
+/// so mouse hit-testing can route clicks to `drill_back`.
+///
+/// `start_col_offset` is the number of cells consumed by spans rendered
+/// before the badge in the title (the rounded corner is always 1 cell, and
+/// pending state adds a 2-cell `<spinner> ` prefix). The returned rect
+/// covers the full badge text including the surrounding whitespace, giving
+/// the user a generous click target.
+fn build_back_badge(
+    area: Rect,
+    start_col_offset: u16,
+    hovered: bool,
+) -> (Vec<Span<'static>>, Rect) {
+    let style = if hovered {
+        theme::results::BADGE_BACK_HOVER
+    } else {
+        theme::results::BADGE_BACK
+    };
+    let spans = vec![Span::raw(" "), Span::styled(BACK_BADGE_TEXT, style)];
+    // Block draws the rounded corner at `area.x`, the title row at `area.y`.
+    // The leading raw space sits at `area.x + 1`, so the badge body starts
+    // at `area.x + 2 + start_col_offset`.
+    let rect = Rect {
+        x: area.x.saturating_add(2).saturating_add(start_col_offset),
+        y: area.y,
+        width: BACK_BADGE_TEXT.len() as u16,
+        height: 1,
+    };
+    (spans, rect)
 }
 
 fn get_spinner(frame_count: u64) -> (char, Color) {
@@ -90,8 +205,8 @@ fn format_position_indicator(scroll: &ScrollState, line_count: u32) -> String {
 fn path_at_cursor_budget(
     area_width: u16,
     stats_info: &str,
-    position_indicator: &str,
     is_pending: bool,
+    has_back_badge: bool,
 ) -> usize {
     use unicode_width::UnicodeWidthStr;
 
@@ -101,22 +216,20 @@ fn path_at_cursor_budget(
     // each side). Pending state prepends `<spinner> ` on the very left.
     const STATS_PADDING: usize = 2;
     const SPINNER_WIDTH: usize = 2;
-    // The right-aligned position indicator is rendered as ` {pos} `.
-    const RIGHT_TITLE_PADDING: usize = 2;
 
     let stats_width = UnicodeWidthStr::width(stats_info) + STATS_PADDING;
-    let position_width = if position_indicator.is_empty() {
-        0
-    } else {
-        UnicodeWidthStr::width(position_indicator) + RIGHT_TITLE_PADDING
-    };
     let spinner_width = if is_pending { SPINNER_WIDTH } else { 0 };
+    let back_width = if has_back_badge {
+        BACK_BADGE_RENDERED_WIDTH
+    } else {
+        0
+    };
 
     (area_width as usize)
         .saturating_sub(BORDER_CORNERS)
         .saturating_sub(stats_width)
-        .saturating_sub(position_width)
         .saturating_sub(spinner_width)
+        .saturating_sub(back_width)
         .saturating_sub(PATH_AT_CURSOR_CHROME_WIDTH)
 }
 
@@ -253,6 +366,22 @@ pub fn render_pane(app: &mut App, frame: &mut Frame, area: Rect) -> (Rect, Optio
         Color::Reset
     };
 
+    // The clickable Back badge appears on the top border whenever there is
+    // something to undo. Build its spans and rect up-front so the rect can
+    // be stored in layout_regions for mouse hit-testing regardless of which
+    // title branch we render below. The badge sits AFTER the optional
+    // spinner so it stays in a stable location relative to the corner.
+    let has_back_badge = !app.query_undo.is_empty();
+    let back_start_col_offset: u16 = if is_pending { 2 } else { 0 };
+    let (back_spans, back_rect): (Vec<Span<'static>>, Option<Rect>) = if has_back_badge {
+        let (spans, rect) =
+            build_back_badge(results_area, back_start_col_offset, app.back_button_hovered);
+        (spans, Some(rect))
+    } else {
+        (Vec::new(), None)
+    };
+    app.layout_regions.back_button = back_rect;
+
     let (title, unfocused_border_color) = if query_state.result.is_err() {
         // ERROR: Yellow text, yellow border (unfocused) - or search color when search visible
         let text_color = if search_visible {
@@ -268,7 +397,13 @@ pub fn render_pane(app: &mut App, frame: &mut Frame, area: Rect) -> (Rect, Optio
                 Style::default().fg(spinner_color),
             ));
         }
-        spans.push(Span::raw(" "));
+        // The back-badge spans already start with a leading space; only
+        // add the original separator when the badge is absent.
+        if has_back_badge {
+            spans.extend(back_spans.clone());
+        } else {
+            spans.push(Span::raw(" "));
+        }
         spans.push(Span::styled(
             "  ⚠ Syntax Error  ",
             theme::results::BADGE_SYNTAX_ERROR,
@@ -295,7 +430,11 @@ pub fn render_pane(app: &mut App, frame: &mut Frame, area: Rect) -> (Rect, Optio
                 Style::default().fg(spinner_color),
             ));
         }
-        spans.push(Span::raw(" "));
+        if has_back_badge {
+            spans.extend(back_spans.clone());
+        } else {
+            spans.push(Span::raw(" "));
+        }
         spans.push(Span::styled(
             "  ∅ No Results  ",
             theme::results::BADGE_EMPTY_RESULT,
@@ -312,12 +451,8 @@ pub fn render_pane(app: &mut App, frame: &mut Frame, area: Rect) -> (Rect, Optio
         } else {
             theme::results::RESULT_OK
         };
-        let path_budget = path_at_cursor_budget(
-            results_area.width,
-            &stats_info,
-            &position_indicator,
-            is_pending,
-        );
+        let path_budget =
+            path_at_cursor_budget(results_area.width, &stats_info, is_pending, has_back_badge);
         let path_spans: Vec<Span<'static>> = match path_at_cursor_jq.as_deref() {
             Some(path) if !path.is_empty() && path_budget >= PATH_AT_CURSOR_MIN_WIDTH => {
                 let truncated = crate::str_utils::head_truncate_to_width(path, path_budget);
@@ -336,34 +471,46 @@ pub fn render_pane(app: &mut App, frame: &mut Frame, area: Rect) -> (Rect, Optio
         };
         if is_pending {
             let (spinner_char, spinner_color) = get_spinner(app.frame_count);
-            let mut spans = vec![
-                Span::styled(
-                    format!("{} ", spinner_char),
-                    Style::default().fg(spinner_color),
-                ),
-                Span::styled(format!("{} ", stats_info), Style::default().fg(text_color)),
-            ];
+            let mut spans = vec![Span::styled(
+                format!("{} ", spinner_char),
+                Style::default().fg(spinner_color),
+            )];
+            // Without the back badge, the spinner already supplies the
+            // trailing space before the stats. With the badge inserted
+            // between them, the stats span needs its own leading space so
+            // the `]` of `[ < Back ]` doesn't collide with the stats text.
+            let stats_format = if has_back_badge {
+                format!(" {} ", stats_info)
+            } else {
+                format!("{} ", stats_info)
+            };
+            spans.extend(back_spans.clone());
+            spans.push(Span::styled(stats_format, Style::default().fg(text_color)));
             spans.extend(path_spans);
             (Line::from(spans), theme::results::RESULT_OK)
         } else {
-            let mut spans = vec![Span::styled(
+            let mut spans = back_spans.clone();
+            spans.push(Span::styled(
                 format!(" {} ", stats_info),
                 Style::default().fg(text_color),
-            )];
+            ));
             spans.extend(path_spans);
             (Line::from(spans), theme::results::RESULT_OK)
         }
     };
 
-    let right_title_color = if search_visible {
+    let position_title_color = if search_visible {
         search_text_color
     } else {
         unfocused_border_color
     };
-    let right_title: Option<Line<'_>> = if !position_indicator.is_empty() {
+    // Position indicator now lives on the bottom-right border. When search
+    // is confirmed the match-count badge takes that slot, so callers must
+    // suppress this title in that case.
+    let position_title: Option<Line<'static>> = if !position_indicator.is_empty() {
         Some(Line::from(Span::styled(
             format!(" {} ", position_indicator),
-            Style::default().fg(right_title_color),
+            Style::default().fg(position_title_color),
         )))
     } else {
         None
@@ -403,55 +550,82 @@ pub fn render_pane(app: &mut App, frame: &mut Frame, area: Rect) -> (Rect, Optio
 
     // Always render from cached pre-rendered text
     if let Some(rendered) = &query_state.last_successful_result_rendered {
-        let mut block = Block::default()
-            .borders(Borders::ALL)
-            .border_type(BorderType::Rounded)
-            .padding(Padding::right(1))
-            .title(title)
-            .border_style(Style::default().fg(border_color));
-        if let Some(rt) = right_title.clone() {
-            block = block.title_top(rt.alignment(Alignment::Right));
-        }
-        if search_visible && app.search.is_confirmed() {
-            block = block.title_bottom(
-                build_search_hints(!app.query_undo.is_empty()).alignment(Alignment::Center),
-            );
+        // Pre-compute the bottom-row pieces so the centered hint strip can
+        // be trimmed to the room left over after the timing (left) and the
+        // position / match-count (right) claim their slots. ratatui's
+        // Block draws right then center then left over the same row, so a
+        // centered title wider than its slot will silently overwrite the
+        // right title — explicit trimming here prevents that.
+        let timing_title = query_state.cached_execution_time_ms.map(|ms| {
+            let timing_text = format!(" {} ", format_execution_time(ms));
+            let timing_color = get_timing_color(ms, border_color);
+            Line::from(vec![Span::styled(
+                timing_text,
+                Style::default().fg(timing_color),
+            )])
+        });
+        let match_count_badge = if search_visible && app.search.is_confirmed() {
             let match_count = app.search.match_count_display();
-            let match_count_badge = Line::from(vec![
+            Some(Line::from(vec![
                 Span::raw(" "),
                 Span::styled(
                     format!("  {}  ", match_count),
                     theme::search::BADGE_MATCH_COUNT,
                 ),
                 Span::raw(" "),
-            ]);
-            block = block.title_bottom(match_count_badge.alignment(Alignment::Right));
-        } else if search_visible {
-            // Editing mode (search visible but not confirmed): the search
-            // bar carries Enter/Esc hints; the results pane carries the
-            // jiq-specific drill hints so they're discoverable while the
-            // user is still typing the search query.
+            ]))
+        } else {
+            None
+        };
+        let bottom_right_title: Option<Line<'static>> =
+            match_count_badge.clone().or_else(|| position_title.clone());
+
+        let center_budget = bottom_center_budget(
+            results_area.width,
+            timing_title.as_ref(),
+            bottom_right_title.as_ref(),
+        );
+
+        let mut block = Block::default()
+            .borders(Borders::ALL)
+            .border_type(BorderType::Rounded)
+            .padding(Padding::right(1))
+            .title(title)
+            .border_style(Style::default().fg(border_color));
+        if search_visible && app.search.is_confirmed() {
             block = block.title_bottom(
-                build_drill_only_hints(!app.query_undo.is_empty()).alignment(Alignment::Center),
+                truncate_hints_to_width(
+                    build_search_hints(!app.query_undo.is_empty()),
+                    center_budget,
+                )
+                .alignment(Alignment::Center),
             );
+        }
+        // While editing the search query the drill chords are inert
+        // (typed as text instead), so the results-pane bottom strip is
+        // intentionally bare in that mode — the search bar carries the
+        // applicable Enter / Tab / Esc hints.
+
+        // Right-anchored bottom title: match-count badge during confirmed
+        // search, position indicator otherwise.
+        if let Some(rt) = bottom_right_title.clone() {
+            block = block.title_bottom(rt.alignment(Alignment::Right));
         }
 
         // Add navigation hints when results pane is focused and search is not visible
         if !search_visible && app.focus == crate::app::Focus::ResultsPane {
             block = block.title_bottom(
-                build_results_pane_hints(!app.query_undo.is_empty()).alignment(Alignment::Center),
+                truncate_hints_to_width(
+                    build_results_pane_hints(!app.query_undo.is_empty()),
+                    center_budget,
+                )
+                .alignment(Alignment::Center),
             );
         }
 
         // Add execution time display in bottom-left corner
-        if let Some(execution_time_ms) = query_state.cached_execution_time_ms {
-            let timing_text = format!(" {} ", format_execution_time(execution_time_ms));
-            let timing_color = get_timing_color(execution_time_ms, border_color);
-            let timing_title = Line::from(vec![Span::styled(
-                timing_text,
-                Style::default().fg(timing_color),
-            )]);
-            block = block.title_bottom(timing_title.alignment(Alignment::Left));
+        if let Some(tt) = timing_title.clone() {
+            block = block.title_bottom(tt.alignment(Alignment::Left));
         }
 
         // Use cached pre-rendered text
@@ -516,48 +690,66 @@ pub fn render_pane(app: &mut App, frame: &mut Frame, area: Rect) -> (Rect, Optio
         }
     } else {
         // No successful result yet - show empty
-        let mut block = Block::default()
-            .borders(Borders::ALL)
-            .border_type(BorderType::Rounded)
-            .padding(Padding::right(1))
-            .title(title)
-            .border_style(Style::default().fg(border_color));
-        if let Some(rt) = right_title {
-            block = block.title_top(rt.alignment(Alignment::Right));
-        }
-        if search_visible && app.search.is_confirmed() {
-            block = block.title_bottom(
-                build_search_hints(!app.query_undo.is_empty()).alignment(Alignment::Center),
-            );
+        let timing_title = query_state.cached_execution_time_ms.map(|ms| {
+            let timing_text = format!(" {} ", format_execution_time(ms));
+            let timing_color = get_timing_color(ms, border_color);
+            Line::from(vec![Span::styled(
+                timing_text,
+                Style::default().fg(timing_color),
+            )])
+        });
+        let match_count_badge = if search_visible && app.search.is_confirmed() {
             let match_count = app.search.match_count_display();
-            let match_count_badge = Line::from(vec![
+            Some(Line::from(vec![
                 Span::raw(" "),
                 Span::styled(
                     format!("  {}  ", match_count),
                     theme::search::BADGE_MATCH_COUNT,
                 ),
                 Span::raw(" "),
-            ]);
-            block = block.title_bottom(match_count_badge.alignment(Alignment::Right));
-        } else if search_visible {
+            ]))
+        } else {
+            None
+        };
+        let bottom_right_title: Option<Line<'static>> =
+            match_count_badge.clone().or_else(|| position_title.clone());
+
+        let center_budget = bottom_center_budget(
+            results_area.width,
+            timing_title.as_ref(),
+            bottom_right_title.as_ref(),
+        );
+
+        let mut block = Block::default()
+            .borders(Borders::ALL)
+            .border_type(BorderType::Rounded)
+            .padding(Padding::right(1))
+            .title(title)
+            .border_style(Style::default().fg(border_color));
+        if search_visible && app.search.is_confirmed() {
             block = block.title_bottom(
-                build_drill_only_hints(!app.query_undo.is_empty()).alignment(Alignment::Center),
+                truncate_hints_to_width(
+                    build_search_hints(!app.query_undo.is_empty()),
+                    center_budget,
+                )
+                .alignment(Alignment::Center),
             );
-        } else if app.focus == crate::app::Focus::ResultsPane {
+        } else if app.focus == crate::app::Focus::ResultsPane && !search_visible {
             block = block.title_bottom(
-                build_results_pane_hints(!app.query_undo.is_empty()).alignment(Alignment::Center),
+                truncate_hints_to_width(
+                    build_results_pane_hints(!app.query_undo.is_empty()),
+                    center_budget,
+                )
+                .alignment(Alignment::Center),
             );
         }
 
-        // Add execution time display in bottom-left corner
-        if let Some(execution_time_ms) = query_state.cached_execution_time_ms {
-            let timing_text = format!(" {} ", format_execution_time(execution_time_ms));
-            let timing_color = get_timing_color(execution_time_ms, border_color);
-            let timing_title = Line::from(vec![Span::styled(
-                timing_text,
-                Style::default().fg(timing_color),
-            )]);
-            block = block.title_bottom(timing_title.alignment(Alignment::Left));
+        if let Some(rt) = bottom_right_title {
+            block = block.title_bottom(rt.alignment(Alignment::Right));
+        }
+
+        if let Some(tt) = timing_title {
+            block = block.title_bottom(tt.alignment(Alignment::Left));
         }
 
         let empty_text = Text::from("");

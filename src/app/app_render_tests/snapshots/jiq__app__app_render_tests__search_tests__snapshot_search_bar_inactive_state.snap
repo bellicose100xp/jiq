@@ -3,7 +3,7 @@ source: src/app/app_render_tests/search_tests.rs
 assertion_line: 236
 expression: output
 ---
-"╭ Object  · .name ──────────────────────────────────────────────── L1-4/4 (0%) ╮"
+"╭ Object  · .name ─────────────────────────────────────────────────────────────╮"
 "▌{                                                                             │"
 "│  "name": "Alice",                                                            │"
 "│  "email": "alice@example.com"                                                │"
@@ -22,7 +22,7 @@ expression: output
 "│                                                                              │"
 "│                                                                              │"
 "│                                                                              │"
-"╰ Enter Next • > value • * iterate • ^ parent • } wrap • ]/[ siblings • Ctrl+F ╯"
+"╰────────────── n/N Next/Prev • Enter Next • > value • * iterate ─────   1/2   ╯"
 "╭ Search ──────────────────────────────────────────────────────────────────────╮"
 "│alice                                                                         │"
 "╰──────────────────────────────────────────────────────────────────────────────╯"

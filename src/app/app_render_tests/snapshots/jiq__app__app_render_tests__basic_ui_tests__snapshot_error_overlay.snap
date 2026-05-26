@@ -3,7 +3,7 @@ source: src/app/app_render_tests/basic_ui_tests.rs
 assertion_line: 144
 expression: output
 ---
-"╭   ⚠ Syntax Error   Object | Showing last successful result ───── L1-3/3 (0%) ╮"
+"╭   ⚠ Syntax Error   Object | Showing last successful result ──────────────────╮"
 "│{                                                                             │"
 "│  "test": true                                                                │"
 "│}                                                                             │"
@@ -22,7 +22,7 @@ expression: output
 "│ │ jq: compile error: syntax error at line 1                                │ │"
 "│ │                                                                          │ │"
 "│ ╰────────────────────────────── Ctrl+E Close ──────────────────────────────╯ │"
-"╰──────────────────────────────────────────────────────────────────────────────╯"
+"╰───────────────────────────────────────────────────────────────── L1-3/3 (0%) ╯"
 "╭ Query [INSERT] ───────────────────────────────────────── Ctrl+A AI Assistant ╮"
 "│                                                                              │"
 "╰─────────────── Shift+Tab Navigate Results • Ctrl+E Show Error ───────────────╯"

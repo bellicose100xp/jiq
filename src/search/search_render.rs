@@ -55,17 +55,12 @@ pub fn render_bar(app: &mut App, frame: &mut Frame, area: Rect) {
             ])
             .alignment(Alignment::Right),
         );
-        let mut hints: Vec<(&'static str, &'static str)> =
-            vec![("Enter", "Confirm"), (">", "value")];
-        if !app.query_undo.is_empty() {
-            hints.push(("<", "back"));
-        }
-        hints.extend([
-            ("*", "iterate"),
-            ("^", "parent"),
-            ("}", "wrap"),
-            ("Esc", "Close"),
-        ]);
+        // While editing the search query, drill chords are typed as
+        // literal text so the user can grep for `>`, `<`, etc. The strip
+        // therefore advertises only the keys that ARE wired in this mode:
+        // confirm, navigate, close.
+        let hints: Vec<(&'static str, &'static str)> =
+            vec![("Enter", "Confirm"), ("Tab", "Confirm"), ("Esc", "Close")];
         block = block.title_bottom(
             theme::border_hints::build_hints(&hints, theme::search::HINTS)
                 .alignment(Alignment::Center),

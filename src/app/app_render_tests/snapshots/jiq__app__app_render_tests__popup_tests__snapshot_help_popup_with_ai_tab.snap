@@ -3,7 +3,7 @@ source: src/app/app_render_tests/popup_tests.rs
 assertion_line: 74
 expression: output
 ---
-"╭ Object ───────────────────────────────────────────────────────── L1-3/3 (0%) ╮"
+"╭ Object ──────────────────────────────────────────────────────────────────────╮"
 "│{                                                                             │"
 "│  "t╭ Keyboard Shortcuts ────────────────────────────────────────────────╮    │"
 "│}   │1:Global   2:Input   3:Result   4:History   [5:AI]   6:Search   7:Sn│    │"
@@ -22,7 +22,7 @@ expression: output
 "│    │                                                                    │    │"
 "│    │                                                                    │    │"
 "│    │                                                                    │    │"
-"╰────│                                                                    │────╯"
+"╰────│                                                                    │0%) ╯"
 "╭ Que│                                                                    │ant ╮"
 "│    ╰───── 1-7 Jump • Tab Next • h/l Switch • j/k Scroll • q Close ──────╯    │"
 "╰t+Tab Navigate Results • Ctrl+P Previous Query • Ctrl+N Next Query • Ctrl+R Hi╯"

@@ -3,7 +3,7 @@ source: src/app/app_render_tests/basic_ui_tests.rs
 assertion_line: 40
 expression: output
 ---
-"╭ Stream [3] ───────────────────────────────────────────────────── L1-3/3 (0%) ╮"
+"╭ Stream [3] ──────────────────────────────────────────────────────────────────╮"
 "│"Alice"                                                                       │"
 "│"Bob"                                                                         │"
 "│"Charlie"                                                                     │"
@@ -22,7 +22,7 @@ expression: output
 "│                                                                              │"
 "│                                                                              │"
 "│                                                                              │"
-"╰──────────────────────────────────────────────────────────────────────────────╯"
+"╰───────────────────────────────────────────────────────────────── L1-3/3 (0%) ╯"
 "╭ Query [INSERT] ───────────────────────────────────────── Ctrl+A AI Assistant ╮"
 "│.[].name                                                                      │"
 "╰─── Shift+Tab Navigate Results • Enter Output Result • Ctrl+Q Output Query ───╯"

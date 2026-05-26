@@ -106,6 +106,18 @@ pub mod results {
         .fg(Color::Rgb(20, 25, 40)) // Deep dark blue-tinted
         .bg(Color::Rgb(130, 140, 170)); // Brighter steel blue
 
+    // Clickable back-button badge on the results-pane top border. Cyan
+    // matches the global hint key color so the affordance reads as a
+    // keyboard shortcut and a button at the same time.
+    pub const BADGE_BACK: Style = Style::new()
+        .fg(Color::Rgb(15, 20, 35))
+        .bg(Color::Rgb(0, 217, 255));
+
+    pub const BADGE_BACK_HOVER: Style = Style::new()
+        .fg(Color::Rgb(15, 20, 35))
+        .bg(Color::Rgb(189, 147, 249))
+        .add_modifier(Modifier::BOLD);
+
     // Search match highlighting
     pub const MATCH_HIGHLIGHT_BG: Color = Color::Rgb(85, 85, 115);
     pub const MATCH_HIGHLIGHT_FG: Color = Color::Rgb(236, 236, 244);

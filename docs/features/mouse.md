@@ -18,6 +18,7 @@ jiq has two main areas: the query input (where you type) and the output area (wh
 | Click | Autocomplete | Highlight a suggestion |
 | Double-click | Autocomplete | Apply a suggestion |
 | Double-click | Output area row | Drill into the value on that row (same as <kbd>&gt;</kbd>) |
+| Click | `[ < Back ]` badge on results border | Step back to prior query (same as <kbd>&lt;</kbd>); only visible when there's something to undo |
 | Click + drag | Output area | Select multiple lines |
 | Scroll wheel | Output area | Scroll vertically |
 | Scroll wheel | Input field | Scroll horizontally through long queries |

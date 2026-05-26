@@ -12,12 +12,25 @@ use crate::layout::Region;
 /// Updates hover state based on cursor position within components.
 pub fn handle_hover(app: &mut App, region: Option<Region>, mouse: MouseEvent) {
     app.double_click.reset();
+    // Back-button hover is independent of the per-region handlers below:
+    // it's only ever true when the cursor is on the badge itself, and is
+    // cleared on every other region.
+    app.back_button_hovered = matches!(region, Some(Region::BackButton));
     match region {
         Some(Region::ResultsPane) => hover_results_pane(app, mouse),
         Some(Region::AiWindow) => hover_ai_window(app, mouse),
         Some(Region::SnippetList) => hover_snippet_list(app, mouse),
         Some(Region::HelpPopup) => hover_help_popup(app, mouse),
         Some(Region::HistoryPopup) => hover_history_popup(app, mouse),
+        Some(Region::BackButton) => {
+            // Hovering the badge: clear other panes' hover state but skip
+            // the results-pane handler (we don't want to highlight any row).
+            clear_ai_hover(app);
+            clear_snippet_hover(app);
+            clear_help_hover(app);
+            clear_history_hover(app);
+            clear_results_hover(app);
+        }
         _ => {
             clear_results_hover(app);
             clear_ai_hover(app);

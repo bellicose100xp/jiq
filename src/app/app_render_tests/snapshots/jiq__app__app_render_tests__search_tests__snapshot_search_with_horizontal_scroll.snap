@@ -3,7 +3,7 @@ source: src/app/app_render_tests/search_tests.rs
 assertion_line: 184
 expression: output
 ---
-"╭ Object  · .very_long_field ───────────────────────────────────── L1-4/4 (0%) ╮"
+"╭ Object  · .very_long_field ──────────────────────────────────────────────────╮"
 "▌                                                                              │"
 "│                                                                              │"
 "│                                                                     match_he │"
@@ -22,7 +22,7 @@ expression: output
 "│                                                                              │"
 "│                                                                              │"
 "│                                                                              │"
-"╰ Enter Next • > value • * iterate • ^ parent • } wrap • ]/[ siblings • Ctrl+F ╯"
+"╰────────────── n/N Next/Prev • Enter Next • > value • * iterate ─────   1/1   ╯"
 "╭ Search ──────────────────────────────────────────────────────────────────────╮"
 "│match_here                                                                    │"
 "╰──────────────────────────────────────────────────────────────────────────────╯"

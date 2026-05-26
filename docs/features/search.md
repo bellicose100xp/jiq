@@ -86,10 +86,13 @@ To change the search term after confirming, press <kbd>Tab</kbd>, <kbd>Ctrl</kbd
 
 Once you've found the match you want, you can filter the output down to just that value:
 
-1. Step to the match with <kbd>n</kbd> / <kbd>N</kbd>.
-2. Press <kbd>&gt;</kbd> to zoom in — jiq rewrites your query to show only that piece of data.
+1. Press <kbd>Enter</kbd> (or <kbd>Tab</kbd>) to confirm the search.
+2. Step to the match with <kbd>n</kbd> / <kbd>N</kbd>.
+3. Press <kbd>&gt;</kbd> to zoom in — jiq rewrites your query to show only that piece of data.
 
 This closes the search bar. Press <kbd>&lt;</kbd> afterward to return to where you were. (See [Results pane](./results-pane) for more on navigating into nested values.)
+
+> **Drill chords need a confirmed search.** While the search bar is still in editing mode, every printable character — including <kbd>&gt;</kbd>, <kbd>&lt;</kbd>, <kbd>*</kbd>, <kbd>^</kbd>, <kbd>}</kbd>, <kbd>[</kbd>, <kbd>]</kbd> — is typed into the search query so you can grep for those characters as text. The drill chords only take effect after you confirm with <kbd>Enter</kbd> or <kbd>Tab</kbd>.
 
 ## Close search
 

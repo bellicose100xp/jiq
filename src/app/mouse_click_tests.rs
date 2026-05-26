@@ -757,6 +757,89 @@ fn test_double_click_autocomplete_accepts_suggestion() {
     );
 }
 
+/// Helper: drill once via the `>` chord so the undo ring is non-empty.
+/// Mirrors how `drill_back_round_trips` sets up state in
+/// `results_events_tests.rs`.
+fn push_one_drill(app: &mut crate::app::App) {
+    use crate::test_utils::test_helpers::key;
+    use ratatui::crossterm::event::KeyCode;
+    app.focus = Focus::ResultsPane;
+    app.input.textarea.insert_str(".");
+    if let Some(qs) = app.query.as_mut() {
+        qs.execute(".");
+    }
+    let total = app.results_line_count_u32();
+    app.results_cursor.update_total_lines(total);
+    app.results_cursor.move_to_line(1);
+    app.handle_key_event(key(KeyCode::Char('>')));
+}
+
+#[test]
+fn test_click_back_button_pops_undo_ring() {
+    let mut app = test_app(r#"{"a": 1, "b": 2}"#);
+    push_one_drill(&mut app);
+    assert!(
+        !app.query_undo.is_empty(),
+        "precondition: ring is non-empty"
+    );
+    let drilled_query = app.input.query().to_string();
+    assert_ne!(
+        drilled_query, ".",
+        "precondition: query was rewritten by `>`"
+    );
+
+    let mouse = create_mouse_event(5, 0);
+    handle_click(&mut app, Some(Region::BackButton), mouse);
+
+    assert_eq!(
+        app.input.query(),
+        ".",
+        "back click should restore prior query"
+    );
+    assert!(app.query_undo.is_empty(), "back click should pop the ring");
+}
+
+#[test]
+fn test_click_back_button_focuses_results_pane() {
+    let mut app = test_app(r#"{"a": 1}"#);
+    push_one_drill(&mut app);
+    app.focus = Focus::InputField;
+
+    let mouse = create_mouse_event(5, 0);
+    handle_click(&mut app, Some(Region::BackButton), mouse);
+
+    assert_eq!(app.focus, Focus::ResultsPane);
+}
+
+#[test]
+fn test_click_back_button_with_empty_ring_notifies() {
+    let mut app = setup_app();
+    app.focus = Focus::ResultsPane;
+    assert!(app.query_undo.is_empty());
+
+    let mouse = create_mouse_event(5, 0);
+    handle_click(&mut app, Some(Region::BackButton), mouse);
+
+    assert_eq!(
+        app.notification.current_message(),
+        Some("Nothing to go back to"),
+    );
+}
+
+#[test]
+fn test_click_back_button_confirms_unconfirmed_search() {
+    let mut app = test_app(r#"{"a": 1, "b": 2}"#);
+    push_one_drill(&mut app);
+    app.search.open();
+    assert!(!app.search.is_confirmed());
+
+    let mouse = create_mouse_event(5, 0);
+    handle_click(&mut app, Some(Region::BackButton), mouse);
+
+    assert!(app.search.is_confirmed());
+    assert!(app.search.is_visible());
+}
+
 #[test]
 fn test_single_click_autocomplete_only_highlights() {
     use crate::autocomplete::autocomplete_state::{Suggestion, SuggestionType};

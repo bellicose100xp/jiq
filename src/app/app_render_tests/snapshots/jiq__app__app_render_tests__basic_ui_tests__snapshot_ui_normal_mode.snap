@@ -3,7 +3,7 @@ source: src/app/app_render_tests/basic_ui_tests.rs
 assertion_line: 80
 expression: output
 ---
-"╭ Object ───────────────────────────────────────────────────────── L1-3/3 (0%) ╮"
+"╭ Object ──────────────────────────────────────────────────────────────────────╮"
 "│{                                                                             │"
 "│  "test": true                                                                │"
 "│}                                                                             │"
@@ -22,7 +22,7 @@ expression: output
 "│                                                                              │"
 "│                                                                              │"
 "│                                                                              │"
-"╰──────────────────────────────────────────────────────────────────────────────╯"
+"╰───────────────────────────────────────────────────────────────── L1-3/3 (0%) ╯"
 "╭ Query [NORMAL] (press 'i' to edit) ───────────────────── Ctrl+A AI Assistant ╮"
 "│                                                                              │"
 "╰t+Tab Navigate Results • Ctrl+P Previous Query • Ctrl+N Next Query • Ctrl+R Hi╯"

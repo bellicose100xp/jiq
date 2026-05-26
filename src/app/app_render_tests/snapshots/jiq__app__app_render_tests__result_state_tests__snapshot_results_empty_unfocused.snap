@@ -3,7 +3,7 @@ source: src/app/app_render_tests/result_state_tests.rs
 assertion_line: 70
 expression: output
 ---
-"╭   ∅ No Results   Array [2 objects] | Showing last non-empty result ───────────────────────────────────── L1-8/8 (0%) ╮"
+"╭   ∅ No Results   Array [2 objects] | Showing last non-empty result ──────────────────────────────────────────────────╮"
 "│[                                                                                                                     │"
 "│  {                                                                                                                   │"
 "│    "name": "svc1"                                                                                                    │"
@@ -28,7 +28,7 @@ expression: output
 "│                                                                                                                      │"
 "│                                                                                                                      │"
 "│                                                                                                                      │"
-"╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯"
+"╰───────────────────────────────────────────────────────────────────────────────────────────────────────── L1-8/8 (0%) ╯"
 "╭ Query [INSERT] ───────────────────────────────────────────────────────────────────────────────── Ctrl+A AI Assistant ╮"
 "│.[] | select(.name == "nonexistent")                                                                                  │"
 "╰─────────────────────── Shift+Tab Navigate Results • Enter Output Result • Ctrl+Q Output Query ───────────────────────╯"
