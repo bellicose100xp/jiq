@@ -94,8 +94,8 @@ jiq --paste
 ## Usage
 
 **Workflow:**
-1. Start typing your jq query (begins in INSERT mode)
-2. Use autocomplete suggestions for functions and fields (`Tab` to accept)
+1. Start typing your jq query
+2. Use autocomplete suggestions for functions and fields
 3. See results update in real-time
 4. Press `Shift+Tab` to navigate results
 5. Press `Enter` to output results, or `Ctrl+Q` to output query
