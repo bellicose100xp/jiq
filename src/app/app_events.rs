@@ -393,6 +393,11 @@ impl App {
             return;
         }
 
+        if self.save.is_visible() {
+            crate::save::save_events::handle_save_popup_key(self, key);
+            return;
+        }
+
         // STEP 3: Other global keys (when no popup is active)
         if global::handle_global_keys(self, key) {
             return;

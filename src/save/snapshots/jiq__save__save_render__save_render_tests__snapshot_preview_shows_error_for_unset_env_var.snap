@@ -1,0 +1,16 @@
+---
+source: src/save/save_render_tests.rs
+expression: out
+---
+"                                                                                "
+"        ╭ Save Result to file ─────────────────────────────────────────╮        "
+"        │                                                              │        "
+"        │  Path:                                                       │        "
+"        │  ╭────────────────────────────────────────────────────────╮  │        "
+"        │  │$JIQ_RENDER_TEST_MISSING/x.json                         │  │        "
+"        │  ╰────────────────────────────────────────────────────────╯  │        "
+"        │  ✕ env var JIQ_RENDER_TEST_MISSING not set                   │        "
+"        │                                                              │        "
+"        │                                                              │        "
+"        ╰────────────────── Enter Save • Esc Cancel ───────────────────╯        "
+"                                                                                "

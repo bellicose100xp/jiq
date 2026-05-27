@@ -30,6 +30,7 @@ mod path_at_cursor_apply;
 mod query;
 mod query_undo;
 mod results;
+mod save;
 mod scroll;
 mod search;
 mod snippets;

@@ -1,6 +1,5 @@
 ---
 source: src/app/app_render_tests/result_state_tests.rs
-assertion_line: 84
 expression: output
 ---
 "╭   ⚠ Syntax Error   Object | Showing last successful result ──────────────────────────────────────────────────────────╮"
@@ -32,4 +31,4 @@ expression: output
 "╭ Query [INSERT] ───────────────────────────────────────────────────────────────────────────────── Ctrl+A AI Assistant ╮"
 "│.invalid syntax here                                                                                                  │"
 "╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯"
-" F1/? Help • Shift+Tab Edit Query • Ctrl+S Snippets • Ctrl+F Search • Ctrl+C Quit                                       "
+" F1/? Help • Shift+Tab Edit Query • Ctrl+S Snippets • Ctrl+F Search • Ctrl+W Save • Ctrl+C Quit                         "

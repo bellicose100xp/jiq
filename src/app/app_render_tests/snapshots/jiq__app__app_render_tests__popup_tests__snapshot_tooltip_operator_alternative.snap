@@ -31,4 +31,4 @@ expression: output
 "╭ Query [INSERT] ───────────────────────────────────────────────────────────────────────────────── Ctrl+A AI Assistant ╮"
 "│                                                                                                                      │"
 "╰────────────── Shift+Tab Navigate Results • Ctrl+P Previous Query • Ctrl+N Next Query • Ctrl+R History ───────────────╯"
-" F1 Help • Ctrl+S Snippets • Ctrl+F Search • Enter Output Result • Ctrl+O Copy Result • Ctrl+Q Output Query • Ctrl+C Qui"
+" F1 Help • Ctrl+S Snippets • Ctrl+F Search • Enter Output Result • Ctrl+O Copy Result • Ctrl+W Save • Ctrl+Q Output Quer"

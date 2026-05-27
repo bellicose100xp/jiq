@@ -1,0 +1,16 @@
+---
+source: src/save/save_render_tests.rs
+expression: out
+---
+"                                                                                "
+"        ╭ Save Result to file ─────────────────────────────────────────╮        "
+"        │                                                              │        "
+"        │  Path:                                                       │        "
+"        │  ╭────────────────────────────────────────────────────────╮  │        "
+"        │  │/tmp/jiq-nonexistent-snapshot-test-999.json             │  │        "
+"        │  ╰────────────────────────────────────────────────────────╯  │        "
+"        │  → /tmp/jiq-nonexistent-snapshot-test-999.json               │        "
+"        │                                                              │        "
+"        │                                                              │        "
+"        ╰────────────────── Enter Save • Esc Cancel ───────────────────╯        "
+"                                                                                "

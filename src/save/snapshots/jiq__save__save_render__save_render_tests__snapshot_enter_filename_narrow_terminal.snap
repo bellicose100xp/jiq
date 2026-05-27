@@ -1,0 +1,14 @@
+---
+source: src/save/save_render_tests.rs
+expression: out
+---
+"╭ Save Result to file ───────────────────────────╮"
+"│                                                │"
+"│  Path:                                         │"
+"│  ╭──────────────────────────────────────────╮  │"
+"│  │/tmp/jiq-x.json                           │  │"
+"│  ╰──────────────────────────────────────────╯  │"
+"│  → /tmp/jiq-x.json                             │"
+"│                                                │"
+"│                                                │"
+"╰─────────── Enter Save • Esc Cancel ────────────╯"

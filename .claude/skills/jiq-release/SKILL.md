@@ -19,20 +19,51 @@ If unspecified, infer from the change set (step 6).
 
 - No `--no-verify`, no force-push, no `git reset --hard`, no destructive ops.
 - Commit style: lowercase Conventional Commits, single line, no body, no issue refs.
-- Pre-PR gate (all clean): `cargo test` (full suite, never `--lib`), `cargo build --release`, `cargo clippy --all-targets --all-features` (zero warnings), `cargo fmt --all --check`.
+- **Pre-PR gate** — must already be green from the project's pre-commit flow (`CLAUDE.md` → Pre-Commit Requirements). The skill assumes all eight steps already passed and the change is committed locally:
+  1. Implementation-detail comments stripped
+  2. 100% test coverage on new logic
+  3. `cargo build --release` (zero warnings)
+  4. User TUI validation (explicit steps; STOP-and-wait gate)
+  5. `cargo clippy --all-targets --all-features -- -D warnings`
+  6. `cargo fmt --all --check`
+  7. `cargo build` (debug; zero warnings)
+  8. `cargo test` (full suite, never `--lib`)
+
+  If any of these are unverified, **stop and run them before branching**. Don't paper over a skipped TUI validation by jumping ahead to step 1 of this skill.
 - Don't pass `--delete-branch=true` on merge; the user deletes remote branches manually. Remind them at the end.
 - **User-visible feature/shortcut/config change** → update README (one line per item, no emoji, only real top-level features), `docs/features/*.md`, `docs/quick-reference.md`, `docs/configuration.md` (if config). Bug fixes / refactors / perf → leave both untouched.
 - `docs/changelog.md` is mirrored from `CHANGELOG.md` every release (step 7a).
 
 ---
 
-## 1. Branch + commit
+## 1. Sync with remote, then branch + commit
 
 ```sh
+# Pull latest main first to minimize merge conflicts in the PR.
+git fetch origin
+git checkout main
+git pull --ff-only origin main
+
+# Branch and commit on top of fresh main.
 git checkout -b <feat|fix>/<short-topic>
 git add <files>
 git commit -m "<feat|fix>(<scope>): <imperative summary>"
 ```
+
+If the user already committed on `main` (per CLAUDE.md's pre-commit flow), reset main to origin and move the local commits to the new branch instead — never force-push `main`:
+
+```sh
+git fetch origin
+git checkout -b <feat|fix>/<short-topic>      # carry local commits to feature branch
+git checkout main
+git reset --hard origin/main                  # OK: only resets local main, no remote impact
+git checkout <feat|fix>/<short-topic>
+git rebase origin/main                        # resolve conflicts locally, before PR
+```
+
+## 1a. Re-run the gate after rebase
+
+If the rebase moved any commits, the eight pre-commit checks may no longer be green. Re-run them (CLAUDE.md → Pre-Commit Requirements). Do not push until they're all green again.
 
 ## 2. Push + open PR
 

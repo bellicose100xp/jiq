@@ -2,4 +2,4 @@
 source: src/help/help_line_render_tests.rs
 expression: output
 ---
-" F1/? Help • Shift+Tab Edit Query • Ctrl+S Snippets • Ctrl+F Search • Ctrl+C Quit                                       "
+" F1/? Help • Shift+Tab Edit Query • Ctrl+S Snippets • Ctrl+F Search • Ctrl+W Save • Ctrl+C Quit                         "

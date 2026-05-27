@@ -137,6 +137,10 @@ impl App {
             self.layout_regions.help_popup = Some(help_rect);
         }
 
+        if self.save.is_visible() {
+            crate::save::save_render::render_save_popup(frame, results_area, &mut self.save);
+        }
+
         render_notification(frame, &mut self.notification);
     }
 }
