@@ -15,6 +15,7 @@ use crate::snippets;
 
 mod global;
 pub mod paste_recovery;
+pub mod source_picker;
 
 /// Determine the default help tab based on current app context
 ///
@@ -241,7 +242,9 @@ impl App {
         if event::poll(EVENT_POLL_TIMEOUT)? {
             match event::read()? {
                 Event::Key(key_event) if key_event.kind == KeyEventKind::Press => {
-                    if self.paste_recovery.is_some() {
+                    if self.source_picker.is_some() {
+                        self.handle_source_picker_key_event(key_event);
+                    } else if self.paste_recovery.is_some() {
                         self.handle_paste_recovery_key_event(key_event);
                     } else {
                         self.handle_key_event(key_event);
@@ -249,7 +252,13 @@ impl App {
                     self.mark_dirty();
                 }
                 Event::Paste(text) => {
-                    if self.paste_recovery.is_some() {
+                    if self.source_picker.is_some() {
+                        // Pasting while the picker is open is treated
+                        // as the user explicitly wanting Paste mode.
+                        // Mouse-and-click hookup follows in a later
+                        // step; for now we just drop the bytes — the
+                        // user can press `p`.
+                    } else if self.paste_recovery.is_some() {
                         log::debug!(
                             "paste-recovery: bracketed paste event, {} bytes, {} lines",
                             text.len(),
@@ -265,9 +274,10 @@ impl App {
                     self.mark_dirty();
                 }
                 Event::Mouse(mouse_event) => {
-                    if self.paste_recovery.is_some() {
-                        // Ignore mouse during recovery — there is no
-                        // input/results split to act on.
+                    if self.source_picker.is_some() || self.paste_recovery.is_some() {
+                        // Picker / recovery occupy the screen; no
+                        // input/results split to act on. Mouse hookup
+                        // for the picker follows in a later step.
                     } else {
                         self.handle_mouse_event(mouse_event);
                     }
@@ -277,6 +287,19 @@ impl App {
             }
         }
         Ok(())
+    }
+
+    /// Route a key while the source picker is active. Truly global keys
+    /// (Ctrl+C quit, F1 help) still take precedence; everything else
+    /// goes to the picker handler.
+    fn handle_source_picker_key_event(&mut self, key: KeyEvent) {
+        if handle_truly_global_keys(self, key) {
+            return;
+        }
+        if self.help.visible && handle_help_keys(self, key) {
+            return;
+        }
+        let _ = source_picker::handle_key(self, key);
     }
 
     /// Route a key while paste-recovery is active. Truly global keys

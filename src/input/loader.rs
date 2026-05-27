@@ -104,6 +104,22 @@ impl FileLoader {
         }
     }
 
+    /// Wrap an already-validated clipboard payload in a `FileLoader`
+    /// without re-reading the system clipboard. Used by the source
+    /// picker after the user confirms the Clipboard option: the bytes
+    /// were peeked at launch and validated by the smart-default check,
+    /// so a second read would be wasted work (and on remote SSH a
+    /// second OSC 52 round-trip).
+    pub fn from_clipboard_string(json: String) -> Self {
+        let (tx, rx) = channel();
+        let _ = tx.send(Ok(json.clone()));
+        Self {
+            state: LoadingState::Complete(json),
+            rx: Some(rx),
+            source: LoaderSource::Clipboard,
+        }
+    }
+
     /// Poll for loading completion (non-blocking)
     ///
     /// Checks the channel for results without blocking. Returns None if still loading,
@@ -144,21 +160,50 @@ impl FileLoader {
     }
 }
 
-/// Validate that content is valid JSON or JSONL
-///
-/// Uses StreamDeserializer to handle both single JSON values and JSONL (multiple values).
-pub(crate) fn validate_json_or_jsonl(content: &str) -> Result<(), JiqError> {
+/// Outcome of a single-pass scan over `content`. Reports both validity
+/// and whether every top-level value is an object or array.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct JsonScan {
+    pub count: usize,
+    pub all_containers: bool,
+}
+
+/// Walk every top-level JSON value in `content` once, reporting count
+/// and whether every value is an object or array. Single-pass
+/// replacement for the old "validate then re-walk to check container
+/// shape" pattern; cheaper on large clipboard inputs and rules out
+/// the "scan disagreed with itself across two passes" failure mode.
+pub(crate) fn scan_json_or_jsonl(content: &str) -> Result<JsonScan, JiqError> {
     let deserializer = serde_json::Deserializer::from_str(content).into_iter::<serde_json::Value>();
     let mut count = 0;
+    let mut all_containers = true;
     for result in deserializer {
-        result.map_err(|e| JiqError::InvalidJson(e.to_string()))?;
+        let value = result.map_err(|e| JiqError::InvalidJson(e.to_string()))?;
+        if !value.is_object() && !value.is_array() {
+            all_containers = false;
+        }
         count += 1;
     }
     if count == 0 {
         return Err(JiqError::InvalidJson("Empty input".to_string()));
     }
-    log::debug!("JSON validation: {} top-level value(s)", count);
-    Ok(())
+    log::debug!(
+        "JSON validation: {} top-level value(s), all_containers={}",
+        count,
+        all_containers
+    );
+    Ok(JsonScan {
+        count,
+        all_containers,
+    })
+}
+
+/// Validate that content is valid JSON or JSONL.
+///
+/// Thin wrapper over [`scan_json_or_jsonl`] for callers that only care
+/// about parse validity (file/stdin loaders, paste-recovery accept).
+pub(crate) fn validate_json_or_jsonl(content: &str) -> Result<(), JiqError> {
+    scan_json_or_jsonl(content).map(|_| ())
 }
 
 /// Synchronous file loading (runs in background thread)
@@ -231,12 +276,104 @@ fn load_clipboard_sync() -> Result<String, JiqError> {
         return Err(input_load_error(InputErrorReason::ClipboardEmpty));
     }
 
-    if validate_json_or_jsonl(&contents).is_err() {
-        log::debug!("Clipboard contents are not valid JSON or JSONL");
-        return Err(input_load_error(InputErrorReason::ClipboardInvalidJson));
+    let scan = match scan_json_or_jsonl(&contents) {
+        Ok(s) => s,
+        Err(_) => {
+            log::debug!("Clipboard contents are not valid JSON or JSONL");
+            return Err(input_load_error(InputErrorReason::ClipboardInvalidJson));
+        }
+    };
+
+    if !scan.all_containers {
+        log::debug!("Clipboard contains a JSON primitive, not an object or array");
+        return Err(input_load_error(InputErrorReason::ClipboardPrimitive));
     }
 
     Ok(contents)
+}
+
+/// Outcome of a non-committing clipboard peek. The source picker uses
+/// this to decide which option to pre-select and what context to show
+/// the user, *without* committing to a load — the user still confirms
+/// with Enter / a click.
+///
+/// The `Ok` payload carries the raw clipboard bytes so the picker can
+/// hand them straight to [`FileLoader::from_clipboard_string`] on
+/// confirm; we deliberately avoid a second clipboard read because OSC
+/// 52 over SSH can take ~1s.
+#[derive(Debug, Clone)]
+pub enum ClipboardPeek {
+    /// Clipboard read succeeded and parsed as one or more objects /
+    /// arrays. Contains the raw bytes; the picker hands these straight
+    /// to [`FileLoader::from_clipboard_string`] on confirm.
+    Usable(String),
+    /// Clipboard read succeeded but contents aren't queryable JSON.
+    Empty,
+    Invalid,
+    Primitive,
+    /// Clipboard read failed entirely (arboard + OSC 52 both errored).
+    Unreadable,
+}
+
+impl ClipboardPeek {
+    /// Whether the clipboard contents are actually queryable. Drives
+    /// whether the source picker is shown at all: if the answer is
+    /// false, the picker has only one operable option (Paste) and we
+    /// skip it entirely in favour of dropping straight into the
+    /// explicit-paste editor.
+    pub fn is_usable(&self) -> bool {
+        matches!(self, ClipboardPeek::Usable(_))
+    }
+
+    /// Single-line context shown to the user when the picker has Paste
+    /// pre-selected because the clipboard was unusable. Returns `None`
+    /// for `Usable` (no failure to explain). Each message describes
+    /// only what jiq saw — the editor's title and placeholder already
+    /// tell the user how to proceed.
+    pub fn failure_context(&self) -> Option<&'static str> {
+        match self {
+            ClipboardPeek::Usable(_) => None,
+            ClipboardPeek::Unreadable => Some("Couldn't read the clipboard"),
+            ClipboardPeek::Empty => Some("Clipboard is empty"),
+            ClipboardPeek::Invalid => Some("Clipboard contents aren't valid JSON"),
+            ClipboardPeek::Primitive => Some(
+                "Clipboard JSON is a primitive (e.g. 42, \"x\", true) — needs an object or array",
+            ),
+        }
+    }
+}
+
+/// Read the system clipboard and classify its contents without
+/// committing to a load. Mirrors the validation gate of
+/// [`load_clipboard_sync`] but never returns a `JiqError`; instead the
+/// outcome is encoded as a [`ClipboardPeek`] so the picker can decide
+/// which option to pre-select and what to show in the preview pane.
+///
+/// Runs on the main thread before TUI init, just like
+/// [`FileLoader::load_clipboard_blocking`] — same OSC 52 raw-mode
+/// caveat applies.
+pub fn peek_clipboard() -> ClipboardPeek {
+    log::debug!("Peeking clipboard for picker");
+    let contents = match read_clipboard_text() {
+        Ok(text) => text,
+        Err(reason) => {
+            log::debug!("Clipboard unavailable: {}", reason);
+            return ClipboardPeek::Unreadable;
+        }
+    };
+    log::debug!("Clipboard peek: {} bytes", contents.len());
+
+    if contents.trim().is_empty() {
+        return ClipboardPeek::Empty;
+    }
+    let scan = match scan_json_or_jsonl(&contents) {
+        Ok(s) => s,
+        Err(_) => return ClipboardPeek::Invalid,
+    };
+    if !scan.all_containers {
+        return ClipboardPeek::Primitive;
+    }
+    ClipboardPeek::Usable(contents)
 }
 
 /// Try the system clipboard via `arboard`, then OSC 52 if that fails.
@@ -270,6 +407,11 @@ pub(crate) enum InputErrorReason {
     ClipboardEmpty,
     /// Clipboard had non-empty content but it didn't parse as JSON/JSONL.
     ClipboardInvalidJson,
+    /// Clipboard parsed as valid JSON but the top-level value is a
+    /// primitive (number, string, bool, null) rather than an object or
+    /// array. Useful jq queries operate on objects or arrays, so we
+    /// reject primitives and route the user to the manual-paste flow.
+    ClipboardPrimitive,
     /// Piped stdin was actually a terminal (no real data to read).
     NoStdin,
 }
@@ -280,12 +422,11 @@ pub(crate) fn input_load_error(reason: InputErrorReason) -> JiqError {
 
 fn format_input_load_error(reason: InputErrorReason) -> String {
     let detail = match reason {
-        InputErrorReason::ClipboardUnreadable => {
-            "No input provided. Could not read the system clipboard."
-        }
-        InputErrorReason::ClipboardEmpty => "No input provided. Clipboard is empty.",
-        InputErrorReason::ClipboardInvalidJson => {
-            "No input provided. Clipboard does not contain valid JSON."
+        InputErrorReason::ClipboardUnreadable => "Couldn't read the clipboard.",
+        InputErrorReason::ClipboardEmpty => "Clipboard is empty.",
+        InputErrorReason::ClipboardInvalidJson => "Clipboard contents aren't valid JSON.",
+        InputErrorReason::ClipboardPrimitive => {
+            "Clipboard JSON is a primitive (e.g. 42, \"x\", true) — needs an object or array."
         }
         InputErrorReason::NoStdin => "No input provided.",
     };

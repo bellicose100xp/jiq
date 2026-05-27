@@ -1,16 +1,17 @@
 ---
 source: src/app/app_render_tests/paste_recovery_render_tests.rs
+assertion_line: 44
 expression: output
 ---
 "╭ No JSON loaded ──────────────────────────────────────────────────────────────╮"
 "│ Invalid JSON: key must be a string at line 1 column 2                        │"
-"│                                                                              │"
-"│ Paste JSON below and press Enter to load.                                    │"
-"│                                                                              │"
-"│                                                                              │"
 "╰──────────────────────────────────────────────────────────────────────────────╯"
 "╭ Paste JSON [INSERT] ─────────────────────────────────────────────────────────╮"
 "│{not json                                                                     │"
+"│                                                                              │"
+"│                                                                              │"
+"│                                                                              │"
+"│                                                                              │"
 "│                                                                              │"
 "│                                                                              │"
 "│                                                                              │"

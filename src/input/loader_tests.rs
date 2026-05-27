@@ -203,12 +203,12 @@ fn test_input_load_error_clipboard_unreadable_message_shape() {
     let err = input_load_error(InputErrorReason::ClipboardUnreadable);
     match err {
         JiqError::Io(msg) => {
-            assert!(msg.contains("No input provided"));
-            assert!(msg.contains("Could not read the system clipboard"));
+            assert!(msg.contains("Couldn't read the clipboard"));
             assert!(msg.contains("Usage:"));
             assert!(msg.contains("jiq <file>"));
             assert!(msg.contains("cat data.json | jiq"));
             assert!(msg.contains("# load from system clipboard"));
+            // Internal implementation details must not leak to users.
             assert!(!msg.to_lowercase().contains("x11"));
             assert!(!msg.to_lowercase().contains("arboard"));
         }
@@ -227,7 +227,7 @@ fn test_input_load_error_clipboard_empty_distinguished_from_unreadable() {
         _ => panic!("expected Io"),
     };
 
-    assert!(unreadable.contains("Could not read"));
+    assert!(unreadable.contains("Couldn't read the clipboard"));
     assert!(empty.contains("Clipboard is empty"));
     assert_ne!(unreadable, empty);
 }
@@ -243,8 +243,8 @@ fn test_input_load_error_invalid_json_distinguishes_from_unreadable() {
         _ => panic!("expected Io"),
     };
 
-    assert!(invalid.contains("does not contain valid JSON"));
-    assert!(!unreadable.contains("does not contain valid JSON"));
+    assert!(invalid.contains("aren't valid JSON"));
+    assert!(!unreadable.contains("aren't valid JSON"));
 
     // All clipboard-failure variants share the three-line usage block so
     // users always see all valid invocation forms regardless of how they
@@ -273,6 +273,106 @@ fn test_input_load_error_no_stdin_message_shape() {
 fn test_validate_json_or_jsonl_rejects_plain_text() {
     let result = validate_json_or_jsonl("hello world");
     assert!(result.is_err());
+}
+
+// ============================================================================
+// Single-pass `scan_json_or_jsonl` — reports both validity and whether every
+// top-level value is an object or array, in one pass.
+// ============================================================================
+
+#[test]
+fn test_scan_object_is_container() {
+    let scan = scan_json_or_jsonl(r#"{"a": 1}"#).unwrap();
+    assert_eq!(scan.count, 1);
+    assert!(scan.all_containers);
+}
+
+#[test]
+fn test_scan_array_is_container() {
+    let scan = scan_json_or_jsonl(r#"[1, 2, 3]"#).unwrap();
+    assert_eq!(scan.count, 1);
+    assert!(scan.all_containers);
+}
+
+#[test]
+fn test_scan_bare_number_is_primitive() {
+    let scan = scan_json_or_jsonl("42").unwrap();
+    assert_eq!(scan.count, 1);
+    assert!(!scan.all_containers);
+}
+
+#[test]
+fn test_scan_bare_string_is_primitive() {
+    let scan = scan_json_or_jsonl(r#""hello""#).unwrap();
+    assert_eq!(scan.count, 1);
+    assert!(!scan.all_containers);
+}
+
+#[test]
+fn test_scan_bare_bool_is_primitive() {
+    let scan = scan_json_or_jsonl("true").unwrap();
+    assert_eq!(scan.count, 1);
+    assert!(!scan.all_containers);
+}
+
+#[test]
+fn test_scan_bare_null_is_primitive() {
+    let scan = scan_json_or_jsonl("null").unwrap();
+    assert_eq!(scan.count, 1);
+    assert!(!scan.all_containers);
+}
+
+#[test]
+fn test_scan_jsonl_all_containers() {
+    let jsonl = "{\"a\": 1}\n{\"b\": 2}\n[3, 4]";
+    let scan = scan_json_or_jsonl(jsonl).unwrap();
+    assert_eq!(scan.count, 3);
+    assert!(scan.all_containers);
+}
+
+#[test]
+fn test_scan_jsonl_with_one_primitive_rejects_all_containers() {
+    let jsonl = "{\"a\": 1}\n42\n{\"b\": 2}";
+    let scan = scan_json_or_jsonl(jsonl).unwrap();
+    assert_eq!(scan.count, 3);
+    assert!(
+        !scan.all_containers,
+        "JSONL with any primitive should set all_containers=false"
+    );
+}
+
+#[test]
+fn test_scan_parse_error_returns_err() {
+    let result = scan_json_or_jsonl(r#"{"a": invalid}"#);
+    assert!(matches!(result, Err(JiqError::InvalidJson(_))));
+}
+
+#[test]
+fn test_scan_empty_returns_err() {
+    let result = scan_json_or_jsonl("");
+    assert!(matches!(result, Err(JiqError::InvalidJson(_))));
+}
+
+#[test]
+fn test_scan_whitespace_only_returns_err() {
+    let result = scan_json_or_jsonl("  \n\t  ");
+    assert!(matches!(result, Err(JiqError::InvalidJson(_))));
+}
+
+// ============================================================================
+// ClipboardPrimitive error variant
+// ============================================================================
+
+#[test]
+fn test_input_load_error_clipboard_primitive_message() {
+    let err = input_load_error(InputErrorReason::ClipboardPrimitive);
+    match err {
+        JiqError::Io(msg) => {
+            assert!(msg.contains("primitive"));
+            assert!(msg.contains("object or array"));
+        }
+        other => panic!("expected JiqError::Io, got {:?}", other),
+    }
 }
 
 // ============================================================================

@@ -7,6 +7,60 @@ fn new_stores_error_message() {
     assert_eq!(state.error_message, "Clipboard is empty.");
 }
 
+// ============================================================================
+// Explicit-paste constructor (`new_explicit`) and mode discriminator.
+// ============================================================================
+
+#[test]
+fn new_recovery_mode_is_default() {
+    let state = PasteRecoveryState::new("err");
+    assert_eq!(state.mode, PasteRecoveryMode::Recovery);
+}
+
+#[test]
+fn new_explicit_uses_explicit_mode() {
+    let state = PasteRecoveryState::new_explicit();
+    assert_eq!(state.mode, PasteRecoveryMode::Explicit);
+}
+
+#[test]
+fn new_explicit_has_empty_message() {
+    // No info to show on plain --paste; the renderer suppresses the
+    // top block and the textarea claims the full screen.
+    let state = PasteRecoveryState::new_explicit();
+    assert!(state.error_message.is_empty());
+}
+
+#[test]
+fn new_explicit_with_context_carries_context() {
+    let state = PasteRecoveryState::new_explicit_with_context(Some("Clipboard is empty."));
+    assert_eq!(state.error_message, "Clipboard is empty.");
+}
+
+#[test]
+fn new_explicit_with_context_none_is_empty() {
+    let state = PasteRecoveryState::new_explicit_with_context(None);
+    assert!(state.error_message.is_empty());
+}
+
+#[test]
+fn try_submit_preserves_explicit_mode_on_failure() {
+    // A failed submit replaces error_message but must NOT flip the
+    // mode discriminator. The renderer keys off `mode` for styling, so
+    // a parse failure on an --paste invocation should still render in
+    // explicit (cyan) styling, not flip to recovery (red).
+    let mut state = PasteRecoveryState::new_explicit();
+    let _ = state.try_submit(r#"{"a": invalid}"#);
+    assert_eq!(state.mode, PasteRecoveryMode::Explicit);
+}
+
+#[test]
+fn try_submit_preserves_recovery_mode_on_failure() {
+    let mut state = PasteRecoveryState::new("clipboard failed");
+    let _ = state.try_submit(r#"{"a": invalid}"#);
+    assert_eq!(state.mode, PasteRecoveryMode::Recovery);
+}
+
 #[test]
 fn try_submit_with_valid_json_object_returns_ok() {
     let mut state = PasteRecoveryState::new("err");
@@ -34,6 +88,56 @@ fn try_submit_with_valid_jsonl_returns_ok() {
 fn try_submit_with_embedded_newlines_in_strings() {
     let mut state = PasteRecoveryState::new("err");
     assert!(state.try_submit(r#"{"a": "line1\nline2"}"#).is_ok());
+}
+
+// ============================================================================
+// Primitive-guard tests.
+//
+// Manual paste must reject bare primitives (42, "foo", true, null) for the
+// same reason clipboard load does: jq queries operate on objects/arrays.
+// Both paths use the shared `scan_json_or_jsonl` helper.
+// ============================================================================
+
+#[test]
+fn try_submit_rejects_bare_number() {
+    let mut state = PasteRecoveryState::new("err");
+    let result = state.try_submit("42");
+    assert!(result.is_err());
+    assert!(
+        state.error_message.contains("object or array"),
+        "got: {}",
+        state.error_message
+    );
+}
+
+#[test]
+fn try_submit_rejects_bare_string() {
+    let mut state = PasteRecoveryState::new("err");
+    assert!(state.try_submit(r#""hello""#).is_err());
+}
+
+#[test]
+fn try_submit_rejects_bare_bool() {
+    let mut state = PasteRecoveryState::new("err");
+    assert!(state.try_submit("true").is_err());
+}
+
+#[test]
+fn try_submit_rejects_bare_null() {
+    let mut state = PasteRecoveryState::new("err");
+    assert!(state.try_submit("null").is_err());
+}
+
+#[test]
+fn try_submit_rejects_jsonl_with_one_primitive() {
+    let mut state = PasteRecoveryState::new("err");
+    let result = state.try_submit("{\"a\": 1}\n42");
+    assert!(result.is_err());
+    assert!(
+        state.error_message.contains("object or array"),
+        "got: {}",
+        state.error_message
+    );
 }
 
 #[test]

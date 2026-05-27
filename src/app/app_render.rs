@@ -11,6 +11,20 @@ impl App {
         self.frame_count = self.frame_count.wrapping_add(1);
         self.layout_regions.clear();
 
+        // Source picker takes the whole screen until the user confirms
+        // a choice; bare TTY launches start here. Help popup still
+        // renders on top so F1 works from the picker.
+        if let Some(picker) = self.source_picker.as_ref() {
+            super::source_picker_render::render(picker, frame, frame.area());
+            if self.help.visible
+                && let Some(help_rect) = crate::help::help_popup_render::render_popup(self, frame)
+            {
+                self.layout_regions.help_popup = Some(help_rect);
+            }
+            render_notification(frame, &mut self.notification);
+            return;
+        }
+
         // Paste-recovery short-circuits the normal layout entirely.
         if self.paste_recovery.is_some() {
             // We render the live `app.input.textarea` here so all
