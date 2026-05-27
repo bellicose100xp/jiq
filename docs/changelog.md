@@ -17,6 +17,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.28.1] - 2026-05-27
+
+### Added
+- **`Ctrl+O Copy Result` hint surfaced on the global hint strip** ([#175](https://github.com/bellicose100xp/jiq/pull/175)) - The bottom hint row now advertises `Ctrl+O Copy Result` whenever the query input is focused (Insert and Normal modes), alongside the existing `Enter Output Result` and `Ctrl+Q Output Query` shortcuts. The keybinding itself is unchanged - `Ctrl+O` has copied the rendered results regardless of focus since v3.27.0 - but the shortcut had no presence on the always-visible hint strip, so users who wanted to copy the output without leaving the query box had to discover it through F1 help. Now the row reads `F1 Help • Ctrl+S Snippets • Ctrl+F Search • Enter Output Result • Ctrl+O Copy Result • Ctrl+Q Output Query • Ctrl+C Quit`. Help-line snapshot tests bumped from 120 to 130 columns so the full hint line is captured without trailing truncation.
+
 ## [3.28.0] - 2026-05-27
 
 ### Added
