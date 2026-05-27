@@ -17,6 +17,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.29.0] - 2026-05-27
+
+### Added
+- **`Ctrl+W` saves the current result to a file** ([#176](https://github.com/bellicose100xp/jiq/pull/176)) - A new global keybinding opens a save popup that writes the rendered jq result to disk. The path field starts pre-filled with `jiq-{timestamp}.json` resolved against the directory jiq was launched from, and the line below shows the fully expanded absolute path live as you type - `→ /path/...` (clean) becomes `⚠ File exists: /path/...` (red, with the bottom-border hint flipping from `Enter Save` to `Enter Overwrite`) the moment the typed path collides with something on disk. Edit the filename and the warning recovers in real time. Path expansion supports `~`, `$VAR` / `${VAR}`, `{timestamp}`, `{ext}`, `{cwd}`, absolute and relative inputs; surrounding whitespace is trimmed; long paths truncate from the front with `…` so the filename is always visible. Writes go through a sibling `.tmp-<pid>` + fsync + rename for atomicity, with an EXDEV fallback for cross-filesystem cases. Activation matches Ctrl+O Copy Result: works from any focus and any vim mode in the input pane, suppressed inside snippets / history / search / help popups.
+
+### Fixed
+- **Single-Enter clipboard load on the source picker** ([#176](https://github.com/bellicose100xp/jiq/pull/176)) - The smart source picker (added in v3.28.0) previously required two Enter presses to actually load the clipboard payload: the first set up the in-memory loader, but the cached bytes weren't drained into `QueryState` until the next iteration of the main event loop, which blocks on the next key. The first Enter now drains the loader synchronously so the JSON renders immediately.
+
 ## [3.28.1] - 2026-05-27
 
 ### Added

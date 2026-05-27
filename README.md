@@ -16,6 +16,7 @@
 - **AI assistant** — query suggestions, error fixes, natural-language input
 - **Context-aware autocomplete** — schema-aware fields with type hints
 - **Smart input picker** — peek your clipboard at launch, pick clipboard or paste
+- **Save result to file** — Ctrl+W writes the rendered output with a live path preview and inline overwrite warning
 - **Snippet library** — save and reuse jq queries
 - **Search in results** — find and navigate matches in the output
 - **Query history** — searchable history of successful queries
@@ -113,6 +114,7 @@ jiq --paste
 | `Shift+Tab` | Switch focus between Input and Results |
 | `Ctrl+Y` | Copy current query or results to clipboard (focus-aware) |
 | `Ctrl+O` | Copy results to clipboard regardless of focus |
+| `Ctrl+W` | Save result to file (live path preview, overwrite warning) |
 | `yy` | Copy current query or results to clipboard (NORMAL mode) |
 | `Ctrl+T` | Toggle function tooltip (when cursor is on a function) |
 | `Ctrl+E` | Toggle error overlay (when syntax error exists) |
