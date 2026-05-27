@@ -7,6 +7,46 @@ fn new_stores_error_message() {
     assert_eq!(state.error_message, "Clipboard is empty.");
 }
 
+// ============================================================================
+// Explicit-paste constructor (`new_explicit`) and mode discriminator.
+// ============================================================================
+
+#[test]
+fn new_recovery_mode_is_default() {
+    let state = PasteRecoveryState::new("err");
+    assert_eq!(state.mode, PasteRecoveryMode::Recovery);
+}
+
+#[test]
+fn new_explicit_uses_explicit_mode() {
+    let state = PasteRecoveryState::new_explicit();
+    assert_eq!(state.mode, PasteRecoveryMode::Explicit);
+}
+
+#[test]
+fn new_explicit_uses_banner_constant() {
+    let state = PasteRecoveryState::new_explicit();
+    assert_eq!(state.error_message, EXPLICIT_PASTE_BANNER);
+}
+
+#[test]
+fn try_submit_preserves_explicit_mode_on_failure() {
+    // A failed submit replaces error_message but must NOT flip the
+    // mode discriminator. The renderer keys off `mode` for styling, so
+    // a parse failure on an --paste invocation should still render in
+    // explicit (cyan) styling, not flip to recovery (red).
+    let mut state = PasteRecoveryState::new_explicit();
+    let _ = state.try_submit(r#"{"a": invalid}"#);
+    assert_eq!(state.mode, PasteRecoveryMode::Explicit);
+}
+
+#[test]
+fn try_submit_preserves_recovery_mode_on_failure() {
+    let mut state = PasteRecoveryState::new("clipboard failed");
+    let _ = state.try_submit(r#"{"a": invalid}"#);
+    assert_eq!(state.mode, PasteRecoveryMode::Recovery);
+}
+
 #[test]
 fn try_submit_with_valid_json_object_returns_ok() {
     let mut state = PasteRecoveryState::new("err");
@@ -37,7 +77,7 @@ fn try_submit_with_embedded_newlines_in_strings() {
 }
 
 // ============================================================================
-// Primitive-guard tests (Phase 1 — H2)
+// Primitive-guard tests.
 //
 // Manual paste must reject bare primitives (42, "foo", true, null) for the
 // same reason clipboard load does: jq queries operate on objects/arrays.

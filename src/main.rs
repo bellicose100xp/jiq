@@ -44,7 +44,7 @@ mod widgets;
 
 use app::{App, OutputMode};
 use error::JiqError;
-use input::FileLoader;
+use input::{FileLoader, PasteRecoveryState};
 use query::executor::JqExecutor;
 
 /// Interactive JSON query tool
@@ -65,8 +65,7 @@ struct Args {
 
     /// Drop straight into manual-paste mode without reading the
     /// clipboard. Mutually exclusive with --clipboard; cannot be
-    /// combined with piped stdin (rejected with exit code 2). No-op
-    /// until the explicit-paste UI lands in Phase 2.
+    /// combined with piped stdin (rejected with exit code 2).
     #[arg(long, conflicts_with = "clipboard")]
     paste: bool,
 
@@ -128,27 +127,24 @@ fn main() -> Result<()> {
         std::process::exit(2);
     }
 
-    // Clipboard fallback runs *before* init_terminal so OSC 52 read can briefly
-    // own raw stdin without racing the main event loop. File and stdin paths
-    // stay deferred so a large input never blocks the splash screen.
+    // Resolve the input source before `init_terminal()`. Clipboard
+    // reads MUST happen pre-init: the OSC 52 fallback toggles raw mode
+    // around its read, and crossterm's `disable_raw_mode()` does not
+    // preserve `EnableBracketedPaste`. Doing the read after init would
+    // wipe bracketed-paste support for the rest of the session, which
+    // makes large pastes inside the recovery textarea arrive byte by
+    // byte instead of as a single `Event::Paste`.
     //
-    // `--paste` is parsed but a no-op in Phase 1 — bare TTY plus
-    // `--paste` falls through to the same clipboard read as today,
-    // pending Phase 2's explicit-paste UI.
-    let loader = if let Some(ref path) = args.input {
-        log::debug!("File loader spawned for: {:?}", path);
-        FileLoader::spawn_load(path.clone())
-    } else if !std::io::IsTerminal::is_terminal(&std::io::stdin()) {
-        log::debug!("File loader spawned for stdin");
-        FileLoader::spawn_load_stdin()
-    } else {
-        log::debug!("Loading clipboard synchronously (no argument, no piped stdin)");
-        FileLoader::load_clipboard_blocking()
-    };
-
+    // File and stdin loads stay deferred so a large input never blocks
+    // the splash. `--paste` skips the clipboard entirely.
+    let pre_input = resolve_pre_input(&args);
     let terminal = init_terminal()?;
-
-    let app = App::new_with_loader(loader, &config_result.config);
+    let app = match pre_input {
+        PreInput::Loader(loader) => App::new_with_loader(loader, &config_result.config),
+        PreInput::PasteRecovery(state) => {
+            App::new_with_paste_recovery(state, &config_result.config)
+        }
+    };
     let result = run(terminal, app, config_result);
 
     restore_terminal()?;
@@ -166,6 +162,36 @@ fn main() -> Result<()> {
 fn validate_jq_exists() -> Result<(), JiqError> {
     which::which("jq").map_err(|_| JiqError::JqNotFound)?;
     Ok(())
+}
+
+/// What jiq has lined up before the TUI starts: either a `FileLoader`
+/// (file/stdin/clipboard) or an explicit paste-recovery state. Resolved
+/// pre-init so any blocking clipboard read happens before crossterm's
+/// raw-mode + bracketed-paste handshake.
+enum PreInput {
+    Loader(FileLoader),
+    PasteRecovery(PasteRecoveryState),
+}
+
+/// Decide which pre-input the user asked for and produce it. Runs
+/// before `init_terminal()` because the clipboard branch may briefly
+/// own raw stdin (OSC 52 fallback); doing this after init would wipe
+/// the terminal's bracketed-paste mode for the rest of the session.
+fn resolve_pre_input(args: &Args) -> PreInput {
+    if args.paste {
+        log::debug!("Entering explicit paste mode (--paste)");
+        return PreInput::PasteRecovery(PasteRecoveryState::new_explicit());
+    }
+    if let Some(ref path) = args.input {
+        log::debug!("File loader spawned for: {:?}", path);
+        return PreInput::Loader(FileLoader::spawn_load(path.clone()));
+    }
+    if !std::io::IsTerminal::is_terminal(&std::io::stdin()) {
+        log::debug!("File loader spawned for stdin");
+        return PreInput::Loader(FileLoader::spawn_load_stdin());
+    }
+    log::debug!("Loading clipboard synchronously (no argument, no piped stdin)");
+    PreInput::Loader(FileLoader::load_clipboard_blocking())
 }
 
 /// Render the H1 "ambiguous input source" error to stderr with ANSI

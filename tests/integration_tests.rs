@@ -68,12 +68,12 @@ fn test_cli_version_flag() {
 }
 
 // ============================================================================
-// Phase 1 — H1 hard-error: --clipboard / --paste with piped stdin
+// Ambiguous input source — hard-error.
 //
-// Piped stdin combined with an explicit source flag is contradictory; jiq
-// refuses to launch and exits with code 2. The error must land on stderr
-// before the alt screen is entered, so the message is visible in the
-// user's normal terminal.
+// `--clipboard` / `--paste` combined with another input source (file argument
+// or piped stdin) is contradictory; jiq refuses to launch and exits with
+// code 2. The error must land on stderr before the alt screen is entered,
+// so the message is visible in the user's normal terminal.
 // ============================================================================
 
 #[test]

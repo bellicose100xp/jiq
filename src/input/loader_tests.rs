@@ -276,7 +276,8 @@ fn test_validate_json_or_jsonl_rejects_plain_text() {
 }
 
 // ============================================================================
-// scan_json_or_jsonl Tests (Phase 1 — M4 single-pass scan)
+// Single-pass `scan_json_or_jsonl` — reports both validity and whether every
+// top-level value is an object or array, in one pass.
 // ============================================================================
 
 #[test]

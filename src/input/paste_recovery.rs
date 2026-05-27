@@ -27,26 +27,63 @@ use super::loader::scan_json_or_jsonl;
 pub const PASTE_RECOVERY_MAX_BYTES: usize = 16 * 1024 * 1024;
 
 /// Banner text shown above the textarea when the user enters paste-
-/// recovery deliberately (via `--paste` flag or the smart picker's Paste
-/// option), as opposed to the failure-recovery path. Single source of
-/// truth so Phase 2's `new_explicit` constructor and any future
+/// recovery deliberately (via `--paste` flag or the source picker's
+/// Paste option), as opposed to the failure-recovery path. Single
+/// source of truth so the `new_explicit` constructor and any future
 /// caller stay in sync.
-#[allow(dead_code)] // Wired in Phase 2 (--paste UI).
 pub const EXPLICIT_PASTE_BANNER: &str = "Paste JSON below and press Enter to load.";
+
+/// Why paste-recovery is on screen.
+///
+/// `Recovery` is the existing failure-recovery path: clipboard couldn't
+/// be read, came back empty, or contained invalid/primitive JSON. We
+/// render with a red error border and a "No JSON loaded" title because
+/// something *did* go wrong.
+///
+/// `Explicit` is the user deliberately asking for paste mode (via
+/// `--paste` or the source picker's Paste option). Nothing has failed;
+/// render with a calm cyan border and a neutral "Paste JSON" title so
+/// it doesn't look like an error screen.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PasteRecoveryMode {
+    Recovery,
+    Explicit,
+}
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PasteRecoveryState {
-    /// Top-of-screen error message. Starts as the loader's diagnosis line
-    /// (e.g. "Clipboard does not contain valid JSON.") and is replaced by
-    /// the parse error after a failed submit attempt
-    /// ("Invalid JSON: expected `,` at line 3 column 5").
+    /// Top-of-screen message. In `Recovery` mode this starts as the
+    /// loader's diagnosis line (e.g. "Clipboard does not contain valid
+    /// JSON.") and is replaced by the parse error after a failed
+    /// submit ("Invalid JSON: expected `,` at line 3 column 5"). In
+    /// `Explicit` mode it starts as [`EXPLICIT_PASTE_BANNER`] and is
+    /// only replaced when a parse fails.
     pub error_message: String,
+    /// Whether the user landed here from a clipboard failure
+    /// (`Recovery`) or asked for paste explicitly (`Explicit`). Drives
+    /// the renderer's title / border color choice.
+    pub mode: PasteRecoveryMode,
 }
 
 impl PasteRecoveryState {
+    /// Construct a recovery-mode state — used when something went
+    /// wrong reading the clipboard. `error_message` is shown in the
+    /// red top block.
     pub fn new(error_message: impl Into<String>) -> Self {
         Self {
             error_message: error_message.into(),
+            mode: PasteRecoveryMode::Recovery,
+        }
+    }
+
+    /// Construct an explicit-paste state — used when the user asked
+    /// for paste mode deliberately (via `--paste` or the picker's
+    /// Paste option). Top block shows [`EXPLICIT_PASTE_BANNER`] until
+    /// a parse error replaces it.
+    pub fn new_explicit() -> Self {
+        Self {
+            error_message: EXPLICIT_PASTE_BANNER.to_string(),
+            mode: PasteRecoveryMode::Explicit,
         }
     }
 

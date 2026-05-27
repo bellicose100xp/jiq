@@ -7,6 +7,7 @@ use tui_textarea::TextArea;
 
 use crate::editor::EditorMode;
 use crate::input::PasteRecoveryState;
+use crate::input::paste_recovery::PasteRecoveryMode;
 use crate::theme;
 
 /// Render the paste-recovery view as a full replacement for the normal
@@ -32,26 +33,49 @@ pub fn render(
 }
 
 fn render_error_block(state: &PasteRecoveryState, frame: &mut Frame, area: Rect) {
+    // Recovery mode (clipboard failure): red border, "No JSON loaded"
+    // title, message styled as an error.
+    // Explicit mode (--paste / picker→Paste): cyan border, neutral
+    // "Paste JSON" title, message styled as plain instructions.
+    let (title, border_color, message_color, show_secondary_hint) = match state.mode {
+        PasteRecoveryMode::Recovery => (
+            " No JSON loaded ",
+            theme::input::BORDER_ERROR,
+            theme::input::BORDER_ERROR,
+            true,
+        ),
+        PasteRecoveryMode::Explicit => (
+            " Paste JSON ",
+            theme::input::MODE_INSERT,
+            theme::palette::TEXT,
+            false,
+        ),
+    };
+
     let block = Block::default()
         .borders(Borders::ALL)
         .border_type(BorderType::Rounded)
-        .title(" No JSON loaded ")
-        .border_style(Style::default().fg(theme::input::BORDER_ERROR))
+        .title(title)
+        .border_style(Style::default().fg(border_color))
         .padding(Padding::horizontal(1));
 
-    let lines: Vec<Line<'_>> = vec![
-        Line::from(Span::styled(
-            state.error_message.clone(),
-            Style::default()
-                .fg(theme::input::BORDER_ERROR)
-                .add_modifier(Modifier::BOLD),
-        )),
-        Line::raw(""),
-        Line::from(Span::styled(
+    let mut lines: Vec<Line<'_>> = vec![Line::from(Span::styled(
+        state.error_message.clone(),
+        Style::default()
+            .fg(message_color)
+            .add_modifier(Modifier::BOLD),
+    ))];
+    // Recovery mode echoes the failure diagnosis on the first line and
+    // needs a secondary hint telling the user what to do next. Explicit
+    // mode's first-line message ("Paste JSON below and press Enter to
+    // load.") is already that hint; a second copy is just clutter.
+    if show_secondary_hint {
+        lines.push(Line::raw(""));
+        lines.push(Line::from(Span::styled(
             "Paste JSON below and press Enter to load.",
             Style::default().fg(theme::palette::TEXT),
-        )),
-    ];
+        )));
+    }
 
     let paragraph = Paragraph::new(lines)
         .block(block)

@@ -77,8 +77,23 @@ pub struct App {
 }
 
 impl App {
-    /// Create App with deferred file loading
+    /// Create App with deferred file loading.
     pub fn new_with_loader(loader: FileLoader, config: &Config) -> Self {
+        Self::new_with_pre_input(Some(loader), None, config)
+    }
+
+    /// Create App that drops directly into the manual paste-recovery
+    /// flow, without first reading the clipboard. Used by `--paste` and
+    /// the source picker's Paste option.
+    pub fn new_with_paste_recovery(state: PasteRecoveryState, config: &Config) -> Self {
+        Self::new_with_pre_input(None, Some(state), config)
+    }
+
+    fn new_with_pre_input(
+        loader: Option<FileLoader>,
+        paste_recovery: Option<PasteRecoveryState>,
+        config: &Config,
+    ) -> Self {
         let anthropic_configured =
             config.ai.anthropic.api_key.is_some() && config.ai.anthropic.model.is_some();
         let bedrock_configured =
@@ -150,8 +165,8 @@ impl App {
         Self {
             input: InputState::new(),
             query: None,
-            file_loader: Some(loader),
-            paste_recovery: None,
+            file_loader: loader,
+            paste_recovery,
             focus: Focus::InputField,
             results_scroll: ScrollState::new(),
             results_cursor: CursorState::new(),
