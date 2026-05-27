@@ -1,6 +1,5 @@
 ---
 source: src/app/app_render_tests/basic_ui_tests.rs
-assertion_line: 80
 expression: output
 ---
 "╭ Object ──────────────────────────────────────────────────────────────────────╮"
@@ -26,4 +25,4 @@ expression: output
 "╭ Query [NORMAL] (press 'i' to edit) ───────────────────── Ctrl+A AI Assistant ╮"
 "│                                                                              │"
 "╰t+Tab Navigate Results • Ctrl+P Previous Query • Ctrl+N Next Query • Ctrl+R Hi╯"
-" F1/? Help • Ctrl+S Snippets • Ctrl+F Search • Enter Output Result • Ctrl+Q Outp"
+" F1/? Help • Ctrl+S Snippets • Ctrl+F Search • Enter Output Result • Ctrl+O Copy"

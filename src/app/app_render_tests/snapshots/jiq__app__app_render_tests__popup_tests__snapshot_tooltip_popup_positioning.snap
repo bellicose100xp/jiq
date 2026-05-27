@@ -1,6 +1,5 @@
 ---
 source: src/app/app_render_tests/popup_tests.rs
-assertion_line: 186
 expression: output
 ---
 "╭ Object ──────────────────────────────────────────────────────────────────────────────────────────────────────────────╮"
@@ -32,4 +31,4 @@ expression: output
 "╭ Query [INSERT] ───────────────────────────────────────────────────────────────────────────────── Ctrl+A AI Assistant ╮"
 "│                                                                                                                      │"
 "╰────────────── Shift+Tab Navigate Results • Ctrl+P Previous Query • Ctrl+N Next Query • Ctrl+R History ───────────────╯"
-" F1 Help • Ctrl+S Snippets • Ctrl+F Search • Enter Output Result • Ctrl+Q Output Query • Ctrl+C Quit                    "
+" F1 Help • Ctrl+S Snippets • Ctrl+F Search • Enter Output Result • Ctrl+O Copy Result • Ctrl+Q Output Query • Ctrl+C Qui"

@@ -30,7 +30,7 @@ fn snapshot_help_line_insert_mode_empty_query() {
     app.focus = Focus::InputField;
     app.input.editor_mode = EditorMode::Insert;
 
-    let output = render_help_line_to_string(&app, 120, 1);
+    let output = render_help_line_to_string(&app, 130, 1);
     assert_snapshot!(output);
 }
 
@@ -45,7 +45,7 @@ fn snapshot_help_line_insert_mode_with_query() {
         query_state.execute(".foo");
     }
 
-    let output = render_help_line_to_string(&app, 120, 1);
+    let output = render_help_line_to_string(&app, 130, 1);
     assert_snapshot!(output);
 }
 
@@ -55,7 +55,7 @@ fn snapshot_help_line_normal_mode() {
     app.focus = Focus::InputField;
     app.input.editor_mode = EditorMode::Normal;
 
-    let output = render_help_line_to_string(&app, 120, 1);
+    let output = render_help_line_to_string(&app, 130, 1);
     assert_snapshot!(output);
 }
 
