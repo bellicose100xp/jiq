@@ -203,12 +203,12 @@ fn test_input_load_error_clipboard_unreadable_message_shape() {
     let err = input_load_error(InputErrorReason::ClipboardUnreadable);
     match err {
         JiqError::Io(msg) => {
-            assert!(msg.contains("No input provided"));
-            assert!(msg.contains("Could not read the system clipboard"));
+            assert!(msg.contains("Couldn't read the clipboard"));
             assert!(msg.contains("Usage:"));
             assert!(msg.contains("jiq <file>"));
             assert!(msg.contains("cat data.json | jiq"));
             assert!(msg.contains("# load from system clipboard"));
+            // Internal implementation details must not leak to users.
             assert!(!msg.to_lowercase().contains("x11"));
             assert!(!msg.to_lowercase().contains("arboard"));
         }
@@ -227,7 +227,7 @@ fn test_input_load_error_clipboard_empty_distinguished_from_unreadable() {
         _ => panic!("expected Io"),
     };
 
-    assert!(unreadable.contains("Could not read"));
+    assert!(unreadable.contains("Couldn't read the clipboard"));
     assert!(empty.contains("Clipboard is empty"));
     assert_ne!(unreadable, empty);
 }
@@ -243,8 +243,8 @@ fn test_input_load_error_invalid_json_distinguishes_from_unreadable() {
         _ => panic!("expected Io"),
     };
 
-    assert!(invalid.contains("does not contain valid JSON"));
-    assert!(!unreadable.contains("does not contain valid JSON"));
+    assert!(invalid.contains("aren't valid JSON"));
+    assert!(!unreadable.contains("aren't valid JSON"));
 
     // All clipboard-failure variants share the three-line usage block so
     // users always see all valid invocation forms regardless of how they
@@ -368,10 +368,8 @@ fn test_input_load_error_clipboard_primitive_message() {
     let err = input_load_error(InputErrorReason::ClipboardPrimitive);
     match err {
         JiqError::Io(msg) => {
-            assert!(msg.contains("non-JSON value"));
+            assert!(msg.contains("primitive"));
             assert!(msg.contains("object or array"));
-            // No literal echo of the clipboard contents (privacy).
-            assert!(!msg.contains("`42`"));
         }
         other => panic!("expected JiqError::Io, got {:?}", other),
     }

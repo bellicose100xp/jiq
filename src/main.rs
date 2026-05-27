@@ -44,7 +44,8 @@ mod widgets;
 
 use app::{App, OutputMode};
 use error::JiqError;
-use input::{FileLoader, PasteRecoveryState};
+use input::loader::peek_clipboard;
+use input::{FileLoader, PasteRecoveryState, SourcePickerState};
 use query::executor::JqExecutor;
 
 /// Interactive JSON query tool
@@ -144,6 +145,7 @@ fn main() -> Result<()> {
         PreInput::PasteRecovery(state) => {
             App::new_with_paste_recovery(state, &config_result.config)
         }
+        PreInput::Picker(state) => App::new_with_source_picker(state, &config_result.config),
     };
     let result = run(terminal, app, config_result);
 
@@ -164,19 +166,30 @@ fn validate_jq_exists() -> Result<(), JiqError> {
     Ok(())
 }
 
-/// What jiq has lined up before the TUI starts: either a `FileLoader`
-/// (file/stdin/clipboard) or an explicit paste-recovery state. Resolved
-/// pre-init so any blocking clipboard read happens before crossterm's
-/// raw-mode + bracketed-paste handshake.
+/// What jiq has lined up before the TUI starts: a deferred file/stdin
+/// loader, an immediate paste-recovery editor, or the source picker.
+/// Resolved pre-init so any blocking clipboard read happens before
+/// crossterm's raw-mode + bracketed-paste handshake.
 enum PreInput {
     Loader(FileLoader),
     PasteRecovery(PasteRecoveryState),
+    Picker(SourcePickerState),
 }
 
 /// Decide which pre-input the user asked for and produce it. Runs
-/// before `init_terminal()` because the clipboard branch may briefly
-/// own raw stdin (OSC 52 fallback); doing this after init would wipe
-/// the terminal's bracketed-paste mode for the rest of the session.
+/// before `init_terminal()` because the clipboard read (whether for
+/// the picker peek or `--clipboard` direct load) may briefly own raw
+/// stdin via the OSC 52 fallback; doing this after init would wipe
+/// bracketed-paste support for the rest of the session.
+///
+/// On bare TTY launches we peek the clipboard once, then choose
+/// between the picker and a direct-to-paste shortcut: showing the
+/// picker only makes sense when the Clipboard option is actually
+/// usable. If the clipboard is unreadable / empty / invalid /
+/// primitive, the Clipboard option can't be confirmed anyway, so we
+/// skip the chooser entirely and drop straight into the explicit-paste
+/// editor with a context line explaining what jiq saw on the
+/// clipboard.
 fn resolve_pre_input(args: &Args) -> PreInput {
     if args.paste {
         log::debug!("Entering explicit paste mode (--paste)");
@@ -190,8 +203,20 @@ fn resolve_pre_input(args: &Args) -> PreInput {
         log::debug!("File loader spawned for stdin");
         return PreInput::Loader(FileLoader::spawn_load_stdin());
     }
-    log::debug!("Loading clipboard synchronously (no argument, no piped stdin)");
-    PreInput::Loader(FileLoader::load_clipboard_blocking())
+    if args.clipboard {
+        log::debug!("Loading clipboard synchronously (forced via --clipboard)");
+        return PreInput::Loader(FileLoader::load_clipboard_blocking());
+    }
+    log::debug!("Bare TTY launch — peeking clipboard for source picker");
+    let peek = peek_clipboard();
+    if peek.is_usable() {
+        PreInput::Picker(SourcePickerState::from_peek(peek))
+    } else {
+        log::debug!("Clipboard not usable; jumping straight to explicit paste");
+        PreInput::PasteRecovery(PasteRecoveryState::new_explicit_with_context(
+            peek.failure_context(),
+        ))
+    }
 }
 
 /// Render the H1 "ambiguous input source" error to stderr with ANSI

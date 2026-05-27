@@ -7,6 +7,7 @@ mod mouse_events;
 mod mouse_hover;
 mod mouse_scroll;
 mod paste_recovery_render;
+mod source_picker_render;
 
 #[cfg(test)]
 mod app_render_tests;

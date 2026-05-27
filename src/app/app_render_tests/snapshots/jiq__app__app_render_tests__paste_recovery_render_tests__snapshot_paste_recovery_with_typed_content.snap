@@ -1,19 +1,20 @@
 ---
 source: src/app/app_render_tests/paste_recovery_render_tests.rs
+assertion_line: 55
 expression: output
 ---
 "╭ No JSON loaded ──────────────────────────────────────────────────────────────╮"
 "│ No input provided. Clipboard does not contain valid JSON.                    │"
-"│                                                                              │"
-"│ Paste JSON below and press Enter to load.                                    │"
-"│                                                                              │"
-"│                                                                              │"
 "╰──────────────────────────────────────────────────────────────────────────────╯"
 "╭ Paste JSON [INSERT] ─────────────────────────────────────────────────────────╮"
 "│{                                                                             │"
 "│  "name": "Alice",                                                            │"
 "│  "age": 30                                                                   │"
 "│}                                                                             │"
+"│                                                                              │"
+"│                                                                              │"
+"│                                                                              │"
+"│                                                                              │"
 "│                                                                              │"
 "│                                                                              │"
 "│                                                                              │"

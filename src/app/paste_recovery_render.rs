@@ -24,32 +24,55 @@ pub fn render(
     frame: &mut Frame,
     area: Rect,
 ) -> Rect {
-    let layout = Layout::vertical([Constraint::Length(7), Constraint::Min(3)]).split(area);
+    // Top block height is data-driven, sized to the message body plus
+    // two border rows. Returns 0 when there's nothing to say (plain
+    // explicit-paste invocation), in which case the textarea claims
+    // the full screen — its title and placeholder already communicate
+    // what to do, so an empty info box would just be visual noise.
+    let top_height = top_block_height(state);
+    if top_height == 0 {
+        render_textarea(textarea, editor_mode, frame, area);
+        return area;
+    }
+    let layout = Layout::vertical([Constraint::Length(top_height), Constraint::Min(3)]).split(area);
 
-    render_error_block(state, frame, layout[0]);
+    render_top_block(state, frame, layout[0]);
     render_textarea(textarea, editor_mode, frame, layout[1]);
 
     area
 }
 
-fn render_error_block(state: &PasteRecoveryState, frame: &mut Frame, area: Rect) {
+/// Pick a height for the top info / error block based on how many
+/// content rows it'll actually render. Returns 0 when the block
+/// should be suppressed entirely (Explicit mode with no context line).
+fn top_block_height(state: &PasteRecoveryState) -> u16 {
+    if state.error_message.is_empty() {
+        return 0;
+    }
+    // Two border rows + the joined message lines. Capped so a
+    // pathological multi-line message can't push the textarea
+    // off-screen.
+    let body_lines = state.error_message.split('\n').count() as u16;
+    (body_lines + 2).clamp(3, 8)
+}
+
+fn render_top_block(state: &PasteRecoveryState, frame: &mut Frame, area: Rect) {
     // Recovery mode (clipboard failure): red border, "No JSON loaded"
     // title, message styled as an error.
-    // Explicit mode (--paste / picker→Paste): cyan border, neutral
-    // "Paste JSON" title, message styled as plain instructions.
-    let (title, border_color, message_color, show_secondary_hint) = match state.mode {
+    // Explicit mode (--paste / picker→Paste fallback with context):
+    // cyan border, neutral "Info" title — the box below this one is
+    // titled "Paste JSON", so we deliberately avoid the same title
+    // here. The textarea's own title and placeholder already tell the
+    // user "paste JSON, press Enter to load", so the info box never
+    // needs to repeat that instruction; it carries only the
+    // diagnosis / context that's NEW to this screen.
+    let (title, border_color, message_color) = match state.mode {
         PasteRecoveryMode::Recovery => (
             " No JSON loaded ",
             theme::input::BORDER_ERROR,
             theme::input::BORDER_ERROR,
-            true,
         ),
-        PasteRecoveryMode::Explicit => (
-            " Paste JSON ",
-            theme::input::MODE_INSERT,
-            theme::palette::TEXT,
-            false,
-        ),
+        PasteRecoveryMode::Explicit => (" Info ", theme::input::MODE_INSERT, theme::palette::TEXT),
     };
 
     let block = Block::default()
@@ -59,23 +82,21 @@ fn render_error_block(state: &PasteRecoveryState, frame: &mut Frame, area: Rect)
         .border_style(Style::default().fg(border_color))
         .padding(Padding::horizontal(1));
 
-    let mut lines: Vec<Line<'_>> = vec![Line::from(Span::styled(
-        state.error_message.clone(),
-        Style::default()
-            .fg(message_color)
-            .add_modifier(Modifier::BOLD),
-    ))];
-    // Recovery mode echoes the failure diagnosis on the first line and
-    // needs a secondary hint telling the user what to do next. Explicit
-    // mode's first-line message ("Paste JSON below and press Enter to
-    // load.") is already that hint; a second copy is just clutter.
-    if show_secondary_hint {
-        lines.push(Line::raw(""));
-        lines.push(Line::from(Span::styled(
-            "Paste JSON below and press Enter to load.",
-            Style::default().fg(theme::palette::TEXT),
-        )));
-    }
+    // Split on '\n' so callers can pack multiple lines into
+    // `error_message` if needed (a parse error spanning multiple lines,
+    // for instance). Each line gets the same styling.
+    let lines: Vec<Line<'_>> = state
+        .error_message
+        .split('\n')
+        .map(|line| {
+            Line::from(Span::styled(
+                line.to_string(),
+                Style::default()
+                    .fg(message_color)
+                    .add_modifier(Modifier::BOLD),
+            ))
+        })
+        .collect();
 
     let paragraph = Paragraph::new(lines)
         .block(block)

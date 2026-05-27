@@ -24,9 +24,23 @@ fn new_explicit_uses_explicit_mode() {
 }
 
 #[test]
-fn new_explicit_uses_banner_constant() {
+fn new_explicit_has_empty_message() {
+    // No info to show on plain --paste; the renderer suppresses the
+    // top block and the textarea claims the full screen.
     let state = PasteRecoveryState::new_explicit();
-    assert_eq!(state.error_message, EXPLICIT_PASTE_BANNER);
+    assert!(state.error_message.is_empty());
+}
+
+#[test]
+fn new_explicit_with_context_carries_context() {
+    let state = PasteRecoveryState::new_explicit_with_context(Some("Clipboard is empty."));
+    assert_eq!(state.error_message, "Clipboard is empty.");
+}
+
+#[test]
+fn new_explicit_with_context_none_is_empty() {
+    let state = PasteRecoveryState::new_explicit_with_context(None);
+    assert!(state.error_message.is_empty());
 }
 
 #[test]

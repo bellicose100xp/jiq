@@ -4,7 +4,7 @@ use crate::config::{ClipboardBackend, Config};
 use crate::help::HelpPopupState;
 use crate::history::HistoryState;
 use crate::input::loader::LoaderSource;
-use crate::input::{FileLoader, InputState, PasteRecoveryState};
+use crate::input::{FileLoader, InputState, PasteRecoveryState, SourcePickerState};
 use crate::layout::LayoutRegions;
 use crate::notification::NotificationState;
 use crate::path_at_cursor::PathAtCursorCache;
@@ -34,6 +34,7 @@ pub struct App {
     pub query: Option<QueryState>,
     pub file_loader: Option<FileLoader>,
     pub paste_recovery: Option<PasteRecoveryState>,
+    pub source_picker: Option<SourcePickerState>,
     pub focus: Focus,
     pub results_scroll: ScrollState,
     pub results_cursor: CursorState,
@@ -79,19 +80,29 @@ pub struct App {
 impl App {
     /// Create App with deferred file loading.
     pub fn new_with_loader(loader: FileLoader, config: &Config) -> Self {
-        Self::new_with_pre_input(Some(loader), None, config)
+        Self::new_with_pre_input(Some(loader), None, None, config)
     }
 
     /// Create App that drops directly into the manual paste-recovery
     /// flow, without first reading the clipboard. Used by `--paste` and
     /// the source picker's Paste option.
     pub fn new_with_paste_recovery(state: PasteRecoveryState, config: &Config) -> Self {
-        Self::new_with_pre_input(None, Some(state), config)
+        Self::new_with_pre_input(None, Some(state), None, config)
+    }
+
+    /// Create App that opens with the source picker visible. Used on
+    /// bare TTY launches (no file argument, no piped stdin, no
+    /// `--clipboard` / `--paste`). The picker holds its own
+    /// launch-time clipboard snapshot so the post-confirm load doesn't
+    /// re-read the clipboard.
+    pub fn new_with_source_picker(state: SourcePickerState, config: &Config) -> Self {
+        Self::new_with_pre_input(None, None, Some(state), config)
     }
 
     fn new_with_pre_input(
         loader: Option<FileLoader>,
         paste_recovery: Option<PasteRecoveryState>,
+        source_picker: Option<SourcePickerState>,
         config: &Config,
     ) -> Self {
         let anthropic_configured =
@@ -166,6 +177,7 @@ impl App {
             input: InputState::new(),
             query: None,
             file_loader: loader,
+            source_picker,
             paste_recovery,
             focus: Focus::InputField,
             results_scroll: ScrollState::new(),
@@ -201,6 +213,37 @@ impl App {
             double_click: super::double_click::DoubleClickTracker::new(),
             back_button_hovered: false,
         }
+    }
+
+    /// Commit the source picker's currently-highlighted choice and
+    /// transition the app into the matching pre-input state. Called on
+    /// Enter / mouse click / `c` / `p`.
+    ///
+    /// Clipboard branch reuses the cached bytes from the launch peek,
+    /// so the system clipboard is never re-read. Paste branch enters
+    /// the explicit-paste editor (cyan border, neutral title).
+    pub fn confirm_source_picker(&mut self) {
+        let Some(picker) = self.source_picker.take() else {
+            return;
+        };
+        match picker.selection {
+            crate::input::SourceChoice::Clipboard => {
+                if let Some(bytes) = picker.clipboard_cache {
+                    self.file_loader = Some(FileLoader::from_clipboard_string(bytes));
+                } else {
+                    // Picker only allows confirming Clipboard when the
+                    // cache is non-empty (peek was Usable). If we ever
+                    // arrive here, fall back to a fresh read so the
+                    // user isn't left in a stuck state.
+                    log::warn!("confirm_source_picker: Clipboard chosen with no cache; re-reading");
+                    self.file_loader = Some(FileLoader::load_clipboard_blocking());
+                }
+            }
+            crate::input::SourceChoice::Paste => {
+                self.paste_recovery = Some(PasteRecoveryState::new_explicit());
+            }
+        }
+        self.mark_dirty();
     }
 
     /// Poll file loader and initialize QueryState when complete

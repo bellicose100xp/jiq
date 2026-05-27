@@ -26,13 +26,6 @@ use super::loader::scan_json_or_jsonl;
 /// the event loop on each insert).
 pub const PASTE_RECOVERY_MAX_BYTES: usize = 16 * 1024 * 1024;
 
-/// Banner text shown above the textarea when the user enters paste-
-/// recovery deliberately (via `--paste` flag or the source picker's
-/// Paste option), as opposed to the failure-recovery path. Single
-/// source of truth so the `new_explicit` constructor and any future
-/// caller stay in sync.
-pub const EXPLICIT_PASTE_BANNER: &str = "Paste JSON below and press Enter to load.";
-
 /// Why paste-recovery is on screen.
 ///
 /// `Recovery` is the existing failure-recovery path: clipboard couldn't
@@ -56,8 +49,13 @@ pub struct PasteRecoveryState {
     /// loader's diagnosis line (e.g. "Clipboard does not contain valid
     /// JSON.") and is replaced by the parse error after a failed
     /// submit ("Invalid JSON: expected `,` at line 3 column 5"). In
-    /// `Explicit` mode it starts as [`EXPLICIT_PASTE_BANNER`] and is
-    /// only replaced when a parse fails.
+    /// `Explicit` mode this is empty unless the picker's smart
+    /// fallback added a "why we're here" context line, or a parse
+    /// error replaced it.
+    ///
+    /// Empty string means "no info to show" — the renderer suppresses
+    /// the top block entirely when this is empty AND the mode is
+    /// `Explicit`, so the textarea claims the full screen.
     pub error_message: String,
     /// Whether the user landed here from a clipboard failure
     /// (`Recovery`) or asked for paste explicitly (`Explicit`). Drives
@@ -78,11 +76,28 @@ impl PasteRecoveryState {
 
     /// Construct an explicit-paste state — used when the user asked
     /// for paste mode deliberately (via `--paste` or the picker's
-    /// Paste option). Top block shows [`EXPLICIT_PASTE_BANNER`] until
-    /// a parse error replaces it.
+    /// Paste option). The top info block stays hidden because the
+    /// textarea's title and placeholder already say "Paste JSON,
+    /// press Enter to load"; an extra info box would just repeat that.
     pub fn new_explicit() -> Self {
         Self {
-            error_message: EXPLICIT_PASTE_BANNER.to_string(),
+            error_message: String::new(),
+            mode: PasteRecoveryMode::Explicit,
+        }
+    }
+
+    /// Like [`new_explicit`] but with a one-line context describing
+    /// why we landed here. Used when jiq jumps straight to the paste
+    /// editor because the clipboard wasn't usable on launch (e.g.
+    /// "Clipboard is empty — paste below to load."). When `context` is
+    /// `None` or empty, behaves exactly like [`new_explicit`].
+    pub fn new_explicit_with_context(context: Option<&str>) -> Self {
+        let message = match context {
+            Some(line) if !line.is_empty() => line.to_string(),
+            _ => String::new(),
+        };
+        Self {
+            error_message: message,
             mode: PasteRecoveryMode::Explicit,
         }
     }
