@@ -204,6 +204,13 @@ pub fn handle_global_keys(app: &mut App, key: KeyEvent) -> bool {
             true
         }
 
+        // Ctrl+W is dispatched here (not at the clipboard tier where Ctrl+O lives)
+        // so tui-textarea's default backward-kill-word never sees it in Insert mode.
+        KeyCode::Char('w') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+            crate::save::save_events::open_save_popup(app);
+            true
+        }
+
         _ => false,
     }
 }

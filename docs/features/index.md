@@ -41,6 +41,10 @@ permalink: /features/
     <span class="feature-card-title">Clipboard integration</span>
     <p class="feature-card-desc">Copied JSON from a browser or API response? Just launch jiq — it reads your clipboard directly. No need to save to a file first.</p>
   </a>
+  <a class="feature-card" href="./save/">
+    <span class="feature-card-title">Save result to file</span>
+    <p class="feature-card-desc">Press Ctrl+W to write the current jq result to disk. Pre-filled timestamped path you can edit, atomic write, overwrite confirmation when the file already exists.</p>
+  </a>
   <a class="feature-card" href="./vim-editing/">
     <span class="feature-card-title">Efficient query editing</span>
     <p class="feature-card-desc">Reshape complex queries in a few keystrokes using Vim-style motions and text objects. Or just type normally — advanced editing is there when you need it, invisible when you don't.</p>

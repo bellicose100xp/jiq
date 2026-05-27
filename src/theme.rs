@@ -297,6 +297,26 @@ pub mod snippets {
     pub const SEARCH_BG: Color = Color::Rgb(26, 26, 46);
 }
 
+/// Save-to-file popup styles
+pub mod save {
+    use super::*;
+
+    pub const TITLE: Color = Color::Rgb(255, 184, 108);
+    pub const BORDER: Color = Color::Rgb(255, 184, 108);
+
+    pub const INPUT_BORDER: Color = Color::Rgb(255, 217, 61);
+    pub const INPUT_FG: Color = Color::Rgb(236, 236, 244);
+    pub const INPUT_BG: Color = Color::Rgb(26, 26, 46);
+
+    pub const HINT_KEY: Color = Color::Rgb(255, 217, 61);
+    pub const HINT_TEXT: Color = Color::Rgb(236, 236, 244);
+
+    pub const PREVIEW_OK: Color = Color::Rgb(152, 195, 121);
+    pub const PREVIEW_WARN: Color = Color::Rgb(224, 108, 117);
+
+    pub const ERROR: Color = Color::Rgb(224, 108, 117);
+}
+
 /// AI assistant styles
 pub mod ai {
     use super::*;

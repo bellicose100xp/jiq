@@ -27,6 +27,7 @@ pub const HELP_CATEGORIES: &[HelpCategory] = &[
                     ("Shift+Tab", "Switch focus (Input / Results)"),
                     ("Ctrl+Y", "Copy focused pane (query or results)"),
                     ("Ctrl+O", "Copy results from any focus"),
+                    ("Ctrl+W", "Save result to file"),
                     ("q", "Quit (in Normal mode or Results pane)"),
                     ("Ctrl+E", "Toggle error overlay"),
                 ],

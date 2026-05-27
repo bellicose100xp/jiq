@@ -21,6 +21,7 @@ pub mod path_at_cursor_apply;
 pub mod query;
 pub mod query_undo;
 pub mod results;
+pub mod save;
 pub mod scroll;
 pub mod search;
 pub mod snippets;

@@ -11,6 +11,7 @@ use crate::path_at_cursor::PathAtCursorCache;
 use crate::query::{Debouncer, QueryState};
 use crate::query_undo::{QueryUndoRing, ViewportState};
 use crate::results::cursor_state::CursorState;
+use crate::save::SaveState;
 use crate::scroll::ScrollState;
 use crate::search::SearchState;
 use crate::snippets::SnippetState;
@@ -59,6 +60,7 @@ pub struct App {
     pub debouncer: Debouncer,
     pub search: SearchState,
     pub snippets: SnippetState,
+    pub save: SaveState,
     pub ai: AiState,
     pub saved_tooltip_visibility: bool,
     pub saved_ai_visibility_for_search: bool,
@@ -198,6 +200,7 @@ impl App {
             debouncer: Debouncer::new(),
             search: SearchState::new(),
             snippets: SnippetState::new(),
+            save: SaveState::new(),
             ai: ai_state,
             saved_tooltip_visibility: config.tooltip.auto_show,
             saved_ai_visibility_for_search: false,
@@ -244,6 +247,11 @@ impl App {
             }
         }
         self.mark_dirty();
+        // For the clipboard branch the loader is already in Complete state, so
+        // poll right here to initialize QueryState. Otherwise the main loop
+        // would block on the next key event before polling, and the user would
+        // need to press a second key before the data appears.
+        self.poll_file_loader();
     }
 
     /// Poll file loader and initialize QueryState when complete

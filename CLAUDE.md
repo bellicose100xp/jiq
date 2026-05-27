@@ -13,13 +13,21 @@
 Execute in order:
 1. Strip implementation detail comments; retain business logic documentation only
 2. Ensure 100% test coverage for all new logic added
-3. Run `cargo build --release`
-4. Request user validation of TUI functionality with explicit test steps
-5. Verify zero linting errors (`cargo clippy --all-targets --all-features`)
+3. Run `cargo build --release` (zero warnings)
+4. Request user validation of TUI functionality with explicit test steps — STOP and wait for user to drive the steps before continuing
+5. Verify zero linting errors (`cargo clippy --all-targets --all-features -- -D warnings`)
 6. Verify zero formatting issues (`cargo fmt --all --check`)
-7. Verify zero build warnings
+7. Run `cargo build` (debug; zero warnings)
+8. Run full test suite (`cargo test` — never `--lib`)
 
-All checks must pass before staging files.
+All checks must pass before staging files. After all green:
+- **Sync with remote first** to minimize PR merge conflicts:
+  - `git fetch origin`
+  - If you've been working on `main` and have local commits: `git rebase origin/main` (resolve conflicts now, locally, instead of in the PR)
+  - If no local commits yet: `git pull --ff-only origin main`
+- Stage specific files by name (never `git add -A` / `git add .`)
+- Commit with a single-line lowercase Conventional Commit message (no body, no issue refs)
+- **Do not push.** Pushing/tagging/publishing is deferred to the `jiq-release` skill, invoked only when the user explicitly asks to release/ship/publish.
 
 ## Documentation Site
 
