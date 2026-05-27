@@ -1907,7 +1907,7 @@ dependencies = [
 
 [[package]]
 name = "jiq"
-version = "3.27.3"
+version = "3.28.0"
 dependencies = [
  "ansi-to-tui",
  "arboard",

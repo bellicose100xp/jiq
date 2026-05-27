@@ -17,6 +17,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.28.0] - 2026-05-27
+
+### Added
+- **Smart source picker on bare TTY launch** ([#174](https://github.com/bellicose100xp/jiq/pull/174)) - jiq no longer auto-loads the clipboard when launched without a file argument or piped stdin. It peeks the clipboard once at startup; if the contents parse as a JSON object or array, a top-anchored picker banner appears with Clipboard pre-selected and a live preview of the first lines of the cached payload below. `↑` / `↓` toggle the highlight, `Enter` confirms (the bottom-border hint reads "Load" or "Open paste editor" depending on which option is highlighted), and `Esc` quits. When the clipboard isn't queryable (empty, invalid JSON, primitive value, or unreadable on remote SSH) the picker is skipped entirely - jiq drops straight into the explicit-paste editor with a one-line "Info" box explaining what was wrong. The cached clipboard bytes are handed to the loader on confirm so the system clipboard is never read twice.
+- **`--clipboard` and `--paste` CLI flags** ([#174](https://github.com/bellicose100xp/jiq/pull/174)) - `jiq --clipboard` forces the legacy clipboard auto-load (skipping the picker), and `jiq --paste` opens the manual-paste editor without touching the clipboard at all. The two flags are mutually exclusive, and either combined with piped stdin or a file argument now hard-errors with a colored "ambiguous input source" message that lists every valid invocation form (`jiq <file>` / `cat <file> | jiq` / `jiq` / `jiq --clipboard` / `jiq --paste`).
+- **Manual paste rejects bare JSON primitives** ([#174](https://github.com/bellicose100xp/jiq/pull/174)) - Pasting `42`, `"hello"`, `true`, or `null` into the manual-paste editor now reports "Input must be a JSON object or array, not a primitive value." instead of silently loading an unqueryable value. Same rule the clipboard auto-load already enforced; both paths now share a single-pass scan that reports validity and container shape together.
+
+### Changed
+- **`--paste` opens a neutral editor view, not a red error screen** ([#174](https://github.com/bellicose100xp/jiq/pull/174)) - Deliberate paste-mode invocations (via `--paste` or the picker's Paste option) now render with a calm cyan border and no top "Info" box at all - the textarea's title and placeholder already say "paste JSON, press Enter to load", so the redundant info box was just visual noise. The clipboard-failure recovery path keeps the red "No JSON loaded" framing because something genuinely went wrong there.
+
 ## [3.27.3] - 2026-05-26
 
 ### Added

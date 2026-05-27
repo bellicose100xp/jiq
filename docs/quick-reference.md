@@ -291,9 +291,34 @@ Case-insensitive.
 
 {: .shortcuts }
 
-## [Paste recovery](./features/clipboard)
+## [Source picker](./features/clipboard)
 
-Opens when launch-time clipboard auto-load fails. Full VIM editing inside.
+Shown on bare `jiq` launch (no flag, no piped stdin) when the clipboard contains a JSON object or array. Otherwise jiq drops straight to the paste editor.
+
+| Key | Action |
+|:---|:---|
+| <kbd>↑</kbd> / <kbd>↓</kbd> / <kbd>Tab</kbd> | Toggle Clipboard ↔ Paste |
+| <kbd>Enter</kbd> | Confirm highlighted source |
+| <kbd>Esc</kbd> | Quit jiq |
+
+{: .shortcuts }
+
+## CLI flags
+
+| Flag | Behavior |
+|:---|:---|
+| `jiq <file>` | Load from file |
+| `cat <file> \| jiq` | Load from piped stdin |
+| `jiq` | Smart picker (peeks clipboard at launch) |
+| `jiq --clipboard` | Force clipboard auto-load, skip the picker |
+| `jiq --paste` | Open paste editor immediately, no clipboard read |
+| `jiq --debug` | Write debug log to `/tmp/jiq-debug.log` |
+
+Combining `--clipboard` or `--paste` with piped stdin or a file argument exits non-zero with an "ambiguous input source" error.
+
+## [Paste editor](./features/clipboard)
+
+Full-screen text area with VIM editing. Opens via `--paste`, the picker's Paste option, or as a fallback when the clipboard isn't queryable.
 
 | Key | Action |
 |:---|:---|
