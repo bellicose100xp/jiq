@@ -83,15 +83,13 @@ cat data.json | jiq
 echo '{"name": "Alice", "age": 30}' | jiq
 curl https://api.example.com/data | jiq
 
-# Smart picker: peeks the clipboard, lets you choose Clipboard or Paste
+# Smart picker: Clipboard or Interactive Paste
 jiq
 
 # Force a specific source, skip the picker
 jiq --clipboard
 jiq --paste
 ```
-
-With no file argument and no piped stdin, jiq peeks the clipboard at launch. If the contents look like a queryable JSON object or array, a small picker appears with Clipboard pre-selected and a live preview; press `Enter` to load or `↓` then `Enter` to switch to the paste editor instead. If the clipboard is empty / not JSON / a primitive value, jiq drops straight into the paste editor with a one-line note explaining what was on the clipboard.
 
 ## Usage
 
