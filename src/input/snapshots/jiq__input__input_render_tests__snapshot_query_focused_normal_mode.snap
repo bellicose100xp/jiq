@@ -1,6 +1,5 @@
 ---
 source: src/input/input_render_tests.rs
-assertion_line: 41
 expression: output
 ---
 "╭ Object ──────────────────────────────────────────────────────────────────────╮"
@@ -26,4 +25,4 @@ expression: output
 "╭ Query [NORMAL] (press 'i' to edit) ───────────────────── Ctrl+A AI Assistant ╮"
 "│.name                                                                         │"
 "╰─── Shift+Tab Navigate Results • Enter Output Result • Ctrl+Q Output Query ───╯"
-" F1/? Help • Ctrl+S Snippets • Ctrl+F Search • Enter Output Result • Ctrl+Q Outp"
+" F1/? Help • Ctrl+S Snippets • Ctrl+F Search • Enter Output Result • Ctrl+O Copy"

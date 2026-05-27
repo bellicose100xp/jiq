@@ -1,6 +1,5 @@
 ---
 source: src/help/help_line_render_tests.rs
-assertion_line: 34
 expression: output
 ---
-" F1 Help • Ctrl+S Snippets • Ctrl+F Search • Enter Output Result • Ctrl+Q Output Query • Ctrl+C Quit                    "
+" F1 Help • Ctrl+S Snippets • Ctrl+F Search • Enter Output Result • Ctrl+O Copy Result • Ctrl+Q Output Query • Ctrl+C Quit         "
