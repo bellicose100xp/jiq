@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.30.0] - 2026-05-28
+
+### Added
+- **String-value autocomplete in comparisons** ([#177](https://github.com/bellicose100xp/jiq/pull/177)) - Typing inside an unclosed `"..."` at a value-comparison position now suggests distinct string values pulled from the loaded JSON, so you no longer have to memorize exact spellings. Triggers on `==`, `!=`, `contains`, `startswith`, `endswith`, `inside`, `IN(.path; "`, and `has`/`in` (the last two defer to the existing object-key autocomplete when the LHS resolves to an object). The classifier folds the surrounding pipe / `select(...)` / `map(...)` context into an absolute path rooted at the JSON root, so `.users[] | select(.role == "` suggests roles found at `.users[].role` rather than walking the whole document. When folding can't anchor the path - regex argument functions like `test`/`match`/`scan`/`sub`, user-defined functions, `reduce`/`foreach`, `sort_by`, etc. - the popup falls back to a precomputed list of every distinct string in the JSON. Selecting a suggestion inserts the value with proper jq escaping (`\"`, `\\`, `\n`, etc.) and exactly one closing quote regardless of whether the user already typed one. Filtering as you type narrows the list case-insensitively against the partial. Implementation reuses the existing `navigate_multi` walker and mirrors the `JqExecutor::all_field_names()` precompute pattern with a sibling `all_string_values()`, so there's no worker thread, no cache invalidation, and per-keystroke cost is one bounded JSON walk plus a memo hit on subsequent characters at the same trigger site.
+
 ## [3.29.0] - 2026-05-27
 
 ### Added
