@@ -403,6 +403,7 @@ pub mod autocomplete {
     pub const TYPE_OPERATOR: Color = Color::Rgb(198, 120, 221);
     pub const TYPE_PATTERN: Color = Color::Rgb(107, 203, 119);
     pub const TYPE_VARIABLE: Color = Color::Rgb(224, 108, 117);
+    pub const TYPE_VALUE: Color = Color::Rgb(232, 165, 90);
 }
 
 /// Tooltip styles

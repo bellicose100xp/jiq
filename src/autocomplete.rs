@@ -8,6 +8,9 @@ pub mod json_navigator;
 pub mod path_parser;
 mod result_analyzer;
 mod scan_state;
+pub mod value_collector;
+pub mod value_insertion;
+pub mod value_trigger;
 mod variable_extractor;
 
 #[cfg(test)]

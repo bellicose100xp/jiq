@@ -86,6 +86,7 @@ pub fn render_popup(app: &App, frame: &mut Frame, input_area: Rect) -> Option<Re
                 SuggestionType::Operator => theme::autocomplete::TYPE_OPERATOR,
                 SuggestionType::Pattern => theme::autocomplete::TYPE_PATTERN,
                 SuggestionType::Variable => theme::autocomplete::TYPE_VARIABLE,
+                SuggestionType::Value => theme::autocomplete::TYPE_VALUE,
             };
 
             let type_label = get_type_label(suggestion);

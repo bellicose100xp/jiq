@@ -1,4 +1,5 @@
 use crate::ai::AiState;
+use crate::autocomplete::autocomplete_state::ValueMemo;
 use crate::autocomplete::{self, AutocompleteState};
 use crate::config::{ClipboardBackend, Config};
 use crate::help::HelpPopupState;
@@ -42,6 +43,7 @@ pub struct App {
     pub output_mode: Option<OutputMode>,
     pub should_quit: bool,
     pub autocomplete: AutocompleteState,
+    pub(crate) value_memo: ValueMemo,
     pub error_overlay_visible: bool,
     pub history: HistoryState,
     pub help: HelpPopupState,
@@ -187,6 +189,7 @@ impl App {
             output_mode: None,
             should_quit: false,
             autocomplete: AutocompleteState::new(),
+            value_memo: ValueMemo::new(),
             error_overlay_visible: false,
             history: HistoryState::new(),
             help: HelpPopupState::new(),

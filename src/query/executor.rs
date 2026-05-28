@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::process::{Command, Stdio};
 use std::sync::{Arc, OnceLock};
 use std::thread::sleep;
@@ -24,8 +24,18 @@ pub struct JqExecutor {
     /// All unique field names from the JSON, collected recursively.
     /// Cached for non-deterministic autocomplete fallback.
     all_field_names: OnceLock<Arc<HashSet<String>>>,
+    /// All distinct string VALUES from the JSON, collected recursively,
+    /// sorted by descending frequency (alphabetical tiebreaker), capped at
+    /// `MAX_GLOBAL_STRING_VALUES`. Used as the last-resort fallback by
+    /// string-value autocomplete.
+    all_string_values: OnceLock<Arc<Vec<String>>>,
     array_sample_size: usize,
 }
+
+/// Cap on distinct values returned by `all_string_values`. Keeps the lazy
+/// precompute bounded on pathological JSON (e.g. log dumps with millions of
+/// unique IDs).
+pub const MAX_GLOBAL_STRING_VALUES: usize = 10_000;
 
 impl JqExecutor {
     /// Create a new JQ executor with JSON input and default sample size
@@ -39,6 +49,7 @@ impl JqExecutor {
             json_input: Arc::new(json_input),
             json_input_parsed: OnceLock::new(),
             all_field_names: OnceLock::new(),
+            all_string_values: OnceLock::new(),
             array_sample_size,
         }
     }
@@ -96,6 +107,57 @@ impl JqExecutor {
                 }
             }
             _ => {}
+        }
+    }
+
+    /// Get all distinct string VALUES from the JSON, sorted by descending
+    /// frequency (alphabetical tiebreaker), capped at `MAX_GLOBAL_STRING_VALUES`.
+    ///
+    /// Lazy precompute via `OnceLock`. The first caller pays the walk cost
+    /// once per session; subsequent callers get an `Arc::clone`. Mirrors
+    /// `all_field_names()` but for string values rather than keys.
+    pub fn all_string_values(&self) -> Arc<Vec<String>> {
+        self.all_string_values
+            .get_or_init(|| {
+                let mut counts: HashMap<String, u32> = HashMap::new();
+                if let Some(parsed) = self.json_input_parsed() {
+                    Self::collect_string_values_recursive(&parsed, &mut counts);
+                }
+                Arc::new(sort_and_cap_strings(counts, MAX_GLOBAL_STRING_VALUES))
+            })
+            .clone()
+    }
+
+    fn collect_string_values_recursive(value: &Value, counts: &mut HashMap<String, u32>) {
+        // Iterative DFS to avoid stack overflow on deeply nested JSON.
+        let mut stack: Vec<&Value> = vec![value];
+        while let Some(node) = stack.pop() {
+            if counts.len() >= MAX_GLOBAL_STRING_VALUES {
+                // Don't add NEW distinct values past the cap, but keep walking
+                // so we accumulate frequency for already-seen strings. (Walking
+                // unbounded JSON for this is intentional — caller is gated by
+                // OnceLock so this only ever runs once.)
+            }
+            match node {
+                Value::String(s) => {
+                    if let Some(c) = counts.get_mut(s.as_str()) {
+                        *c += 1;
+                    } else if counts.len() < MAX_GLOBAL_STRING_VALUES {
+                        counts.insert(s.clone(), 1);
+                    }
+                }
+                Value::Array(arr) => {
+                    for element in arr {
+                        stack.push(element);
+                    }
+                }
+                Value::Object(map) => {
+                    for (_, v) in map {
+                        stack.push(v);
+                    }
+                }
+                _ => {}
+            }
         }
     }
 
@@ -236,6 +298,13 @@ impl JqExecutor {
             Err(QueryError::ExecutionFailed(stderr_str))
         }
     }
+}
+
+fn sort_and_cap_strings(counts: HashMap<String, u32>, cap: usize) -> Vec<String> {
+    let mut entries: Vec<(String, u32)> = counts.into_iter().collect();
+    entries.sort_by(|a, b| b.1.cmp(&a.1).then_with(|| a.0.cmp(&b.0)));
+    entries.truncate(cap);
+    entries.into_iter().map(|(s, _)| s).collect()
 }
 
 #[cfg(test)]
