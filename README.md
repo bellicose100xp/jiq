@@ -14,7 +14,7 @@
 
 - **Real-time query execution** — results update as you type
 - **AI assistant** — query suggestions, error fixes, natural-language input
-- **Context-aware autocomplete** — schema-aware fields with type hints, plus distinct string values inside `==`/`contains(`/`startswith(` etc.
+- **Context-aware autocomplete** — schema-aware fields with type hints, plus value suggestions in comparisons
 - **Smart input picker** — peek your clipboard at launch, pick clipboard or paste
 - **Save result to file** — Ctrl+W writes the rendered output with a live path preview and inline overwrite warning
 - **Snippet library** — save and reuse jq queries
