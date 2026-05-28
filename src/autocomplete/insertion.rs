@@ -6,7 +6,9 @@
 use tui_textarea::TextArea;
 
 use crate::app::App;
-use crate::autocomplete::autocomplete_state::Suggestion;
+use crate::autocomplete::autocomplete_state::{Suggestion, SuggestionType};
+use crate::autocomplete::value_insertion;
+use crate::autocomplete::value_trigger;
 use crate::autocomplete::{SuggestionContext, analyze_context};
 use crate::query::QueryState;
 
@@ -199,6 +201,19 @@ pub fn insert_suggestion(
     let cursor_char = textarea.cursor().1;
     let cursor_pos = crate::str_utils::char_pos_to_byte_pos(&query, cursor_char);
     let before_cursor = &query[..cursor_pos];
+
+    if suggestion.suggestion_type == SuggestionType::Value
+        && let Some(trigger) = value_trigger::classify(&query, cursor_pos)
+    {
+        value_insertion::apply_to_textarea(
+            textarea,
+            &query,
+            cursor_pos,
+            &trigger,
+            &suggestion.text,
+        );
+        return;
+    }
 
     let mut temp_tracker = crate::autocomplete::BraceTracker::new();
     temp_tracker.rebuild(before_cursor);
