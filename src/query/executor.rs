@@ -68,10 +68,7 @@ impl JqExecutor {
     /// Returns `None` if the JSON input is invalid.
     pub fn json_input_parsed(&self) -> Option<Arc<Value>> {
         self.json_input_parsed
-            .get_or_init(|| {
-                let _t = crate::perf::Stopwatch::new("json_input_parsed_first_touch");
-                serde_json::from_str(&self.json_input).ok().map(Arc::new)
-            })
+            .get_or_init(|| serde_json::from_str(&self.json_input).ok().map(Arc::new))
             .clone()
     }
 
@@ -83,7 +80,6 @@ impl JqExecutor {
         let sample_size = self.array_sample_size;
         self.all_field_names
             .get_or_init(|| {
-                let _t = crate::perf::Stopwatch::new("all_field_names_first_touch");
                 let mut fields = HashSet::new();
                 if let Some(parsed) = self.json_input_parsed() {
                     Self::collect_fields_recursive(&parsed, &mut fields, sample_size);
@@ -123,7 +119,6 @@ impl JqExecutor {
     pub fn all_string_values(&self) -> Arc<Vec<String>> {
         self.all_string_values
             .get_or_init(|| {
-                let _t = crate::perf::Stopwatch::new("all_string_values_first_touch");
                 let mut counts: HashMap<String, u32> = HashMap::new();
                 if let Some(parsed) = self.json_input_parsed() {
                     Self::collect_string_values_recursive(&parsed, &mut counts);
@@ -211,7 +206,6 @@ impl JqExecutor {
         .join(":");
 
         // Spawn jq process with custom colors
-        let _spawn_timer = crate::perf::Stopwatch::new("jq_spawn");
         let mut child = Command::new("jq")
             .env("JQ_COLORS", jq_colors)
             .arg("--color-output")
@@ -221,7 +215,6 @@ impl JqExecutor {
             .stderr(Stdio::piped())
             .spawn()
             .map_err(|e| QueryError::SpawnFailed(e.to_string()))?;
-        drop(_spawn_timer);
 
         // Spawn thread to write JSON to stdin
         // This prevents deadlock if JSON is large (>64KB) and jq is slow to read
@@ -261,7 +254,6 @@ impl JqExecutor {
         const POLL_INTERVAL_MS: u64 = 10;
         let poll_start = std::time::Instant::now();
         let mut slow_warned = false;
-        let _wait_timer = crate::perf::Stopwatch::new("jq_wait");
         let status = loop {
             // Check cancellation first
             if cancel_token.is_cancelled() {
@@ -288,7 +280,6 @@ impl JqExecutor {
                 }
             }
         };
-        drop(_wait_timer);
 
         // Process has exited - collect output from reader threads
         let stdout_data = stdout_rx

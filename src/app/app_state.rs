@@ -339,32 +339,6 @@ impl App {
         self.should_quit
     }
 
-    /// Request a clean shutdown. Used by the bench-script runner once the
-    /// script finishes so the perf summary dumps via the normal exit path.
-    pub fn request_quit(&mut self) {
-        self.should_quit = true;
-    }
-
-    /// Clear a pending quit flag. Used by the bench-script runner so that
-    /// keystrokes which incidentally set should_quit (Enter, Ctrl-C, q,
-    /// Ctrl-Q, Shift-Enter) don't short-circuit the script before all its
-    /// directives have run. Also resets `output_mode` because the same
-    /// keystrokes set both fields together — leaving output_mode set would
-    /// cause `handle_output()` to write the query/result to stdout at
-    /// exit and pollute bench harness output.
-    pub fn cancel_quit(&mut self) {
-        self.should_quit = false;
-        self.output_mode = None;
-    }
-
-    /// True while a query is in flight on the worker thread or the
-    /// debouncer has a pending execution. Used by the bench-script runner
-    /// to drain the worker before quitting so worker-thread perf timers
-    /// have time to drop and record into the tally.
-    pub fn has_pending_query(&self) -> bool {
-        self.debouncer.has_pending() || self.query.as_ref().is_some_and(|q| q.is_pending())
-    }
-
     pub fn output_mode(&self) -> Option<OutputMode> {
         self.output_mode
     }

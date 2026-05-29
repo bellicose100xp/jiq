@@ -5,7 +5,6 @@
 pub mod ai;
 pub mod app;
 pub mod autocomplete;
-pub mod bench_script;
 pub mod clipboard;
 pub mod config;
 pub mod editor;
@@ -19,7 +18,6 @@ pub mod layout;
 pub mod notification;
 pub mod path_at_cursor;
 pub mod path_at_cursor_apply;
-pub mod perf;
 pub mod query;
 pub mod query_undo;
 pub mod results;

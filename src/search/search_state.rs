@@ -165,7 +165,6 @@ impl SearchState {
             return;
         }
 
-        let _t = crate::perf::Stopwatch::new("search_update");
         self.last_query = query.clone();
         self.matches = SearchMatcher::find_all(content, &query);
         self.current_index = 0;

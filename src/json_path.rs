@@ -346,7 +346,6 @@ fn resolve_value<'a>(value: &'a Value, steps: &[JsonPathStep]) -> Option<&'a Val
 /// returned is the parent container's path. Returns `None` if `target_line`
 /// is past the end of the rendered value.
 pub fn path_at_line(value: &Value, target_line: usize) -> Option<JsonPath> {
-    let _t = crate::perf::Stopwatch::new("path_at_line");
     let mut walker = LineWalker::new(target_line);
     walker.walk(value, &mut JsonPath::new());
     walker.found

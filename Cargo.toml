@@ -17,10 +17,6 @@ path = "src/lib.rs"
 name = "jiq"
 path = "src/main.rs"
 
-[[bin]]
-name = "gen_perf_fixture"
-path = "src/bin/gen_perf_fixture.rs"
-
 [dependencies]
 # TUI framework
 ratatui = "0.29"

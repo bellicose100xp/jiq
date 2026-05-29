@@ -44,20 +44,6 @@ Visuals: inline SVG / HTML via helpers in `docs/_sass/custom/custom.scss` (`.tui
 
 When the user asks to release / ship / publish / tag, invoke the **`jiq-release`** skill (`.claude/skills/jiq-release/SKILL.md`). Pass `patch` / `minor` / `major` if specified; otherwise the skill infers. Never reinvent the flow inline.
 
-## Performance Testing
-
-Pieces:
-- Generator: `src/bin/gen_perf_fixture.rs` — produces fixtures in `tests/perf_fixtures/` (gitignored). Three shapes (`wide`, `deep`, `keys`) × four sizes (`1k`/`10k`/`100k`/`1m`).
-- Perf module: `src/perf.rs` — RAII stopwatches, percentile summary at exit. Gated by `--debug`.
-- Bench-script flag: `--bench-script <path>` — replays `text`/`key`/`wait` directives through the real input dispatcher. Scripts in `tests/perf_scripts/` (`typical`, `heavy_search`, `scroll_navigation`, `deep_drilling`, `autocomplete_burst`).
-
-Read [`tests/perf_fixtures/README.md`](tests/perf_fixtures/README.md) in full when: generating a fixture, running a benchmark (manual TUI or scripted), wiring a new timer, choosing a shape/size for a new scenario, or troubleshooting `No such device or address` (TTY/PTY workaround). It owns the commands; do not duplicate them here.
-
-Rules:
-- Always benchmark on a release build (debug is 5-10× slower with different bottlenecks).
-- No stopwatches inside `terminal.draw` or any per-frame / per-line path.
-- In-memory tally during session; only the summary writes on exit (no per-stopwatch logging).
-
 ## Rust Module Structure
 - Use `{module_name}.rs`, never `mod.rs`
 - Place tests in `{module_name}_tests.rs` files

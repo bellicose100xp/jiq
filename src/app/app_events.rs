@@ -218,20 +218,6 @@ fn handle_popup_passthrough_keys(app: &mut App, key: KeyEvent) -> bool {
 const EVENT_POLL_TIMEOUT: Duration = Duration::from_millis(100);
 
 impl App {
-    /// Inject a key event from a non-crossterm source (e.g. the bench-script
-    /// replay). Routes through the same picker/recovery/normal dispatch as
-    /// real keystrokes so timings and code paths match real input.
-    pub fn inject_key_event(&mut self, key_event: KeyEvent) {
-        if self.source_picker.is_some() {
-            self.handle_source_picker_key_event(key_event);
-        } else if self.paste_recovery.is_some() {
-            self.handle_paste_recovery_key_event(key_event);
-        } else {
-            self.handle_key_event(key_event);
-        }
-        self.mark_dirty();
-    }
-
     pub fn handle_events(&mut self) -> io::Result<()> {
         if self.debouncer.should_execute() {
             editor::editor_events::execute_query_with_auto_show(self);
