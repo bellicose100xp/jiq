@@ -33,26 +33,37 @@ pub fn preprocess_result(
     if cancel_token.is_cancelled() {
         return Err(QueryError::Cancelled);
     }
-    let unformatted = strip_ansi_codes(&output);
+    let unformatted = {
+        let _t = crate::perf::Stopwatch::new("strip_ansi_codes");
+        strip_ansi_codes(&output)
+    };
 
     // Compute line metrics, widths, and is_only_nulls in a single pass
     if cancel_token.is_cancelled() {
         return Err(QueryError::Cancelled);
     }
-    let (line_count, max_width, line_widths, is_only_nulls) = compute_line_metrics(&unformatted);
+    let (line_count, max_width, line_widths, is_only_nulls) = {
+        let _t = crate::perf::Stopwatch::new("compute_line_metrics");
+        compute_line_metrics(&unformatted)
+    };
 
     // Parse ANSI to RenderedLine
     if cancel_token.is_cancelled() {
         return Err(QueryError::Cancelled);
     }
-    let rendered_lines = parse_ansi_to_rendered_lines(&output, cancel_token)?;
+    let rendered_lines = {
+        let _t = crate::perf::Stopwatch::new("parse_ansi_to_rendered_lines");
+        parse_ansi_to_rendered_lines(&output, cancel_token)?
+    };
 
     // Parse JSON and detect type in single pass
     if cancel_token.is_cancelled() {
         return Err(QueryError::Cancelled);
     }
-    let (parsed, result_type, is_synthetic_merge) =
-        parse_and_detect_type(&unformatted, array_sample_size);
+    let (parsed, result_type, is_synthetic_merge) = {
+        let _t = crate::perf::Stopwatch::new("parse_and_detect_type");
+        parse_and_detect_type(&unformatted, array_sample_size)
+    };
     let parsed = parsed.map(Arc::new);
 
     let base_query = normalize_base_query(query);
@@ -119,10 +130,13 @@ fn parse_ansi_to_rendered_lines(
     }
 
     // Parse ANSI codes to Text
-    let text: Text = output
-        .as_bytes()
-        .into_text()
-        .unwrap_or_else(|_| Text::raw(output.to_string()));
+    let text: Text = {
+        let _t = crate::perf::Stopwatch::new("ansi_into_text");
+        output
+            .as_bytes()
+            .into_text()
+            .unwrap_or_else(|_| Text::raw(output.to_string()))
+    };
 
     // Convert Text to Vec<RenderedLine>
     let rendered_lines = text

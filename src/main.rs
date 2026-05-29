@@ -14,6 +14,7 @@ use std::path::PathBuf;
 mod ai;
 mod app;
 mod autocomplete;
+mod bench_script;
 mod clipboard;
 mod config;
 mod editor;
@@ -27,6 +28,7 @@ mod layout;
 mod notification;
 mod path_at_cursor;
 mod path_at_cursor_apply;
+pub mod perf;
 mod query;
 mod query_undo;
 mod results;
@@ -74,6 +76,11 @@ struct Args {
     /// Enable debug logging to /tmp/jiq-debug.log
     #[arg(long)]
     debug: bool,
+
+    /// Replay a benchmark script of keystrokes (for perf measurement).
+    /// See tests/perf_scripts/README.md for the format.
+    #[arg(long, value_name = "PATH")]
+    bench_script: Option<PathBuf>,
 }
 
 fn main() -> Result<()> {
@@ -82,6 +89,14 @@ fn main() -> Result<()> {
     init_logger(args.debug);
 
     color_eyre::install()?;
+
+    // Wrap the panic hook so any perf timings collected before the panic
+    // still get flushed to the debug log. dump_summary() is idempotent.
+    let prev_hook = std::panic::take_hook();
+    std::panic::set_hook(Box::new(move |info| {
+        perf::dump_summary();
+        prev_hook(info);
+    }));
 
     // Load config early to avoid defaults during app initialization
     let config_result = config::load_config();
@@ -140,6 +155,20 @@ fn main() -> Result<()> {
     // File and stdin loads stay deferred so a large input never blocks
     // the splash. `--paste` skips the clipboard entirely.
     let pre_input = resolve_pre_input(&args);
+
+    // Load the bench script before init_terminal so a parse error lands on
+    // the user's normal terminal, not inside the alt screen.
+    let bench_script = match args.bench_script.as_deref() {
+        Some(path) => match bench_script::BenchScript::load(path) {
+            Ok(s) => Some(s),
+            Err(e) => {
+                eprintln!("error: {e}");
+                std::process::exit(2);
+            }
+        },
+        None => None,
+    };
+
     let terminal = init_terminal()?;
     let app = match pre_input {
         PreInput::Loader(loader) => App::new_with_loader(loader, &config_result.config),
@@ -148,7 +177,7 @@ fn main() -> Result<()> {
         }
         PreInput::Picker(state) => App::new_with_source_picker(state, &config_result.config),
     };
-    let result = run(terminal, app, config_result);
+    let result = run(terminal, app, config_result, bench_script);
 
     restore_terminal()?;
     let app = result?;
@@ -330,6 +359,7 @@ fn restore_terminal() -> Result<()> {
         LeaveAlternateScreen
     );
     disable_raw_mode()?;
+    perf::dump_summary();
     Ok(())
 }
 
@@ -337,6 +367,7 @@ fn run(
     mut terminal: DefaultTerminal,
     mut app: App,
     config_result: config::ConfigResult,
+    mut bench_script: Option<bench_script::BenchScript>,
 ) -> Result<App> {
     if let Some(warning) = config_result.warning {
         app.notification.show_warning(&warning);
@@ -350,6 +381,12 @@ fn run(
         app.trigger_ai_request();
     }
 
+    // Set when the bench script finishes its directives. While Some, the
+    // run loop is in "drain mode": it keeps pumping handle_events (so the
+    // worker thread's responses arrive and its perf timers drop into the
+    // tally) until the worker is quiescent, then requests quit.
+    let mut bench_drain_started_at: Option<std::time::Instant> = None;
+
     loop {
         // Poll before render to load data from background thread
         app.poll_file_loader();
@@ -359,7 +396,54 @@ fn run(
             app.clear_dirty();
         }
 
-        app.handle_events()?;
+        // Inject any ready bench-script events first so they run through
+        // the same dispatcher as real keystrokes.
+        if let Some(script) = bench_script.as_mut() {
+            while let Some(step) = script.next_step() {
+                if let bench_script::Step::Key(key) = step {
+                    let _t = perf::Stopwatch::new("inject_key_event");
+                    app.inject_key_event(key);
+                }
+            }
+            if script.is_finished() {
+                // Enter drain mode: keep the loop running so handle_events
+                // pumps worker responses, allowing in-flight preprocessing
+                // (and its perf timers) to complete before we quit. Without
+                // this the worker's RAII Stopwatches drop AFTER the perf
+                // summary is dumped and their samples are lost.
+                log::debug!("bench script finished, entering drain mode");
+                bench_script = None;
+                bench_drain_started_at = Some(std::time::Instant::now());
+            }
+        } else if let Some(drain_start) = bench_drain_started_at {
+            // In drain mode: wait for worker quiescence, then quit. Cap at
+            // 30s so a wedged worker can't hang the bench harness.
+            let drained = !app.has_pending_query();
+            let timed_out = drain_start.elapsed() > std::time::Duration::from_secs(30);
+            if drained || timed_out {
+                if timed_out {
+                    log::warn!("bench drain timed out after 30s with pending work");
+                }
+                log::debug!("bench drain complete, requesting quit");
+                bench_drain_started_at = None;
+                app.request_quit();
+            }
+        }
+
+        {
+            let _t = perf::Stopwatch::new("handle_events");
+            app.handle_events()?;
+        }
+
+        // While a bench script is still running or draining, suppress
+        // `should_quit` and clear the flag. Enter sets should_quit=true as
+        // a side effect of committing the query (see app_events/global.rs);
+        // we don't want that to short-circuit the script's later directives
+        // or the drain phase. The drain code above is the only thing that
+        // can request quit while in bench mode.
+        if (bench_script.is_some() || bench_drain_started_at.is_some()) && app.should_quit() {
+            app.cancel_quit();
+        }
 
         if app.should_quit() {
             break;
@@ -452,6 +536,11 @@ fn init_logger(cli_debug: bool) {
         std::env::consts::OS,
         std::env::consts::ARCH
     );
+
+    // Enable perf instrumentation alongside the debug log. Stopwatches
+    // accumulate to an in-memory tally; the percentile summary is dumped
+    // to the same log on exit.
+    perf::enable();
 }
 
 /// Handle output after terminal is restored
