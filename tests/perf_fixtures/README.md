@@ -58,3 +58,33 @@ script -q -c "./target/release/jiq --debug \
 `script(1)` provides a PTY (jiq needs a TTY for raw mode). On macOS:
 `script -q /dev/null <command>` (positional). Run each scenario 3× and
 compare medians to wash out noise.
+
+## Run the full matrix
+
+Streams a one-line summary per cell as it completes. Each cell waits for
+`PERF SUMMARY` to appear in the debug log instead of always sleeping the
+full timeout, so a clean 27-cell run takes ~4 minutes rather than ~25.
+
+```sh
+cargo build --release
+tests/perf_fixtures/run_matrix.sh
+```
+
+Cell summaries print to stdout as `[Xs] shape size run=N
+inject_key_event_p99=Y ms  [tag ±%] base=A cur=B`. `tag` is `WIN` for
+≥20% faster than baseline, `REGRESSION` for ≥20% slower, otherwise
+`flat`. Threshold is informational — the runner never stops early.
+
+Full per-cell perf blocks land in `tests/perf_fixtures/matrix_latest.txt`
+(gitignored). The committed `tests/perf_fixtures/baseline_matrix.txt` is
+the reference baseline against which `run_matrix.sh` compares.
+
+To capture a fresh baseline (no comparison):
+
+```sh
+tests/perf_fixtures/run_matrix.sh /dev/null
+cp tests/perf_fixtures/matrix_latest.txt tests/perf_fixtures/baseline_matrix.txt
+```
+
+Refresh the baseline whenever `perf` lands a real win and we want
+subsequent measurements to compare against the new floor.

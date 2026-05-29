@@ -9,18 +9,23 @@ numbers so the impact is recorded.
 
 ## Selected ideas
 
-### 1. [ ] Pre-warm OnceLock caches at startup
+### 1. [ ] Pre-warm OnceLock caches at startup — BLOCKED on architectural fix
 
-- **Where:** `src/query/worker/thread.rs::worker_loop`
-- **What:** Immediately call `executor.json_input_parsed()` and
-  `executor.all_field_names()` on a background thread when the worker
-  starts, so they're warm before the user types.
-- **Targets:** first-keystroke spike of 125 ms (wide_large) / 48 ms
-  (deep_large) / 40 ms (keys_large)
-- **Effort:** small (~10 lines)
-- **Risk:** near-zero (OnceLock is already thread-safe)
-- **Workloads:** all
-- **Consensus:** 10 of 10 researchers
+- **Where:** previously thought `src/query/worker/thread.rs::worker_loop`,
+  but a clean isolated benchmark showed the prewarm targets the wrong
+  executor. There are **two** `JqExecutor` instances: one in
+  `QueryState` (read by autocomplete on the input thread) and one in
+  the worker thread. Warming the worker's executor doesn't help
+  autocomplete, which reads from `QueryState::executor`.
+- **Architectural prerequisite:** unify the two executors so they share
+  `OnceLock`s, or prewarm `QueryState::executor` directly on a thread
+  that holds an `Arc` to it, before reattempting this fix.
+- **Targets:** unchanged — first-keystroke spike of 125 ms (wide_large)
+  / 48 ms (deep_large) / 40 ms (keys_large).
+- **Status:** original team branch attempted in worktree
+  `worktree-agent-a726268bf55430046`; merged then discarded after the
+  isolated matrix showed no win. Diff preserved on the worktree branch
+  for reference.
 
 ### 2. [ ] Substring-fast field-name index for autocomplete
 
@@ -66,7 +71,22 @@ numbers so the impact is recorded.
 
 ## Maybe pile (need to perf-test before committing)
 
-### M0. Pluggable jaq engine (opt-in alternative to jq subprocess)
+### M0. Pluggable jaq engine — MEASURED AND PARKED
+
+Status: collapsed jaq-only port lives on `perf-jaq` branch (commit
+`ad48fff`). 27-cell matrix measured. Numbers don't justify replacing
+the engine: ~1.2× faster on wide_large, ~2.4× faster on deep_large,
+parity on the user-felt typing-lag bottleneck (`keys_large`
+`inject_key_event` p99). See `baselines.md` for the comparison.
+
+To revisit: parsed-`Val` caching across queries is the obvious win
+(jaq currently re-parses the JSON input on every query — 272 ms p95
+on wide_large). Other prerequisites in
+[obsidian: jiq — Perf Findings & jaq Decision].
+
+Original analysis below kept for reference — note the targets were
+optimistic and the actual measured numbers are smaller.
+
 
 - **Where:** new `JqEngine` trait in `src/query/`; current jq subprocess
   becomes one impl; jaq becomes a second impl. CLI flag `--engine jaq`
