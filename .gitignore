@@ -30,6 +30,7 @@ llvm_cov_output.log
 
 # Claude Code runtime
 .claude/scheduled_tasks.lock
+.claude/worktrees/
 
 # Performance benchmark fixtures (generated on demand)
 tests/perf_fixtures/*.json
