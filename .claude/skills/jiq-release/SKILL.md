@@ -84,15 +84,47 @@ EOF
 )"
 ```
 
-## 3. Wait for CI
+## 3. Wait for CI, then validate every check explicitly
+
+`--watch` blocks until checks settle, but its exit does **not** mean they passed. **Never treat "the watch returned" or "the command finished" as success.** After it returns, re-run a non-watch query and read each line.
 
 ```sh
-gh pr checks <N> --watch
+gh pr checks <N> --watch          # blocks until checks settle
+gh pr checks <N>                  # re-query and READ every line
 ```
 
 Required jobs that **must pass**: `Lint`, `Test`, `Coverage`, `plan`.
 
+Parse the result and confirm each required job shows `pass` — not `pending`, not `fail`, not absent:
+
+```sh
+# Prints PASS/FAIL verdict per required job. Use this, don't eyeball.
+gh pr checks <N> 2>&1 | awk -F'\t' '
+  $1=="Lint"||$1=="Test"||$1=="Coverage"||$1=="plan" {
+    printf "%-10s %s\n", $2, $1
+  }'
+```
+
+If any required job is still `pending`, wait and re-query — do not proceed. If any shows `fail`, stop and investigate before merging. **Do not advance to step 4 until you have personally confirmed all four required jobs are `pass`** (with the one coverage exception below).
+
 The `Release` workflow on PRs has these jobs that **skip** (expected, not failures): `announce`, `build-global-artifacts`, `build-local-artifacts`, `host`, `publish-homebrew-formula`. Those run on tag push, not on PRs.
+
+### 3a. Coverage failure — reality-based decision, not auto-block
+
+A `Coverage` failure does **not** automatically block the merge, and the goal is **not** 100% line coverage for its own sake. Decide based on what's actually uncovered:
+
+1. Pull the coverage detail for the failing run:
+   ```sh
+   gh run view <RUN_ID> --log 2>&1 | grep -iE "uncovered|coverage|%|lines" | head -40
+   ```
+   (Get `<RUN_ID>` from the `Coverage` row's URL in `gh pr checks <N>`.)
+2. Identify which lines **in this PR's diff** are uncovered (`git diff origin/main...HEAD` for the changed lines; cross-reference the report).
+3. Classify each uncovered line:
+   - **Critical path** (the actual behavior the change introduces, error handling that can fire, branching logic users hit) → must be covered. Add tests, re-push, re-run CI.
+   - **Trivial / unreachable** (boilerplate, defensive `unreachable!()`, trivial getters, `Debug` impls, log lines) → acceptable to leave uncovered.
+4. Make the call explicitly and **state the reasoning to the user**: name what's uncovered, why it's critical or not, and the merge decision. If proceeding past a coverage failure, say so plainly — never let it pass silently.
+
+Coverage may also fail purely because the threshold dropped a fraction below the gate while every critical path is tested — that's a proceed, with the reasoning stated.
 
 ## 4. Squash-merge
 
