@@ -61,6 +61,42 @@ fn snapshot_ui_results_focused() {
 }
 
 #[test]
+fn snapshot_ui_results_horizontal_scroll_via_trackpad() {
+    use ratatui::crossterm::event::{KeyModifiers, MouseEvent, MouseEventKind};
+
+    // A single very wide string value: wider than the 80-col viewport, so it
+    // can be scrolled horizontally. The left edge shows the value's start.
+    let wide = "ABCDEFGHIJ".repeat(15);
+    let json = format!(r#"{{"wide": "{}"}}"#, wide);
+    let mut app = test_app(&json);
+    app.query.as_mut().unwrap().execute(".");
+    app.focus = Focus::ResultsPane;
+
+    // First render establishes the horizontal bounds (max_h_offset from the
+    // content's max line width) and stores the results-pane region rect that
+    // mouse hit-testing routes against.
+    let _ = render_to_string(&mut app, TEST_WIDTH, TEST_HEIGHT);
+
+    // Dispatch real horizontal trackpad-swipe events (crossterm ScrollRight,
+    // SGR mouse button 7) through the full mouse dispatcher, aimed inside the
+    // results pane. Each ScrollRight pans the viewport right by 3 columns.
+    let swipe = |kind| MouseEvent {
+        kind,
+        column: 10,
+        row: 5,
+        modifiers: KeyModifiers::NONE,
+    };
+    for _ in 0..5 {
+        crate::app::mouse_events::handle_mouse_event(&mut app, swipe(MouseEventKind::ScrollRight));
+    }
+
+    // The rendered result must now show a later slice of the wide value,
+    // proving the swipe changed what is on screen (not just internal state).
+    let output = render_to_string(&mut app, TEST_WIDTH, TEST_HEIGHT);
+    assert_snapshot!(output);
+}
+
+#[test]
 fn snapshot_ui_insert_mode() {
     let json = r#"{"test": true}"#;
     let mut app = test_app(json);

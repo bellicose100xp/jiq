@@ -21,6 +21,15 @@ pub fn handle_mouse_event(app: &mut App, mouse: MouseEvent) {
         MouseEventKind::ScrollUp => {
             mouse_scroll::handle_scroll(app, region, mouse_scroll::ScrollDirection::Up);
         }
+        // ScrollLeft/ScrollRight come from a two-finger horizontal trackpad swipe (SGR mouse
+        // buttons 6/7). Convention: ScrollRight moves the viewport right (increase h_offset),
+        // ScrollLeft moves it left (decrease h_offset) - mirroring keyboard l/h.
+        MouseEventKind::ScrollLeft => {
+            mouse_scroll::handle_scroll(app, region, mouse_scroll::ScrollDirection::Left);
+        }
+        MouseEventKind::ScrollRight => {
+            mouse_scroll::handle_scroll(app, region, mouse_scroll::ScrollDirection::Right);
+        }
         MouseEventKind::Down(MouseButton::Left) => {
             mouse_click::handle_click(app, region, mouse);
         }

@@ -61,6 +61,8 @@ Use <kbd>j</kbd> and <kbd>k</kbd> (or arrow keys) to move the cursor one line at
 | Left edge | `0` |
 | Right edge | `$` |
 
+A two-finger horizontal trackpad swipe also scrolls the output left/right, on terminals that emit horizontal scroll events (Ghostty, kitty, WezTerm; inside tmux requires tmux 3.4+). See [Mouse](./mouse).
+
 The title bar shows the result type and the jq path of the value on the cursor row.
 
 ---
@@ -250,6 +252,7 @@ To copy the entire result without selecting, press <kbd>Ctrl</kbd>+<kbd>Y</kbd> 
 
 | Indicator | What it means |
 |---|---|
+| `L1-20/100 (0%)` (top-right border) | Line/position indicator: visible line range, total lines, and scroll percentage. It lives in the top-right corner of the results border so it stays visible even when the AI or help box overlays the bottom of the screen. During an active search the match count takes this slot instead. |
 | `Syntax Error` | The query has a syntax error; the previous result stays visible |
 | `No Results` | The query is valid but produces no output |
 | `No Matches` | A search is active but nothing matched |
@@ -280,3 +283,4 @@ To copy the entire result without selecting, press <kbd>Ctrl</kbd>+<kbd>Y</kbd> 
 | `]` `[` | Jump cursor to next / previous sibling (wraps) |
 | `v` `V` | Enter visual line selection |
 | `y` | Copy selection (or full result if none) |
+| Horizontal swipe (two fingers) | Scroll left/right (terminal-dependent) |

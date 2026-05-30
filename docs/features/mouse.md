@@ -21,12 +21,16 @@ jiq has two main areas: the query input (where you type) and the output area (wh
 | Click | `[ < Back ]` badge on results border | Step back to prior query (same as <kbd>&lt;</kbd>); only visible when there's something to undo |
 | Click + drag | Output area | Select multiple lines |
 | Scroll wheel | Output area | Scroll vertically |
+| Horizontal swipe (two fingers) | Output area | Scroll left/right through wide lines |
 | Scroll wheel | Input field | Scroll horizontally through long queries |
+| Horizontal swipe (two fingers) | Input field | Pan horizontally through long queries |
 | Hover | History popup row | Reveal the delete button |
 | Click delete button | History popup | Delete that entry |
 | Click | Help popup tab | Switch to that tab |
 | Click | Scrollbar | Reposition the scroll thumb |
 | Drag | Scrollbar thumb | Drag to scroll |
+
+Horizontal scroll works on terminals that emit horizontal scroll events (for example Ghostty, kitty, and WezTerm). Inside tmux it requires tmux 3.4 or newer to forward those events through to jiq.
 
 ## Select and copy with the mouse
 

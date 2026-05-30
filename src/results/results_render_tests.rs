@@ -786,24 +786,40 @@ mod back_button_tests {
     }
 
     #[test]
-    fn position_indicator_renders_on_bottom_right() {
-        // Position info anchors the bottom-right border so the top-left
-        // can stay anchored by the path-at-cursor span and the back badge.
+    fn position_indicator_renders_on_top_right() {
+        // Position info now anchors the TOP-RIGHT border so it stays visible
+        // above the AI / help boxes that overlay the bottom of the screen.
         let mut app = test_app(r#"{"a": 1, "b": 2}"#);
-        let output = render(&mut app, 100, 12);
+        let output = render(&mut app, 80, 22);
         assert!(
             output.contains("L1-"),
             "position indicator must render somewhere:\n{}",
             output,
         );
-        // Specifically: the position indicator should appear on the
-        // bottom border row (last results-pane border line, before the
-        // input field), not the top.
         let lines: Vec<&str> = output.lines().collect();
         let top_border = lines.first().copied().unwrap_or_default();
         assert!(
-            !top_border.contains("L1-"),
-            "position indicator must not be on the top border anymore:\n{}",
+            top_border.contains("L1-"),
+            "position indicator must render on the top border (row 0):\n{}",
+            output,
+        );
+        // The results-pane bottom border is the last `╰...╯` line before the
+        // query pane. It must no longer carry the indicator.
+        let results_bottom = lines
+            .iter()
+            .find(|l| l.contains('╰') && l.contains('╯'))
+            .copied()
+            .unwrap_or_default();
+        assert!(
+            !results_bottom.contains("L1-"),
+            "position indicator must not be on the bottom border anymore:\n{}",
+            output,
+        );
+        // And it is absent from the very last rendered row too.
+        let last_row = lines.last().copied().unwrap_or_default();
+        assert!(
+            !last_row.contains("L1-"),
+            "position indicator must not be on the last row:\n{}",
             output,
         );
     }

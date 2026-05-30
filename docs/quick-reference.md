@@ -47,6 +47,7 @@ Cyan border. Just type — every keystroke re-runs jq.
 | <kbd>Esc</kbd> | NORMAL mode / close autocomplete |
 | Mouse click | Position cursor |
 | Mouse wheel | Horizontal scroll |
+| Horizontal swipe | Horizontal pan (terminal-dependent) |
 
 {: .shortcuts }
 
@@ -178,6 +179,7 @@ Focus with <kbd>Shift</kbd>+<kbd>Tab</kbd> or click.
 | `H` `L` | 10 columns |
 | `0` | Left edge |
 | `$` | Right edge |
+| Horizontal swipe | Scroll left/right (terminal-dependent) |
 
 {: .shortcuts }
 
@@ -284,6 +286,7 @@ Case-insensitive.
 | Click + drag (results) | Multi-line visual selection |
 | Double-click result row | Drill into value (same as <kbd>&gt;</kbd>) |
 | Mouse wheel | Vertical scroll |
+| Horizontal swipe (results / input) | Scroll left/right (terminal-dependent) |
 | Click suggestion | Select |
 | Double-click suggestion | Apply |
 | Hover history row | Reveal `✕` delete button |
