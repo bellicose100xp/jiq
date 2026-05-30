@@ -430,13 +430,14 @@ pub fn render_pane(app: &mut App, frame: &mut Frame, area: Rect) -> (Rect, Optio
                 Style::default().fg(spinner_color),
             ));
         }
-        // The back-badge spans already start with a leading space; only
-        // add the original separator when the badge is absent.
+        // The back-badge spans already start with a leading space. Always
+        // push a trailing neutral space so the cyan badge never renders flush
+        // against the colored status badge to its right; without the badge the
+        // same space serves as the separator from the rounded corner.
         if has_back_badge {
             spans.extend(back_spans.clone());
-        } else {
-            spans.push(Span::raw(" "));
         }
+        spans.push(Span::raw(" "));
         spans.push(Span::styled(
             "  ⚠ Syntax Error  ",
             theme::results::BADGE_SYNTAX_ERROR,
@@ -465,9 +466,8 @@ pub fn render_pane(app: &mut App, frame: &mut Frame, area: Rect) -> (Rect, Optio
         }
         if has_back_badge {
             spans.extend(back_spans.clone());
-        } else {
-            spans.push(Span::raw(" "));
         }
+        spans.push(Span::raw(" "));
         spans.push(Span::styled(
             "  ∅ No Results  ",
             theme::results::BADGE_EMPTY_RESULT,

@@ -785,6 +785,83 @@ mod back_button_tests {
         );
     }
 
+    /// X coordinate of the single cell separating the back badge from the
+    /// status badge to its right, found by locating the badge's trailing `]`
+    /// on the top border row and returning the cell immediately after it.
+    fn cell_after_back_badge(buffer: &ratatui::buffer::Buffer, width: u16) -> (u16, u16) {
+        let y = 0;
+        for x in 0..width.saturating_sub(1) {
+            if buffer[(x, y)].symbol() == "]" {
+                return (x + 1, y);
+            }
+        }
+        panic!("back badge `]` not found on top border row");
+    }
+
+    #[test]
+    fn back_badge_separated_from_syntax_error_badge() {
+        // The cyan back badge and the golden syntax-error badge both carry a
+        // background color. Rendered flush they read as one block; a neutral
+        // (no-bg) cell must sit between them.
+        let mut app = test_app(r#"{"a": 1, "b": 2}"#);
+        app.query_undo
+            .push("", crate::query_undo::ViewportState::default());
+        if let Some(qs) = app.query.as_mut() {
+            qs.execute(".[");
+        }
+        assert!(
+            app.query.as_ref().is_some_and(|q| q.result.is_err()),
+            "test setup must produce an error result",
+        );
+
+        let mut terminal = create_test_terminal(80, 12);
+        terminal.draw(|f| app.render(f)).unwrap();
+        let buffer = terminal.backend().buffer();
+        let (x, y) = cell_after_back_badge(buffer, 80);
+        let cell = &buffer[(x, y)];
+        assert_eq!(
+            cell.symbol().trim(),
+            "",
+            "the cell after the back badge must be blank",
+        );
+        assert_eq!(
+            cell.bg,
+            ratatui::style::Color::Reset,
+            "the separator cell must have no background so the two badges don't touch",
+        );
+    }
+
+    #[test]
+    fn back_badge_separated_from_empty_result_badge() {
+        // Same neutral-cell requirement for the steel-blue empty-result badge.
+        let mut app = test_app(r#"{"a": 1, "b": 2}"#);
+        app.query_undo
+            .push("", crate::query_undo::ViewportState::default());
+        if let Some(qs) = app.query.as_mut() {
+            qs.execute(".nonexistent");
+        }
+        assert!(
+            app.query.as_ref().is_some_and(|q| q.is_empty_result),
+            "test setup must produce an empty result",
+        );
+
+        let mut terminal = create_test_terminal(80, 12);
+        terminal.draw(|f| app.render(f)).unwrap();
+        let buffer = terminal.backend().buffer();
+        let (x, y) = cell_after_back_badge(buffer, 80);
+        let cell = &buffer[(x, y)];
+        assert_eq!(
+            cell.symbol().trim(),
+            "",
+            "the cell after the back badge must be blank",
+        );
+        assert_eq!(
+            cell.bg,
+            ratatui::style::Color::Reset,
+            "the separator cell must have no background so the two badges don't touch",
+        );
+    }
+
     #[test]
     fn position_indicator_renders_on_top_right() {
         // Position info now anchors the TOP-RIGHT border so it stays visible
