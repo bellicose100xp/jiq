@@ -29,7 +29,8 @@ pub fn preprocess_result(
     cancel_token: &CancellationToken,
     array_sample_size: usize,
 ) -> Result<ProcessedResult, QueryError> {
-    // Strip ANSI codes
+    let _t = crate::Timer::new("preprocess output");
+
     if cancel_token.is_cancelled() {
         return Err(QueryError::Cancelled);
     }

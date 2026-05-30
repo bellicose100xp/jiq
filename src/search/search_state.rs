@@ -165,6 +165,8 @@ impl SearchState {
             return;
         }
 
+        let _t = crate::Timer::new("search update");
+
         self.last_query = query.clone();
         self.matches = SearchMatcher::find_all(content, &query);
         self.current_index = 0;

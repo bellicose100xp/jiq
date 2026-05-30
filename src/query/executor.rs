@@ -182,6 +182,8 @@ impl JqExecutor {
         use std::io::Read;
         use std::sync::mpsc::channel;
 
+        let _t = crate::Timer::new("jq query");
+
         // Empty query defaults to identity filter
         let query = if query.trim().is_empty() { "." } else { query };
         log::debug!(
