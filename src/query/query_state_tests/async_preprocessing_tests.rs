@@ -1,5 +1,6 @@
 //! Tests for async preprocessing path (ProcessedSuccess)
 
+use crate::autocomplete::json_navigator::DEFAULT_ARRAY_SAMPLE_SIZE;
 use crate::query::query_state::{QueryState, ResultType};
 
 /// Helper to wait for async query completion
@@ -179,5 +180,47 @@ fn test_async_null_preserves_context_cache() {
     assert_eq!(
         state.last_successful_result_for_context, cached_context,
         "Async null results should preserve context cache"
+    );
+}
+
+#[test]
+fn test_context_cache_skipped_when_ai_inactive() {
+    // With ai_active = false, the AI context cache should never be built —
+    // not on construction, and not after an async query completes.
+    let json = r#"{"name": "test", "value": 42}"#;
+    let mut state =
+        QueryState::new_with_sample_size(json.to_string(), DEFAULT_ARRAY_SAMPLE_SIZE, false);
+
+    assert!(
+        state.last_successful_result_for_context.is_none(),
+        "Context cache should be None at construction when AI is inactive"
+    );
+
+    // Synchronous execute path also gates on ai_active.
+    state.execute(".name");
+    assert!(
+        state.last_successful_result_for_context.is_none(),
+        "Context cache should stay None after sync execute when AI is inactive"
+    );
+
+    state.execute_async(".name");
+    assert!(wait_for_completion(&mut state, 2));
+
+    assert!(
+        state.last_successful_result_for_context.is_none(),
+        "Context cache should stay None after async query when AI is inactive"
+    );
+}
+
+#[test]
+fn test_context_cache_built_when_ai_active() {
+    // Explicit counterpart: ai_active = true builds the cache, confirming the
+    // flag is what gates it (not some unrelated condition).
+    let json = r#"{"name": "test", "value": 42}"#;
+    let state = QueryState::new_with_sample_size(json.to_string(), DEFAULT_ARRAY_SAMPLE_SIZE, true);
+
+    assert!(
+        state.last_successful_result_for_context.is_some(),
+        "Context cache should be built at construction when AI is active"
     );
 }

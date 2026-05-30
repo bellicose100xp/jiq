@@ -88,16 +88,23 @@ pub struct QueryState {
     current_cancel_token: Option<CancellationToken>,
     /// Array sample size for autocomplete
     array_sample_size: usize,
+    /// When false, skip building `last_successful_result_for_context`. Set
+    /// once at startup from `app.ai.enabled && app.ai.configured`.
+    ai_active: bool,
 }
 
 impl QueryState {
     /// Create a new QueryState with default sample size
     #[cfg(test)]
     pub fn new(json_input: String) -> Self {
-        Self::new_with_sample_size(json_input, DEFAULT_ARRAY_SAMPLE_SIZE)
+        Self::new_with_sample_size(json_input, DEFAULT_ARRAY_SAMPLE_SIZE, true)
     }
 
-    pub fn new_with_sample_size(json_input: String, array_sample_size: usize) -> Self {
+    pub fn new_with_sample_size(
+        json_input: String,
+        array_sample_size: usize,
+        ai_active: bool,
+    ) -> Self {
         let executor = JqExecutor::new_with_sample_size(json_input.clone(), array_sample_size);
         let cancel_token = CancellationToken::new();
         let result = executor
@@ -108,14 +115,18 @@ impl QueryState {
             .as_ref()
             .map(|s| Arc::new(strip_ansi_codes(s)));
 
-        // Pre-process for AI context
-        let last_successful_result_for_context =
+        // Pre-process for AI context (skipped when AI isn't active to save
+        // 5-30ms per query for users who never invoke AI).
+        let last_successful_result_for_context = if ai_active {
             last_successful_result_unformatted.as_ref().map(|s| {
                 Arc::new(crate::ai::context::prepare_json_for_context(
                     s,
                     crate::ai::context::MAX_JSON_SAMPLE_LENGTH,
                 ))
-            });
+            })
+        } else {
+            None
+        };
 
         let base_query_for_suggestions = Some(".".to_string());
 
@@ -189,6 +200,7 @@ impl QueryState {
             in_flight_request_id: None,
             current_cancel_token: None,
             array_sample_size,
+            ai_active,
         }
     }
 
@@ -250,12 +262,15 @@ impl QueryState {
             self.last_successful_result = Some(Arc::new(output));
             self.last_successful_result_unformatted = Some(Arc::new(unformatted.clone()));
 
-            // Pre-process for AI context (minified/truncated)
-            self.last_successful_result_for_context =
+            // Pre-process for AI context (skipped when AI isn't active).
+            self.last_successful_result_for_context = if self.ai_active {
                 Some(Arc::new(crate::ai::context::prepare_json_for_context(
                     &unformatted,
                     crate::ai::context::MAX_JSON_SAMPLE_LENGTH,
-                )));
+                )))
+            } else {
+                None
+            };
 
             // Parse JSON and detect type in single pass (avoids duplicate parsing)
             let (parsed, result_type, is_synthetic) =
@@ -419,12 +434,15 @@ impl QueryState {
                     self.last_successful_result_unformatted = Some(processed.unformatted.clone());
                     self.last_successful_result_rendered = Some(rendered);
                     self.last_successful_result_parsed = processed.parsed;
-                    // Pre-process for AI context
-                    self.last_successful_result_for_context =
+                    // Pre-process for AI context (skipped when AI isn't active).
+                    self.last_successful_result_for_context = if self.ai_active {
                         Some(Arc::new(crate::ai::context::prepare_json_for_context(
                             &processed.unformatted,
                             crate::ai::context::MAX_JSON_SAMPLE_LENGTH,
-                        )));
+                        )))
+                    } else {
+                        None
+                    };
                     self.cached_line_count = processed.line_count;
                     self.cached_max_line_width = processed.max_width;
                     self.cached_line_widths = Some(processed.line_widths);
