@@ -375,7 +375,200 @@ fn test_scroll_snippet_preview_does_nothing() {
 
 #[test]
 fn test_scroll_direction_enum() {
-    assert_ne!(ScrollDirection::Up, ScrollDirection::Down);
-    assert_eq!(ScrollDirection::Up, ScrollDirection::Up);
-    assert_eq!(ScrollDirection::Down, ScrollDirection::Down);
+    let variants = [
+        ScrollDirection::Up,
+        ScrollDirection::Down,
+        ScrollDirection::Left,
+        ScrollDirection::Right,
+    ];
+    for (i, a) in variants.iter().enumerate() {
+        for (j, b) in variants.iter().enumerate() {
+            if i == j {
+                assert_eq!(a, b);
+            } else {
+                assert_ne!(a, b);
+            }
+        }
+    }
+}
+
+fn setup_app_for_h_scroll_tests() -> crate::app::App {
+    let mut app = test_app(r#"{"test": "data"}"#);
+    app.results_scroll.max_h_offset = 100;
+    app.results_scroll.viewport_width = 20;
+    app.results_scroll.h_offset = 10;
+    app
+}
+
+#[test]
+fn test_scroll_results_pane_right() {
+    let mut app = setup_app_for_h_scroll_tests();
+    let initial = app.results_scroll.h_offset;
+
+    handle_scroll(&mut app, Some(Region::ResultsPane), ScrollDirection::Right);
+
+    assert_eq!(app.results_scroll.h_offset, initial + 3);
+}
+
+#[test]
+fn test_scroll_results_pane_left() {
+    let mut app = setup_app_for_h_scroll_tests();
+    let initial = app.results_scroll.h_offset;
+
+    handle_scroll(&mut app, Some(Region::ResultsPane), ScrollDirection::Left);
+
+    assert_eq!(app.results_scroll.h_offset, initial - 3);
+}
+
+#[test]
+fn test_scroll_results_pane_left_clamps_at_zero() {
+    let mut app = setup_app_for_h_scroll_tests();
+    app.results_scroll.h_offset = 1;
+
+    handle_scroll(&mut app, Some(Region::ResultsPane), ScrollDirection::Left);
+
+    assert_eq!(
+        app.results_scroll.h_offset, 0,
+        "Horizontal scroll left should not go below 0"
+    );
+}
+
+#[test]
+fn test_scroll_results_pane_right_clamps_at_max() {
+    let mut app = setup_app_for_h_scroll_tests();
+    app.results_scroll.h_offset = 99;
+
+    handle_scroll(&mut app, Some(Region::ResultsPane), ScrollDirection::Right);
+
+    assert_eq!(
+        app.results_scroll.h_offset, 100,
+        "Horizontal scroll right should not exceed max_h_offset"
+    );
+}
+
+#[test]
+fn test_scroll_falls_back_to_results_horizontal_when_none() {
+    let mut app = setup_app_for_h_scroll_tests();
+    let initial = app.results_scroll.h_offset;
+
+    handle_scroll(&mut app, None, ScrollDirection::Right);
+
+    assert_eq!(
+        app.results_scroll.h_offset,
+        initial + 3,
+        "Horizontal scroll with None region should fall back to results pane"
+    );
+}
+
+#[test]
+fn test_scroll_input_field_right() {
+    let mut app = setup_app_for_scroll_tests();
+    app.input.textarea.insert_str("abcdefghijklmnopqrstuvwxyz");
+    app.input.scroll_offset = 0;
+
+    handle_scroll(&mut app, Some(Region::InputField), ScrollDirection::Right);
+
+    assert_eq!(
+        app.input.scroll_offset, 3,
+        "Input field horizontal swipe right pans by 3 chars"
+    );
+}
+
+#[test]
+fn test_scroll_input_field_left() {
+    let mut app = setup_app_for_scroll_tests();
+    app.input.textarea.insert_str("abcdefghijklmnopqrstuvwxyz");
+    app.input.scroll_offset = 10;
+
+    handle_scroll(&mut app, Some(Region::InputField), ScrollDirection::Left);
+
+    assert_eq!(
+        app.input.scroll_offset, 7,
+        "Input field horizontal swipe left pans by 3 chars"
+    );
+}
+
+#[test]
+fn test_scroll_input_field_left_clamps_at_zero() {
+    let mut app = setup_app_for_scroll_tests();
+    app.input.textarea.insert_str("short");
+    app.input.scroll_offset = 1;
+
+    handle_scroll(&mut app, Some(Region::InputField), ScrollDirection::Left);
+
+    assert_eq!(
+        app.input.scroll_offset, 0,
+        "Input field horizontal swipe left should not go below 0"
+    );
+}
+
+#[test]
+fn test_scroll_input_field_right_clamps_at_text_length() {
+    let mut app = setup_app_for_scroll_tests();
+    app.input.textarea.insert_str("short");
+    app.input.scroll_offset = 3;
+
+    handle_scroll(&mut app, Some(Region::InputField), ScrollDirection::Right);
+
+    assert_eq!(
+        app.input.scroll_offset, 5,
+        "Input field horizontal swipe right should not exceed text length"
+    );
+}
+
+#[test]
+fn test_horizontal_scroll_autocomplete_is_noop() {
+    let mut app = setup_app_for_scroll_tests();
+    let suggestions: Vec<Suggestion> = (0..15)
+        .map(|i| {
+            Suggestion::new(
+                format!(".suggestion{}", i),
+                crate::autocomplete::SuggestionType::Field,
+            )
+        })
+        .collect();
+    app.autocomplete.update_suggestions(suggestions);
+    app.autocomplete.scroll_view_down(2);
+    let initial_offset = app.autocomplete.scroll_offset();
+
+    handle_scroll(&mut app, Some(Region::Autocomplete), ScrollDirection::Left);
+    handle_scroll(&mut app, Some(Region::Autocomplete), ScrollDirection::Right);
+
+    assert_eq!(
+        app.autocomplete.scroll_offset(),
+        initial_offset,
+        "Horizontal swipe over a vertical list (autocomplete) is a no-op"
+    );
+}
+
+#[test]
+fn test_horizontal_scroll_help_popup_is_noop() {
+    let mut app = setup_app_for_scroll_tests();
+    app.help.visible = true;
+    app.help.current_scroll_mut().offset = 10;
+    app.help.current_scroll_mut().max_offset = 50;
+    let initial_offset = app.help.current_scroll().offset;
+
+    handle_scroll(&mut app, Some(Region::HelpPopup), ScrollDirection::Left);
+    handle_scroll(&mut app, Some(Region::HelpPopup), ScrollDirection::Right);
+
+    assert_eq!(
+        app.help.current_scroll().offset,
+        initial_offset,
+        "Horizontal swipe over the help popup is a no-op"
+    );
+}
+
+#[test]
+fn test_horizontal_scroll_search_bar_does_nothing() {
+    let mut app = setup_app_for_h_scroll_tests();
+    let initial = app.results_scroll.h_offset;
+
+    handle_scroll(&mut app, Some(Region::SearchBar), ScrollDirection::Right);
+    handle_scroll(&mut app, Some(Region::SearchBar), ScrollDirection::Left);
+
+    assert_eq!(
+        app.results_scroll.h_offset, initial,
+        "Search bar is not scrollable horizontally"
+    );
 }

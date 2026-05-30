@@ -61,6 +61,8 @@ Use <kbd>j</kbd> and <kbd>k</kbd> (or arrow keys) to move the cursor one line at
 | Left edge | `0` |
 | Right edge | `$` |
 
+A two-finger horizontal trackpad swipe also scrolls the output left/right, on terminals that emit horizontal scroll events (Ghostty, kitty, WezTerm; inside tmux requires tmux 3.4+). See [Mouse](./mouse).
+
 The title bar shows the result type and the jq path of the value on the cursor row.
 
 ---
@@ -281,3 +283,4 @@ To copy the entire result without selecting, press <kbd>Ctrl</kbd>+<kbd>Y</kbd> 
 | `]` `[` | Jump cursor to next / previous sibling (wraps) |
 | `v` `V` | Enter visual line selection |
 | `y` | Copy selection (or full result if none) |
+| Horizontal swipe (two fingers) | Scroll left/right (terminal-dependent) |
