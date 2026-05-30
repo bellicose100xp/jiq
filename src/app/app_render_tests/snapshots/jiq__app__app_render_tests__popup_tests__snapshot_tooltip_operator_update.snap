@@ -2,7 +2,7 @@
 source: src/app/app_render_tests/popup_tests.rs
 expression: output
 ---
-"╭ Object ──────────────────────────────────────────────────────────────────────────────────────────────────────────────╮"
+"╭ Object ───────────────────────────────────────────────────────────────────────────────────────────────── L1-4/4 (0%) ╮"
 "│{                                                                                                                     │"
 "│  "name": "Alice",                                                                                                    │"
 "│  "age": 30                                                                                                           │"
@@ -27,7 +27,7 @@ expression: output
 "│                                                    │ 💡 Right side receives current value as input; use = for      │ │" Hidden by multi-width symbols: [(56, " ")]
 "│                                                    │    simple assignment                                          │ │"
 "│                                                    │                                                               │ │"
-"╰────────────────────────────────────────────────────╰─────────────────────── Ctrl+T Dismiss ────────────────────────╯ ╯"
+"╰────────────────────────────────────────────────────╰─────────────────────── Ctrl+T Dismiss ────────────────────────╯─╯"
 "╭ Query [INSERT] ───────────────────────────────────────────────────────────────────────────────── Ctrl+A AI Assistant ╮"
 "│                                                                                                                      │"
 "╰────────────── Shift+Tab Navigate Results • Ctrl+P Previous Query • Ctrl+N Next Query • Ctrl+R History ───────────────╯"

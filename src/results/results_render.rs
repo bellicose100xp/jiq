@@ -202,11 +202,19 @@ fn format_position_indicator(scroll: &ScrollState, line_count: u32) -> String {
 /// branch's top border, given the rendered widths of the surrounding chrome.
 /// Caller still gates on [`PATH_AT_CURSOR_MIN_WIDTH`] so a degenerate budget
 /// hides the span entirely instead of showing a lonely `…`.
+///
+/// `top_right_width` is the rendered width of the right-aligned position /
+/// match-count indicator that now shares the top border. ratatui overlays
+/// the right title over the same row as the left content, so the breadcrumb
+/// must yield first: we subtract the indicator's width (plus a per-side gap
+/// mirroring [`BOTTOM_CHROME_PADDING_PER_SIDE`]) so the path truncates before
+/// it can collide with the indicator on narrow widths.
 fn path_at_cursor_budget(
     area_width: u16,
     stats_info: &str,
     is_pending: bool,
     has_back_badge: bool,
+    top_right_width: usize,
 ) -> usize {
     use unicode_width::UnicodeWidthStr;
 
@@ -224,12 +232,20 @@ fn path_at_cursor_budget(
     } else {
         0
     };
+    // Reserve the right-aligned indicator plus a one-cell gap on each side so
+    // the breadcrumb never runs flush into it. Zero when no indicator shows.
+    let right_reservation = if top_right_width > 0 {
+        top_right_width + 2 * BOTTOM_CHROME_PADDING_PER_SIDE as usize
+    } else {
+        0
+    };
 
     (area_width as usize)
         .saturating_sub(BORDER_CORNERS)
         .saturating_sub(stats_width)
         .saturating_sub(spinner_width)
         .saturating_sub(back_width)
+        .saturating_sub(right_reservation)
         .saturating_sub(PATH_AT_CURSOR_CHROME_WIDTH)
 }
 
@@ -356,6 +372,23 @@ pub fn render_pane(app: &mut App, frame: &mut Frame, area: Rect) -> (Rect, Optio
 
     let search_visible = app.search.is_visible();
 
+    // Rendered width of the right-aligned top-border indicator (match-count
+    // badge when search is confirmed, otherwise the position indicator). The
+    // breadcrumb budget below subtracts this so the two never collide on the
+    // shared top row. Match-count is wrapped as ` {badge} ` with two extra
+    // padding cells inside the badge (`  {n}  `), totalling 6 chrome cells;
+    // the position indicator is wrapped as ` {text} ` (2 chrome cells).
+    let top_right_indicator_width: usize = {
+        use unicode_width::UnicodeWidthStr;
+        if search_visible && app.search.is_confirmed() {
+            UnicodeWidthStr::width(app.search.match_count_display().as_str()) + 6
+        } else if !position_indicator.is_empty() {
+            UnicodeWidthStr::width(position_indicator.as_str()) + 2
+        } else {
+            0
+        }
+    };
+
     // When search is confirmed (navigating results), results pane is active (purple)
     // When search is not confirmed (editing search), results pane is inactive (gray)
     let search_text_color = if search_visible && app.search.is_confirmed() {
@@ -451,8 +484,13 @@ pub fn render_pane(app: &mut App, frame: &mut Frame, area: Rect) -> (Rect, Optio
         } else {
             theme::results::RESULT_OK
         };
-        let path_budget =
-            path_at_cursor_budget(results_area.width, &stats_info, is_pending, has_back_badge);
+        let path_budget = path_at_cursor_budget(
+            results_area.width,
+            &stats_info,
+            is_pending,
+            has_back_badge,
+            top_right_indicator_width,
+        );
         let path_spans: Vec<Span<'static>> = match path_at_cursor_jq.as_deref() {
             Some(path) if !path.is_empty() && path_budget >= PATH_AT_CURSOR_MIN_WIDTH => {
                 let truncated = crate::str_utils::head_truncate_to_width(path, path_budget);
@@ -504,9 +542,9 @@ pub fn render_pane(app: &mut App, frame: &mut Frame, area: Rect) -> (Rect, Optio
     } else {
         unfocused_border_color
     };
-    // Position indicator now lives on the bottom-right border. When search
-    // is confirmed the match-count badge takes that slot, so callers must
-    // suppress this title in that case.
+    // Position indicator lives on the top-right border so it stays visible
+    // above the AI / help boxes. When search is confirmed the match-count
+    // badge takes that slot, so callers must suppress this title in that case.
     let position_title: Option<Line<'static>> = if !position_indicator.is_empty() {
         Some(Line::from(Span::styled(
             format!(" {} ", position_indicator),
@@ -550,12 +588,14 @@ pub fn render_pane(app: &mut App, frame: &mut Frame, area: Rect) -> (Rect, Optio
 
     // Always render from cached pre-rendered text
     if let Some(rendered) = &query_state.last_successful_result_rendered {
-        // Pre-compute the bottom-row pieces so the centered hint strip can
-        // be trimmed to the room left over after the timing (left) and the
-        // position / match-count (right) claim their slots. ratatui's
-        // Block draws right then center then left over the same row, so a
-        // centered title wider than its slot will silently overwrite the
-        // right title — explicit trimming here prevents that.
+        // Pre-compute the bottom-row pieces so the centered hint strip can be
+        // trimmed to the room left over after the timing (left) claims its
+        // slot. The right-anchored indicator now lives on the TOP border, so
+        // the bottom-right slot is empty and the centered strip reclaims that
+        // space (right_title = None). ratatui's Block draws right then center
+        // then left over the same row, so a centered title wider than its
+        // slot would silently overwrite a right title — explicit trimming
+        // here keeps the strip clear of the timing badge.
         let timing_title = query_state.cached_execution_time_ms.map(|ms| {
             let timing_text = format!(" {} ", format_execution_time(ms));
             let timing_color = get_timing_color(ms, border_color);
@@ -577,14 +617,12 @@ pub fn render_pane(app: &mut App, frame: &mut Frame, area: Rect) -> (Rect, Optio
         } else {
             None
         };
-        let bottom_right_title: Option<Line<'static>> =
-            match_count_badge.clone().or_else(|| position_title.clone());
+        // Right-anchored TOP-border indicator: match-count badge during
+        // confirmed search, position indicator otherwise.
+        let top_right_title: Option<Line<'static>> =
+            match_count_badge.or_else(|| position_title.clone());
 
-        let center_budget = bottom_center_budget(
-            results_area.width,
-            timing_title.as_ref(),
-            bottom_right_title.as_ref(),
-        );
+        let center_budget = bottom_center_budget(results_area.width, timing_title.as_ref(), None);
 
         let mut block = Block::default()
             .borders(Borders::ALL)
@@ -592,6 +630,12 @@ pub fn render_pane(app: &mut App, frame: &mut Frame, area: Rect) -> (Rect, Optio
             .padding(Padding::right(1))
             .title(title)
             .border_style(Style::default().fg(border_color));
+        // The right-aligned top title coexists with the left-anchored `.title`
+        // above (ratatui supports multiple top titles with distinct
+        // alignments); the breadcrumb budget already reserved space for it.
+        if let Some(rt) = top_right_title {
+            block = block.title_top(rt.alignment(Alignment::Right));
+        }
         if search_visible && app.search.is_confirmed() {
             block = block.title_bottom(
                 truncate_hints_to_width(
@@ -605,12 +649,6 @@ pub fn render_pane(app: &mut App, frame: &mut Frame, area: Rect) -> (Rect, Optio
         // (typed as text instead), so the results-pane bottom strip is
         // intentionally bare in that mode — the search bar carries the
         // applicable Enter / Tab / Esc hints.
-
-        // Right-anchored bottom title: match-count badge during confirmed
-        // search, position indicator otherwise.
-        if let Some(rt) = bottom_right_title.clone() {
-            block = block.title_bottom(rt.alignment(Alignment::Right));
-        }
 
         // Add navigation hints when results pane is focused and search is not visible
         if !search_visible && app.focus == crate::app::Focus::ResultsPane {
@@ -711,14 +749,14 @@ pub fn render_pane(app: &mut App, frame: &mut Frame, area: Rect) -> (Rect, Optio
         } else {
             None
         };
-        let bottom_right_title: Option<Line<'static>> =
-            match_count_badge.clone().or_else(|| position_title.clone());
+        // Right-anchored TOP-border indicator (see the cached branch above):
+        // match-count badge during confirmed search, position otherwise. With
+        // it off the bottom border, the centered hint strip reclaims the
+        // bottom-right space (right_title = None).
+        let top_right_title: Option<Line<'static>> =
+            match_count_badge.or_else(|| position_title.clone());
 
-        let center_budget = bottom_center_budget(
-            results_area.width,
-            timing_title.as_ref(),
-            bottom_right_title.as_ref(),
-        );
+        let center_budget = bottom_center_budget(results_area.width, timing_title.as_ref(), None);
 
         let mut block = Block::default()
             .borders(Borders::ALL)
@@ -726,6 +764,9 @@ pub fn render_pane(app: &mut App, frame: &mut Frame, area: Rect) -> (Rect, Optio
             .padding(Padding::right(1))
             .title(title)
             .border_style(Style::default().fg(border_color));
+        if let Some(rt) = top_right_title {
+            block = block.title_top(rt.alignment(Alignment::Right));
+        }
         if search_visible && app.search.is_confirmed() {
             block = block.title_bottom(
                 truncate_hints_to_width(
@@ -742,10 +783,6 @@ pub fn render_pane(app: &mut App, frame: &mut Frame, area: Rect) -> (Rect, Optio
                 )
                 .alignment(Alignment::Center),
             );
-        }
-
-        if let Some(rt) = bottom_right_title {
-            block = block.title_bottom(rt.alignment(Alignment::Right));
         }
 
         if let Some(tt) = timing_title {

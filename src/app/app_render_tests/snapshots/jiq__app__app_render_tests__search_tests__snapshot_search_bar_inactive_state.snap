@@ -1,9 +1,8 @@
 ---
 source: src/app/app_render_tests/search_tests.rs
-assertion_line: 236
 expression: output
 ---
-"╭ Object  · .name ─────────────────────────────────────────────────────────────╮"
+"╭ Object  · .name ────────────────────────────────────────────────────   1/2   ╮"
 "▌{                                                                             │"
 "│  "name": "Alice",                                                            │"
 "│  "email": "alice@example.com"                                                │"
@@ -22,7 +21,7 @@ expression: output
 "│                                                                              │"
 "│                                                                              │"
 "│                                                                              │"
-"╰────────────── n/N Next/Prev • Enter Next • > value • * iterate ─────   1/2   ╯"
+"╰──── n/N Next/Prev • Enter Next • > value • * iterate • ^ parent • } wrap ────╯"
 "╭ Search ──────────────────────────────────────────────────────────────────────╮"
 "│alice                                                                         │"
 "╰──────────────────────────────────────────────────────────────────────────────╯"

@@ -2,7 +2,7 @@
 source: src/app/app_render_tests/result_state_tests.rs
 expression: output
 ---
-"╭   ∅ No Results   Array [2 objects] | Showing last non-empty result ──────────────────────────────────────────────────╮"
+"╭   ∅ No Results   Array [2 objects] | Showing last non-empty result ───────────────────────────────────── L1-8/8 (0%) ╮"
 "▌[                                                                                                                     │"
 "│  {                                                                                                                   │"
 "│    "name": "svc1"                                                                                                    │"
@@ -27,7 +27,7 @@ expression: output
 "│                                                                                                                      │"
 "│                                                                                                                      │"
 "│                                                                                                                      │"
-"╰─────────────── Tab Edit Query • i Edit Query • > value • * iterate • ^ parent • } wrap • ]/[ siblings ── L1-8/8 (0%) ╯"
+"╰─────────────── Tab Edit Query • i Edit Query • > value • * iterate • ^ parent • } wrap • ]/[ siblings ───────────────╯"
 "╭ Query [INSERT] ───────────────────────────────────────────────────────────────────────────────── Ctrl+A AI Assistant ╮"
 "│.[] | select(.name == "nonexistent")                                                                                  │"
 "╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯"

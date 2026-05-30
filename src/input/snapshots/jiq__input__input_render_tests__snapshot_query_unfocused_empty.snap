@@ -2,7 +2,7 @@
 source: src/input/input_render_tests.rs
 expression: output
 ---
-"╭ Object  · . ─────────────────────────────────────────────────────────────────╮"
+"╭ Object  · . ──────────────────────────────────────────────────── L1-3/3 (0%) ╮"
 "▌{                                                                             │"
 "│  "name": "Alice"                                                             │"
 "│}                                                                             │"
@@ -21,7 +21,7 @@ expression: output
 "│                                                                              │"
 "│                                                                              │"
 "│                                                                              │"
-"╰────────────────── Tab Edit Query • i Edit Query • > value ────── L1-3/3 (0%) ╯"
+"╰── Tab Edit Query • i Edit Query • > value • * iterate • ^ parent • } wrap ───╯"
 "╭ Query [INSERT] ───────────────────────────────────────── Ctrl+A AI Assistant ╮"
 "│                                                                              │"
 "╰──────────────────────────────────────────────────────────────────────────────╯"

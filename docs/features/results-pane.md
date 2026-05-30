@@ -250,6 +250,7 @@ To copy the entire result without selecting, press <kbd>Ctrl</kbd>+<kbd>Y</kbd> 
 
 | Indicator | What it means |
 |---|---|
+| `L1-20/100 (0%)` (top-right border) | Line/position indicator: visible line range, total lines, and scroll percentage. It lives in the top-right corner of the results border so it stays visible even when the AI or help box overlays the bottom of the screen. During an active search the match count takes this slot instead. |
 | `Syntax Error` | The query has a syntax error; the previous result stays visible |
 | `No Results` | The query is valid but produces no output |
 | `No Matches` | A search is active but nothing matched |

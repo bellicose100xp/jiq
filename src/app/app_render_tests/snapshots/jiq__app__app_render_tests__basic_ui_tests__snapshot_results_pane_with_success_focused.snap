@@ -2,7 +2,7 @@
 source: src/app/app_render_tests/basic_ui_tests.rs
 expression: output
 ---
-"╭ String  · . ─────────────────────────────────────────────────────────────────╮"
+"╭ String  · . ──────────────────────────────────────────────────── L1-1/1 (0%) ╮"
 "▌"Alice"                                                                       │"
 "│                                                                              │"
 "│                                                                              │"
@@ -21,7 +21,7 @@ expression: output
 "│                                                                              │"
 "│                                                                              │"
 "│                                                                              │"
-"╰────────────────── Tab Edit Query • i Edit Query • > value ────── L1-1/1 (0%) ╯"
+"╰── Tab Edit Query • i Edit Query • > value • * iterate • ^ parent • } wrap ───╯"
 "╭ Query [INSERT] ───────────────────────────────────────── Ctrl+A AI Assistant ╮"
 "│.name                                                                         │"
 "╰──────────────────────────────────────────────────────────────────────────────╯"
