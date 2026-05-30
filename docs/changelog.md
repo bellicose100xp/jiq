@@ -17,6 +17,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.30.1] - 2026-05-30
+
+### Changed
+- **Skip AI context preprocessing when AI is not configured** ([#178](https://github.com/bellicose100xp/jiq/pull/178)) - jiq previously rebuilt the minified/truncated AI-context copy of the query result (`prepare_json_for_context`) on every successful query, regardless of whether an AI provider was set up. That work only matters when the AI sidebar is actually usable, so it is now gated on the AI being both enabled and configured (a provider with credentials). Users without AI configured save the per-query preprocessing cost - noticeable on large results - while users with AI configured see identical behavior. The gate is a single flag captured once at startup from the resolved AI state; the AI request paths were already short-circuited when AI is unconfigured, so the cached context was pure waste in that case.
+
 ## [3.30.0] - 2026-05-28
 
 ### Added
