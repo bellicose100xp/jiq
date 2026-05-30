@@ -17,6 +17,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.31.1] - 2026-05-30
+
+### Fixed
+- **Space the back badge off the status badges** ([#180](https://github.com/bellicose100xp/jiq/pull/180)) - When the results-pane undo ring is non-empty, the cyan `[ < Back ]` badge on the top border rendered flush against the colored status badge to its right - the golden `⚠ Syntax Error` badge on an error and the steel-blue `∅ No Results` badge on an empty result - so the two background-colored blocks visually merged into one. The error and empty-result title branches now always emit a neutral, no-background space between the back badge and the status badge, giving them clear separation. The success branch was already separated by the leading space on its stats segment and is unchanged.
+
 ## [3.31.0] - 2026-05-30
 
 ### Added
