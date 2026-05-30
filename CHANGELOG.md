@@ -7,11 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.31.0] - 2026-05-30
+
 ### Added
-- **Horizontal trackpad swipe scrolls the results pane and input field** - A two-finger horizontal swipe now scrolls the results pane left/right and pans the query input horizontally, complementing the vertical mouse wheel and the keyboard `h`/`l`/`H`/`L`/`0`/`$` bindings. `ScrollRight` moves the viewport right (increases the horizontal offset) and `ScrollLeft` moves it left, mirroring the keyboard convention. A horizontal swipe over the vertical list popups (help, AI, snippets, history, autocomplete) is a deliberate no-op. Works on terminals that emit horizontal scroll events (Ghostty, kitty, WezTerm); inside tmux it requires tmux 3.4+ to forward those events.
+- **Horizontal trackpad swipe scrolls the results pane and input field** ([#179](https://github.com/bellicose100xp/jiq/pull/179)) - A two-finger horizontal swipe now scrolls the results pane left/right and pans the query input horizontally, complementing the vertical mouse wheel and the keyboard `h`/`l`/`H`/`L`/`0`/`$` bindings. `ScrollRight` moves the viewport right (increases the horizontal offset) and `ScrollLeft` moves it left, mirroring the keyboard convention. A horizontal swipe over the vertical list popups (help, AI, snippets, history, autocomplete) is a deliberate no-op. Works on terminals that emit horizontal scroll events (Ghostty, kitty, WezTerm); inside tmux it requires tmux 3.4+ to forward those events.
 
 ### Changed
-- **Move the line/position indicator back to the top-right border** - The results-pane position indicator (e.g. `L1-20/100 (0%)`) now renders in the top-right corner of the results border instead of the bottom-right. On the bottom border it was almost always hidden behind the AI sidebar or the help box; the top-right corner stays visible. During a confirmed search the match-count badge still takes that slot. The path-at-cursor breadcrumb on the top-left truncates earlier so it never collides with the indicator, and the centered bottom hint strip reclaims the space the indicator used to reserve.
+- **Move the line/position indicator back to the top-right border** ([#179](https://github.com/bellicose100xp/jiq/pull/179)) - The results-pane position indicator (e.g. `L1-20/100 (0%)`) now renders in the top-right corner of the results border instead of the bottom-right. On the bottom border it was almost always hidden behind the AI sidebar or the help box; the top-right corner stays visible. During a confirmed search the match-count badge still takes that slot. The path-at-cursor breadcrumb on the top-left truncates earlier so it never collides with the indicator, and the centered bottom hint strip reclaims the space the indicator used to reserve.
 
 ## [3.30.1] - 2026-05-30
 
