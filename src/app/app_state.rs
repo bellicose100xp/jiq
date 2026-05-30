@@ -302,9 +302,11 @@ impl App {
     /// paste-recovery acceptance path.
     fn initialize_from_json(&mut self, json_input: String) {
         log::debug!("Initialising from JSON: {} bytes", json_input.len());
+        let ai_active = self.ai.enabled && self.ai.configured;
         self.query = Some(QueryState::new_with_sample_size(
             json_input.clone(),
             self.array_sample_size,
+            ai_active,
         ));
 
         let schema_input = crate::json::extract_first_json_value(&json_input)
