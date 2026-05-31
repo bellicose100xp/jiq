@@ -180,11 +180,10 @@ fn build_back_badge(
 
 fn get_spinner(frame_count: u64) -> (char, Color) {
     let index = (frame_count / 8) as usize;
-    let char_idx = index % SPINNER_CHARS.len();
-    let color_idx = index % theme::results::spinner_colors().len();
+    let colors = theme::results::spinner_colors();
     (
-        SPINNER_CHARS[char_idx],
-        theme::results::spinner_colors()[color_idx],
+        SPINNER_CHARS[index % SPINNER_CHARS.len()],
+        colors[index % colors.len()],
     )
 }
 

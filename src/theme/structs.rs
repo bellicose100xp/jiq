@@ -277,6 +277,10 @@ pub struct HelpLineTheme {
     pub key: Color,
     pub description: Color,
     pub separator: Color,
+    /// Modifier applied to border-hint descriptions and separators. `DIM`
+    /// de-emphasizes on dark backgrounds; on light backgrounds DIM blends
+    /// toward white and bleaches, so light themes use `Modifier::empty()`.
+    pub hint_modifier: Modifier,
 }
 
 /// Scrollbar styles (for components that share scrollbar appearance).

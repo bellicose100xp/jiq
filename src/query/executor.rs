@@ -201,7 +201,7 @@ impl JqExecutor {
     ) -> Result<String, QueryError> {
         self.run_jq(
             query,
-            jq_colors_env(crate::theme::galaxy_dark().results.jq_colors),
+            jq_colors_env(crate::theme::results::output_jq_colors()),
             cancel_token,
         )
     }

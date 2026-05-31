@@ -241,6 +241,12 @@ pub mod results {
     pub fn jq_colors() -> [Color; 8] {
         super::theme().results.jq_colors
     }
+    /// jq palette for the FINAL stdout deliverable. Fixed to the dark Galaxy
+    /// palette so piped/redirected output is consistent regardless of the
+    /// active theme mode (light vs dark).
+    pub fn output_jq_colors() -> [Color; 8] {
+        super::galaxy_dark().results.jq_colors
+    }
 }
 
 /// Search bar styles.
@@ -691,18 +697,24 @@ pub mod border_hints {
 
     /// Build a single hint with key in full color and description dimmed
     pub fn hint(key: &'static str, desc: &'static str, color: Color) -> Vec<Span<'static>> {
+        let hint_modifier = super::theme().help_line.hint_modifier;
         vec![
             Span::styled(key, Style::new().fg(color)),
             Span::styled(
                 format!(" {} ", desc),
-                Style::new().fg(color).add_modifier(Modifier::DIM),
+                Style::new().fg(color).add_modifier(hint_modifier),
             ),
         ]
     }
 
     /// Build a separator dot in dimmed color
     pub fn separator(color: Color) -> Span<'static> {
-        Span::styled("• ", Style::new().fg(color).add_modifier(Modifier::DIM))
+        Span::styled(
+            "• ",
+            Style::new()
+                .fg(color)
+                .add_modifier(super::theme().help_line.hint_modifier),
+        )
     }
 
     /// Build a line with multiple hints separated by dots

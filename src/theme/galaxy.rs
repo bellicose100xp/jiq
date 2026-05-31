@@ -295,6 +295,7 @@ pub fn galaxy_dark() -> Theme {
             key: Color::Rgb(130, 133, 158),
             description: Color::Rgb(90, 92, 119),
             separator: Color::Rgb(90, 92, 119),
+            hint_modifier: Modifier::DIM,
         },
         scrollbar: ScrollbarTheme {
             default: Color::Rgb(0, 217, 255),
@@ -322,53 +323,53 @@ pub fn galaxy_light() -> Theme {
     Theme {
         palette: PaletteTheme {
             text: Color::Rgb(40, 40, 60),
-            text_dim: Color::Rgb(139, 142, 168),
+            text_dim: Color::Rgb(89, 99, 110),
             text_muted: Color::Rgb(96, 99, 128),
             bg_dark: Color::Rgb(244, 243, 250),
             bg_surface: Color::Rgb(234, 232, 243),
             bg_hover: Color::Rgb(228, 224, 242),
             bg_highlight: Color::Rgb(216, 210, 236),
-            success: Color::Rgb(22, 163, 74),
-            warning: Color::Rgb(217, 119, 6),
-            error: Color::Rgb(220, 38, 38),
-            info: Color::Rgb(8, 160, 205),
-            cyan: Color::Rgb(8, 160, 205),
-            yellow: Color::Rgb(202, 138, 4),
-            green: Color::Rgb(22, 163, 74),
-            magenta: Color::Rgb(171, 50, 207),
-            pink: Color::Rgb(229, 35, 110),
-            red: Color::Rgb(220, 38, 38),
-            orange: Color::Rgb(234, 88, 12),
-            purple: Color::Rgb(124, 58, 237),
+            success: Color::Rgb(26, 127, 55),
+            warning: Color::Rgb(180, 69, 0),
+            error: Color::Rgb(210, 15, 57),
+            info: Color::Rgb(14, 116, 144),
+            cyan: Color::Rgb(14, 116, 144),
+            yellow: Color::Rgb(146, 98, 0),
+            green: Color::Rgb(26, 127, 55),
+            magenta: Color::Rgb(162, 28, 175),
+            pink: Color::Rgb(209, 33, 109),
+            red: Color::Rgb(210, 15, 57),
+            orange: Color::Rgb(180, 69, 0),
+            purple: Color::Rgb(136, 57, 239),
             cursor: Style::new().add_modifier(Modifier::REVERSED),
         },
         input: InputTheme {
-            mode_insert: Color::Rgb(8, 160, 205),
-            mode_normal: Color::Rgb(202, 138, 4),
-            mode_operator: Color::Rgb(22, 163, 74),
-            mode_char_search: Color::Rgb(229, 35, 110),
-            border_unfocused: Color::Rgb(150, 150, 176),
-            border_error: Color::Rgb(220, 38, 38),
-            syntax_error_warning: Color::Rgb(202, 138, 4),
-            tooltip_hint: Color::Rgb(171, 50, 207),
-            unfocused_hint: Color::Rgb(150, 150, 176),
-            query_unfocused: Color::Rgb(150, 150, 176),
+            mode_insert: Color::Rgb(14, 116, 144),
+            mode_normal: Color::Rgb(146, 98, 0),
+            mode_operator: Color::Rgb(26, 127, 55),
+            mode_char_search: Color::Rgb(209, 33, 109),
+            border_unfocused: Color::Rgb(118, 119, 140),
+            border_error: Color::Rgb(210, 15, 57),
+            syntax_error_warning: Color::Rgb(146, 98, 0),
+            tooltip_hint: Color::Rgb(162, 28, 175),
+            unfocused_hint: Color::Rgb(118, 119, 140),
+            query_unfocused: Color::Rgb(118, 119, 140),
             cursor: Style::new().add_modifier(Modifier::REVERSED),
         },
         results: ResultsTheme {
-            border_focused: Color::Rgb(8, 160, 205),
-            border_unfocused: Color::Rgb(150, 150, 176),
-            border_warning: Color::Rgb(217, 119, 6),
-            border_error: Color::Rgb(220, 38, 38),
+            border_focused: Color::Rgb(14, 116, 144),
+            border_unfocused: Color::Rgb(118, 119, 140),
+            border_warning: Color::Rgb(180, 69, 0),
+            border_error: Color::Rgb(210, 15, 57),
             background: Color::Rgb(244, 243, 250),
-            search_active: Color::Rgb(229, 35, 110),
-            search_inactive: Color::Rgb(150, 150, 176),
-            timing_normal: Color::Rgb(8, 160, 205),
-            timing_slow: Color::Rgb(202, 138, 4),
-            timing_very_slow: Color::Rgb(220, 38, 38),
-            result_ok: Color::Rgb(22, 163, 74),
-            result_warning: Color::Rgb(202, 138, 4),
-            result_error: Color::Rgb(220, 38, 38),
+            search_active: Color::Rgb(209, 33, 109),
+            search_inactive: Color::Rgb(118, 119, 140),
+            timing_normal: Color::Rgb(14, 116, 144),
+            timing_slow: Color::Rgb(146, 98, 0),
+            timing_very_slow: Color::Rgb(210, 15, 57),
+            result_ok: Color::Rgb(26, 127, 55),
+            result_warning: Color::Rgb(146, 98, 0),
+            result_error: Color::Rgb(210, 15, 57),
             result_pending: Color::Rgb(120, 122, 145),
             badge_syntax_error: Style::new()
                 .fg(Color::Rgb(60, 45, 0))
@@ -378,249 +379,246 @@ pub fn galaxy_light() -> Theme {
                 .bg(Color::Rgb(96, 104, 130)),
             badge_back: Style::new()
                 .fg(Color::Rgb(245, 250, 255))
-                .bg(Color::Rgb(8, 160, 205)),
+                .bg(Color::Rgb(14, 116, 144)),
             badge_back_hover: Style::new()
                 .fg(Color::Rgb(255, 255, 255))
-                .bg(Color::Rgb(124, 58, 237))
+                .bg(Color::Rgb(136, 57, 239))
                 .add_modifier(Modifier::BOLD),
             match_highlight_bg: Color::Rgb(255, 235, 150),
             match_highlight_fg: Color::Rgb(40, 40, 60),
             current_match_bg: Color::Rgb(255, 196, 120),
             current_match_fg: Color::Rgb(40, 30, 0),
-            cursor_line_bg: Color::Rgb(224, 220, 240),
-            hovered_line_bg: Color::Rgb(232, 229, 245),
+            cursor_line_bg: Color::Rgb(214, 208, 234),
+            hovered_line_bg: Color::Rgb(224, 219, 240),
             visual_selection_bg: Color::Rgb(210, 202, 236),
-            cursor_indicator_fg: Color::Rgb(229, 35, 110),
-            stale_modifier: Modifier::DIM,
-            path_at_cursor_separator: Color::Rgb(150, 150, 176),
-            path_at_cursor: Color::Rgb(124, 58, 237),
-            hint_key: Color::Rgb(8, 160, 205),
-            hint_description: Style::new()
-                .fg(Color::Rgb(8, 160, 205))
-                .add_modifier(Modifier::DIM),
+            cursor_indicator_fg: Color::Rgb(209, 33, 109),
+            stale_modifier: Modifier::empty(),
+            path_at_cursor_separator: Color::Rgb(118, 119, 140),
+            path_at_cursor: Color::Rgb(136, 57, 239),
+            hint_key: Color::Rgb(14, 116, 144),
+            hint_description: Style::new().fg(Color::Rgb(89, 99, 110)),
             spinner_colors: vec![
-                Color::Rgb(229, 35, 110),
-                Color::Rgb(234, 88, 12),
+                Color::Rgb(209, 33, 109),
+                Color::Rgb(180, 69, 0),
                 Color::Rgb(150, 104, 0),
-                Color::Rgb(22, 163, 74),
-                Color::Rgb(8, 160, 205),
-                Color::Rgb(124, 58, 237),
-                Color::Rgb(171, 50, 207),
-                Color::Rgb(220, 38, 38),
+                Color::Rgb(26, 127, 55),
+                Color::Rgb(14, 116, 144),
+                Color::Rgb(136, 57, 239),
+                Color::Rgb(162, 28, 175),
+                Color::Rgb(210, 15, 57),
             ],
             jq_colors: [
                 Color::Rgb(96, 99, 128),  // null - muted gray
-                Color::Rgb(220, 38, 38),  // false - red
-                Color::Rgb(22, 163, 74),  // true - green
-                Color::Rgb(124, 58, 237), // numbers - purple
-                Color::Rgb(22, 163, 74),  // strings - green
-                Color::Rgb(8, 160, 205),  // arrays - cyan
-                Color::Rgb(8, 160, 205),  // objects - cyan
-                Color::Rgb(202, 138, 4),  // keys - amber
+                Color::Rgb(210, 15, 57),  // false - red
+                Color::Rgb(26, 127, 55),  // true - green
+                Color::Rgb(136, 57, 239), // numbers - purple
+                Color::Rgb(26, 127, 55),  // strings - green
+                Color::Rgb(14, 116, 144),  // arrays - cyan
+                Color::Rgb(14, 116, 144),  // objects - cyan
+                Color::Rgb(146, 98, 0),  // keys - amber
             ],
         },
         search: SearchTheme {
-            border_active: Color::Rgb(229, 35, 110),
-            border_inactive: Color::Rgb(150, 150, 176),
+            border_active: Color::Rgb(209, 33, 109),
+            border_inactive: Color::Rgb(118, 119, 140),
             background: Color::Rgb(244, 243, 250),
             text_active: Color::Rgb(40, 40, 60),
-            text_inactive: Color::Rgb(150, 150, 176),
-            no_matches: Color::Rgb(220, 38, 38),
+            text_inactive: Color::Rgb(118, 119, 140),
+            no_matches: Color::Rgb(210, 15, 57),
             match_count: Color::Rgb(96, 99, 128),
-            match_count_confirmed: Color::Rgb(139, 142, 168),
+            match_count_confirmed: Color::Rgb(89, 99, 110),
             badge_no_matches: Style::new()
                 .fg(Color::Rgb(255, 238, 240))
-                .bg(Color::Rgb(220, 38, 38)),
+                .bg(Color::Rgb(210, 15, 57)),
             badge_match_count: Style::new()
                 .fg(Color::Rgb(255, 240, 247))
-                .bg(Color::Rgb(229, 35, 110)),
+                .bg(Color::Rgb(209, 33, 109)),
             badge_match_count_confirmed: Style::new()
                 .fg(Color::Rgb(60, 62, 85))
-                .bg(Color::Rgb(214, 212, 226)),
-            hints: Color::Rgb(229, 35, 110),
+                .bg(Color::Rgb(225, 228, 236)),
+            hints: Color::Rgb(209, 33, 109),
         },
         help: HelpTheme {
-            border: Color::Rgb(8, 160, 205),
+            border: Color::Rgb(14, 116, 144),
             background: Color::Rgb(244, 243, 250),
-            scrollbar: Color::Rgb(8, 160, 205),
+            scrollbar: Color::Rgb(14, 116, 144),
             title: Style::new()
-                .fg(Color::Rgb(8, 160, 205))
+                .fg(Color::Rgb(14, 116, 144))
                 .add_modifier(Modifier::BOLD),
             tab_active: Style::new()
-                .fg(Color::Rgb(8, 160, 205))
+                .fg(Color::Rgb(14, 116, 144))
                 .add_modifier(Modifier::BOLD),
-            tab_inactive: Style::new()
-                .fg(Color::Rgb(8, 160, 205))
-                .add_modifier(Modifier::DIM),
-            tab_hover_fg: Color::Rgb(8, 160, 205),
+            tab_inactive: Style::new().fg(Color::Rgb(89, 99, 110)),
+            tab_hover_fg: Color::Rgb(14, 116, 144),
             tab_hover_bg: Color::Rgb(234, 232, 243),
             section_header: Style::new()
-                .fg(Color::Rgb(8, 160, 205))
+                .fg(Color::Rgb(14, 116, 144))
                 .add_modifier(Modifier::BOLD),
             key: Style::new()
-                .fg(Color::Rgb(202, 138, 4))
+                .fg(Color::Rgb(146, 98, 0))
                 .add_modifier(Modifier::BOLD),
             description: Color::Rgb(40, 40, 60),
-            footer: Color::Rgb(139, 142, 168),
+            footer: Color::Rgb(89, 99, 110),
         },
         history: HistoryTheme {
-            border: Color::Rgb(8, 160, 205),
-            scrollbar: Color::Rgb(8, 160, 205),
+            border: Color::Rgb(14, 116, 144),
+            scrollbar: Color::Rgb(14, 116, 144),
             background: Color::Rgb(244, 243, 250),
             item_selected_bg: Color::Rgb(224, 220, 240),
-            item_selected_indicator: Color::Rgb(8, 160, 205),
+            item_selected_indicator: Color::Rgb(14, 116, 144),
             item_normal_bg: Color::Rgb(244, 243, 250),
             item_normal_fg: Color::Rgb(80, 82, 108),
-            no_matches: Color::Rgb(150, 150, 176),
+            no_matches: Color::Rgb(118, 119, 140),
             search_text: Color::Rgb(40, 40, 60),
             search_bg: Color::Rgb(244, 243, 250),
             delete_button: Color::Rgb(96, 99, 128),
-            delete_button_hover: Color::Rgb(220, 38, 38),
+            delete_button_hover: Color::Rgb(210, 15, 57),
         },
         snippets: SnippetsTheme {
-            border: Color::Rgb(22, 163, 74),
-            scrollbar: Color::Rgb(22, 163, 74),
+            border: Color::Rgb(26, 127, 55),
+            scrollbar: Color::Rgb(26, 127, 55),
             background: Color::Rgb(244, 243, 250),
             item_normal_fg: Color::Rgb(40, 40, 60),
             item_normal_bg: Color::Rgb(244, 243, 250),
             item_selected_fg: Color::Rgb(40, 40, 60),
             item_selected_bg: Color::Rgb(224, 220, 240),
-            item_selected_indicator: Color::Rgb(22, 163, 74),
+            item_selected_indicator: Color::Rgb(26, 127, 55),
             item_selected_modifier: Modifier::BOLD,
             item_hovered_fg: Color::Rgb(40, 40, 60),
             item_hovered_bg: Color::Rgb(232, 229, 245),
             name: Color::Rgb(40, 40, 60),
-            description: Color::Rgb(139, 142, 168),
-            query_preview: Color::Rgb(202, 138, 4),
-            category: Color::Rgb(22, 163, 74),
-            field_active_border: Color::Rgb(202, 138, 4),
-            field_inactive_border: Color::Rgb(22, 163, 74),
+            description: Color::Rgb(89, 99, 110),
+            query_preview: Color::Rgb(146, 98, 0),
+            category: Color::Rgb(26, 127, 55),
+            field_active_border: Color::Rgb(146, 98, 0),
+            field_inactive_border: Color::Rgb(26, 127, 55),
             field_text: Color::Rgb(40, 40, 60),
             field_bg: Color::Rgb(244, 243, 250),
-            delete_border: Color::Rgb(220, 38, 38),
-            hint_key: Color::Rgb(202, 138, 4),
+            delete_border: Color::Rgb(210, 15, 57),
+            hint_key: Color::Rgb(146, 98, 0),
             hint_text: Color::Rgb(40, 40, 60),
             search_text: Color::Rgb(40, 40, 60),
             search_bg: Color::Rgb(244, 243, 250),
         },
         save: SaveTheme {
-            title: Color::Rgb(234, 88, 12),
-            border: Color::Rgb(234, 88, 12),
-            input_border: Color::Rgb(202, 138, 4),
+            title: Color::Rgb(180, 69, 0),
+            border: Color::Rgb(180, 69, 0),
+            input_border: Color::Rgb(146, 98, 0),
             input_fg: Color::Rgb(40, 40, 60),
             input_bg: Color::Rgb(244, 243, 250),
-            hint_key: Color::Rgb(202, 138, 4),
+            hint_key: Color::Rgb(146, 98, 0),
             hint_text: Color::Rgb(40, 40, 60),
-            preview_ok: Color::Rgb(22, 163, 74),
-            preview_warn: Color::Rgb(220, 38, 38),
-            error: Color::Rgb(220, 38, 38),
+            preview_ok: Color::Rgb(26, 127, 55),
+            preview_warn: Color::Rgb(210, 15, 57),
+            error: Color::Rgb(210, 15, 57),
         },
         ai: AiTheme {
-            border: Color::Rgb(8, 160, 205),
+            border: Color::Rgb(14, 116, 144),
             background: Color::Rgb(244, 243, 250),
-            scrollbar: Color::Rgb(8, 160, 205),
+            scrollbar: Color::Rgb(14, 116, 144),
             title: Style::new()
-                .fg(Color::Rgb(8, 160, 205))
+                .fg(Color::Rgb(14, 116, 144))
                 .add_modifier(Modifier::BOLD),
-            model_display: Color::Rgb(124, 58, 237),
-            counter: Color::Rgb(202, 138, 4),
-            config_icon: Color::Rgb(202, 138, 4),
+            model_display: Color::Rgb(136, 57, 239),
+            counter: Color::Rgb(146, 98, 0),
+            config_icon: Color::Rgb(146, 98, 0),
             config_title: Style::new()
-                .fg(Color::Rgb(202, 138, 4))
+                .fg(Color::Rgb(146, 98, 0))
                 .add_modifier(Modifier::BOLD),
             config_desc: Color::Rgb(96, 99, 128),
-            config_code: Color::Rgb(8, 160, 205),
+            config_code: Color::Rgb(14, 116, 144),
             config_link: Style::new()
-                .fg(Color::Rgb(124, 58, 237))
+                .fg(Color::Rgb(136, 57, 239))
                 .add_modifier(Modifier::UNDERLINED),
-            thinking_icon: Color::Rgb(202, 138, 4),
+            thinking_icon: Color::Rgb(146, 98, 0),
             thinking_text: Style::new()
-                .fg(Color::Rgb(202, 138, 4))
+                .fg(Color::Rgb(146, 98, 0))
                 .add_modifier(Modifier::ITALIC),
-            error_icon: Color::Rgb(220, 38, 38),
+            error_icon: Color::Rgb(210, 15, 57),
             error_title: Style::new()
-                .fg(Color::Rgb(220, 38, 38))
+                .fg(Color::Rgb(210, 15, 57))
                 .add_modifier(Modifier::BOLD),
-            error_message: Color::Rgb(220, 38, 38),
-            query_text: Color::Rgb(8, 160, 205),
+            error_message: Color::Rgb(210, 15, 57),
+            query_text: Color::Rgb(14, 116, 144),
             result_text: Color::Rgb(40, 40, 60),
-            previous_response: Color::Rgb(139, 142, 168),
+            previous_response: Color::Rgb(89, 99, 110),
             suggestion_selected_bg: Color::Rgb(216, 210, 236),
             suggestion_hovered_bg: Color::Rgb(224, 220, 240),
             suggestion_text_selected: Color::Rgb(40, 40, 60),
             suggestion_text_normal: Color::Rgb(96, 99, 128),
-            suggestion_desc_normal: Color::Rgb(139, 142, 168),
+            suggestion_desc_normal: Color::Rgb(89, 99, 110),
             suggestion_desc_muted: Color::Rgb(96, 99, 128),
-            suggestion_fix: Color::Rgb(220, 38, 38),
-            suggestion_optimize: Color::Rgb(202, 138, 4),
-            suggestion_next: Color::Rgb(22, 163, 74),
-            hint: Color::Rgb(139, 142, 168),
+            suggestion_fix: Color::Rgb(210, 15, 57),
+            suggestion_optimize: Color::Rgb(146, 98, 0),
+            suggestion_next: Color::Rgb(26, 127, 55),
+            hint: Color::Rgb(89, 99, 110),
         },
         autocomplete: AutocompleteTheme {
-            border: Color::Rgb(8, 160, 205),
-            scrollbar: Color::Rgb(8, 160, 205),
+            border: Color::Rgb(14, 116, 144),
+            scrollbar: Color::Rgb(14, 116, 144),
             background: Color::Rgb(244, 243, 250),
             item_normal_fg: Color::Rgb(40, 40, 60),
             item_normal_bg: Color::Rgb(244, 243, 250),
             item_selected_fg: Color::Rgb(255, 255, 255),
-            item_selected_bg: Color::Rgb(8, 160, 205),
+            item_selected_bg: Color::Rgb(14, 116, 144),
             item_selected_modifier: Modifier::BOLD,
-            type_function: Color::Rgb(202, 138, 4),
-            type_field: Color::Rgb(8, 160, 205),
-            type_operator: Color::Rgb(171, 50, 207),
-            type_pattern: Color::Rgb(22, 163, 74),
-            type_variable: Color::Rgb(220, 38, 38),
-            type_value: Color::Rgb(234, 88, 12),
+            type_function: Color::Rgb(146, 98, 0),
+            type_field: Color::Rgb(14, 116, 144),
+            type_operator: Color::Rgb(162, 28, 175),
+            type_pattern: Color::Rgb(26, 127, 55),
+            type_variable: Color::Rgb(210, 15, 57),
+            type_value: Color::Rgb(180, 69, 0),
         },
         tooltip: TooltipTheme {
-            border: Color::Rgb(171, 50, 207),
+            border: Color::Rgb(162, 28, 175),
             background: Color::Rgb(244, 243, 250),
             title: Style::new()
-                .fg(Color::Rgb(171, 50, 207))
+                .fg(Color::Rgb(162, 28, 175))
                 .add_modifier(Modifier::BOLD),
             description: Color::Rgb(40, 40, 60),
-            example: Color::Rgb(8, 160, 205),
+            example: Color::Rgb(14, 116, 144),
             example_desc: Color::Rgb(96, 99, 128),
-            tip: Color::Rgb(202, 138, 4),
-            separator: Color::Rgb(139, 142, 168),
+            tip: Color::Rgb(146, 98, 0),
+            separator: Color::Rgb(89, 99, 110),
         },
         notification: NotificationTheme {
             info: NotificationColors {
                 fg: Color::Rgb(40, 40, 60),
                 bg: Color::Rgb(220, 224, 240),
-                border: Color::Rgb(96, 99, 128),
+                border: Color::Rgb(89, 99, 110),
             },
             warning: NotificationColors {
                 fg: Color::Rgb(40, 30, 0),
                 bg: Color::Rgb(255, 213, 120),
-                border: Color::Rgb(217, 119, 6),
+                border: Color::Rgb(180, 69, 0),
             },
             error: NotificationColors {
                 fg: Color::Rgb(255, 238, 240),
-                bg: Color::Rgb(220, 38, 38),
+                bg: Color::Rgb(210, 15, 57),
                 border: Color::Rgb(150, 36, 44),
             },
         },
         help_line: HelpLineTheme {
             key: Color::Rgb(96, 99, 128),
-            description: Color::Rgb(139, 142, 168),
-            separator: Color::Rgb(139, 142, 168),
+            description: Color::Rgb(89, 99, 110),
+            separator: Color::Rgb(89, 99, 110),
+            hint_modifier: Modifier::empty(),
         },
         scrollbar: ScrollbarTheme {
-            default: Color::Rgb(8, 160, 205),
+            default: Color::Rgb(14, 116, 144),
             track: Color::Rgb(214, 210, 232),
         },
         syntax: SyntaxTheme {
-            keyword: Color::Rgb(229, 35, 110),
-            function: Color::Rgb(8, 160, 205),
-            string: Color::Rgb(22, 163, 74),
-            number: Color::Rgb(124, 58, 237),
-            operator: Color::Rgb(171, 50, 207),
-            variable: Color::Rgb(234, 88, 12),
-            field: Color::Rgb(8, 160, 205),
-            bracket_match_color: Color::Rgb(202, 138, 4),
+            keyword: Color::Rgb(209, 33, 109),
+            function: Color::Rgb(14, 116, 144),
+            string: Color::Rgb(26, 127, 55),
+            number: Color::Rgb(136, 57, 239),
+            operator: Color::Rgb(162, 28, 175),
+            variable: Color::Rgb(180, 69, 0),
+            field: Color::Rgb(14, 116, 144),
+            bracket_match_color: Color::Rgb(146, 98, 0),
             bracket_match_style: Style::new()
-                .fg(Color::Rgb(202, 138, 4))
+                .fg(Color::Rgb(146, 98, 0))
                 .add_modifier(Modifier::BOLD)
                 .add_modifier(Modifier::UNDERLINED),
         },

@@ -40,18 +40,10 @@ pub enum ThemeMode {
 }
 
 /// Theme configuration section
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Default)]
 pub struct ThemeConfig {
     #[serde(default)]
     pub mode: ThemeMode,
-}
-
-impl Default for ThemeConfig {
-    fn default() -> Self {
-        ThemeConfig {
-            mode: ThemeMode::Auto,
-        }
-    }
 }
 
 /// Tooltip configuration section
