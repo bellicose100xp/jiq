@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.31.2] - 2026-05-31
+
+### Fixed
+- **Show "No suggestions" instead of a parse error when the AI has nothing to add** ([#181](https://github.com/bellicose100xp/jiq/pull/181)) - When an AI provider returned a valid but empty suggestion list (`{"suggestions":[]}`, the response the prompt explicitly asks for when there is nothing useful to suggest), jiq treated the non-empty-but-zero-suggestion result as a parse failure and showed the alarming `⚠ Could not parse AI response - did not match the expected format` banner. This fired routinely on the bare `.` identity query. Response parsing now distinguishes three outcomes - usable suggestions, a valid empty list, and genuinely unparseable output - so an empty list renders a calm `✓ No suggestions` message and the parse-error banner is reserved for responses jiq actually could not read.
+
 ## [3.31.1] - 2026-05-30
 
 ### Fixed

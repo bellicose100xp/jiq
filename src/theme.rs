@@ -541,6 +541,15 @@ pub mod ai {
     pub fn error_message() -> Color {
         super::theme().ai.error_message
     }
+    pub fn empty_icon() -> Color {
+        super::theme().ai.empty_icon
+    }
+    pub fn empty_title() -> Style {
+        super::theme().ai.empty_title
+    }
+    pub fn empty_message() -> Color {
+        super::theme().ai.empty_message
+    }
     pub fn query_text() -> Color {
         super::theme().ai.query_text
     }
@@ -688,6 +697,9 @@ pub mod help_line {
     pub fn separator() -> Color {
         super::theme().help_line.separator
     }
+    pub fn hint_modifier() -> Modifier {
+        super::theme().help_line.hint_modifier
+    }
 }
 
 /// Border hint utilities - for building styled keyboard shortcuts on borders.
@@ -697,12 +709,13 @@ pub mod border_hints {
 
     /// Build a single hint with key in full color and description dimmed
     pub fn hint(key: &'static str, desc: &'static str, color: Color) -> Vec<Span<'static>> {
-        let hint_modifier = super::theme().help_line.hint_modifier;
         vec![
             Span::styled(key, Style::new().fg(color)),
             Span::styled(
                 format!(" {} ", desc),
-                Style::new().fg(color).add_modifier(hint_modifier),
+                Style::new()
+                    .fg(color)
+                    .add_modifier(super::help_line::hint_modifier()),
             ),
         ]
     }
@@ -713,7 +726,7 @@ pub mod border_hints {
             "• ",
             Style::new()
                 .fg(color)
-                .add_modifier(super::theme().help_line.hint_modifier),
+                .add_modifier(super::help_line::hint_modifier()),
         )
     }
 

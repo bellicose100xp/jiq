@@ -107,6 +107,14 @@ The AI sends your current query, the error message, and a sample of your JSON to
 
 The AI assistant is not limited to fixing errors. Even when your query works, press **Ctrl+A** and the AI may suggest improvements — a more concise form, a different approach, or natural language interpretation of what you typed.
 
+## What the popup tells you
+
+| Popup state | What it means |
+|---|---|
+| A numbered list of suggestions | The AI returned 2-5 jq queries you can apply. |
+| **No suggestions** | The AI ran successfully but had nothing useful to add for this query (common for the bare `.` identity query). This is normal, not an error. |
+| **Could not parse AI response** | The provider returned a response jiq could not read as suggestions. Re-run with `--debug` and check `/tmp/jiq-debug.log` to see the raw response. |
+
 ## Navigate and dismiss suggestions
 
 | Action | Key |

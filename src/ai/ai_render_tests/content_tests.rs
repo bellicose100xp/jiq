@@ -146,6 +146,33 @@ fn test_build_content_response_that_fails_to_parse_shows_friendly_error() {
 }
 
 #[test]
+fn test_build_content_no_suggestions_shows_calm_message_not_parse_error() {
+    // A valid but empty suggestion list must render as a calm "No suggestions"
+    // message — NOT the "Could not parse" error banner.
+    let mut state = AiState::new_with_config(
+        true,
+        true,
+        "Bedrock".to_string(),
+        "claude-haiku-4-5".to_string(),
+        TEST_MAX_CONTEXT_LENGTH,
+    );
+    state.response = "{\"suggestions\":[]}".to_string();
+    state.no_suggestions = true;
+
+    let content = build_content(&state, 60);
+    let text: String = content
+        .lines
+        .iter()
+        .flat_map(|l| l.spans.iter())
+        .map(|s| s.content.as_ref())
+        .collect();
+
+    assert!(text.contains("No suggestions"));
+    assert!(text.contains("had no suggestions"));
+    assert!(!text.contains("Could not parse"));
+}
+
+#[test]
 fn test_build_content_loading_with_previous() {
     let mut state = AiState::new_with_config(
         true,

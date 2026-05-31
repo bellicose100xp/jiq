@@ -218,6 +218,114 @@ fn test_parse_suggestions_malformed() {
 }
 
 // =========================================================================
+// Three-state parse_response tests
+//
+// Regression coverage for the bug where a valid but explicitly-empty
+// suggestion list (`{"suggestions": []}`, the prompt's own "nothing to
+// suggest" sentinel) was reported as a parse failure instead of a benign
+// empty result.
+// =========================================================================
+
+mod parse_response_outcomes {
+    use super::*;
+    use crate::ai::suggestion::ParseOutcome;
+
+    #[test]
+    fn parsed_outcome_for_valid_suggestions() {
+        let response = r#"{"suggestions": [{"type": "fix", "query": ".users[]", "details": "d"}]}"#;
+        match parse_response(response) {
+            ParseOutcome::Parsed(suggestions) => {
+                assert_eq!(suggestions.len(), 1);
+                assert_eq!(suggestions[0].query, ".users[]");
+            }
+            other => panic!("expected Parsed, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn empty_outcome_for_explicit_empty_array() {
+        // The exact sentinel the prompt instructs the model to return when
+        // it has nothing to suggest.
+        let response = r#"{"suggestions":[]}"#;
+        assert_eq!(parse_response(response), ParseOutcome::Empty);
+    }
+
+    #[test]
+    fn empty_outcome_for_empty_array_with_fences() {
+        // The real-world failing case from /tmp/jiq-debug.log: the sentinel
+        // wrapped in markdown code fences.
+        let response = "```json\n{\"suggestions\":[]}\n```";
+        assert_eq!(parse_response(response), ParseOutcome::Empty);
+    }
+
+    #[test]
+    fn empty_outcome_for_empty_array_with_whitespace() {
+        let response = r#"{ "suggestions" : [ ] }"#;
+        assert_eq!(parse_response(response), ParseOutcome::Empty);
+    }
+
+    #[test]
+    fn empty_outcome_for_empty_array_embedded_in_prose() {
+        // Extraction path: empty sentinel surrounded by commentary.
+        let response = "Here you go:\n{\"suggestions\":[]}\nHope that helps!";
+        assert_eq!(parse_response(response), ParseOutcome::Empty);
+    }
+
+    #[test]
+    fn unparseable_outcome_for_plain_prose() {
+        let response = "This is just plain text without any structured suggestions.";
+        assert_eq!(parse_response(response), ParseOutcome::Unparseable);
+    }
+
+    #[test]
+    fn unparseable_outcome_for_malformed_json() {
+        let response = r#"{"suggestions": [{"type": "fix" INVALID JSON"#;
+        assert_eq!(parse_response(response), ParseOutcome::Unparseable);
+    }
+
+    #[test]
+    fn unparseable_outcome_when_all_items_have_invalid_type() {
+        // Non-empty array, but every item unusable — must NOT be reported as
+        // Empty (that's reserved for a literally-empty array).
+        let response =
+            r#"{"suggestions": [{"type": "invalid", "query": ".users[]", "details": "d"}]}"#;
+        assert_eq!(parse_response(response), ParseOutcome::Unparseable);
+    }
+
+    #[test]
+    fn unparseable_outcome_when_items_missing_required_field() {
+        let response = r#"{"suggestions": [{"type": "fix", "query": ".users[]"}]}"#;
+        assert_eq!(parse_response(response), ParseOutcome::Unparseable);
+    }
+
+    #[test]
+    fn parsed_wins_over_empty_in_mixed_response() {
+        // A response containing both an empty array and a usable legacy-text
+        // suggestion must resolve to Parsed — real suggestions always win.
+        let response = "{\"suggestions\":[]}\n\n1. [Fix] .users[]\n   Fix it";
+        match parse_response(response) {
+            ParseOutcome::Parsed(suggestions) => {
+                assert_eq!(suggestions.len(), 1);
+                assert_eq!(suggestions[0].query, ".users[]");
+            }
+            other => panic!("expected Parsed, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn parsed_outcome_for_legacy_text() {
+        let response = "1. [Next] .users[] | .email\n   Get emails";
+        match parse_response(response) {
+            ParseOutcome::Parsed(suggestions) => {
+                assert_eq!(suggestions.len(), 1);
+                assert_eq!(suggestions[0].suggestion_type, SuggestionType::Next);
+            }
+            other => panic!("expected Parsed, got {:?}", other),
+        }
+    }
+}
+
+// =========================================================================
 // Property-Based Tests
 // =========================================================================
 

@@ -203,6 +203,25 @@ fn snapshot_ai_popup_raw_response_fallback() {
     assert_snapshot!(output);
 }
 
+#[test]
+fn snapshot_ai_popup_no_suggestions() {
+    let mut state = AiState::new_with_config(
+        true,
+        true,
+        "Bedrock".to_string(),
+        "claude-haiku-4-5".to_string(),
+        TEST_MAX_CONTEXT_LENGTH,
+    );
+    state.visible = true;
+    // Valid empty suggestion list — must render the calm "No suggestions"
+    // message, not the "could not parse" error banner.
+    state.response = "{\"suggestions\":[]}".to_string();
+    state.no_suggestions = true;
+
+    let output = render_ai_popup_to_string(&mut state, 100, 30);
+    assert_snapshot!(output);
+}
+
 // =========================================================================
 // Phase 2.2: Query Wrapping Snapshot Test
 // =========================================================================

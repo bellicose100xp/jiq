@@ -682,9 +682,10 @@ pub fn render_pane(app: &mut App, frame: &mut Frame, area: Rect) -> (Rect, Optio
         // Clone only visible lines (50 lines instead of 100K+ for large files!)
         let viewport_text = Text::from(visible_lines.to_vec());
 
-        // Apply DIM effect for stale results
+        // Apply the theme's stale modifier (DIM on dark; none on light,
+        // where DIM bleaches toward the near-white background).
         let viewport_text = if is_stale {
-            apply_dim_to_text(viewport_text)
+            apply_stale_modifier(viewport_text)
         } else {
             viewport_text
         };
@@ -893,7 +894,8 @@ pub fn render_error_overlay(app: &App, frame: &mut Frame, results_area: Rect) ->
     None
 }
 
-fn apply_dim_to_text(text: Text<'_>) -> Text<'static> {
+fn apply_stale_modifier(text: Text<'_>) -> Text<'static> {
+    let stale_modifier = theme::results::stale_modifier();
     Text::from(
         text.lines
             .into_iter()
@@ -904,7 +906,7 @@ fn apply_dim_to_text(text: Text<'_>) -> Text<'static> {
                         .map(|span| {
                             Span::styled(
                                 span.content.into_owned(),
-                                span.style.add_modifier(Modifier::DIM),
+                                span.style.add_modifier(stale_modifier),
                             )
                         })
                         .collect::<Vec<_>>(),

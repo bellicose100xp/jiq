@@ -111,6 +111,24 @@ pub fn build_content(ai_state: &AiState, max_width: u16) -> Text<'static> {
         return Text::from(lines);
     }
 
+    if ai_state.no_suggestions {
+        lines.push(Line::from(vec![
+            Span::styled("✓ ", Style::default().fg(theme::ai::empty_icon())),
+            Span::styled("No suggestions", theme::ai::empty_title()),
+        ]));
+        lines.push(Line::from(""));
+        for line in wrap_text(
+            "The AI had no suggestions for this query.",
+            max_width as usize,
+        ) {
+            lines.push(Line::from(Span::styled(
+                line,
+                Style::default().fg(theme::ai::empty_message()),
+            )));
+        }
+        return Text::from(lines);
+    }
+
     if ai_state.parse_failed {
         lines.push(Line::from(vec![
             Span::styled("⚠ ", Style::default().fg(theme::ai::error_icon())),

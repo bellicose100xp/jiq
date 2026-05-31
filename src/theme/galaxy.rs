@@ -2,7 +2,7 @@
 //!
 //! `galaxy_dark` reproduces the historical compile-time palette verbatim, so the
 //! dark experience is unchanged. `galaxy_light` is a light-background companion
-//! tuned for AA contrast against `Rgb(244, 243, 250)`.
+//! tuned for AA contrast against its pure-white background `Rgb(255, 255, 255)`.
 
 use super::*;
 use ratatui::style::{Color, Modifier, Style};
@@ -232,6 +232,11 @@ pub fn galaxy_dark() -> Theme {
                 .fg(Color::Rgb(224, 108, 117))
                 .add_modifier(Modifier::BOLD),
             error_message: Color::Rgb(224, 108, 117),
+            empty_icon: Color::Rgb(130, 133, 158),
+            empty_title: Style::new()
+                .fg(Color::Rgb(0, 217, 255))
+                .add_modifier(Modifier::BOLD),
+            empty_message: Color::Rgb(130, 133, 158),
             query_text: Color::Rgb(0, 217, 255),
             result_text: Color::Rgb(236, 236, 244),
             previous_response: Color::Rgb(90, 92, 119),
@@ -325,7 +330,7 @@ pub fn galaxy_light() -> Theme {
             text: Color::Rgb(40, 40, 60),
             text_dim: Color::Rgb(89, 99, 110),
             text_muted: Color::Rgb(96, 99, 128),
-            bg_dark: Color::Rgb(244, 243, 250),
+            bg_dark: Color::Rgb(255, 255, 255),
             bg_surface: Color::Rgb(234, 232, 243),
             bg_hover: Color::Rgb(228, 224, 242),
             bg_highlight: Color::Rgb(216, 210, 236),
@@ -361,7 +366,7 @@ pub fn galaxy_light() -> Theme {
             border_unfocused: Color::Rgb(118, 119, 140),
             border_warning: Color::Rgb(180, 69, 0),
             border_error: Color::Rgb(210, 15, 57),
-            background: Color::Rgb(244, 243, 250),
+            background: Color::Rgb(255, 255, 255),
             search_active: Color::Rgb(209, 33, 109),
             search_inactive: Color::Rgb(118, 119, 140),
             timing_normal: Color::Rgb(14, 116, 144),
@@ -421,7 +426,7 @@ pub fn galaxy_light() -> Theme {
         search: SearchTheme {
             border_active: Color::Rgb(209, 33, 109),
             border_inactive: Color::Rgb(118, 119, 140),
-            background: Color::Rgb(244, 243, 250),
+            background: Color::Rgb(255, 255, 255),
             text_active: Color::Rgb(40, 40, 60),
             text_inactive: Color::Rgb(118, 119, 140),
             no_matches: Color::Rgb(210, 15, 57),
@@ -440,7 +445,7 @@ pub fn galaxy_light() -> Theme {
         },
         help: HelpTheme {
             border: Color::Rgb(14, 116, 144),
-            background: Color::Rgb(244, 243, 250),
+            background: Color::Rgb(255, 255, 255),
             scrollbar: Color::Rgb(14, 116, 144),
             title: Style::new()
                 .fg(Color::Rgb(14, 116, 144))
@@ -463,23 +468,23 @@ pub fn galaxy_light() -> Theme {
         history: HistoryTheme {
             border: Color::Rgb(14, 116, 144),
             scrollbar: Color::Rgb(14, 116, 144),
-            background: Color::Rgb(244, 243, 250),
+            background: Color::Rgb(255, 255, 255),
             item_selected_bg: Color::Rgb(224, 220, 240),
             item_selected_indicator: Color::Rgb(14, 116, 144),
-            item_normal_bg: Color::Rgb(244, 243, 250),
+            item_normal_bg: Color::Rgb(255, 255, 255),
             item_normal_fg: Color::Rgb(80, 82, 108),
             no_matches: Color::Rgb(118, 119, 140),
             search_text: Color::Rgb(40, 40, 60),
-            search_bg: Color::Rgb(244, 243, 250),
+            search_bg: Color::Rgb(255, 255, 255),
             delete_button: Color::Rgb(96, 99, 128),
             delete_button_hover: Color::Rgb(210, 15, 57),
         },
         snippets: SnippetsTheme {
             border: Color::Rgb(26, 127, 55),
             scrollbar: Color::Rgb(26, 127, 55),
-            background: Color::Rgb(244, 243, 250),
+            background: Color::Rgb(255, 255, 255),
             item_normal_fg: Color::Rgb(40, 40, 60),
-            item_normal_bg: Color::Rgb(244, 243, 250),
+            item_normal_bg: Color::Rgb(255, 255, 255),
             item_selected_fg: Color::Rgb(40, 40, 60),
             item_selected_bg: Color::Rgb(224, 220, 240),
             item_selected_indicator: Color::Rgb(26, 127, 55),
@@ -493,19 +498,19 @@ pub fn galaxy_light() -> Theme {
             field_active_border: Color::Rgb(146, 98, 0),
             field_inactive_border: Color::Rgb(26, 127, 55),
             field_text: Color::Rgb(40, 40, 60),
-            field_bg: Color::Rgb(244, 243, 250),
+            field_bg: Color::Rgb(255, 255, 255),
             delete_border: Color::Rgb(210, 15, 57),
             hint_key: Color::Rgb(146, 98, 0),
             hint_text: Color::Rgb(40, 40, 60),
             search_text: Color::Rgb(40, 40, 60),
-            search_bg: Color::Rgb(244, 243, 250),
+            search_bg: Color::Rgb(255, 255, 255),
         },
         save: SaveTheme {
             title: Color::Rgb(180, 69, 0),
             border: Color::Rgb(180, 69, 0),
             input_border: Color::Rgb(146, 98, 0),
             input_fg: Color::Rgb(40, 40, 60),
-            input_bg: Color::Rgb(244, 243, 250),
+            input_bg: Color::Rgb(255, 255, 255),
             hint_key: Color::Rgb(146, 98, 0),
             hint_text: Color::Rgb(40, 40, 60),
             preview_ok: Color::Rgb(26, 127, 55),
@@ -514,7 +519,7 @@ pub fn galaxy_light() -> Theme {
         },
         ai: AiTheme {
             border: Color::Rgb(14, 116, 144),
-            background: Color::Rgb(244, 243, 250),
+            background: Color::Rgb(255, 255, 255),
             scrollbar: Color::Rgb(14, 116, 144),
             title: Style::new()
                 .fg(Color::Rgb(14, 116, 144))
@@ -539,6 +544,11 @@ pub fn galaxy_light() -> Theme {
                 .fg(Color::Rgb(210, 15, 57))
                 .add_modifier(Modifier::BOLD),
             error_message: Color::Rgb(210, 15, 57),
+            empty_icon: Color::Rgb(89, 99, 110),
+            empty_title: Style::new()
+                .fg(Color::Rgb(14, 116, 144))
+                .add_modifier(Modifier::BOLD),
+            empty_message: Color::Rgb(89, 99, 110),
             query_text: Color::Rgb(14, 116, 144),
             result_text: Color::Rgb(40, 40, 60),
             previous_response: Color::Rgb(89, 99, 110),
@@ -556,9 +566,9 @@ pub fn galaxy_light() -> Theme {
         autocomplete: AutocompleteTheme {
             border: Color::Rgb(14, 116, 144),
             scrollbar: Color::Rgb(14, 116, 144),
-            background: Color::Rgb(244, 243, 250),
+            background: Color::Rgb(255, 255, 255),
             item_normal_fg: Color::Rgb(40, 40, 60),
-            item_normal_bg: Color::Rgb(244, 243, 250),
+            item_normal_bg: Color::Rgb(255, 255, 255),
             item_selected_fg: Color::Rgb(255, 255, 255),
             item_selected_bg: Color::Rgb(14, 116, 144),
             item_selected_modifier: Modifier::BOLD,
@@ -571,7 +581,7 @@ pub fn galaxy_light() -> Theme {
         },
         tooltip: TooltipTheme {
             border: Color::Rgb(162, 28, 175),
-            background: Color::Rgb(244, 243, 250),
+            background: Color::Rgb(255, 255, 255),
             title: Style::new()
                 .fg(Color::Rgb(162, 28, 175))
                 .add_modifier(Modifier::BOLD),

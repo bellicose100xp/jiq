@@ -23,6 +23,7 @@
 - **VIM keybindings** — full motions, operators, text objects
 - **Mouse support** — click, scroll, drag-select
 - **Syntax highlighting** — colorized JSON output and jq query
+- **Themes** — light or dark color scheme
 
 ## Demo
 
@@ -400,6 +401,13 @@ jiq looks for a configuration file at `~/.config/jiq/config.toml` (or the platfo
 # - system: use only OS clipboard (may not work in SSH/tmux)
 # - osc52: use terminal escape sequences (works in most modern terminals over SSH)
 backend = "auto"
+
+[theme]
+# Color theme: "auto" (default), "light", or "dark"
+# - auto: detect the terminal background at startup, fall back to dark
+# - light: force the light palette
+# - dark: force the dark palette (the classic Galaxy theme)
+mode = "auto"
 
 [autocomplete]
 # Number of array elements sampled to discover field suggestions for arrays where fields
