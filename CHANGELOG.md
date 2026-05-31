@@ -7,7 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [3.31.3] - 2026-05-31
+## [3.32.0] - 2026-05-31
+
+### Added
+- **Light and dark themes** ([#183](https://github.com/bellicose100xp/jiq/pull/183)) - jiq now ships a light color scheme alongside the original dark Galaxy theme, selected via `[theme] mode` in `config.toml`: `auto` (default) detects the terminal background at startup and picks the matching palette, falling back to dark when detection is unavailable; `light` and `dark` force a palette. The light palette is tuned for WCAG-AA contrast on a pure-white background, with accents deepened so colors read vividly rather than washed-out, and it paints a pure-white background so jiq blends into a light terminal with no visible tint. The final piped/redirected output keeps the fixed dark jq palette regardless of the display theme, so command-line output is unchanged.
 
 ### Added
 - **Plain-language error overlay** ([#182](https://github.com/bellicose100xp/jiq/pull/182)) - The error overlay (`Ctrl+E`) now rewrites jq's terse, version-dependent stderr into a clear explanation plus a concrete fix hint. An unclosed `.foo[` reads "Incomplete query: jq reached the end while still expecting more." with the hint "Close the '['; e.g. .foo[0] or .foo[]"; a misspelled `lengths` reports "Unknown function lengths" and suggests `length`; `.foo` on an array explains that arrays are indexed by position; and `1 + "a"` reports a number/string type mismatch. The rewriter is version-tolerant across jq 1.6, 1.7, and 1.8+ - it strips the misleading `(Unix shell quoting issues?)` hint that older jq appends, normalizes the `$end` / `end of file` wording, and shows the column only when jq reports one. Errors it does not recognize still display verbatim, so no detail is lost. The AI assistant is unchanged and continues to receive jq's raw error text.
