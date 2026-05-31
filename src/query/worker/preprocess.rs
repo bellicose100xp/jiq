@@ -7,7 +7,7 @@ use std::sync::Arc;
 
 use ansi_to_tui::IntoText;
 use memchr::memchr;
-use ratatui::text::Text;
+use ratatui::text::{Line, Text};
 use serde_json::Value;
 use tokio_util::sync::CancellationToken;
 
@@ -139,9 +139,19 @@ fn parse_ansi_to_rendered_lines(
             let spans = line
                 .spans
                 .into_iter()
-                .map(|span| RenderedSpan {
-                    content: span.content.to_string(),
-                    style: span.style,
+                .map(|span| {
+                    // jq emits foreground-only SGR; ansi-to-tui turns its
+                    // `\e[0m` resets into spans with bg = Color::Reset, which
+                    // ratatui paints as the terminal's default background.
+                    // Dropping the bg lets the themed pane background show
+                    // through every cell (otherwise light mode shows dark
+                    // bands behind each line).
+                    let mut style = span.style;
+                    style.bg = None;
+                    RenderedSpan {
+                        content: span.content.to_string(),
+                        style,
+                    }
                 })
                 .collect();
 
@@ -150,6 +160,32 @@ fn parse_ansi_to_rendered_lines(
         .collect::<Result<Vec<_>, _>>()?;
 
     Ok(rendered_lines)
+}
+
+/// Strip per-span background from parsed jq output.
+///
+/// jq colors output with foreground-only SGR codes; `ansi-to-tui` converts
+/// its `\e[0m` resets into spans carrying `bg = Color::Reset` (the terminal's
+/// default background). Removing the bg lets the themed pane background show
+/// through, which is required for the light theme to render correctly. Used
+/// by the non-worker render paths that call `into_text()` directly.
+pub(crate) fn normalize_jq_text(text: Text<'static>) -> Text<'static> {
+    Text::from(
+        text.lines
+            .into_iter()
+            .map(|line| {
+                Line::from(
+                    line.spans
+                        .into_iter()
+                        .map(|mut span| {
+                            span.style.bg = None;
+                            span
+                        })
+                        .collect::<Vec<_>>(),
+                )
+            })
+            .collect::<Vec<_>>(),
+    )
 }
 
 /// Strip ANSI escape codes from a string using SIMD-accelerated scanning

@@ -69,10 +69,14 @@ fn render_top_block(state: &PasteRecoveryState, frame: &mut Frame, area: Rect) {
     let (title, border_color, message_color) = match state.mode {
         PasteRecoveryMode::Recovery => (
             " No JSON loaded ",
-            theme::input::BORDER_ERROR,
-            theme::input::BORDER_ERROR,
+            theme::input::border_error(),
+            theme::input::border_error(),
         ),
-        PasteRecoveryMode::Explicit => (" Info ", theme::input::MODE_INSERT, theme::palette::TEXT),
+        PasteRecoveryMode::Explicit => (
+            " Info ",
+            theme::input::mode_insert(),
+            theme::palette::text(),
+        ),
     };
 
     let block = Block::default()
@@ -143,12 +147,12 @@ fn render_textarea(
 
 fn mode_color(mode: EditorMode) -> Color {
     match mode {
-        EditorMode::Insert => theme::input::MODE_INSERT,
-        EditorMode::Normal => theme::input::MODE_NORMAL,
-        EditorMode::Operator(_) => theme::input::MODE_OPERATOR,
-        EditorMode::CharSearch(_, _) => theme::input::MODE_CHAR_SEARCH,
-        EditorMode::OperatorCharSearch(_, _, _, _) => theme::input::MODE_OPERATOR,
-        EditorMode::TextObject(_, _) => theme::input::MODE_OPERATOR,
+        EditorMode::Insert => theme::input::mode_insert(),
+        EditorMode::Normal => theme::input::mode_normal(),
+        EditorMode::Operator(_) => theme::input::mode_operator(),
+        EditorMode::CharSearch(_, _) => theme::input::mode_char_search(),
+        EditorMode::OperatorCharSearch(_, _, _, _) => theme::input::mode_operator(),
+        EditorMode::TextObject(_, _) => theme::input::mode_operator(),
     }
 }
 

@@ -58,7 +58,7 @@ fn render_banner(state: &SourcePickerState, frame: &mut Frame, area: Rect) {
         .borders(Borders::ALL)
         .border_type(BorderType::Rounded)
         .title(" Choose JSON input source ")
-        .border_style(Style::default().fg(theme::input::MODE_INSERT))
+        .border_style(Style::default().fg(theme::input::mode_insert()))
         .padding(Padding::horizontal(1))
         .title_bottom(bottom_hints(state.selection).alignment(Alignment::Center));
 
@@ -86,7 +86,7 @@ fn render_preview(state: &SourcePickerState, frame: &mut Frame, area: Rect) {
         .borders(Borders::ALL)
         .border_type(BorderType::Rounded)
         .title(" Clipboard preview ")
-        .border_style(Style::default().fg(theme::input::BORDER_UNFOCUSED))
+        .border_style(Style::default().fg(theme::input::border_unfocused()))
         .padding(Padding::horizontal(1));
 
     let inner = block.inner(area);
@@ -129,7 +129,7 @@ fn clipboard_preview_lines(bytes: &str, max_lines: usize) -> Vec<Line<'static>> 
         .map(|line| {
             Line::from(Span::styled(
                 line.to_string(),
-                Style::default().fg(theme::palette::TEXT),
+                Style::default().fg(theme::palette::text()),
             ))
         })
         .collect();
@@ -150,7 +150,7 @@ fn clipboard_preview_lines(bytes: &str, max_lines: usize) -> Vec<Line<'static>> 
         out.push(Line::from(Span::styled(
             tail,
             Style::default()
-                .fg(theme::palette::TEXT_MUTED)
+                .fg(theme::palette::text_muted())
                 .add_modifier(Modifier::ITALIC),
         )));
     }
@@ -165,13 +165,13 @@ fn render_too_small(frame: &mut Frame, area: Rect) {
         Line::from(Span::styled(
             "Terminal too small for the source picker.",
             Style::default()
-                .fg(theme::input::BORDER_ERROR)
+                .fg(theme::input::border_error())
                 .add_modifier(Modifier::BOLD),
         )),
         Line::raw(""),
         Line::from(Span::styled(
             "Resize, or relaunch with --clipboard / --paste.",
-            Style::default().fg(theme::palette::TEXT),
+            Style::default().fg(theme::palette::text()),
         )),
     ])
     .wrap(Wrap { trim: false });
@@ -187,10 +187,10 @@ fn option_line(state: &SourcePickerState, choice: SourceChoice) -> Line<'static>
     };
     let style = if selected {
         Style::default()
-            .fg(theme::input::MODE_INSERT)
+            .fg(theme::input::mode_insert())
             .add_modifier(Modifier::BOLD)
     } else {
-        Style::default().fg(theme::palette::TEXT)
+        Style::default().fg(theme::palette::text())
     };
     Line::from(vec![
         Span::styled(format!(" {} ", marker), style),
@@ -208,7 +208,7 @@ fn bottom_hints(selection: SourceChoice) -> Line<'static> {
     };
     let entries: [(&'static str, &'static str); 3] =
         [("Enter", enter_label), ("↑/↓", "Switch"), ("Esc", "Quit")];
-    theme::border_hints::build_hints(&entries, theme::input::MODE_INSERT)
+    theme::border_hints::build_hints(&entries, theme::input::mode_insert())
 }
 
 /// Format a byte count using SI-style suffixes (B / KB / MB).

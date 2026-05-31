@@ -19,7 +19,7 @@ pub struct Match {
 fn create_search_textarea() -> TextArea<'static> {
     let mut textarea = TextArea::default();
     textarea.set_cursor_line_style(Style::default());
-    textarea.set_cursor_style(theme::palette::CURSOR);
+    textarea.set_cursor_style(theme::palette::cursor());
     textarea
 }
 

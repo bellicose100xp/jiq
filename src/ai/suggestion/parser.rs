@@ -58,9 +58,9 @@ impl SuggestionType {
     /// Get the color for this suggestion type
     pub fn color(&self) -> Color {
         match self {
-            SuggestionType::Fix => theme::ai::SUGGESTION_FIX,
-            SuggestionType::Optimize => theme::ai::SUGGESTION_OPTIMIZE,
-            SuggestionType::Next => theme::ai::SUGGESTION_NEXT,
+            SuggestionType::Fix => theme::ai::suggestion_fix(),
+            SuggestionType::Optimize => theme::ai::suggestion_optimize(),
+            SuggestionType::Next => theme::ai::suggestion_next(),
         }
     }
 

@@ -37,9 +37,9 @@ fn get_context_hints(app: &App) -> Vec<(&'static str, &'static str)> {
 }
 
 fn build_styled_spans(hints: &[(&'static str, &'static str)]) -> Vec<Span<'static>> {
-    let key_style = Style::default().fg(theme::help_line::KEY);
-    let desc_style = Style::default().fg(theme::help_line::DESCRIPTION);
-    let sep_style = Style::default().fg(theme::help_line::SEPARATOR);
+    let key_style = Style::default().fg(theme::help_line::key());
+    let desc_style = Style::default().fg(theme::help_line::description());
+    let sep_style = Style::default().fg(theme::help_line::separator());
 
     let mut spans = Vec::with_capacity(hints.len() * 4 + 1);
     spans.push(Span::raw(" "));

@@ -1,9 +1,10 @@
 ---
-source: src/app/syntax_overlay.rs
+source: src/syntax_highlight/overlay_tests/snapshot_tests.rs
 expression: serialize_spans(&result)
 ---
 - content: Hi
   fg: red
 - content: " "
+  fg: "rgb(236,236,244)"
   modifiers:
     - reversed

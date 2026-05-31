@@ -159,7 +159,7 @@ pub fn render_popup(app: &App, frame: &mut Frame, input_area: Rect) -> Option<Re
     // Description line
     lines.push(Line::from(vec![Span::styled(
         content.description,
-        Style::default().fg(theme::tooltip::DESCRIPTION),
+        Style::default().fg(theme::tooltip::description()),
     )]));
 
     // Blank line before examples
@@ -171,7 +171,7 @@ pub fn render_popup(app: &App, frame: &mut Frame, input_area: Rect) -> Option<Re
             // No description, just show code
             lines.push(Line::from(vec![Span::styled(
                 format!("  {}", code),
-                Style::default().fg(theme::tooltip::EXAMPLE),
+                Style::default().fg(theme::tooltip::example()),
             )]));
         } else {
             // Two-column: code (padded) │ description
@@ -179,10 +179,10 @@ pub fn render_popup(app: &App, frame: &mut Frame, input_area: Rect) -> Option<Re
             lines.push(Line::from(vec![
                 Span::styled(
                     format!("  {}", padded_code),
-                    Style::default().fg(theme::tooltip::EXAMPLE),
+                    Style::default().fg(theme::tooltip::example()),
                 ),
-                Span::styled(" │ ", Style::default().fg(theme::tooltip::SEPARATOR)),
-                Span::styled(*desc, Style::default().fg(theme::tooltip::EXAMPLE_DESC)),
+                Span::styled(" │ ", Style::default().fg(theme::tooltip::separator())),
+                Span::styled(*desc, Style::default().fg(theme::tooltip::example_desc())),
             ]));
         }
     }
@@ -195,14 +195,14 @@ pub fn render_popup(app: &App, frame: &mut Frame, input_area: Rect) -> Option<Re
             Span::styled("💡 ", Style::default()),
             Span::styled(
                 wrapped_tip_lines[0].clone(),
-                Style::default().fg(theme::tooltip::TIP),
+                Style::default().fg(theme::tooltip::tip()),
             ),
         ]));
         // Subsequent lines with spacing to align with first line
         for line in wrapped_tip_lines.iter().skip(1) {
             lines.push(Line::from(vec![
                 Span::raw("   "), // 3 spaces to align with text after emoji
-                Span::styled(line.clone(), Style::default().fg(theme::tooltip::TIP)),
+                Span::styled(line.clone(), Style::default().fg(theme::tooltip::tip())),
             ]));
         }
     }
@@ -213,13 +213,16 @@ pub fn render_popup(app: &App, frame: &mut Frame, input_area: Rect) -> Option<Re
     // Format: "fn: select" or "operator: //"
     let title = Line::from(vec![
         Span::raw(" "),
-        Span::styled(format!("{}: {}", title_prefix, name), theme::tooltip::TITLE),
+        Span::styled(
+            format!("{}: {}", title_prefix, name),
+            theme::tooltip::title(),
+        ),
         Span::raw(" "),
     ]);
 
     // Build dismiss hint for bottom-center of border
     let dismiss_hint =
-        theme::border_hints::build_hints(&[("Ctrl+T", "Dismiss")], theme::tooltip::BORDER);
+        theme::border_hints::build_hints(&[("Ctrl+T", "Dismiss")], theme::tooltip::border());
 
     // Create the popup widget with purple border
     // Title on top-left, dismiss hint on bottom-center, padding inside
@@ -229,8 +232,8 @@ pub fn render_popup(app: &App, frame: &mut Frame, input_area: Rect) -> Option<Re
             .border_type(BorderType::Rounded)
             .title(title)
             .title_bottom(dismiss_hint.alignment(Alignment::Center))
-            .border_style(Style::default().fg(theme::tooltip::BORDER))
-            .style(Style::default().bg(theme::tooltip::BACKGROUND))
+            .border_style(Style::default().fg(theme::tooltip::border()))
+            .style(Style::default().bg(theme::tooltip::background()))
             .padding(Padding::uniform(1)),
     );
 

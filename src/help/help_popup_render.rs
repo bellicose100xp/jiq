@@ -49,12 +49,12 @@ pub fn render_popup(app: &mut App, frame: &mut Frame) -> Option<Rect> {
                     ("j/k", "Scroll"),
                     ("q", "Close"),
                 ],
-                theme::help::BORDER,
+                theme::help::border(),
             )
             .centered(),
         )
-        .border_style(Style::default().fg(theme::help::BORDER))
-        .style(Style::default().bg(theme::help::BACKGROUND));
+        .border_style(Style::default().fg(theme::help::border()))
+        .style(Style::default().bg(theme::help::background()));
 
     let inner_area = outer_block.inner(popup_area);
     frame.render_widget(outer_block, popup_area);
@@ -83,7 +83,7 @@ pub fn render_popup(app: &mut App, frame: &mut Frame) -> Option<Rect> {
     // Render separator line
     let separator = Line::from(Span::styled(
         "─".repeat(chunks[1].width as usize),
-        Style::default().fg(theme::help::FOOTER),
+        Style::default().fg(theme::help::footer()),
     ));
     frame.render_widget(Paragraph::new(separator), chunks[1]);
 
@@ -121,7 +121,7 @@ pub fn render_popup(app: &mut App, frame: &mut Frame) -> Option<Rect> {
         content_height as usize,
         viewport,
         clamped_offset,
-        theme::help::SCROLLBAR,
+        theme::help::scrollbar(),
     );
 
     Some(popup_area)
@@ -146,18 +146,18 @@ fn render_tab_bar(active_tab: HelpTab, hovered_tab: Option<HelpTab>, _width: u16
         if *tab == active_tab {
             spans.push(Span::styled(
                 format!("[{}]", label),
-                theme::help::TAB_ACTIVE,
+                theme::help::tab_active(),
             ));
         } else if is_hovered {
             spans.push(Span::styled(
                 label,
                 Style::default()
-                    .fg(theme::help::TAB_HOVER_FG)
-                    .bg(theme::help::TAB_HOVER_BG)
+                    .fg(theme::help::tab_hover_fg())
+                    .bg(theme::help::tab_hover_bg())
                     .add_modifier(ratatui::style::Modifier::BOLD),
             ));
         } else {
-            spans.push(Span::styled(label, theme::help::TAB_INACTIVE));
+            spans.push(Span::styled(label, theme::help::tab_inactive()));
         }
     }
 
@@ -187,14 +187,14 @@ fn render_help_sections(sections: &[HelpSection], width: u16) -> Vec<Line<'stati
             let header_text = format!("{}── {} ──", padding, title);
             lines.push(Line::from(Span::styled(
                 header_text,
-                theme::help::SECTION_HEADER,
+                theme::help::section_header(),
             )));
         }
 
         // Add entries
         for (key, desc) in section.entries {
-            let key_span = Span::styled(format!("{}{:<15}", padding, key), theme::help::KEY);
-            let desc_span = Span::styled(*desc, Style::default().fg(theme::help::DESCRIPTION));
+            let key_span = Span::styled(format!("{}{:<15}", padding, key), theme::help::key());
+            let desc_span = Span::styled(*desc, Style::default().fg(theme::help::description()));
             lines.push(Line::from(vec![key_span, desc_span]));
         }
     }

@@ -50,7 +50,7 @@ pub fn render_error_overlay(app: &App, frame: &mut Frame, results_area: Rect) ->
         if truncated {
             display_lines.push(Line::from(Span::styled(
                 "… (error truncated)",
-                Style::default().fg(theme::results::ERROR_LOCATION),
+                Style::default().fg(theme::results::error_location()),
             )));
         }
 
@@ -67,15 +67,17 @@ pub fn render_error_overlay(app: &App, frame: &mut Frame, results_area: Rect) ->
         };
 
         popup::clear_area(frame, overlay_area);
-        let close_hint =
-            theme::border_hints::build_hints(&[("Ctrl+E", "Close")], theme::results::BORDER_ERROR);
+        let close_hint = theme::border_hints::build_hints(
+            &[("Ctrl+E", "Close")],
+            theme::results::border_error(),
+        );
         let error_block = Block::default()
             .borders(Borders::ALL)
             .border_type(BorderType::Rounded)
             .title(" Error ")
             .title_bottom(close_hint.alignment(Alignment::Center))
-            .border_style(Style::default().fg(theme::results::BORDER_ERROR))
-            .style(Style::default().bg(theme::results::BACKGROUND))
+            .border_style(Style::default().fg(theme::results::border_error()))
+            .style(Style::default().bg(theme::results::background()))
             .padding(Padding::new(1, 1, 1, 1));
 
         let error_widget = Paragraph::new(Text::from(display_lines)).block(error_block);
@@ -96,7 +98,7 @@ fn build_enhanced_error_lines(enhanced: &EnhancedError, width: usize) -> Vec<Lin
         for wrapped in wrap_plain(chunk, width) {
             lines.push(Line::from(Span::styled(
                 wrapped,
-                Style::default().fg(theme::results::ERROR_SUMMARY),
+                Style::default().fg(theme::results::error_summary()),
             )));
         }
     }
@@ -113,7 +115,7 @@ fn build_enhanced_error_lines(enhanced: &EnhancedError, width: usize) -> Vec<Lin
                 spans.push(Span::styled(
                     label,
                     Style::default()
-                        .fg(theme::results::ERROR_HINT_LABEL)
+                        .fg(theme::results::error_hint_label())
                         .add_modifier(Modifier::BOLD),
                 ));
             } else {
@@ -121,7 +123,7 @@ fn build_enhanced_error_lines(enhanced: &EnhancedError, width: usize) -> Vec<Lin
             }
             spans.push(Span::styled(
                 wrapped,
-                Style::default().fg(theme::results::ERROR_HINT_TEXT),
+                Style::default().fg(theme::results::error_hint_text()),
             ));
             lines.push(Line::from(spans));
         }
@@ -130,7 +132,7 @@ fn build_enhanced_error_lines(enhanced: &EnhancedError, width: usize) -> Vec<Lin
     if let Some(location) = &enhanced.location {
         lines.push(Line::from(Span::styled(
             format!("jq: {location}"),
-            Style::default().fg(theme::results::ERROR_LOCATION),
+            Style::default().fg(theme::results::error_location()),
         )));
     }
 
@@ -145,7 +147,7 @@ fn build_raw_error_lines(raw: &str, width: usize) -> Vec<Line<'static>> {
         .map(|wrapped| {
             Line::from(Span::styled(
                 wrapped,
-                Style::default().fg(theme::results::ERROR_SUMMARY),
+                Style::default().fg(theme::results::error_summary()),
             ))
         })
         .collect()

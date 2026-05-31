@@ -5,18 +5,23 @@ expression: serialize_spans(&spans)
 - content: reduce
   fg: "rgb(255,107,157)"
 - content: " "
+  fg: "rgb(236,236,244)"
 - content: "."
+  fg: "rgb(236,236,244)"
 - content: "["
   fg: "rgb(198,120,221)"
 - content: "]"
   fg: "rgb(198,120,221)"
 - content: " "
+  fg: "rgb(236,236,244)"
 - content: as
   fg: "rgb(255,107,157)"
 - content: " "
+  fg: "rgb(236,236,244)"
 - content: $x
   fg: "rgb(255,184,108)"
 - content: " "
+  fg: "rgb(236,236,244)"
 - content: (
   fg: "rgb(198,120,221)"
 - content: "0"
@@ -24,11 +29,15 @@ expression: serialize_spans(&spans)
 - content: ;
   fg: "rgb(198,120,221)"
 - content: " "
+  fg: "rgb(236,236,244)"
 - content: "."
+  fg: "rgb(236,236,244)"
 - content: " "
+  fg: "rgb(236,236,244)"
 - content: +
   fg: "rgb(198,120,221)"
 - content: " "
+  fg: "rgb(236,236,244)"
 - content: $x
   fg: "rgb(255,184,108)"
 - content: )

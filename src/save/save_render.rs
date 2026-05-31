@@ -36,7 +36,7 @@ fn render_enter_filename(frame: &mut Frame<'_>, area: Rect, state: &mut SaveStat
         .title(Span::styled(
             " Save Result to file ",
             Style::default()
-                .fg(theme::save::TITLE)
+                .fg(theme::save::title())
                 .add_modifier(Modifier::BOLD),
         ))
         .title_bottom(build_bottom_hints(&preview).alignment(Alignment::Center));
@@ -60,7 +60,7 @@ fn render_enter_filename(frame: &mut Frame<'_>, area: Rect, state: &mut SaveStat
 
     let label = Paragraph::new(Line::from(Span::styled(
         "Path:",
-        Style::default().fg(theme::save::HINT_TEXT),
+        Style::default().fg(theme::save::hint_text()),
     )));
     frame.render_widget(label, chunks[0]);
 
@@ -69,12 +69,12 @@ fn render_enter_filename(frame: &mut Frame<'_>, area: Rect, state: &mut SaveStat
         Block::default()
             .borders(Borders::ALL)
             .border_type(BorderType::Rounded)
-            .border_style(Style::default().fg(theme::save::INPUT_BORDER)),
+            .border_style(Style::default().fg(theme::save::input_border())),
     );
     textarea.set_style(
         Style::default()
-            .fg(theme::save::INPUT_FG)
-            .bg(theme::save::INPUT_BG),
+            .fg(theme::save::input_fg())
+            .bg(theme::save::input_bg()),
     );
     frame.render_widget(&*textarea, chunks[1]);
 
@@ -91,8 +91,8 @@ fn build_preview_line(preview: &PathPreview, max_width: u16) -> Line<'static> {
             let prefix = "\u{2192} ";
             let path = truncate_front(&resolved.display().to_string(), max_width, prefix.len());
             Line::from(vec![
-                Span::styled(prefix, Style::default().fg(theme::save::PREVIEW_OK)),
-                Span::styled(path, Style::default().fg(theme::save::PREVIEW_OK)),
+                Span::styled(prefix, Style::default().fg(theme::save::preview_ok())),
+                Span::styled(path, Style::default().fg(theme::save::preview_ok())),
             ])
         }
         PathPreview::Ready {
@@ -105,20 +105,20 @@ fn build_preview_line(preview: &PathPreview, max_width: u16) -> Line<'static> {
                 Span::styled(
                     prefix,
                     Style::default()
-                        .fg(theme::save::PREVIEW_WARN)
+                        .fg(theme::save::preview_warn())
                         .add_modifier(Modifier::BOLD),
                 ),
-                Span::styled(path, Style::default().fg(theme::save::PREVIEW_WARN)),
+                Span::styled(path, Style::default().fg(theme::save::preview_warn())),
             ])
         }
         PathPreview::Error(msg) => Line::from(vec![
             Span::styled(
                 "\u{2715} ",
                 Style::default()
-                    .fg(theme::save::ERROR)
+                    .fg(theme::save::error())
                     .add_modifier(Modifier::BOLD),
             ),
-            Span::styled(msg.clone(), Style::default().fg(theme::save::ERROR)),
+            Span::styled(msg.clone(), Style::default().fg(theme::save::error())),
         ]),
     }
 }
@@ -158,9 +158,9 @@ fn build_bottom_hints(preview: &PathPreview) -> Line<'static> {
 
 fn hint_color(preview: &PathPreview) -> ratatui::style::Color {
     match preview {
-        PathPreview::Ready { exists: true, .. } => theme::save::PREVIEW_WARN,
-        PathPreview::Error(_) => theme::save::ERROR,
-        _ => theme::save::BORDER,
+        PathPreview::Ready { exists: true, .. } => theme::save::preview_warn(),
+        PathPreview::Error(_) => theme::save::error(),
+        _ => theme::save::border(),
     }
 }
 
@@ -168,7 +168,7 @@ fn border_color(_preview: &PathPreview) -> ratatui::style::Color {
     // Border stays the popup's brand color regardless of preview state.
     // Collision/error signaling lives on the preview line and the bottom-
     // border hints, where the user is already looking.
-    theme::save::BORDER
+    theme::save::border()
 }
 
 fn centered_rect(area: Rect, width: u16, height: u16) -> Rect {

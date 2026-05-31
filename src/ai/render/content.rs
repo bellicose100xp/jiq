@@ -17,52 +17,52 @@ pub fn build_content(ai_state: &AiState, max_width: u16) -> Text<'static> {
 
     if !ai_state.configured {
         lines.push(Line::from(vec![
-            Span::styled("⚙ ", Style::default().fg(theme::ai::CONFIG_ICON)),
-            Span::styled("AI provider not configured", theme::ai::CONFIG_TITLE),
+            Span::styled("⚙ ", Style::default().fg(theme::ai::config_icon())),
+            Span::styled("AI provider not configured", theme::ai::config_title()),
         ]));
         lines.push(Line::from(""));
         lines.push(Line::from(Span::styled(
             "To enable AI assistance, configure a provider",
-            Style::default().fg(theme::ai::CONFIG_DESC),
+            Style::default().fg(theme::ai::config_desc()),
         )));
         lines.push(Line::from(Span::styled(
             "in ~/.config/jiq/config.toml:",
-            Style::default().fg(theme::ai::CONFIG_DESC),
+            Style::default().fg(theme::ai::config_desc()),
         )));
         lines.push(Line::from(""));
         lines.push(Line::from(Span::styled(
             "[ai]",
-            Style::default().fg(theme::ai::CONFIG_CODE),
+            Style::default().fg(theme::ai::config_code()),
         )));
         lines.push(Line::from(Span::styled(
             "enabled = true",
-            Style::default().fg(theme::ai::CONFIG_CODE),
+            Style::default().fg(theme::ai::config_code()),
         )));
         lines.push(Line::from(Span::styled(
             "provider = \"anthropic\"  # or \"openai\", \"gemini\", \"bedrock\"",
-            Style::default().fg(theme::ai::CONFIG_CODE),
+            Style::default().fg(theme::ai::config_code()),
         )));
         lines.push(Line::from(""));
         lines.push(Line::from(Span::styled(
             "[ai.anthropic]",
-            Style::default().fg(theme::ai::CONFIG_CODE),
+            Style::default().fg(theme::ai::config_code()),
         )));
         lines.push(Line::from(Span::styled(
             "api_key = \"sk-ant-...\"",
-            Style::default().fg(theme::ai::CONFIG_CODE),
+            Style::default().fg(theme::ai::config_code()),
         )));
         lines.push(Line::from(Span::styled(
             "model = \"claude-3-5-sonnet-20241022\"",
-            Style::default().fg(theme::ai::CONFIG_CODE),
+            Style::default().fg(theme::ai::config_code()),
         )));
         lines.push(Line::from(""));
         lines.push(Line::from(Span::styled(
             "For more details, see:",
-            Style::default().fg(theme::ai::CONFIG_DESC),
+            Style::default().fg(theme::ai::config_desc()),
         )));
         lines.push(Line::from(Span::styled(
             "https://github.com/bellicose100xp/jiq#configuration",
-            theme::ai::CONFIG_LINK,
+            theme::ai::config_link(),
         )));
 
         return Text::from(lines);
@@ -70,15 +70,15 @@ pub fn build_content(ai_state: &AiState, max_width: u16) -> Text<'static> {
 
     if let Some(error) = &ai_state.error {
         lines.push(Line::from(vec![
-            Span::styled("⚠ ", Style::default().fg(theme::ai::ERROR_ICON)),
-            Span::styled("Error", theme::ai::ERROR_TITLE),
+            Span::styled("⚠ ", Style::default().fg(theme::ai::error_icon())),
+            Span::styled("Error", theme::ai::error_title()),
         ]));
         lines.push(Line::from(""));
 
         for line in wrap_text(error, max_width as usize) {
             lines.push(Line::from(Span::styled(
                 line,
-                Style::default().fg(theme::ai::ERROR_MESSAGE),
+                Style::default().fg(theme::ai::error_message()),
             )));
         }
 
@@ -90,15 +90,15 @@ pub fn build_content(ai_state: &AiState, max_width: u16) -> Text<'static> {
             for line in wrap_text(prev, max_width as usize) {
                 lines.push(Line::from(Span::styled(
                     line,
-                    Style::default().fg(theme::ai::PREVIOUS_RESPONSE),
+                    Style::default().fg(theme::ai::previous_response()),
                 )));
             }
             lines.push(Line::from(""));
         }
 
         lines.push(Line::from(vec![
-            Span::styled("⏳ ", Style::default().fg(theme::ai::THINKING_ICON)),
-            Span::styled("Thinking...", theme::ai::THINKING_TEXT),
+            Span::styled("⏳ ", Style::default().fg(theme::ai::thinking_icon())),
+            Span::styled("Thinking...", theme::ai::thinking_text()),
         ]));
 
         return Text::from(lines);
@@ -113,8 +113,8 @@ pub fn build_content(ai_state: &AiState, max_width: u16) -> Text<'static> {
 
     if ai_state.no_suggestions {
         lines.push(Line::from(vec![
-            Span::styled("✓ ", Style::default().fg(theme::ai::EMPTY_ICON)),
-            Span::styled("No suggestions", theme::ai::EMPTY_TITLE),
+            Span::styled("✓ ", Style::default().fg(theme::ai::empty_icon())),
+            Span::styled("No suggestions", theme::ai::empty_title()),
         ]));
         lines.push(Line::from(""));
         for line in wrap_text(
@@ -123,7 +123,7 @@ pub fn build_content(ai_state: &AiState, max_width: u16) -> Text<'static> {
         ) {
             lines.push(Line::from(Span::styled(
                 line,
-                Style::default().fg(theme::ai::EMPTY_MESSAGE),
+                Style::default().fg(theme::ai::empty_message()),
             )));
         }
         return Text::from(lines);
@@ -131,8 +131,8 @@ pub fn build_content(ai_state: &AiState, max_width: u16) -> Text<'static> {
 
     if ai_state.parse_failed {
         lines.push(Line::from(vec![
-            Span::styled("⚠ ", Style::default().fg(theme::ai::ERROR_ICON)),
-            Span::styled("Could not parse AI response", theme::ai::ERROR_TITLE),
+            Span::styled("⚠ ", Style::default().fg(theme::ai::error_icon())),
+            Span::styled("Could not parse AI response", theme::ai::error_title()),
         ]));
         lines.push(Line::from(""));
         for line in wrap_text(
@@ -141,7 +141,7 @@ pub fn build_content(ai_state: &AiState, max_width: u16) -> Text<'static> {
         ) {
             lines.push(Line::from(Span::styled(
                 line,
-                Style::default().fg(theme::ai::ERROR_MESSAGE),
+                Style::default().fg(theme::ai::error_message()),
             )));
         }
         return Text::from(lines);

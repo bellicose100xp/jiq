@@ -179,6 +179,39 @@ impl JqExecutor {
         query: &str,
         cancel_token: &CancellationToken,
     ) -> Result<String, QueryError> {
+        // TUI display path: color jq output with the active theme's palette so
+        // the results pane tracks light/dark mode.
+        self.run_jq(
+            query,
+            jq_colors_env(crate::theme::results::jq_colors()),
+            cancel_token,
+        )
+    }
+
+    /// Execute a jq query for the FINAL stdout output (the deliverable emitted
+    /// on "Output Result").
+    ///
+    /// Unlike [`execute_with_cancel`], this always uses the fixed dark Galaxy
+    /// jq palette, independent of the active theme mode. The piped/redirected
+    /// output must be consistent whether the TUI was in light or dark mode.
+    pub fn execute_for_output(
+        &self,
+        query: &str,
+        cancel_token: &CancellationToken,
+    ) -> Result<String, QueryError> {
+        self.run_jq(
+            query,
+            jq_colors_env(crate::theme::results::output_jq_colors()),
+            cancel_token,
+        )
+    }
+
+    fn run_jq(
+        &self,
+        query: &str,
+        jq_colors: String,
+        cancel_token: &CancellationToken,
+    ) -> Result<String, QueryError> {
         use std::io::Read;
         use std::sync::mpsc::channel;
 
@@ -191,21 +224,6 @@ impl JqExecutor {
             query,
             self.json_input.len()
         );
-
-        // Galaxy theme colors for jq output (using true color ANSI codes)
-        // Format: null:false:true:numbers:strings:arrays:objects:keys
-        // Each segment is an ANSI SGR code (38;2;R;G;B for true color)
-        let jq_colors = [
-            "38;2;130;133;158",  // null - muted gray
-            "38;2;224;108;117",  // false - soft red
-            "38;2;107;203;119",  // true - fresh green
-            "38;2;189;147;249",  // numbers - purple
-            "38;2;107;203;119",  // strings - fresh green
-            "1;38;2;0;217;255",  // arrays - bold electric cyan
-            "1;38;2;0;217;255",  // objects - bold electric cyan
-            "1;38;2;255;217;61", // keys - bold golden yellow
-        ]
-        .join(":");
 
         // Spawn jq process with custom colors
         let mut child = Command::new("jq")
@@ -300,6 +318,27 @@ impl JqExecutor {
             Err(QueryError::ExecutionFailed(stderr_str))
         }
     }
+}
+
+/// Build the `JQ_COLORS` env value from a theme's jq palette.
+///
+/// Order matches jq's: null:false:true:numbers:strings:arrays:objects:keys.
+/// arrays/objects/keys (indices 5-7) are rendered bold to match the Galaxy
+/// styling. Non-Rgb colors fall back to white (should not occur for jq_colors).
+fn jq_colors_env(palette: [ratatui::style::Color; 8]) -> String {
+    palette
+        .iter()
+        .enumerate()
+        .map(|(i, color)| {
+            let (r, g, b) = match color {
+                ratatui::style::Color::Rgb(r, g, b) => (*r, *g, *b),
+                _ => (255, 255, 255),
+            };
+            let bold = if i >= 5 { "1;" } else { "" };
+            format!("{bold}38;2;{r};{g};{b}")
+        })
+        .collect::<Vec<_>>()
+        .join(":")
 }
 
 fn sort_and_cap_strings(counts: HashMap<String, u32>, cap: usize) -> Vec<String> {

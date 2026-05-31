@@ -3,7 +3,7 @@
 use crate::autocomplete::json_navigator::DEFAULT_ARRAY_SAMPLE_SIZE;
 use crate::query::query_state::ResultType;
 use crate::query::worker::preprocess::{
-    parse_and_detect_type, preprocess_result, strip_ansi_codes,
+    normalize_jq_text, parse_and_detect_type, preprocess_result, strip_ansi_codes,
 };
 use crate::query::worker::types::QueryError;
 use tokio_util::sync::CancellationToken;
@@ -976,5 +976,35 @@ fn test_sample_size_two_takes_first_two() {
     assert!(
         !map.contains_key("c"),
         "Should NOT have 'c' with sample size 2"
+    );
+}
+
+#[test]
+fn test_normalize_jq_text_strips_bg_keeps_fg() {
+    use ansi_to_tui::IntoText;
+    use ratatui::style::Color;
+
+    // jq emits foreground-only SGR then a `\e[0m` reset; ansi-to-tui turns the
+    // reset into spans carrying bg = Color::Reset (terminal default).
+    let input = "\x1b[38;2;1;2;3mX\x1b[0m\n  \x1b[1;38;2;4;5;6m\"k\"\x1b[0m";
+    let text = input.as_bytes().into_text().unwrap();
+    let normalized = normalize_jq_text(text);
+
+    for line in &normalized.lines {
+        for span in &line.spans {
+            assert_eq!(span.style.bg, None, "every span bg must be stripped");
+        }
+    }
+
+    // The colored foreground must be preserved.
+    let fgs: Vec<_> = normalized
+        .lines
+        .iter()
+        .flat_map(|l| l.spans.iter())
+        .filter_map(|s| s.style.fg)
+        .collect();
+    assert!(
+        fgs.contains(&Color::Rgb(1, 2, 3)) && fgs.contains(&Color::Rgb(4, 5, 6)),
+        "jq foreground colors must be preserved: {fgs:?}"
     );
 }
