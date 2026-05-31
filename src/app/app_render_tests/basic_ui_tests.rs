@@ -172,8 +172,14 @@ fn snapshot_error_overlay() {
     let json = r#"{"test": true}"#;
     let mut app = test_app(json);
 
-    app.query.as_mut().unwrap().result =
-        Err("jq: compile error: syntax error at line 1".to_string());
+    // Real jq 1.8 syntax error for an unclosed bracket. The overlay enhances
+    // this into a plain-language summary, a fix hint, and the source location.
+    app.input.textarea.insert_str(".foo[");
+    app.query.as_mut().unwrap().result = Err(
+        "jq: error: syntax error, unexpected end of file at <top-level>, \
+         line 1, column 5:\n    .foo[\n        ^\njq: 1 compile error"
+            .to_string(),
+    );
     app.error_overlay_visible = true;
 
     let output = render_to_string(&mut app, TEST_WIDTH, TEST_HEIGHT);
