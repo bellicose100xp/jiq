@@ -247,6 +247,18 @@ pub mod results {
     pub fn output_jq_colors() -> [Color; 8] {
         super::galaxy_dark().results.jq_colors
     }
+    pub fn error_summary() -> Color {
+        super::theme().results.error_summary
+    }
+    pub fn error_hint_label() -> Color {
+        super::theme().results.error_hint_label
+    }
+    pub fn error_hint_text() -> Color {
+        super::theme().results.error_hint_text
+    }
+    pub fn error_location() -> Color {
+        super::theme().results.error_location
+    }
 }
 
 /// Search bar styles.

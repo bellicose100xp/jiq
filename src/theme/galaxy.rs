@@ -60,6 +60,10 @@ pub fn galaxy_dark() -> Theme {
             result_warning: Color::Rgb(255, 217, 61),
             result_error: Color::Rgb(224, 108, 117),
             result_pending: Color::Rgb(130, 133, 158),
+            error_summary: Color::Rgb(224, 108, 117),
+            error_hint_label: Color::Rgb(0, 217, 255),
+            error_hint_text: Color::Rgb(236, 236, 244),
+            error_location: Color::Rgb(130, 133, 158),
             badge_syntax_error: Style::new()
                 .fg(Color::Rgb(35, 30, 10))
                 .bg(Color::Rgb(255, 217, 61)),
@@ -376,6 +380,10 @@ pub fn galaxy_light() -> Theme {
             result_warning: Color::Rgb(146, 98, 0),
             result_error: Color::Rgb(210, 15, 57),
             result_pending: Color::Rgb(120, 122, 145),
+            error_summary: Color::Rgb(210, 15, 57),
+            error_hint_label: Color::Rgb(14, 116, 144),
+            error_hint_text: Color::Rgb(40, 40, 60),
+            error_location: Color::Rgb(89, 99, 110),
             badge_syntax_error: Style::new()
                 .fg(Color::Rgb(60, 45, 0))
                 .bg(Color::Rgb(214, 160, 0)),

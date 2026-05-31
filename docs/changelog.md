@@ -17,7 +17,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [3.31.2] - 2026-05-31
+## [3.31.3] - 2026-05-31
+
+### Added
+- **Plain-language error overlay** ([#182](https://github.com/bellicose100xp/jiq/pull/182)) - The error overlay (`Ctrl+E`) now rewrites jq's terse, version-dependent stderr into a clear explanation plus a concrete fix hint. An unclosed `.foo[` reads "Incomplete query: jq reached the end while still expecting more." with the hint "Close the '['; e.g. .foo[0] or .foo[]"; a misspelled `lengths` reports "Unknown function lengths" and suggests `length`; `.foo` on an array explains that arrays are indexed by position; and `1 + "a"` reports a number/string type mismatch. The rewriter is version-tolerant across jq 1.6, 1.7, and 1.8+ - it strips the misleading `(Unix shell quoting issues?)` hint that older jq appends, normalizes the `$end` / `end of file` wording, and shows the column only when jq reports one. Errors it does not recognize still display verbatim, so no detail is lost. The AI assistant is unchanged and continues to receive jq's raw error text.
 
 ### Fixed
 - **Show "No suggestions" instead of a parse error when the AI has nothing to add** ([#181](https://github.com/bellicose100xp/jiq/pull/181)) - When an AI provider returned a valid but empty suggestion list (`{"suggestions":[]}`, the response the prompt explicitly asks for when there is nothing useful to suggest), jiq treated the non-empty-but-zero-suggestion result as a parse failure and showed the alarming `⚠ Could not parse AI response - did not match the expected format` banner. This fired routinely on the bare `.` identity query. Response parsing now distinguishes three outcomes - usable suggestions, a valid empty list, and genuinely unparseable output - so an empty list renders a calm `✓ No suggestions` message and the parse-error banner is reserved for responses jiq actually could not read.

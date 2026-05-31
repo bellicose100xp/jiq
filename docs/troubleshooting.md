@@ -16,6 +16,12 @@ JIQ_DEBUG=1 jiq data.json
 
 Logs to `/tmp/jiq-debug.log` (file only, never stdout/stderr).
 
+## Reading query errors
+
+When a query fails, press <kbd>Ctrl</kbd>+<kbd>E</kbd> to open the error overlay. jiq rewrites jq's raw stderr into a plain-language explanation plus a fix hint — see [Decode an error](features/results-pane#decode-an-error). Unrecognized messages are shown verbatim, so no detail is lost.
+
+This works with **jq 1.6 and newer**. Older jq releases (1.5 and earlier) phrase errors too differently to normalize reliably and aren't supported.
+
 ### Filing a bug
 
 Open a [GitHub issue](https://github.com/bellicose100xp/jiq/issues/new) with:
