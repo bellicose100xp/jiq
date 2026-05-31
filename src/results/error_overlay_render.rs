@@ -67,8 +67,10 @@ pub fn render_error_overlay(app: &App, frame: &mut Frame, results_area: Rect) ->
         };
 
         popup::clear_area(frame, overlay_area);
-        let close_hint =
-            theme::border_hints::build_hints(&[("Ctrl+E", "Close")], theme::results::border_error());
+        let close_hint = theme::border_hints::build_hints(
+            &[("Ctrl+E", "Close")],
+            theme::results::border_error(),
+        );
         let error_block = Block::default()
             .borders(Borders::ALL)
             .border_type(BorderType::Rounded)

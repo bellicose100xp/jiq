@@ -426,9 +426,9 @@ pub fn galaxy_light() -> Theme {
                 Color::Rgb(26, 127, 55),  // true - green
                 Color::Rgb(136, 57, 239), // numbers - purple
                 Color::Rgb(26, 127, 55),  // strings - green
-                Color::Rgb(14, 116, 144),  // arrays - cyan
-                Color::Rgb(14, 116, 144),  // objects - cyan
-                Color::Rgb(146, 98, 0),  // keys - amber
+                Color::Rgb(14, 116, 144), // arrays - cyan
+                Color::Rgb(14, 116, 144), // objects - cyan
+                Color::Rgb(146, 98, 0),   // keys - amber
             ],
         },
         search: SearchTheme {
