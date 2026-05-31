@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.32.1] - 2026-05-31
+
+### Fixed
+- **Keep the AI popup showing progress instead of going blank mid-request** ([#184](https://github.com/bellicose100xp/jiq/pull/184)) - While editing a query, each keystroke cancels the in-flight AI request and starts a new one. The cancelled request's `Cancelled` message could arrive after the newer request had already begun streaming, and the popup cleared its `loading` state on that stale message - dropping out of the `⏳ Thinking...` view and rendering an empty bordered box for the entire duration of the new request, until its suggestions finally appeared. Stale cancellations are now ignored using the same request-id check already applied to streamed chunks and completions, so a superseded cancellation can no longer blank a popup whose newer request is still in flight. The popup holds `⏳ Thinking...` continuously until the suggestions render.
+
 ## [3.32.0] - 2026-05-31
 
 ### Added
