@@ -6,4 +6,4 @@ pub mod parser;
 pub mod sanitizer;
 
 // Re-export main types
-pub use parser::{Suggestion, SuggestionType, parse_suggestions};
+pub use parser::{ParseOutcome, Suggestion, SuggestionType, parse_response};

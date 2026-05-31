@@ -3,7 +3,7 @@
 //! Handles initialization, state transitions, and clearing operations.
 
 use super::super::selection::SelectionState;
-use super::super::suggestion::parse_suggestions;
+use super::super::suggestion::{ParseOutcome, parse_response};
 use crate::ai::ai_state::AiState;
 
 /// Default max context length for tests
@@ -36,6 +36,7 @@ impl AiState {
             current_cancel_token: None,
             suggestions: Vec::new(),
             parse_failed: false,
+            no_suggestions: false,
             selection: SelectionState::new(),
             previous_popup_height: None,
         }
@@ -75,6 +76,7 @@ impl AiState {
             current_cancel_token: None,
             suggestions: Vec::new(),
             parse_failed: false,
+            no_suggestions: false,
             selection: SelectionState::new(),
             previous_popup_height: None,
         }
@@ -107,26 +109,45 @@ impl AiState {
         self.in_flight_request_id = Some(self.request_id);
         self.suggestions.clear();
         self.parse_failed = false;
+        self.no_suggestions = false;
         self.selection.clear_selection();
         self.selection.clear_layout();
     }
 
     /// Mark the request as complete
     ///
-    /// Clears loading state, previous response, and in_flight_request_id.
+    /// Clears loading state, previous response, and in_flight_request_id, then
+    /// classifies the accumulated response into one of three outcomes:
+    /// - parsed suggestions -> populate `suggestions`;
+    /// - valid empty list -> set `no_suggestions` (model had nothing to say);
+    /// - unparseable -> set `parse_failed` and log the raw response.
+    ///
+    /// A genuinely-empty response (no bytes received at all) is treated as
+    /// neither: it leaves all three cleared so the UI stays blank.
     pub fn complete_request(&mut self) {
         self.loading = false;
         self.previous_response = None;
         self.in_flight_request_id = None;
-        self.suggestions = parse_suggestions(&self.response);
-        self.parse_failed = !self.response.is_empty() && self.suggestions.is_empty();
-        if self.parse_failed {
-            log::warn!(
-                "AI response failed to parse (len={}):\n{}",
-                self.response.len(),
-                self.response
-            );
+
+        self.suggestions = Vec::new();
+        self.parse_failed = false;
+        self.no_suggestions = false;
+
+        if !self.response.is_empty() {
+            match parse_response(&self.response) {
+                ParseOutcome::Parsed(suggestions) => self.suggestions = suggestions,
+                ParseOutcome::Empty => self.no_suggestions = true,
+                ParseOutcome::Unparseable => {
+                    self.parse_failed = true;
+                    log::warn!(
+                        "AI response failed to parse (len={}):\n{}",
+                        self.response.len(),
+                        self.response
+                    );
+                }
+            }
         }
+
         self.selection.clear_layout();
     }
 
@@ -160,5 +181,6 @@ impl AiState {
         self.previous_response = None;
         self.loading = false;
         self.parse_failed = false;
+        self.no_suggestions = false;
     }
 }

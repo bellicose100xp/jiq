@@ -99,40 +99,106 @@ pub struct Suggestion {
     pub suggestion_type: SuggestionType,
 }
 
+/// Classification of an AI response after parsing.
+///
+/// Distinguishes the three outcomes a response can have so the UI can react
+/// appropriately instead of collapsing "the model had nothing to suggest"
+/// into a parse error:
+/// - [`ParseOutcome::Parsed`] - one or more usable suggestions extracted.
+/// - [`ParseOutcome::Empty`] - the model explicitly returned an empty
+///   suggestion list (`{"suggestions": []}`). This is the prompt's own
+///   "no suggestions" sentinel: a valid, benign response, NOT a failure.
+/// - [`ParseOutcome::Unparseable`] - the response did not match any expected
+///   format (genuine malformed / non-compliant output).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ParseOutcome {
+    /// Response yielded at least one usable suggestion.
+    Parsed(Vec<Suggestion>),
+    /// Response was a valid, explicitly-empty suggestion list.
+    Empty,
+    /// Response did not match any expected format.
+    Unparseable,
+}
+
+/// Outcome of attempting to parse a single JSON candidate string.
+enum JsonParse {
+    /// Parsed into at least one usable suggestion.
+    Suggestions(Vec<Suggestion>),
+    /// Valid JSON whose `suggestions` array was literally empty.
+    EmptyArray,
+    /// Not valid JSON of the expected shape, or every item was unusable.
+    NotJson,
+}
+
 // =========================================================================
 // Parsing Functions
 // =========================================================================
 
-/// Parse suggestions from AI response
+/// Parse an AI response into a three-state [`ParseOutcome`].
 ///
-/// Tries JSON format first, falls back to legacy text format
+/// Tries the strict JSON format first (fence-stripped, then via embedded-object
+/// extraction), then falls back to the legacy numbered-text format. The key
+/// distinction over [`parse_suggestions`] is that a valid but explicitly-empty
+/// suggestion list (`{"suggestions": []}`) is reported as [`ParseOutcome::Empty`]
+/// rather than being indistinguishable from unparseable garbage — so the UI can
+/// show a calm "no suggestions" message instead of a parse-error banner.
 ///
 /// # Requirements
 /// - 5.2: Parse suggestions from AI responses
 /// - 5.3: Extract query string from each suggestion
-/// - 5.9: Return empty vec if parsing fails (fallback to raw response)
-pub fn parse_suggestions(response: &str) -> Vec<Suggestion> {
-    // Strip markdown code fences if present
-    let cleaned_response = strip_markdown_fences(response);
+/// - 5.9: Distinguish parsed / empty / unparseable for the caller
+pub fn parse_response(response: &str) -> ParseOutcome {
+    // Track whether any candidate was a valid-but-empty suggestion list. We
+    // only conclude `Empty` if NO usable suggestions turn up in any format —
+    // genuine suggestions always win over the empty sentinel, preserving the
+    // original parse priority.
+    let mut saw_empty = false;
 
-    // Try JSON format first — on the fence-stripped text
-    if let Ok(parsed) = parse_suggestions_json(&cleaned_response)
-        && !parsed.is_empty()
-    {
-        return parsed;
+    // Try JSON format first — on the fence-stripped text.
+    let cleaned_response = strip_markdown_fences(response);
+    match try_parse_json(&cleaned_response) {
+        JsonParse::Suggestions(parsed) => return ParseOutcome::Parsed(parsed),
+        JsonParse::EmptyArray => saw_empty = true,
+        JsonParse::NotJson => {}
     }
 
     // Last-resort: scan for a JSON object containing "suggestions" anywhere
-    // in the response (handles extra prose, broken fences, streaming artifacts)
-    if let Some(extracted) = extract_suggestions_json(response)
-        && let Ok(parsed) = parse_suggestions_json(&extracted)
-        && !parsed.is_empty()
-    {
-        return parsed;
+    // in the response (handles extra prose, broken fences, streaming artifacts).
+    if let Some(extracted) = extract_suggestions_json(response) {
+        match try_parse_json(&extracted) {
+            JsonParse::Suggestions(parsed) => return ParseOutcome::Parsed(parsed),
+            JsonParse::EmptyArray => saw_empty = true,
+            JsonParse::NotJson => {}
+        }
     }
 
-    // Fallback to legacy text format
-    parse_suggestions_text(response)
+    // Fallback to legacy text format.
+    let text_suggestions = parse_suggestions_text(response);
+    if !text_suggestions.is_empty() {
+        return ParseOutcome::Parsed(text_suggestions);
+    }
+
+    // No usable suggestions in any format. An explicit empty-suggestions
+    // sentinel means "the model had nothing to suggest" (benign); anything
+    // else is genuinely unparseable.
+    if saw_empty {
+        ParseOutcome::Empty
+    } else {
+        ParseOutcome::Unparseable
+    }
+}
+
+/// Parse suggestions from AI response, returning only the usable suggestions.
+///
+/// Thin wrapper over [`parse_response`] that flattens both [`ParseOutcome::Empty`]
+/// and [`ParseOutcome::Unparseable`] to an empty vec. Test-only convenience for
+/// the many cases that assert on extracted suggestions, not the failure mode.
+#[cfg(test)]
+pub fn parse_suggestions(response: &str) -> Vec<Suggestion> {
+    match parse_response(response) {
+        ParseOutcome::Parsed(suggestions) => suggestions,
+        ParseOutcome::Empty | ParseOutcome::Unparseable => Vec::new(),
+    }
 }
 
 /// Find a `{...}` JSON object in the response that contains the literal
@@ -207,7 +273,14 @@ fn strip_markdown_fences(response: &str) -> String {
     body.trim().to_string()
 }
 
-/// Parse suggestions from JSON format
+/// Attempt to parse a JSON candidate string into suggestions.
+///
+/// Returns a three-way [`JsonParse`] so the caller can tell apart:
+/// - valid JSON with usable suggestions ([`JsonParse::Suggestions`]);
+/// - valid JSON whose `suggestions` array was explicitly empty
+///   ([`JsonParse::EmptyArray`]) — the model's "nothing to suggest" sentinel;
+/// - anything else ([`JsonParse::NotJson`]): malformed JSON, wrong shape, or a
+///   non-empty array whose every item was unusable (bad `type`, etc.).
 ///
 /// Expected format:
 /// ```json
@@ -217,10 +290,19 @@ fn strip_markdown_fences(response: &str) -> String {
 ///   ]
 /// }
 /// ```
-fn parse_suggestions_json(response: &str) -> Result<Vec<Suggestion>, serde_json::Error> {
-    let ai_response: AiResponse = serde_json::from_str(response)?;
+fn try_parse_json(response: &str) -> JsonParse {
+    let ai_response: AiResponse = match serde_json::from_str(response) {
+        Ok(parsed) => parsed,
+        Err(_) => return JsonParse::NotJson,
+    };
 
-    let suggestions = ai_response
+    // A literally-empty array is the model's explicit "no suggestions"
+    // sentinel — distinct from a non-empty array we failed to make sense of.
+    if ai_response.suggestions.is_empty() {
+        return JsonParse::EmptyArray;
+    }
+
+    let suggestions: Vec<Suggestion> = ai_response
         .suggestions
         .into_iter()
         .filter_map(|json_sugg| {
@@ -233,7 +315,13 @@ fn parse_suggestions_json(response: &str) -> Result<Vec<Suggestion>, serde_json:
         })
         .collect();
 
-    Ok(suggestions)
+    if suggestions.is_empty() {
+        // The array had entries but none were usable (e.g. invalid `type`).
+        // Treat as unparseable so callers can fall through to other formats.
+        JsonParse::NotJson
+    } else {
+        JsonParse::Suggestions(suggestions)
+    }
 }
 
 /// Parse suggestions from legacy text format

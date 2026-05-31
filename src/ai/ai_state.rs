@@ -105,8 +105,15 @@ pub struct AiState {
     /// Whether the most recently completed request produced a response that
     /// failed to parse into structured suggestions. Distinguishes "parse
     /// genuinely failed" from "we are between requests / response is stale",
-    /// so the UI never shows a stale parse-error message.
+    /// so the UI never shows a stale parse-error message. Mutually exclusive
+    /// with `no_suggestions`: a valid empty response sets the latter, not this.
     pub parse_failed: bool,
+    /// Whether the most recently completed request returned a valid but
+    /// explicitly-empty suggestion list (the model's "nothing to suggest"
+    /// sentinel). Distinct from `parse_failed`: the response parsed fine, the
+    /// model simply had no suggestions, so the UI shows a calm "no suggestions"
+    /// message rather than a parse-error banner.
+    pub no_suggestions: bool,
     /// Selection state for suggestion navigation
     /// Tracks which suggestion is selected and navigation mode
     pub selection: SelectionState,
