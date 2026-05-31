@@ -146,6 +146,10 @@ impl AiState {
                     );
                 }
             }
+        } else {
+            // No bytes received before completion: all classification flags stay
+            // clear, so the popup renders empty until the next query.
+            log::debug!("complete_request: empty response, popup will be blank until next query");
         }
 
         self.selection.clear_layout();

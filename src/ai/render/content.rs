@@ -147,5 +147,17 @@ pub fn build_content(ai_state: &AiState, max_width: u16) -> Text<'static> {
         return Text::from(lines);
     }
 
+    // Canary: every earlier branch returned, so the popup is about to render an
+    // empty box. This should be rare; if it shows up in a --debug session it
+    // signals a state combination that leaves the user with no feedback.
+    log::debug!(
+        "build_content: empty popup (no branch matched) -> loading={} suggestions={} no_suggestions={} parse_failed={} error={}",
+        ai_state.loading,
+        ai_state.suggestions.len(),
+        ai_state.no_suggestions,
+        ai_state.parse_failed,
+        ai_state.error.is_some()
+    );
+
     Text::from(lines)
 }

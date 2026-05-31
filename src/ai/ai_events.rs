@@ -220,9 +220,10 @@ pub fn handle_query_result<T: ToString>(
 /// Filters stale responses by checking request_id against the current
 /// AiState request_id. Responses from old requests are ignored.
 ///
-/// Note: `AiResponse::Cancelled` does not require request_id comparison because
-/// token-based cancellation ensures the response is always for the request that
-/// was actually cancelled. The CancellationToken is tied to a specific request.
+/// This applies to every variant that carries a request_id, including
+/// `Cancelled`: although the CancellationToken is tied to a specific request,
+/// the `Cancelled` message still travels the same channel and can arrive after
+/// a newer request has started, so it must be compared like the others.
 fn process_response(ai_state: &mut AiState, response: AiResponse) {
     let current_request_id = ai_state.current_request_id();
 
@@ -242,10 +243,19 @@ fn process_response(ai_state: &mut AiState, response: AiResponse) {
         AiResponse::Error(error_msg) => {
             ai_state.set_error(error_msg);
         }
-        // Token-based cancellation: no request_id comparison needed.
-        // The CancellationToken is tied to a specific request, so when
-        // we receive Cancelled, it's always for the request we cancelled.
-        AiResponse::Cancelled { request_id: _ } => {
+        // A Cancelled response for a request that has already been superseded
+        // must be ignored: cancelling an old in-flight request (e.g. when the
+        // user keeps typing) would otherwise clear `loading` while the newer
+        // request is still streaming, blanking the popup until it completes.
+        AiResponse::Cancelled { request_id } => {
+            if request_id < current_request_id {
+                log::debug!(
+                    "AI Cancelled ignored (stale): id={} current={}",
+                    request_id,
+                    current_request_id
+                );
+                return;
+            }
             ai_state.loading = false;
             ai_state.in_flight_request_id = None;
         }
