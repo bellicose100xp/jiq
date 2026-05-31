@@ -248,6 +248,41 @@ To copy the entire result without selecting, press <kbd>Ctrl</kbd>+<kbd>Y</kbd> 
 
 ---
 
+## Decode an error
+
+When a query fails, the `⚠ Syntax Error` badge appears and the last successful result stays on screen. Press <kbd>Ctrl</kbd>+<kbd>E</kbd> to open the error overlay.
+
+jiq rewrites jq's terse stderr into a plain-language explanation plus a concrete fix, so you rarely have to decode the raw message yourself:
+
+<div class="io-pair">
+  <div>
+    <div class="io-label">Raw jq error</div>
+    <div class="io-block">jq: error: syntax error, unexpected
+end of file at &lt;top-level&gt;, line 1,
+column 5:
+    .foo[
+        ^
+jq: 1 compile error</div>
+  </div>
+  <div class="io-arrow">→</div>
+  <div>
+    <div class="io-label">jiq error overlay (Ctrl+E)</div>
+    <div class="io-block">Incomplete query: jq reached the end
+while still expecting more.
+
+Try: Close the '['; e.g. .foo[0] or .foo[].
+jq: line 1, column 5</div>
+  </div>
+</div>
+
+The overlay recognizes the common failure modes — incomplete queries, type and index mismatches, iterating over a non-collection, unusable field names, and unknown functions (with a "did you mean" suggestion). Anything it doesn't recognize is shown verbatim, so no detail is lost.
+
+This works across **jq 1.6 and newer**. Older jq releases phrase errors differently and append a misleading `(Unix shell quoting issues?)` hint; jiq normalizes those so the overlay reads the same regardless of which jq you have installed.
+
+The [AI assistant](ai-assistant) still receives jq's raw error message, which language models read fluently.
+
+---
+
 ## Read the status indicators
 
 | Indicator | What it means |

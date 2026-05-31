@@ -19,7 +19,7 @@ Every keybind in one place. Click any section header for the full guide.
 | <kbd>Ctrl</kbd>+<kbd>O</kbd> | Copy results (regardless of focus) |
 | <kbd>Ctrl</kbd>+<kbd>W</kbd> | [Save result to file](./features/save) |
 | <kbd>Ctrl</kbd>+<kbd>T</kbd> | Toggle [function tooltip](./features/tooltip) |
-| <kbd>Ctrl</kbd>+<kbd>E</kbd> | Toggle error overlay |
+| <kbd>Ctrl</kbd>+<kbd>E</kbd> | Toggle [error overlay](./features/results-pane#decode-an-error) (plain-language jq errors) |
 | <kbd>Ctrl</kbd>+<kbd>A</kbd> | Toggle [AI assistant](./features/ai-assistant) |
 | <kbd>Ctrl</kbd>+<kbd>S</kbd> | Open [snippets](./features/snippets) |
 | <kbd>Ctrl</kbd>+<kbd>R</kbd> | Open [history popup](./features/history) |

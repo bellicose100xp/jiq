@@ -125,8 +125,11 @@ impl App {
         if self.error_overlay_visible
             && let Some(query) = &self.query
             && query.result.is_err()
-            && let Some(error_rect) =
-                crate::results::results_render::render_error_overlay(self, frame, results_area)
+            && let Some(error_rect) = crate::results::error_overlay_render::render_error_overlay(
+                self,
+                frame,
+                results_area,
+            )
         {
             self.layout_regions.error_overlay = Some(error_rect);
         }

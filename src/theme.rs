@@ -97,6 +97,14 @@ pub mod results {
     pub const RESULT_ERROR: Color = Color::Rgb(224, 108, 117);
     pub const RESULT_PENDING: Color = Color::Rgb(130, 133, 158);
 
+    // Enhanced error-overlay body. The summary keeps the error red; the fix
+    // hint reads as a cyan call-to-action; the jq source location is dimmed
+    // so it never competes with the explanation.
+    pub const ERROR_SUMMARY: Color = RESULT_ERROR;
+    pub const ERROR_HINT_LABEL: Color = BORDER_FOCUSED;
+    pub const ERROR_HINT_TEXT: Color = Color::Rgb(236, 236, 244);
+    pub const ERROR_LOCATION: Color = Color::Rgb(130, 133, 158);
+
     // Status badge styles - bright background with contrasting text for modern glow effect
     pub const BADGE_SYNTAX_ERROR: Style = Style::new()
         .fg(Color::Rgb(35, 30, 10)) // Deep dark yellow-tinted

@@ -11,7 +11,7 @@ use crate::scroll::ScrollState;
 use crate::search::Match;
 use crate::search::search_render::SEARCH_BAR_HEIGHT;
 use crate::theme;
-use crate::widgets::{popup, scrollbar};
+use crate::widgets::scrollbar;
 
 const SPINNER_CHARS: &[char] = &['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
 
@@ -828,68 +828,6 @@ fn render_error_message(frame: &mut Frame, area: Rect, message: &str) {
         .style(Style::default().fg(theme::results::BORDER_ERROR));
 
     frame.render_widget(paragraph, area);
-}
-
-/// Render the error overlay
-///
-/// Returns the error overlay area for region tracking.
-pub fn render_error_overlay(app: &App, frame: &mut Frame, results_area: Rect) -> Option<Rect> {
-    // Only render if query state is available
-    let query_state = match &app.query {
-        Some(q) => q,
-        None => return None,
-    };
-
-    if let Err(error) = &query_state.result {
-        let error_lines: Vec<&str> = error.lines().collect();
-        let max_content_lines = 5;
-        let (display_error, truncated) = if error_lines.len() > max_content_lines {
-            let truncated_lines = &error_lines[..max_content_lines];
-            let mut display = truncated_lines.join("\n");
-            display.push_str("\n... (error truncated)");
-            (display, true)
-        } else {
-            (error.clone(), false)
-        };
-
-        let content_lines = if truncated {
-            max_content_lines + 1
-        } else {
-            error_lines.len()
-        };
-        // +2 for borders, +2 for top/bottom padding
-        let overlay_height = (content_lines as u16 + 4).clamp(5, 9);
-
-        let overlay_y = results_area.bottom().saturating_sub(overlay_height + 1);
-
-        let overlay_with_margins = popup::inset_rect(results_area, 2, 0);
-        let overlay_area = Rect {
-            x: overlay_with_margins.x,
-            y: overlay_y,
-            width: overlay_with_margins.width,
-            height: overlay_height,
-        };
-
-        popup::clear_area(frame, overlay_area);
-        let close_hint =
-            theme::border_hints::build_hints(&[("Ctrl+E", "Close")], theme::results::BORDER_ERROR);
-        let error_block = Block::default()
-            .borders(Borders::ALL)
-            .border_type(BorderType::Rounded)
-            .title(" Syntax Error ")
-            .title_bottom(close_hint.alignment(Alignment::Center))
-            .border_style(Style::default().fg(theme::results::BORDER_ERROR))
-            .style(Style::default().bg(theme::results::BACKGROUND))
-            .padding(Padding::new(1, 1, 1, 1));
-
-        let error_widget = Paragraph::new(display_error.as_str())
-            .block(error_block)
-            .style(Style::default().fg(theme::results::BORDER_ERROR));
-
-        frame.render_widget(error_widget, overlay_area);
-        return Some(overlay_area);
-    }
-    None
 }
 
 fn apply_dim_to_text(text: Text<'_>) -> Text<'static> {
