@@ -316,6 +316,83 @@ fn test_complete_request_parses_suggestions() {
     assert!(!state.loading);
     assert_eq!(state.suggestions.len(), 1);
     assert_eq!(state.suggestions[0].query, ".users[]");
+    assert!(!state.parse_failed);
+    assert!(!state.no_suggestions);
+}
+
+#[test]
+fn test_complete_request_empty_suggestions_is_not_parse_failure() {
+    // Regression: the model's explicit "nothing to suggest" sentinel
+    // ({"suggestions":[]}, optionally fenced) must set no_suggestions, NOT
+    // parse_failed — otherwise the UI shows a false "could not parse" banner.
+    let mut state = AiState::new(true);
+    state.response = "```json\n{\"suggestions\":[]}\n```".to_string();
+    state.loading = true;
+
+    state.complete_request();
+
+    assert!(!state.loading);
+    assert!(state.suggestions.is_empty());
+    assert!(
+        state.no_suggestions,
+        "valid empty list should set no_suggestions"
+    );
+    assert!(
+        !state.parse_failed,
+        "valid empty list must NOT be flagged as a parse failure"
+    );
+}
+
+#[test]
+fn test_complete_request_unparseable_sets_parse_failed() {
+    let mut state = AiState::new(true);
+    state.response = "This is plain prose, not structured suggestions.".to_string();
+    state.loading = true;
+
+    state.complete_request();
+
+    assert!(!state.loading);
+    assert!(state.suggestions.is_empty());
+    assert!(
+        state.parse_failed,
+        "genuine garbage should set parse_failed"
+    );
+    assert!(!state.no_suggestions);
+}
+
+#[test]
+fn test_complete_request_empty_response_sets_neither_flag() {
+    // No bytes received at all: stay blank, neither error nor "no suggestions".
+    let mut state = AiState::new(true);
+    state.response = String::new();
+    state.loading = true;
+
+    state.complete_request();
+
+    assert!(!state.loading);
+    assert!(state.suggestions.is_empty());
+    assert!(!state.parse_failed);
+    assert!(!state.no_suggestions);
+}
+
+#[test]
+fn test_start_request_clears_no_suggestions() {
+    let mut state = AiState::new(true);
+    state.no_suggestions = true;
+
+    state.start_request();
+
+    assert!(!state.no_suggestions);
+}
+
+#[test]
+fn test_clear_stale_response_clears_no_suggestions() {
+    let mut state = AiState::new(true);
+    state.no_suggestions = true;
+
+    state.clear_stale_response();
+
+    assert!(!state.no_suggestions);
 }
 
 #[test]

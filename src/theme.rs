@@ -359,6 +359,13 @@ pub mod ai {
         .add_modifier(Modifier::BOLD);
     pub const ERROR_MESSAGE: Color = Color::Rgb(224, 108, 117);
 
+    // Empty (valid "no suggestions") state - calm/neutral, not an error
+    pub const EMPTY_ICON: Color = Color::Rgb(130, 133, 158);
+    pub const EMPTY_TITLE: Style = Style::new()
+        .fg(Color::Rgb(0, 217, 255))
+        .add_modifier(Modifier::BOLD);
+    pub const EMPTY_MESSAGE: Color = Color::Rgb(130, 133, 158);
+
     // Content text
     pub const QUERY_TEXT: Color = Color::Rgb(0, 217, 255);
     pub const RESULT_TEXT: Color = Color::Rgb(236, 236, 244);
