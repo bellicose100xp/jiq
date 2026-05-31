@@ -96,6 +96,25 @@ fn test_color_output_flag_present() {
 }
 
 #[test]
+fn test_final_output_uses_fixed_dark_colors() {
+    // The final stdout deliverable (`execute_for_output`) must be colored with
+    // the fixed dark Galaxy palette regardless of the active theme, so piped
+    // output is consistent in light and dark mode. The dark keys color is
+    // golden yellow 255;217;61.
+    let json = r#"{"key": "value"}"#;
+    let executor = JqExecutor::new(json.to_string());
+    let cancel_token = CancellationToken::new();
+    let output = executor
+        .execute_for_output(".", &cancel_token)
+        .expect("query should succeed");
+
+    assert!(
+        output.contains("38;2;255;217;61"),
+        "final output keys must use the fixed dark golden color, got: {output:?}"
+    );
+}
+
+#[test]
 fn test_execute_with_cancel_success() {
     let json = r#"{"name": "Alice", "age": 30}"#;
     let executor = JqExecutor::new(json.to_string());

@@ -30,7 +30,7 @@ fn build_browse_hints() -> Line<'static> {
             ("Ctrl+D", "Delete"),
             ("Esc", "Close"),
         ],
-        theme::snippets::BORDER,
+        theme::snippets::border(),
     )
 }
 
@@ -42,14 +42,14 @@ fn build_form_hints(action: &'static str) -> Line<'static> {
             ("Shift+Tab", "Prev"),
             ("Esc", "Cancel"),
         ],
-        theme::snippets::FIELD_ACTIVE_BORDER,
+        theme::snippets::field_active_border(),
     )
 }
 
 fn build_confirm_hints() -> Line<'static> {
     theme::border_hints::build_hints(
         &[("Enter", "Confirm"), ("Esc", "Cancel")],
-        theme::snippets::FIELD_ACTIVE_BORDER,
+        theme::snippets::field_active_border(),
     )
 }
 
@@ -157,8 +157,8 @@ fn render_minimal(
                 .border_type(BorderType::Rounded)
                 .title(title)
                 .title_bottom(hints.alignment(ratatui::layout::Alignment::Center))
-                .border_style(Style::default().fg(theme::snippets::BORDER))
-                .style(Style::default().bg(theme::snippets::BACKGROUND)),
+                .border_style(Style::default().fg(theme::snippets::border()))
+                .style(Style::default().bg(theme::snippets::background())),
         );
         frame.render_widget(popup, area);
         return (Some(area), None);
@@ -189,13 +189,13 @@ fn render_search(state: &mut SnippetState, frame: &mut Frame, area: Rect) {
             .borders(Borders::ALL)
             .border_type(BorderType::Rounded)
             .title(" Search ")
-            .border_style(Style::default().fg(theme::snippets::BORDER))
-            .style(Style::default().bg(theme::snippets::BACKGROUND)),
+            .border_style(Style::default().fg(theme::snippets::border()))
+            .style(Style::default().bg(theme::snippets::background())),
     );
     search_textarea.set_style(
         Style::default()
-            .fg(theme::snippets::SEARCH_TEXT)
-            .bg(theme::snippets::SEARCH_BG),
+            .fg(theme::snippets::search_text())
+            .bg(theme::snippets::search_bg()),
     );
     frame.render_widget(&*search_textarea, area);
 }
@@ -217,8 +217,8 @@ fn render_list(
         .border_type(BorderType::Rounded)
         .title(title)
         .title_bottom(hints.alignment(ratatui::layout::Alignment::Center))
-        .border_style(Style::default().fg(theme::snippets::BORDER))
-        .style(Style::default().bg(theme::snippets::BACKGROUND));
+        .border_style(Style::default().fg(theme::snippets::border()))
+        .style(Style::default().bg(theme::snippets::background()));
 
     let list = Paragraph::new(content).block(block);
     frame.render_widget(list, area);
@@ -240,7 +240,7 @@ fn render_list(
         filtered_count,
         track_height,
         clamped_offset,
-        theme::snippets::SCROLLBAR,
+        theme::snippets::scrollbar(),
     );
 }
 
@@ -254,7 +254,7 @@ fn render_preview(
         Some(snippet) => build_preview_content(snippet, inner_width),
         None => vec![Line::from(Span::styled(
             " No snippet selected",
-            Style::default().fg(theme::snippets::DESCRIPTION),
+            Style::default().fg(theme::snippets::description()),
         ))],
     };
 
@@ -263,8 +263,8 @@ fn render_preview(
             .borders(Borders::ALL)
             .border_type(BorderType::Rounded)
             .title(" Snippet Preview ")
-            .border_style(Style::default().fg(theme::snippets::BORDER))
-            .style(Style::default().bg(theme::snippets::BACKGROUND)),
+            .border_style(Style::default().fg(theme::snippets::border()))
+            .style(Style::default().bg(theme::snippets::background())),
     );
 
     frame.render_widget(preview, area);
@@ -283,7 +283,7 @@ fn build_list_content_from_visible(
         };
         vec![Line::from(vec![Span::styled(
             message,
-            Style::default().fg(theme::snippets::DESCRIPTION),
+            Style::default().fg(theme::snippets::description()),
         )])]
     } else {
         let selected_index = state.selected_index();
@@ -300,40 +300,40 @@ fn build_list_content_from_visible(
                         vec![Span::styled(
                             " ▌ ",
                             Style::default()
-                                .fg(theme::snippets::ITEM_SELECTED_INDICATOR)
-                                .bg(theme::snippets::ITEM_SELECTED_BG),
+                                .fg(theme::snippets::item_selected_indicator())
+                                .bg(theme::snippets::item_selected_bg()),
                         )],
                         Style::default()
-                            .fg(theme::snippets::FIELD_TEXT)
-                            .bg(theme::snippets::ITEM_SELECTED_BG)
+                            .fg(theme::snippets::field_text())
+                            .bg(theme::snippets::item_selected_bg())
                             .add_modifier(Modifier::BOLD),
                         Style::default()
-                            .fg(theme::snippets::DESCRIPTION)
-                            .bg(theme::snippets::ITEM_SELECTED_BG),
-                        Some(theme::snippets::ITEM_SELECTED_BG),
+                            .fg(theme::snippets::description())
+                            .bg(theme::snippets::item_selected_bg()),
+                        Some(theme::snippets::item_selected_bg()),
                     )
                 } else if is_hovered {
                     (
                         vec![Span::styled(
                             "   ",
-                            Style::default().bg(theme::snippets::ITEM_HOVERED_BG),
+                            Style::default().bg(theme::snippets::item_hovered_bg()),
                         )],
                         Style::default()
-                            .fg(theme::snippets::FIELD_TEXT)
-                            .bg(theme::snippets::ITEM_HOVERED_BG),
+                            .fg(theme::snippets::field_text())
+                            .bg(theme::snippets::item_hovered_bg()),
                         Style::default()
-                            .fg(theme::snippets::DESCRIPTION)
-                            .bg(theme::snippets::ITEM_HOVERED_BG),
-                        Some(theme::snippets::ITEM_HOVERED_BG),
+                            .fg(theme::snippets::description())
+                            .bg(theme::snippets::item_hovered_bg()),
+                        Some(theme::snippets::item_hovered_bg()),
                     )
                 } else {
                     (
                         vec![Span::styled(
                             "   ",
-                            Style::default().bg(theme::snippets::ITEM_NORMAL_BG),
+                            Style::default().bg(theme::snippets::item_normal_bg()),
                         )],
-                        Style::default().fg(theme::snippets::FIELD_TEXT),
-                        Style::default().fg(theme::snippets::DESCRIPTION),
+                        Style::default().fg(theme::snippets::field_text()),
+                        Style::default().fg(theme::snippets::description()),
                         None,
                     )
                 };
@@ -449,13 +449,13 @@ fn render_create_minimal(
                     .borders(Borders::ALL)
                     .border_type(BorderType::Rounded)
                     .title(" New Snippet - Name ")
-                    .border_style(Style::default().fg(theme::snippets::FIELD_ACTIVE_BORDER))
-                    .style(Style::default().bg(theme::snippets::BACKGROUND)),
+                    .border_style(Style::default().fg(theme::snippets::field_active_border()))
+                    .style(Style::default().bg(theme::snippets::background())),
             );
             name_textarea.set_style(
                 Style::default()
-                    .fg(theme::snippets::FIELD_TEXT)
-                    .bg(theme::snippets::BACKGROUND),
+                    .fg(theme::snippets::field_text())
+                    .bg(theme::snippets::background()),
             );
             frame.render_widget(&*name_textarea, area);
         }
@@ -466,13 +466,13 @@ fn render_create_minimal(
                     .borders(Borders::ALL)
                     .border_type(BorderType::Rounded)
                     .title(" New Snippet - Query ")
-                    .border_style(Style::default().fg(theme::snippets::FIELD_ACTIVE_BORDER))
-                    .style(Style::default().bg(theme::snippets::BACKGROUND)),
+                    .border_style(Style::default().fg(theme::snippets::field_active_border()))
+                    .style(Style::default().bg(theme::snippets::background())),
             );
             query_textarea.set_style(
                 Style::default()
-                    .fg(theme::snippets::FIELD_TEXT)
-                    .bg(theme::snippets::BACKGROUND),
+                    .fg(theme::snippets::field_text())
+                    .bg(theme::snippets::background()),
             );
             frame.render_widget(&*query_textarea, area);
         }
@@ -483,13 +483,13 @@ fn render_create_minimal(
                     .borders(Borders::ALL)
                     .border_type(BorderType::Rounded)
                     .title(" New Snippet - Description ")
-                    .border_style(Style::default().fg(theme::snippets::FIELD_ACTIVE_BORDER))
-                    .style(Style::default().bg(theme::snippets::BACKGROUND)),
+                    .border_style(Style::default().fg(theme::snippets::field_active_border()))
+                    .style(Style::default().bg(theme::snippets::background())),
             );
             desc_textarea.set_style(
                 Style::default()
-                    .fg(theme::snippets::FIELD_TEXT)
-                    .bg(theme::snippets::BACKGROUND),
+                    .fg(theme::snippets::field_text())
+                    .bg(theme::snippets::background()),
             );
             frame.render_widget(&*desc_textarea, area);
         }
@@ -504,9 +504,9 @@ fn render_create_name_input(
     area: Rect,
 ) {
     let border_color = if is_active {
-        theme::snippets::FIELD_ACTIVE_BORDER
+        theme::snippets::field_active_border()
     } else {
-        theme::snippets::BORDER
+        theme::snippets::border()
     };
     let name_textarea = state.name_textarea_mut();
     name_textarea.set_block(
@@ -515,12 +515,12 @@ fn render_create_name_input(
             .border_type(BorderType::Rounded)
             .title(" Name ")
             .border_style(Style::default().fg(border_color))
-            .style(Style::default().bg(theme::snippets::BACKGROUND)),
+            .style(Style::default().bg(theme::snippets::background())),
     );
     name_textarea.set_style(
         Style::default()
-            .fg(theme::snippets::FIELD_TEXT)
-            .bg(theme::snippets::BACKGROUND),
+            .fg(theme::snippets::field_text())
+            .bg(theme::snippets::background()),
     );
     if is_active {
         frame.render_widget(&*name_textarea, area);
@@ -535,8 +535,8 @@ fn render_create_name_input(
                 .borders(Borders::ALL)
                 .border_type(BorderType::Rounded)
                 .title(" Name ")
-                .border_style(Style::default().fg(theme::snippets::BORDER))
-                .style(Style::default().bg(theme::snippets::BACKGROUND)),
+                .border_style(Style::default().fg(theme::snippets::border()))
+                .style(Style::default().bg(theme::snippets::background())),
         );
         frame.render_widget(display, area);
     }
@@ -549,9 +549,9 @@ fn render_create_query_input(
     area: Rect,
 ) {
     let border_color = if is_active {
-        theme::snippets::FIELD_ACTIVE_BORDER
+        theme::snippets::field_active_border()
     } else {
-        theme::snippets::BORDER
+        theme::snippets::border()
     };
     let query_textarea = state.query_textarea_mut();
     query_textarea.set_block(
@@ -560,12 +560,12 @@ fn render_create_query_input(
             .border_type(BorderType::Rounded)
             .title(" Query ")
             .border_style(Style::default().fg(border_color))
-            .style(Style::default().bg(theme::snippets::BACKGROUND)),
+            .style(Style::default().bg(theme::snippets::background())),
     );
     query_textarea.set_style(
         Style::default()
-            .fg(theme::snippets::FIELD_TEXT)
-            .bg(theme::snippets::BACKGROUND),
+            .fg(theme::snippets::field_text())
+            .bg(theme::snippets::background()),
     );
     if is_active {
         frame.render_widget(&*query_textarea, area);
@@ -580,8 +580,8 @@ fn render_create_query_input(
                 .borders(Borders::ALL)
                 .border_type(BorderType::Rounded)
                 .title(" Query ")
-                .border_style(Style::default().fg(theme::snippets::BORDER))
-                .style(Style::default().bg(theme::snippets::BACKGROUND)),
+                .border_style(Style::default().fg(theme::snippets::border()))
+                .style(Style::default().bg(theme::snippets::background())),
         );
         frame.render_widget(display, area);
     }
@@ -594,9 +594,9 @@ fn render_create_description_input(
     area: Rect,
 ) {
     let border_color = if is_active {
-        theme::snippets::FIELD_ACTIVE_BORDER
+        theme::snippets::field_active_border()
     } else {
-        theme::snippets::BORDER
+        theme::snippets::border()
     };
     let desc_textarea = state.description_textarea_mut();
     desc_textarea.set_block(
@@ -605,12 +605,12 @@ fn render_create_description_input(
             .border_type(BorderType::Rounded)
             .title(" Description (optional) ")
             .border_style(Style::default().fg(border_color))
-            .style(Style::default().bg(theme::snippets::BACKGROUND)),
+            .style(Style::default().bg(theme::snippets::background())),
     );
     desc_textarea.set_style(
         Style::default()
-            .fg(theme::snippets::FIELD_TEXT)
-            .bg(theme::snippets::BACKGROUND),
+            .fg(theme::snippets::field_text())
+            .bg(theme::snippets::background()),
     );
     if is_active {
         frame.render_widget(&*desc_textarea, area);
@@ -625,8 +625,8 @@ fn render_create_description_input(
                 .borders(Borders::ALL)
                 .border_type(BorderType::Rounded)
                 .title(" Description (optional) ")
-                .border_style(Style::default().fg(theme::snippets::BORDER))
-                .style(Style::default().bg(theme::snippets::BACKGROUND)),
+                .border_style(Style::default().fg(theme::snippets::border()))
+                .style(Style::default().bg(theme::snippets::background())),
         );
         frame.render_widget(display, area);
     }
@@ -644,8 +644,8 @@ fn render_create_hints(mode: &SnippetMode, frame: &mut Frame, area: Rect) {
         Block::default()
             .borders(Borders::ALL)
             .border_type(BorderType::Rounded)
-            .border_style(Style::default().fg(theme::snippets::BORDER))
-            .style(Style::default().bg(theme::snippets::BACKGROUND)),
+            .border_style(Style::default().fg(theme::snippets::border()))
+            .style(Style::default().bg(theme::snippets::background())),
     );
 
     frame.render_widget(hints_widget, area);
@@ -699,13 +699,13 @@ fn render_edit_minimal(
                     .borders(Borders::ALL)
                     .border_type(BorderType::Rounded)
                     .title(" Edit Snippet - Name ")
-                    .border_style(Style::default().fg(theme::snippets::FIELD_ACTIVE_BORDER))
-                    .style(Style::default().bg(theme::snippets::BACKGROUND)),
+                    .border_style(Style::default().fg(theme::snippets::field_active_border()))
+                    .style(Style::default().bg(theme::snippets::background())),
             );
             name_textarea.set_style(
                 Style::default()
-                    .fg(theme::snippets::FIELD_TEXT)
-                    .bg(theme::snippets::BACKGROUND),
+                    .fg(theme::snippets::field_text())
+                    .bg(theme::snippets::background()),
             );
             frame.render_widget(&*name_textarea, area);
         }
@@ -716,13 +716,13 @@ fn render_edit_minimal(
                     .borders(Borders::ALL)
                     .border_type(BorderType::Rounded)
                     .title(" Edit Snippet - Query ")
-                    .border_style(Style::default().fg(theme::snippets::FIELD_ACTIVE_BORDER))
-                    .style(Style::default().bg(theme::snippets::BACKGROUND)),
+                    .border_style(Style::default().fg(theme::snippets::field_active_border()))
+                    .style(Style::default().bg(theme::snippets::background())),
             );
             query_textarea.set_style(
                 Style::default()
-                    .fg(theme::snippets::FIELD_TEXT)
-                    .bg(theme::snippets::BACKGROUND),
+                    .fg(theme::snippets::field_text())
+                    .bg(theme::snippets::background()),
             );
             frame.render_widget(&*query_textarea, area);
         }
@@ -733,13 +733,13 @@ fn render_edit_minimal(
                     .borders(Borders::ALL)
                     .border_type(BorderType::Rounded)
                     .title(" Edit Snippet - Description ")
-                    .border_style(Style::default().fg(theme::snippets::FIELD_ACTIVE_BORDER))
-                    .style(Style::default().bg(theme::snippets::BACKGROUND)),
+                    .border_style(Style::default().fg(theme::snippets::field_active_border()))
+                    .style(Style::default().bg(theme::snippets::background())),
             );
             desc_textarea.set_style(
                 Style::default()
-                    .fg(theme::snippets::FIELD_TEXT)
-                    .bg(theme::snippets::BACKGROUND),
+                    .fg(theme::snippets::field_text())
+                    .bg(theme::snippets::background()),
             );
             frame.render_widget(&*desc_textarea, area);
         }
@@ -754,9 +754,9 @@ fn render_edit_name_input(
     area: Rect,
 ) {
     let border_color = if is_active {
-        theme::snippets::FIELD_ACTIVE_BORDER
+        theme::snippets::field_active_border()
     } else {
-        theme::snippets::BORDER
+        theme::snippets::border()
     };
     let name_textarea = state.name_textarea_mut();
     name_textarea.set_block(
@@ -765,12 +765,12 @@ fn render_edit_name_input(
             .border_type(BorderType::Rounded)
             .title(" Name ")
             .border_style(Style::default().fg(border_color))
-            .style(Style::default().bg(theme::snippets::BACKGROUND)),
+            .style(Style::default().bg(theme::snippets::background())),
     );
     name_textarea.set_style(
         Style::default()
-            .fg(theme::snippets::FIELD_TEXT)
-            .bg(theme::snippets::BACKGROUND),
+            .fg(theme::snippets::field_text())
+            .bg(theme::snippets::background()),
     );
     if is_active {
         frame.render_widget(&*name_textarea, area);
@@ -785,8 +785,8 @@ fn render_edit_name_input(
                 .borders(Borders::ALL)
                 .border_type(BorderType::Rounded)
                 .title(" Name ")
-                .border_style(Style::default().fg(theme::snippets::BORDER))
-                .style(Style::default().bg(theme::snippets::BACKGROUND)),
+                .border_style(Style::default().fg(theme::snippets::border()))
+                .style(Style::default().bg(theme::snippets::background())),
         );
         frame.render_widget(display, area);
     }
@@ -799,9 +799,9 @@ fn render_edit_query_input(
     area: Rect,
 ) {
     let border_color = if is_active {
-        theme::snippets::FIELD_ACTIVE_BORDER
+        theme::snippets::field_active_border()
     } else {
-        theme::snippets::BORDER
+        theme::snippets::border()
     };
     let query_textarea = state.query_textarea_mut();
     query_textarea.set_block(
@@ -810,12 +810,12 @@ fn render_edit_query_input(
             .border_type(BorderType::Rounded)
             .title(" Query ")
             .border_style(Style::default().fg(border_color))
-            .style(Style::default().bg(theme::snippets::BACKGROUND)),
+            .style(Style::default().bg(theme::snippets::background())),
     );
     query_textarea.set_style(
         Style::default()
-            .fg(theme::snippets::FIELD_TEXT)
-            .bg(theme::snippets::BACKGROUND),
+            .fg(theme::snippets::field_text())
+            .bg(theme::snippets::background()),
     );
     if is_active {
         frame.render_widget(&*query_textarea, area);
@@ -830,8 +830,8 @@ fn render_edit_query_input(
                 .borders(Borders::ALL)
                 .border_type(BorderType::Rounded)
                 .title(" Query ")
-                .border_style(Style::default().fg(theme::snippets::BORDER))
-                .style(Style::default().bg(theme::snippets::BACKGROUND)),
+                .border_style(Style::default().fg(theme::snippets::border()))
+                .style(Style::default().bg(theme::snippets::background())),
         );
         frame.render_widget(display, area);
     }
@@ -844,9 +844,9 @@ fn render_edit_description_input(
     area: Rect,
 ) {
     let border_color = if is_active {
-        theme::snippets::FIELD_ACTIVE_BORDER
+        theme::snippets::field_active_border()
     } else {
-        theme::snippets::BORDER
+        theme::snippets::border()
     };
     let desc_textarea = state.description_textarea_mut();
     desc_textarea.set_block(
@@ -855,12 +855,12 @@ fn render_edit_description_input(
             .border_type(BorderType::Rounded)
             .title(" Description (optional) ")
             .border_style(Style::default().fg(border_color))
-            .style(Style::default().bg(theme::snippets::BACKGROUND)),
+            .style(Style::default().bg(theme::snippets::background())),
     );
     desc_textarea.set_style(
         Style::default()
-            .fg(theme::snippets::FIELD_TEXT)
-            .bg(theme::snippets::BACKGROUND),
+            .fg(theme::snippets::field_text())
+            .bg(theme::snippets::background()),
     );
     if is_active {
         frame.render_widget(&*desc_textarea, area);
@@ -875,8 +875,8 @@ fn render_edit_description_input(
                 .borders(Borders::ALL)
                 .border_type(BorderType::Rounded)
                 .title(" Description (optional) ")
-                .border_style(Style::default().fg(theme::snippets::BORDER))
-                .style(Style::default().bg(theme::snippets::BACKGROUND)),
+                .border_style(Style::default().fg(theme::snippets::border()))
+                .style(Style::default().bg(theme::snippets::background())),
         );
         frame.render_widget(display, area);
     }
@@ -894,8 +894,8 @@ fn render_edit_hints(mode: &SnippetMode, frame: &mut Frame, area: Rect) {
         Block::default()
             .borders(Borders::ALL)
             .border_type(BorderType::Rounded)
-            .border_style(Style::default().fg(theme::snippets::BORDER))
-            .style(Style::default().bg(theme::snippets::BACKGROUND)),
+            .border_style(Style::default().fg(theme::snippets::border()))
+            .style(Style::default().bg(theme::snippets::background())),
     );
 
     frame.render_widget(hints_widget, area);
@@ -924,7 +924,7 @@ fn render_confirm_delete_mode(state: &SnippetState, frame: &mut Frame, area: Rec
         Line::from(""),
         Line::from(Span::styled(
             format!(" Delete \"{}\"?", truncated_name),
-            Style::default().fg(theme::snippets::FIELD_TEXT),
+            Style::default().fg(theme::snippets::field_text()),
         )),
         Line::from(""),
         build_confirm_hints(),
@@ -935,8 +935,8 @@ fn render_confirm_delete_mode(state: &SnippetState, frame: &mut Frame, area: Rec
             .borders(Borders::ALL)
             .border_type(BorderType::Rounded)
             .title(" Confirm Delete ")
-            .border_style(Style::default().fg(theme::snippets::DELETE_BORDER))
-            .style(Style::default().bg(theme::snippets::BACKGROUND)),
+            .border_style(Style::default().fg(theme::snippets::delete_border()))
+            .style(Style::default().bg(theme::snippets::background())),
     );
 
     popup::clear_area(frame, dialog_area);
@@ -978,13 +978,13 @@ fn render_confirm_update_mode(state: &SnippetState, frame: &mut Frame, area: Rec
         Line::from(""),
         Line::from(Span::styled(
             format!(" Replace query for \"{}\"?", truncated_name),
-            Style::default().fg(theme::snippets::FIELD_TEXT),
+            Style::default().fg(theme::snippets::field_text()),
         )),
         Line::from(""),
         Line::from(Span::styled(
             " Old query:",
             Style::default()
-                .fg(theme::snippets::FIELD_ACTIVE_BORDER)
+                .fg(theme::snippets::field_active_border())
                 .add_modifier(Modifier::BOLD),
         )),
     ];
@@ -999,7 +999,7 @@ fn render_confirm_update_mode(state: &SnippetState, frame: &mut Frame, area: Rec
     content.push(Line::from(Span::styled(
         " New query:",
         Style::default()
-            .fg(theme::palette::SUCCESS)
+            .fg(theme::palette::success())
             .add_modifier(Modifier::BOLD),
     )));
 
@@ -1017,8 +1017,8 @@ fn render_confirm_update_mode(state: &SnippetState, frame: &mut Frame, area: Rec
             .borders(Borders::ALL)
             .border_type(BorderType::Rounded)
             .title(" Replace Snippet Query ")
-            .border_style(Style::default().fg(theme::snippets::BORDER))
-            .style(Style::default().bg(theme::snippets::BACKGROUND)),
+            .border_style(Style::default().fg(theme::snippets::border()))
+            .style(Style::default().bg(theme::snippets::background())),
     );
 
     popup::clear_area(frame, dialog_area);

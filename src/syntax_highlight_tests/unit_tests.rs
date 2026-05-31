@@ -11,42 +11,42 @@ fn test_highlight_empty() {
 fn test_highlight_simple_field() {
     let spans = JqHighlighter::highlight(".name");
     assert_eq!(spans.len(), 1);
-    assert_eq!(spans[0].style.fg, None);
+    assert_eq!(spans[0].style.fg, Some(theme::palette::text()));
 }
 
 #[test]
 fn test_highlight_keyword() {
     let spans = JqHighlighter::highlight("if");
     assert_eq!(spans.len(), 1);
-    assert_eq!(spans[0].style.fg, Some(theme::syntax::KEYWORD));
+    assert_eq!(spans[0].style.fg, Some(theme::syntax::keyword()));
 }
 
 #[test]
 fn test_highlight_string() {
     let spans = JqHighlighter::highlight(r#""hello""#);
     assert_eq!(spans.len(), 1);
-    assert_eq!(spans[0].style.fg, Some(theme::syntax::STRING));
+    assert_eq!(spans[0].style.fg, Some(theme::syntax::string()));
 }
 
 #[test]
 fn test_highlight_number() {
     let spans = JqHighlighter::highlight("123");
     assert_eq!(spans.len(), 1);
-    assert_eq!(spans[0].style.fg, Some(theme::syntax::NUMBER));
+    assert_eq!(spans[0].style.fg, Some(theme::syntax::number()));
 }
 
 #[test]
 fn test_highlight_function() {
     let spans = JqHighlighter::highlight("map");
     assert_eq!(spans.len(), 1);
-    assert_eq!(spans[0].style.fg, Some(theme::syntax::FUNCTION));
+    assert_eq!(spans[0].style.fg, Some(theme::syntax::function()));
 }
 
 #[test]
 fn test_highlight_operator() {
     let spans = JqHighlighter::highlight("|");
     assert_eq!(spans.len(), 1);
-    assert_eq!(spans[0].style.fg, Some(theme::syntax::OPERATOR));
+    assert_eq!(spans[0].style.fg, Some(theme::syntax::operator()));
 }
 
 #[test]
@@ -65,7 +65,7 @@ fn test_highlight_with_whitespace() {
 fn test_unterminated_string() {
     let spans = JqHighlighter::highlight(r#""unterminated"#);
     assert_eq!(spans.len(), 1);
-    assert_eq!(spans[0].style.fg, Some(theme::syntax::STRING));
+    assert_eq!(spans[0].style.fg, Some(theme::syntax::string()));
     assert_eq!(spans[0].content, r#""unterminated"#);
 }
 
@@ -73,14 +73,14 @@ fn test_unterminated_string() {
 fn test_string_with_escapes() {
     let spans = JqHighlighter::highlight(r#""hello \"world\"""#);
     assert_eq!(spans.len(), 1);
-    assert_eq!(spans[0].style.fg, Some(theme::syntax::STRING));
+    assert_eq!(spans[0].style.fg, Some(theme::syntax::string()));
 }
 
 #[test]
 fn test_negative_number() {
     let spans = JqHighlighter::highlight("-123");
     assert_eq!(spans.len(), 1);
-    assert_eq!(spans[0].style.fg, Some(theme::syntax::NUMBER));
+    assert_eq!(spans[0].style.fg, Some(theme::syntax::number()));
     assert_eq!(spans[0].content, "-123");
 }
 
@@ -88,7 +88,7 @@ fn test_negative_number() {
 fn test_decimal_number() {
     let spans = JqHighlighter::highlight("3.14");
     assert_eq!(spans.len(), 1);
-    assert_eq!(spans[0].style.fg, Some(theme::syntax::NUMBER));
+    assert_eq!(spans[0].style.fg, Some(theme::syntax::number()));
     assert_eq!(spans[0].content, "3.14");
 }
 
@@ -98,7 +98,7 @@ fn test_two_char_operators() {
     let spans = JqHighlighter::highlight("==");
     assert_eq!(spans.len(), 1);
     assert_eq!(spans[0].content, "==");
-    assert_eq!(spans[0].style.fg, Some(theme::syntax::OPERATOR));
+    assert_eq!(spans[0].style.fg, Some(theme::syntax::operator()));
 
     // Test !=
     let spans = JqHighlighter::highlight("!=");
@@ -125,7 +125,7 @@ fn test_two_char_operators() {
 fn test_nested_field_path() {
     let spans = JqHighlighter::highlight(".foo.bar.baz");
     assert_eq!(spans.len(), 1);
-    assert_eq!(spans[0].style.fg, None);
+    assert_eq!(spans[0].style.fg, Some(theme::palette::text()));
     assert_eq!(spans[0].content, ".foo.bar.baz");
 }
 
@@ -133,25 +133,25 @@ fn test_nested_field_path() {
 fn test_just_dot() {
     let spans = JqHighlighter::highlight(".");
     assert_eq!(spans.len(), 1);
-    assert_eq!(spans[0].style.fg, None);
+    assert_eq!(spans[0].style.fg, Some(theme::palette::text()));
 }
 
 #[test]
 fn test_variable_reference() {
     let spans = JqHighlighter::highlight("$foo");
     assert_eq!(spans.len(), 1);
-    assert_eq!(spans[0].style.fg, Some(theme::syntax::VARIABLE));
+    assert_eq!(spans[0].style.fg, Some(theme::syntax::variable()));
 }
 
 #[test]
 fn test_keywords_and_or() {
     let spans = JqHighlighter::highlight("and");
     assert_eq!(spans.len(), 1);
-    assert_eq!(spans[0].style.fg, Some(theme::syntax::KEYWORD));
+    assert_eq!(spans[0].style.fg, Some(theme::syntax::keyword()));
 
     let spans = JqHighlighter::highlight("or");
     assert_eq!(spans.len(), 1);
-    assert_eq!(spans[0].style.fg, Some(theme::syntax::KEYWORD));
+    assert_eq!(spans[0].style.fg, Some(theme::syntax::keyword()));
 }
 
 #[test]
@@ -160,21 +160,21 @@ fn test_comparison_in_context() {
     assert!(spans.len() >= 5);
     let op_span = spans.iter().find(|s| s.content == ">=");
     assert!(op_span.is_some());
-    assert_eq!(op_span.unwrap().style.fg, Some(theme::syntax::OPERATOR));
+    assert_eq!(op_span.unwrap().style.fg, Some(theme::syntax::operator()));
 }
 
 #[test]
 fn test_empty_keyword() {
     let spans = JqHighlighter::highlight("empty");
     assert_eq!(spans.len(), 1);
-    assert_eq!(spans[0].style.fg, Some(theme::syntax::KEYWORD));
+    assert_eq!(spans[0].style.fg, Some(theme::syntax::keyword()));
 }
 
 #[test]
 fn test_unicode_in_string() {
     let spans = JqHighlighter::highlight(r#""hello 世界""#);
     assert_eq!(spans.len(), 1);
-    assert_eq!(spans[0].style.fg, Some(theme::syntax::STRING));
+    assert_eq!(spans[0].style.fg, Some(theme::syntax::string()));
 }
 
 #[test]
@@ -188,7 +188,7 @@ fn test_keywords_inside_strings_not_highlighted() {
     let spans = JqHighlighter::highlight(r#""if then else""#);
     assert_eq!(spans.len(), 1);
     assert_eq!(spans[0].content, r#""if then else""#);
-    assert_eq!(spans[0].style.fg, Some(theme::syntax::STRING));
+    assert_eq!(spans[0].style.fg, Some(theme::syntax::string()));
 }
 
 #[test]
@@ -197,11 +197,14 @@ fn test_query_with_string_containing_keywords() {
 
     let string_span = spans.iter().find(|s| s.content == r#""if""#);
     assert!(string_span.is_some());
-    assert_eq!(string_span.unwrap().style.fg, Some(theme::syntax::STRING));
+    assert_eq!(string_span.unwrap().style.fg, Some(theme::syntax::string()));
 
     let select_span = spans.iter().find(|s| s.content == "select");
     assert!(select_span.is_some());
-    assert_eq!(select_span.unwrap().style.fg, Some(theme::syntax::FUNCTION));
+    assert_eq!(
+        select_span.unwrap().style.fg,
+        Some(theme::syntax::function())
+    );
 }
 
 #[test]
@@ -210,11 +213,14 @@ fn test_object_field_names_highlighted() {
 
     let field_span = spans.iter().find(|s| s.content == "name");
     assert!(field_span.is_some());
-    assert_eq!(field_span.unwrap().style.fg, Some(theme::syntax::FIELD));
+    assert_eq!(field_span.unwrap().style.fg, Some(theme::syntax::field()));
 
     let accessor_span = spans.iter().find(|s| s.content == ".name");
     assert!(accessor_span.is_some());
-    assert_eq!(accessor_span.unwrap().style.fg, None);
+    assert_eq!(
+        accessor_span.unwrap().style.fg,
+        Some(theme::palette::text())
+    );
 }
 
 #[test]
@@ -224,13 +230,16 @@ fn test_object_with_multiple_fields() {
     for field_name in ["firstName", "lastName", "age"] {
         let field_span = spans.iter().find(|s| s.content == field_name);
         assert!(field_span.is_some());
-        assert_eq!(field_span.unwrap().style.fg, Some(theme::syntax::FIELD));
+        assert_eq!(field_span.unwrap().style.fg, Some(theme::syntax::field()));
     }
 
     for accessor in [".first", ".last", ".age"] {
         let accessor_span = spans.iter().find(|s| s.content == accessor);
         assert!(accessor_span.is_some());
-        assert_eq!(accessor_span.unwrap().style.fg, None);
+        assert_eq!(
+            accessor_span.unwrap().style.fg,
+            Some(theme::palette::text())
+        );
     }
 }
 
@@ -240,5 +249,5 @@ fn test_object_field_with_whitespace_before_colon() {
 
     let field_span = spans.iter().find(|s| s.content == "name");
     assert!(field_span.is_some());
-    assert_eq!(field_span.unwrap().style.fg, Some(theme::syntax::FIELD));
+    assert_eq!(field_span.unwrap().style.fg, Some(theme::syntax::field()));
 }

@@ -25,7 +25,7 @@ impl InputState {
             Block::default()
                 .borders(Borders::ALL)
                 .title(" Query ")
-                .border_style(Style::default().fg(theme::input::BORDER_UNFOCUSED)),
+                .border_style(Style::default().fg(theme::input::border_unfocused())),
         );
 
         textarea.set_cursor_line_style(Style::default());

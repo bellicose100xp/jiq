@@ -64,7 +64,7 @@ pub fn render_popup(app: &mut App, frame: &mut Frame, input_area: Rect) -> Optio
             ListItem::new(Line::from("")),
             ListItem::new(Line::from(Span::styled(
                 "  No matches",
-                Style::default().fg(theme::history::NO_MATCHES),
+                Style::default().fg(theme::history::no_matches()),
             ))),
             ListItem::new(Line::from("")),
         ]
@@ -89,20 +89,20 @@ pub fn render_popup(app: &mut App, frame: &mut Frame, input_area: Rect) -> Optio
 
             let (bg_color, prefix) = if is_selected {
                 (
-                    theme::history::ITEM_SELECTED_BG,
+                    theme::history::item_selected_bg(),
                     vec![Span::styled(
                         " ▌ ",
                         Style::default()
-                            .fg(theme::history::ITEM_SELECTED_INDICATOR)
-                            .bg(theme::history::ITEM_SELECTED_BG),
+                            .fg(theme::history::item_selected_indicator())
+                            .bg(theme::history::item_selected_bg()),
                     )],
                 )
             } else {
                 (
-                    theme::history::ITEM_NORMAL_BG,
+                    theme::history::item_normal_bg(),
                     vec![Span::styled(
                         "   ",
-                        Style::default().bg(theme::history::ITEM_NORMAL_BG),
+                        Style::default().bg(theme::history::item_normal_bg()),
                     )],
                 )
             };
@@ -116,7 +116,7 @@ pub fn render_popup(app: &mut App, frame: &mut Frame, input_area: Rect) -> Optio
                     span.style.bg(bg_color)
                 } else {
                     Style::default()
-                        .fg(theme::history::ITEM_NORMAL_FG)
+                        .fg(theme::history::item_normal_fg())
                         .bg(bg_color)
                 };
                 text_width += span.content.chars().count();
@@ -139,9 +139,9 @@ pub fn render_popup(app: &mut App, frame: &mut Frame, input_area: Rect) -> Optio
             let show_button = is_hovered || is_selected;
             if show_button {
                 let btn_color = if is_hovered {
-                    theme::history::DELETE_BUTTON_HOVER
+                    theme::history::delete_button_hover()
                 } else {
-                    theme::history::DELETE_BUTTON
+                    theme::history::delete_button()
                 };
                 spans.push(Span::styled(
                     " [✕] ",
@@ -162,7 +162,7 @@ pub fn render_popup(app: &mut App, frame: &mut Frame, input_area: Rect) -> Optio
 
     let bottom_hints = theme::border_hints::build_hints(
         &[("Enter", "Select"), ("Ctrl+D", "Delete"), ("Esc", "Close")],
-        theme::history::BORDER,
+        theme::history::border(),
     );
 
     let block = Block::default()
@@ -170,8 +170,8 @@ pub fn render_popup(app: &mut App, frame: &mut Frame, input_area: Rect) -> Optio
         .border_type(BorderType::Rounded)
         .title(title)
         .title_bottom(bottom_hints.alignment(Alignment::Center))
-        .border_style(Style::default().fg(theme::history::BORDER))
-        .style(Style::default().bg(theme::history::BACKGROUND));
+        .border_style(Style::default().fg(theme::history::border()))
+        .style(Style::default().bg(theme::history::background()));
 
     let list = List::new(items).block(block);
     frame.render_widget(list, list_area);
@@ -194,7 +194,7 @@ pub fn render_popup(app: &mut App, frame: &mut Frame, input_area: Rect) -> Optio
         app.history.filtered_count(),
         viewport,
         inverted_scroll,
-        theme::history::SCROLLBAR,
+        theme::history::scrollbar(),
     );
 
     let search_textarea = app.history.search_textarea_mut();
@@ -203,13 +203,13 @@ pub fn render_popup(app: &mut App, frame: &mut Frame, input_area: Rect) -> Optio
             .borders(Borders::ALL)
             .border_type(BorderType::Rounded)
             .title(" Search ")
-            .border_style(Style::default().fg(theme::history::BORDER))
-            .style(Style::default().bg(theme::history::BACKGROUND)),
+            .border_style(Style::default().fg(theme::history::border()))
+            .style(Style::default().bg(theme::history::background())),
     );
     search_textarea.set_style(
         Style::default()
-            .fg(theme::history::SEARCH_TEXT)
-            .bg(theme::history::SEARCH_BG),
+            .fg(theme::history::search_text())
+            .bg(theme::history::search_bg()),
     );
     frame.render_widget(&*search_textarea, search_area);
 

@@ -59,6 +59,9 @@ base64 = "0.22"
 # Configuration file parsing
 toml = "0.8"
 
+# Terminal background polarity detection (OSC 10/11) for theme auto-mode
+terminal-colorsaurus = "1.0"
+
 # Fuzzy matching (fzf-style)
 fuzzy-matcher = "0.3"
 

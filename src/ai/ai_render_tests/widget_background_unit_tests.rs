@@ -82,7 +82,7 @@ fn test_selected_suggestion_has_background() {
 
     // Check that cells in the selected suggestion's row have the theme background
     let row = found_second_suggestion_row.unwrap();
-    let expected_bg = theme::ai::SUGGESTION_SELECTED_BG;
+    let expected_bg = theme::ai::suggestion_selected_bg();
     let mut cells_with_selected_bg = 0;
     let mut total_non_empty_cells = 0;
 
@@ -170,7 +170,7 @@ fn test_unselected_suggestion_no_background() {
 
     // Check that cells in the unselected suggestion's row do NOT have selected background
     let row = found_first_suggestion_row.unwrap();
-    let selected_bg = theme::ai::SUGGESTION_SELECTED_BG;
+    let selected_bg = theme::ai::suggestion_selected_bg();
     let mut cells_with_selected_bg = 0;
 
     for x in 0..buffer.area.width {

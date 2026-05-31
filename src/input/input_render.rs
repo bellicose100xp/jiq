@@ -23,31 +23,31 @@ pub fn render_field(app: &mut App, frame: &mut Frame, area: Rect) -> Rect {
     app.input.calculate_scroll_offset(viewport_width);
 
     let mode_color = match app.input.editor_mode {
-        EditorMode::Insert => theme::input::MODE_INSERT,
-        EditorMode::Normal => theme::input::MODE_NORMAL,
-        EditorMode::Operator(_) => theme::input::MODE_OPERATOR,
-        EditorMode::CharSearch(_, _) => theme::input::MODE_CHAR_SEARCH,
-        EditorMode::OperatorCharSearch(_, _, _, _) => theme::input::MODE_OPERATOR,
-        EditorMode::TextObject(_, _) => theme::input::MODE_OPERATOR,
+        EditorMode::Insert => theme::input::mode_insert(),
+        EditorMode::Normal => theme::input::mode_normal(),
+        EditorMode::Operator(_) => theme::input::mode_operator(),
+        EditorMode::CharSearch(_, _) => theme::input::mode_char_search(),
+        EditorMode::OperatorCharSearch(_, _, _, _) => theme::input::mode_operator(),
+        EditorMode::TextObject(_, _) => theme::input::mode_operator(),
     };
 
     let has_error = app.query.as_ref().is_some_and(|q| q.result.is_err());
 
     let border_color = if has_error {
-        theme::input::BORDER_ERROR
+        theme::input::border_error()
     } else if app.focus == Focus::InputField {
         mode_color
     } else {
-        theme::input::BORDER_UNFOCUSED
+        theme::input::border_unfocused()
     };
 
     let is_focused = app.focus == Focus::InputField;
     let mode_display_color = if has_error {
-        theme::input::BORDER_ERROR
+        theme::input::border_error()
     } else if is_focused {
         mode_color
     } else {
-        theme::input::UNFOCUSED_HINT
+        theme::input::unfocused_hint()
     };
 
     let mode_text = app.input.editor_mode.display();
@@ -105,7 +105,7 @@ pub fn render_field(app: &mut App, frame: &mut Frame, area: Rect) -> Rect {
             block = block.title_bottom(
                 theme::border_hints::build_hints(
                     &[("Shift+Tab", "Navigate Results"), ("Ctrl+E", "Show Error")],
-                    theme::input::BORDER_ERROR,
+                    theme::input::border_error(),
                 )
                 .alignment(Alignment::Center),
             );
@@ -171,7 +171,7 @@ pub fn render_field(app: &mut App, frame: &mut Frame, area: Rect) -> Rect {
                 .map(|span| {
                     Span::styled(
                         span.content,
-                        Style::default().fg(theme::input::QUERY_UNFOCUSED),
+                        Style::default().fg(theme::input::query_unfocused()),
                     )
                 })
                 .collect()

@@ -123,9 +123,15 @@ pub fn insert_cursor_into_spans(
     let total_len: usize = spans.iter().map(|s| s.content.chars().count()).sum();
     if cursor_pos >= total_len {
         use ratatui::style::Style;
+        // Base the trailing cursor on the primary text color so REVERSED
+        // produces a themed block. A bare `Style::default()` reverses the
+        // terminal's default colors, which renders as a white block in light
+        // mode.
         result.push(Span::styled(
             " ",
-            Style::default().add_modifier(Modifier::REVERSED),
+            Style::default()
+                .fg(theme::palette::text())
+                .add_modifier(Modifier::REVERSED),
         ));
     }
 
@@ -219,7 +225,7 @@ fn apply_enhanced_modifiers_at_positions(
             let char_at_pos = span_chars[pos_in_span].to_string();
             let enhanced_style = span
                 .style
-                .fg(theme::syntax::bracket_match::COLOR)
+                .fg(theme::syntax::bracket_match::color())
                 .add_modifier(modifiers);
             result.push(Span::styled(char_at_pos, enhanced_style));
 

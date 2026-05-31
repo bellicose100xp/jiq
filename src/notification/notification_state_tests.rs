@@ -10,8 +10,8 @@ fn test_info_notification() {
     assert_eq!(notif.message, "Test message");
     assert_eq!(notif.notification_type, NotificationType::Info);
     assert_eq!(notif.duration, Some(Duration::from_millis(1500)));
-    assert_eq!(notif.style.fg, theme::notification::INFO.fg);
-    assert_eq!(notif.style.bg, theme::notification::INFO.bg);
+    assert_eq!(notif.style.fg, theme::notification::info().fg);
+    assert_eq!(notif.style.bg, theme::notification::info().bg);
     assert!(!notif.is_expired());
 }
 
@@ -21,8 +21,8 @@ fn test_warning_notification() {
     assert_eq!(notif.message, "Warning!");
     assert_eq!(notif.notification_type, NotificationType::Warning);
     assert_eq!(notif.duration, Some(Duration::from_secs(10)));
-    assert_eq!(notif.style.fg, theme::notification::WARNING.fg);
-    assert_eq!(notif.style.bg, theme::notification::WARNING.bg);
+    assert_eq!(notif.style.fg, theme::notification::warning().fg);
+    assert_eq!(notif.style.bg, theme::notification::warning().bg);
 }
 
 #[test]
@@ -31,8 +31,8 @@ fn test_error_notification() {
     assert_eq!(notif.message, "Error!");
     assert_eq!(notif.notification_type, NotificationType::Error);
     assert_eq!(notif.duration, None); // Permanent
-    assert_eq!(notif.style.fg, theme::notification::ERROR.fg);
-    assert_eq!(notif.style.bg, theme::notification::ERROR.bg);
+    assert_eq!(notif.style.fg, theme::notification::error().fg);
+    assert_eq!(notif.style.bg, theme::notification::error().bg);
 }
 
 #[test]

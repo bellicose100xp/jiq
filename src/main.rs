@@ -140,6 +140,26 @@ fn main() -> Result<()> {
     // File and stdin loads stay deferred so a large input never blocks
     // the splash. `--paste` skips the clipboard entirely.
     let pre_input = resolve_pre_input(&args);
+
+    // Resolve the theme palette before `init_terminal()`. In `auto`
+    // mode the detection probe emits an OSC 11 query and reads the
+    // reply; this MUST complete before enable_raw_mode() /
+    // EnterAlternateScreen own the terminal, or the escape sequences
+    // collide with the alt-screen handshake.
+    let resolved = resolve_theme(
+        config_result.config.theme.mode,
+        theme::detect::detect_background,
+    );
+    theme::init(match resolved {
+        theme::ResolvedTheme::Light => theme::galaxy_light(),
+        theme::ResolvedTheme::Dark => theme::galaxy_dark(),
+    });
+    log::debug!(
+        "theme mode={:?} -> {:?}",
+        config_result.config.theme.mode,
+        resolved
+    );
+
     let terminal = init_terminal()?;
     let app = match pre_input {
         PreInput::Loader(loader) => App::new_with_loader(loader, &config_result.config),
@@ -165,6 +185,21 @@ fn main() -> Result<()> {
 fn validate_jq_exists() -> Result<(), JiqError> {
     which::which("jq").map_err(|_| JiqError::JqNotFound)?;
     Ok(())
+}
+
+/// Map the configured theme mode to a concrete palette selector.
+/// `Light`/`Dark` force the palette; `Auto` defers to `detect`, which
+/// probes the terminal background. Kept pure (detection injected) so
+/// the resolution rules are unit-testable without a real terminal.
+fn resolve_theme(
+    mode: config::ThemeMode,
+    detect: impl FnOnce() -> theme::ResolvedTheme,
+) -> theme::ResolvedTheme {
+    match mode {
+        config::ThemeMode::Light => theme::ResolvedTheme::Light,
+        config::ThemeMode::Dark => theme::ResolvedTheme::Dark,
+        config::ThemeMode::Auto => detect(),
+    }
 }
 
 /// What jiq has lined up before the TUI starts: a deferred file/stdin
@@ -491,7 +526,7 @@ fn handle_output(app: &App) -> Result<()> {
                 let json_input = query_state.executor.json_input();
                 let executor = JqExecutor::new(json_input.to_string());
                 let cancel_token = tokio_util::sync::CancellationToken::new();
-                match executor.execute_with_cancel(app.query(), &cancel_token) {
+                match executor.execute_for_output(app.query(), &cancel_token) {
                     Ok(result) => println!("{}", result),
                     Err(e) => eprintln!("Error: {}", e),
                 }
@@ -507,4 +542,42 @@ fn handle_output(app: &App) -> Result<()> {
     }
 
     Ok(())
+}
+
+#[cfg(test)]
+mod main_tests {
+    use super::*;
+    use theme::ResolvedTheme;
+
+    #[test]
+    fn light_mode_ignores_detection() {
+        assert_eq!(
+            resolve_theme(config::ThemeMode::Light, || ResolvedTheme::Dark),
+            ResolvedTheme::Light
+        );
+    }
+
+    #[test]
+    fn dark_mode_ignores_detection() {
+        assert_eq!(
+            resolve_theme(config::ThemeMode::Dark, || ResolvedTheme::Light),
+            ResolvedTheme::Dark
+        );
+    }
+
+    #[test]
+    fn auto_mode_uses_detected_dark() {
+        assert_eq!(
+            resolve_theme(config::ThemeMode::Auto, || ResolvedTheme::Dark),
+            ResolvedTheme::Dark
+        );
+    }
+
+    #[test]
+    fn auto_mode_uses_detected_light() {
+        assert_eq!(
+            resolve_theme(config::ThemeMode::Auto, || ResolvedTheme::Light),
+            ResolvedTheme::Light
+        );
+    }
 }

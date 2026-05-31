@@ -58,7 +58,7 @@ fn build_results_pane_hints(can_undo: bool) -> Line<'static> {
     let mut hints: Vec<(&'static str, &'static str)> =
         vec![("Tab", "Edit Query"), ("i", "Edit Query")];
     hints.extend(path_chord_hints(can_undo));
-    theme::border_hints::build_hints(&hints, theme::results::HINT_KEY)
+    theme::border_hints::build_hints(&hints, theme::results::hint_key())
 }
 
 fn build_search_hints(can_undo: bool) -> Line<'static> {
@@ -66,7 +66,7 @@ fn build_search_hints(can_undo: bool) -> Line<'static> {
         vec![("n/N", "Next/Prev"), ("Enter", "Next")];
     hints.extend(path_chord_hints(can_undo));
     hints.extend([("Ctrl+F", "Edit"), ("Esc", "Close")]);
-    theme::border_hints::build_hints(&hints, theme::results::SEARCH_ACTIVE)
+    theme::border_hints::build_hints(&hints, theme::results::search_active())
 }
 
 /// Cells of clear space the centered hint strip leaves on each side so the
@@ -161,9 +161,9 @@ fn build_back_badge(
     hovered: bool,
 ) -> (Vec<Span<'static>>, Rect) {
     let style = if hovered {
-        theme::results::BADGE_BACK_HOVER
+        theme::results::badge_back_hover()
     } else {
-        theme::results::BADGE_BACK
+        theme::results::badge_back()
     };
     let spans = vec![Span::raw(" "), Span::styled(BACK_BADGE_TEXT, style)];
     // Block draws the rounded corner at `area.x`, the title row at `area.y`.
@@ -181,10 +181,10 @@ fn build_back_badge(
 fn get_spinner(frame_count: u64) -> (char, Color) {
     let index = (frame_count / 8) as usize;
     let char_idx = index % SPINNER_CHARS.len();
-    let color_idx = index % theme::results::SPINNER_COLORS.len();
+    let color_idx = index % theme::results::spinner_colors().len();
     (
         SPINNER_CHARS[char_idx],
-        theme::results::SPINNER_COLORS[color_idx],
+        theme::results::spinner_colors()[color_idx],
     )
 }
 
@@ -261,9 +261,9 @@ fn get_timing_color(ms: u64, border_color: Color) -> Color {
     if ms < 200 {
         border_color
     } else if ms < 1000 {
-        theme::results::TIMING_SLOW
+        theme::results::timing_slow()
     } else {
-        theme::results::TIMING_VERY_SLOW
+        theme::results::timing_very_slow()
     }
 }
 
@@ -392,11 +392,11 @@ pub fn render_pane(app: &mut App, frame: &mut Frame, area: Rect) -> (Rect, Optio
     // When search is confirmed (navigating results), results pane is active (purple)
     // When search is not confirmed (editing search), results pane is inactive (gray)
     let search_text_color = if search_visible && app.search.is_confirmed() {
-        theme::results::SEARCH_ACTIVE
+        theme::results::search_active()
     } else if search_visible {
-        theme::results::SEARCH_INACTIVE
+        theme::results::search_inactive()
     } else {
-        Color::Reset
+        theme::palette::text()
     };
 
     // The clickable Back badge appears on the top border whenever there is
@@ -420,7 +420,7 @@ pub fn render_pane(app: &mut App, frame: &mut Frame, area: Rect) -> (Rect, Optio
         let text_color = if search_visible {
             search_text_color
         } else {
-            theme::results::RESULT_WARNING
+            theme::results::result_warning()
         };
         let mut spans = Vec::new();
         if is_pending {
@@ -440,7 +440,7 @@ pub fn render_pane(app: &mut App, frame: &mut Frame, area: Rect) -> (Rect, Optio
         spans.push(Span::raw(" "));
         spans.push(Span::styled(
             "  ⚠ Syntax Error  ",
-            theme::results::BADGE_SYNTAX_ERROR,
+            theme::results::badge_syntax_error(),
         ));
         if !stats_info.is_empty() {
             spans.push(Span::styled(
@@ -448,13 +448,13 @@ pub fn render_pane(app: &mut App, frame: &mut Frame, area: Rect) -> (Rect, Optio
                 Style::default().fg(text_color),
             ));
         }
-        (Line::from(spans), theme::results::BORDER_WARNING)
+        (Line::from(spans), theme::results::border_warning())
     } else if query_state.is_empty_result {
         // EMPTY: Gray text, gray border (unfocused) - or search color when search visible
         let text_color = if search_visible {
             search_text_color
         } else {
-            theme::results::RESULT_PENDING
+            theme::results::result_pending()
         };
         let mut spans = Vec::new();
         if is_pending {
@@ -470,19 +470,19 @@ pub fn render_pane(app: &mut App, frame: &mut Frame, area: Rect) -> (Rect, Optio
         spans.push(Span::raw(" "));
         spans.push(Span::styled(
             "  ∅ No Results  ",
-            theme::results::BADGE_EMPTY_RESULT,
+            theme::results::badge_empty_result(),
         ));
         spans.push(Span::styled(
             format!(" {} | Showing last non-empty result ", stats_info),
             Style::default().fg(text_color),
         ));
-        (Line::from(spans), theme::results::BORDER_UNFOCUSED)
+        (Line::from(spans), theme::results::border_unfocused())
     } else {
         // SUCCESS: Green text, green border (unfocused) - or search color when search visible
         let text_color = if search_visible {
             search_text_color
         } else {
-            theme::results::RESULT_OK
+            theme::results::result_ok()
         };
         let path_budget = path_at_cursor_budget(
             results_area.width,
@@ -497,11 +497,11 @@ pub fn render_pane(app: &mut App, frame: &mut Frame, area: Rect) -> (Rect, Optio
                 vec![
                     Span::styled(
                         " · ",
-                        Style::default().fg(theme::results::PATH_AT_CURSOR_SEPARATOR),
+                        Style::default().fg(theme::results::path_at_cursor_separator()),
                     ),
                     Span::styled(
                         format!("{} ", truncated),
-                        Style::default().fg(theme::results::PATH_AT_CURSOR),
+                        Style::default().fg(theme::results::path_at_cursor()),
                     ),
                 ]
             }
@@ -525,7 +525,7 @@ pub fn render_pane(app: &mut App, frame: &mut Frame, area: Rect) -> (Rect, Optio
             spans.extend(back_spans.clone());
             spans.push(Span::styled(stats_format, Style::default().fg(text_color)));
             spans.extend(path_spans);
-            (Line::from(spans), theme::results::RESULT_OK)
+            (Line::from(spans), theme::results::result_ok())
         } else {
             let mut spans = back_spans.clone();
             spans.push(Span::styled(
@@ -533,7 +533,7 @@ pub fn render_pane(app: &mut App, frame: &mut Frame, area: Rect) -> (Rect, Optio
                 Style::default().fg(text_color),
             ));
             spans.extend(path_spans);
-            (Line::from(spans), theme::results::RESULT_OK)
+            (Line::from(spans), theme::results::result_ok())
         }
     };
 
@@ -558,12 +558,12 @@ pub fn render_pane(app: &mut App, frame: &mut Frame, area: Rect) -> (Rect, Optio
     // When search is not confirmed (editing), results pane is inactive (gray)
     let border_color = if search_visible {
         if app.search.is_confirmed() {
-            theme::results::SEARCH_ACTIVE
+            theme::results::search_active()
         } else {
-            theme::results::SEARCH_INACTIVE
+            theme::results::search_inactive()
         }
     } else if app.focus == crate::app::Focus::ResultsPane {
-        theme::results::BORDER_FOCUSED
+        theme::results::border_focused()
     } else {
         unfocused_border_color
     };
@@ -577,7 +577,7 @@ pub fn render_pane(app: &mut App, frame: &mut Frame, area: Rect) -> (Rect, Optio
     let title = if search_no_match {
         let mut spans = vec![
             Span::raw(" "),
-            Span::styled("  ⚠ No Matches  ", theme::search::BADGE_NO_MATCHES),
+            Span::styled("  ⚠ No Matches  ", theme::search::badge_no_matches()),
             Span::raw(" "),
         ];
         spans.extend(title.spans);
@@ -610,7 +610,7 @@ pub fn render_pane(app: &mut App, frame: &mut Frame, area: Rect) -> (Rect, Optio
                 Span::raw(" "),
                 Span::styled(
                     format!("  {}  ", match_count),
-                    theme::search::BADGE_MATCH_COUNT,
+                    theme::search::badge_match_count(),
                 ),
                 Span::raw(" "),
             ]))
@@ -742,7 +742,7 @@ pub fn render_pane(app: &mut App, frame: &mut Frame, area: Rect) -> (Rect, Optio
                 Span::raw(" "),
                 Span::styled(
                     format!("  {}  ", match_count),
-                    theme::search::BADGE_MATCH_COUNT,
+                    theme::search::badge_match_count(),
                 ),
                 Span::raw(" "),
             ]))
@@ -807,11 +807,11 @@ fn render_loading_indicator(frame: &mut Frame, area: Rect) {
         .borders(Borders::ALL)
         .border_type(BorderType::Rounded)
         .title(" Loading ")
-        .border_style(Style::default().fg(theme::results::BORDER_WARNING));
+        .border_style(Style::default().fg(theme::results::border_warning()));
 
     let paragraph = Paragraph::new(text)
         .block(block)
-        .style(Style::default().fg(theme::results::BORDER_WARNING));
+        .style(Style::default().fg(theme::results::border_warning()));
 
     frame.render_widget(paragraph, area);
 }
@@ -821,11 +821,11 @@ fn render_error_message(frame: &mut Frame, area: Rect, message: &str) {
         .borders(Borders::ALL)
         .border_type(BorderType::Rounded)
         .title(" Error ")
-        .border_style(Style::default().fg(theme::results::BORDER_ERROR));
+        .border_style(Style::default().fg(theme::results::border_error()));
 
     let paragraph = Paragraph::new(message)
         .block(block)
-        .style(Style::default().fg(theme::results::BORDER_ERROR));
+        .style(Style::default().fg(theme::results::border_error()));
 
     frame.render_widget(paragraph, area);
 }
@@ -871,20 +871,22 @@ pub fn render_error_overlay(app: &App, frame: &mut Frame, results_area: Rect) ->
         };
 
         popup::clear_area(frame, overlay_area);
-        let close_hint =
-            theme::border_hints::build_hints(&[("Ctrl+E", "Close")], theme::results::BORDER_ERROR);
+        let close_hint = theme::border_hints::build_hints(
+            &[("Ctrl+E", "Close")],
+            theme::results::border_error(),
+        );
         let error_block = Block::default()
             .borders(Borders::ALL)
             .border_type(BorderType::Rounded)
             .title(" Syntax Error ")
             .title_bottom(close_hint.alignment(Alignment::Center))
-            .border_style(Style::default().fg(theme::results::BORDER_ERROR))
-            .style(Style::default().bg(theme::results::BACKGROUND))
+            .border_style(Style::default().fg(theme::results::border_error()))
+            .style(Style::default().bg(theme::results::background()))
             .padding(Padding::new(1, 1, 1, 1));
 
         let error_widget = Paragraph::new(display_error.as_str())
             .block(error_block)
-            .style(Style::default().fg(theme::results::BORDER_ERROR));
+            .style(Style::default().fg(theme::results::border_error()));
 
         frame.render_widget(error_widget, overlay_area);
         return Some(overlay_area);
@@ -983,13 +985,13 @@ fn apply_highlights_to_line(
 
         let highlight_style = if *match_idx == current_match_index {
             Style::default()
-                .fg(theme::results::CURRENT_MATCH_FG)
-                .bg(theme::results::CURRENT_MATCH_BG)
+                .fg(theme::results::current_match_fg())
+                .bg(theme::results::current_match_bg())
                 .add_modifier(Modifier::BOLD)
         } else {
             Style::default()
-                .fg(theme::results::MATCH_HIGHLIGHT_FG)
-                .bg(theme::results::MATCH_HIGHLIGHT_BG)
+                .fg(theme::results::match_highlight_fg())
+                .bg(theme::results::match_highlight_bg())
         };
 
         for i in col_start..col_end.min(char_styles.len()) {
@@ -1046,11 +1048,11 @@ fn apply_cursor_highlights(
 
                 let bg_color =
                     if is_visual && absolute_line >= sel_start && absolute_line <= sel_end {
-                        Some(theme::results::VISUAL_SELECTION_BG)
+                        Some(theme::results::visual_selection_bg())
                     } else if absolute_line == cursor_line {
-                        Some(theme::results::CURSOR_LINE_BG)
+                        Some(theme::results::cursor_line_bg())
                     } else if Some(absolute_line) == hovered_line {
-                        Some(theme::results::HOVERED_LINE_BG)
+                        Some(theme::results::hovered_line_bg())
                     } else {
                         None
                     };
@@ -1062,8 +1064,8 @@ fn apply_cursor_highlights(
                             .map(|span| {
                                 let existing_bg = span.style.bg;
                                 let is_search_highlight = existing_bg
-                                    == Some(theme::results::CURRENT_MATCH_BG)
-                                    || existing_bg == Some(theme::results::MATCH_HIGHLIGHT_BG);
+                                    == Some(theme::results::current_match_bg())
+                                    || existing_bg == Some(theme::results::match_highlight_bg());
 
                                 if is_search_highlight {
                                     Span::styled(span.content.into_owned(), span.style)
@@ -1114,7 +1116,7 @@ fn render_cursor_indicator(
 
     let indicator = Span::styled(
         "▌",
-        Style::default().fg(theme::results::CURSOR_INDICATOR_FG),
+        Style::default().fg(theme::results::cursor_indicator_fg()),
     );
     frame.render_widget(
         Paragraph::new(Line::from(indicator)),

@@ -1,15 +1,28 @@
 use ratatui::{
     Frame,
     layout::{Constraint, Layout},
+    style::Style,
+    widgets::Block,
 };
 
 use super::app_state::App;
 use crate::notification::render_notification;
+use crate::theme;
 
 impl App {
     pub fn render(&mut self, frame: &mut Frame) {
         self.frame_count = self.frame_count.wrapping_add(1);
         self.layout_regions.clear();
+
+        // Paint the whole frame with the theme background first, so every
+        // render path (picker, paste-recovery, normal layout) sits on the
+        // active palette's background instead of the terminal's own color.
+        // Without this, light mode shows dark-terminal bleed-through in any
+        // cell a pane does not explicitly fill.
+        frame.render_widget(
+            Block::default().style(Style::default().bg(theme::results::background())),
+            frame.area(),
+        );
 
         // Source picker takes the whole screen until the user confirms
         // a choice; bare TTY launches start here. Help popup still

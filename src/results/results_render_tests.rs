@@ -81,14 +81,14 @@ mod spinner_tests {
     fn test_spinner_first_frame() {
         let (char, color) = get_spinner(0);
         assert_eq!(char, SPINNER_CHARS[0]);
-        assert_eq!(color, theme::results::SPINNER_COLORS[0]);
+        assert_eq!(color, theme::results::spinner_colors()[0]);
     }
 
     #[test]
     fn test_spinner_second_frame() {
         let (char, color) = get_spinner(8);
         assert_eq!(char, SPINNER_CHARS[1]);
-        assert_eq!(color, theme::results::SPINNER_COLORS[1]);
+        assert_eq!(color, theme::results::spinner_colors()[1]);
     }
 
     #[test]
@@ -113,7 +113,7 @@ mod spinner_tests {
             let (_, color) = get_spinner(i * 8);
             assert_eq!(
                 color,
-                theme::results::SPINNER_COLORS[i as usize],
+                theme::results::spinner_colors()[i as usize],
                 "Frame {} should have color at index {}",
                 i * 8,
                 i
@@ -157,7 +157,7 @@ mod spinner_tests {
         // At frame 64: char index = 8, color index = 0 (wrapped)
         let (char, color) = get_spinner(64);
         assert_eq!(char, SPINNER_CHARS[8]);
-        assert_eq!(color, theme::results::SPINNER_COLORS[0]);
+        assert_eq!(color, theme::results::spinner_colors()[0]);
     }
 
     #[test]
@@ -166,7 +166,7 @@ mod spinner_tests {
         let (char, color) = get_spinner(u64::MAX);
         // Should still produce valid char and color
         assert!(SPINNER_CHARS.contains(&char));
-        assert!(theme::results::SPINNER_COLORS.contains(&color));
+        assert!(theme::results::spinner_colors().contains(&color));
     }
 
     #[test]
@@ -801,8 +801,8 @@ mod back_button_tests {
     #[test]
     fn back_badge_separated_from_syntax_error_badge() {
         // The cyan back badge and the golden syntax-error badge both carry a
-        // background color. Rendered flush they read as one block; a neutral
-        // (no-bg) cell must sit between them.
+        // background color. Rendered flush they read as one block; a separator
+        // cell carrying only the pane background must sit between them.
         let mut app = test_app(r#"{"a": 1, "b": 2}"#);
         app.query_undo
             .push("", crate::query_undo::ViewportState::default());
@@ -826,14 +826,14 @@ mod back_button_tests {
         );
         assert_eq!(
             cell.bg,
-            ratatui::style::Color::Reset,
-            "the separator cell must have no background so the two badges don't touch",
+            crate::theme::results::background(),
+            "the separator cell must carry only the pane background so the two badges don't touch",
         );
     }
 
     #[test]
     fn back_badge_separated_from_empty_result_badge() {
-        // Same neutral-cell requirement for the steel-blue empty-result badge.
+        // Same separator-cell requirement for the steel-blue empty-result badge.
         let mut app = test_app(r#"{"a": 1, "b": 2}"#);
         app.query_undo
             .push("", crate::query_undo::ViewportState::default());
@@ -857,8 +857,8 @@ mod back_button_tests {
         );
         assert_eq!(
             cell.bg,
-            ratatui::style::Color::Reset,
-            "the separator cell must have no background so the two badges don't touch",
+            crate::theme::results::background(),
+            "the separator cell must carry only the pane background so the two badges don't touch",
         );
     }
 

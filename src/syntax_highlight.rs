@@ -29,7 +29,13 @@ impl JqHighlighter {
         while i < chars.len() {
             if chars[i].is_whitespace() {
                 let (content, new_i) = parse_whitespace(&chars, i);
-                spans.push(Span::raw(content));
+                // Give whitespace the primary text color too, so a cursor
+                // resting on a space reverses into a themed block rather than
+                // the terminal-default white block in light mode.
+                spans.push(Span::styled(
+                    content,
+                    Style::default().fg(theme::palette::text()),
+                ));
                 i = new_i;
                 continue;
             }
@@ -38,7 +44,7 @@ impl JqHighlighter {
                 let (content, new_i) = parse_string(&chars, i);
                 spans.push(Span::styled(
                     content,
-                    Style::default().fg(theme::syntax::STRING),
+                    Style::default().fg(theme::syntax::string()),
                 ));
                 i = new_i;
                 continue;
@@ -50,7 +56,7 @@ impl JqHighlighter {
                 let (content, new_i) = parse_number(&chars, i);
                 spans.push(Span::styled(
                     content,
-                    Style::default().fg(theme::syntax::NUMBER),
+                    Style::default().fg(theme::syntax::number()),
                 ));
                 i = new_i;
                 continue;
@@ -60,7 +66,7 @@ impl JqHighlighter {
                 let (content, new_i) = parse_operator(&chars, i);
                 spans.push(Span::styled(
                     content,
-                    Style::default().fg(theme::syntax::OPERATOR),
+                    Style::default().fg(theme::syntax::operator()),
                 ));
                 i = new_i;
                 continue;
@@ -75,7 +81,14 @@ impl JqHighlighter {
                 continue;
             }
 
-            spans.push(Span::raw(chars[i].to_string()));
+            // Unrecognized punctuation (`.`, `[`, `]`, `(`, `)`, `;`, ...) takes
+            // the primary text color so it stays readable on light and dark
+            // backgrounds; a bare `Span::raw` would fall back to the invisible
+            // terminal default in light mode.
+            spans.push(Span::styled(
+                chars[i].to_string(),
+                Style::default().fg(theme::palette::text()),
+            ));
             i += 1;
         }
 
@@ -224,7 +237,7 @@ fn is_followed_by_colon(chars: &[char], pos: usize) -> bool {
 /// 2. Built-in functions (map, select, etc.) → Blue
 /// 3. Variables (starts with $) → Red
 /// 4. Object field names (followed by :) → Cyan
-/// 5. Default (field accessors like .name) → No color
+/// 5. Default (field accessors like .name) → primary text color
 ///
 /// # Parameters
 /// - `word`: The identifier text
@@ -234,15 +247,19 @@ fn is_followed_by_colon(chars: &[char], pos: usize) -> bool {
 /// Style with appropriate color applied
 fn classify_word(word: &str, is_object_field: bool) -> Style {
     if is_keyword(word) {
-        Style::default().fg(theme::syntax::KEYWORD)
+        Style::default().fg(theme::syntax::keyword())
     } else if is_builtin_function(word) {
-        Style::default().fg(theme::syntax::FUNCTION)
+        Style::default().fg(theme::syntax::function())
     } else if is_variable(word) {
-        Style::default().fg(theme::syntax::VARIABLE)
+        Style::default().fg(theme::syntax::variable())
     } else if is_object_field {
-        Style::default().fg(theme::syntax::FIELD)
+        Style::default().fg(theme::syntax::field())
     } else {
-        Style::default()
+        // Unclassified tokens (field accessors like `.name`) take the primary
+        // text color so they stay readable on both light and dark backgrounds.
+        // Previously an uncolored Style fell back to the terminal default,
+        // which is invisible in light mode.
+        Style::default().fg(theme::palette::text())
     }
 }
 

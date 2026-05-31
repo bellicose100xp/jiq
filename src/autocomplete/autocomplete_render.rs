@@ -81,12 +81,12 @@ pub fn render_popup(app: &App, frame: &mut Frame, input_area: Rect) -> Option<Re
         .visible_suggestions()
         .map(|(abs_idx, suggestion)| {
             let type_color = match suggestion.suggestion_type {
-                SuggestionType::Function => theme::autocomplete::TYPE_FUNCTION,
-                SuggestionType::Field => theme::autocomplete::TYPE_FIELD,
-                SuggestionType::Operator => theme::autocomplete::TYPE_OPERATOR,
-                SuggestionType::Pattern => theme::autocomplete::TYPE_PATTERN,
-                SuggestionType::Variable => theme::autocomplete::TYPE_VARIABLE,
-                SuggestionType::Value => theme::autocomplete::TYPE_VALUE,
+                SuggestionType::Function => theme::autocomplete::type_function(),
+                SuggestionType::Field => theme::autocomplete::type_field(),
+                SuggestionType::Operator => theme::autocomplete::type_operator(),
+                SuggestionType::Pattern => theme::autocomplete::type_pattern(),
+                SuggestionType::Variable => theme::autocomplete::type_variable(),
+                SuggestionType::Value => theme::autocomplete::type_value(),
             };
 
             let type_label = get_type_label(suggestion);
@@ -120,15 +120,15 @@ pub fn render_popup(app: &App, frame: &mut Frame, input_area: Rect) -> Option<Re
                     Span::styled(
                         format!("  {}{}", truncated_text, padding),
                         Style::default()
-                            .fg(theme::autocomplete::ITEM_SELECTED_FG)
-                            .bg(theme::autocomplete::ITEM_SELECTED_BG)
-                            .add_modifier(theme::autocomplete::ITEM_SELECTED_MODIFIER),
+                            .fg(theme::autocomplete::item_selected_fg())
+                            .bg(theme::autocomplete::item_selected_bg())
+                            .add_modifier(theme::autocomplete::item_selected_modifier()),
                     ),
                     Span::styled(
                         format!(" {}", type_label),
                         Style::default()
-                            .fg(theme::autocomplete::ITEM_SELECTED_FG)
-                            .bg(theme::autocomplete::ITEM_SELECTED_BG),
+                            .fg(theme::autocomplete::item_selected_fg())
+                            .bg(theme::autocomplete::item_selected_bg()),
                     ),
                 ])
             } else {
@@ -136,14 +136,14 @@ pub fn render_popup(app: &App, frame: &mut Frame, input_area: Rect) -> Option<Re
                     Span::styled(
                         format!("  {}{}", truncated_text, padding),
                         Style::default()
-                            .fg(theme::autocomplete::ITEM_NORMAL_FG)
-                            .bg(theme::autocomplete::ITEM_NORMAL_BG),
+                            .fg(theme::autocomplete::item_normal_fg())
+                            .bg(theme::autocomplete::item_normal_bg()),
                     ),
                     Span::styled(
                         format!(" {}", type_label),
                         Style::default()
                             .fg(type_color)
-                            .bg(theme::autocomplete::ITEM_NORMAL_BG),
+                            .bg(theme::autocomplete::item_normal_bg()),
                     ),
                 ])
             };
@@ -158,8 +158,8 @@ pub fn render_popup(app: &App, frame: &mut Frame, input_area: Rect) -> Option<Re
         .borders(Borders::ALL)
         .border_type(BorderType::Rounded)
         .title(" Suggestions ")
-        .border_style(Style::default().fg(theme::autocomplete::BORDER))
-        .style(Style::default().bg(theme::autocomplete::BACKGROUND));
+        .border_style(Style::default().fg(theme::autocomplete::border()))
+        .style(Style::default().bg(theme::autocomplete::background()));
 
     let list = List::new(items).block(block);
     frame.render_widget(list, popup_area);
@@ -181,7 +181,7 @@ pub fn render_popup(app: &App, frame: &mut Frame, input_area: Rect) -> Option<Re
         total,
         viewport,
         clamped_offset,
-        theme::autocomplete::SCROLLBAR,
+        theme::autocomplete::scrollbar(),
     );
 
     Some(popup_area)

@@ -29,6 +29,31 @@ impl Default for ClipboardConfig {
     }
 }
 
+/// Theme mode. `auto` detects the terminal background at startup; `light`/`dark` force a palette.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, Default)]
+#[serde(rename_all = "lowercase")]
+pub enum ThemeMode {
+    #[default]
+    Auto,
+    Light,
+    Dark,
+}
+
+/// Theme configuration section
+#[derive(Debug, Clone, Deserialize)]
+pub struct ThemeConfig {
+    #[serde(default)]
+    pub mode: ThemeMode,
+}
+
+impl Default for ThemeConfig {
+    fn default() -> Self {
+        ThemeConfig {
+            mode: ThemeMode::Auto,
+        }
+    }
+}
+
 /// Tooltip configuration section
 #[derive(Debug, Clone, Deserialize)]
 pub struct TooltipConfig {
@@ -72,6 +97,8 @@ pub struct Config {
     pub clipboard: ClipboardConfig,
     #[serde(default)]
     pub tooltip: TooltipConfig,
+    #[serde(default)]
+    pub theme: ThemeConfig,
     #[serde(default)]
     pub ai: AiConfig,
     #[serde(default)]

@@ -9,6 +9,8 @@ pub use types::{ClipboardBackend, Config};
 
 #[allow(unused_imports)]
 pub use types::AutocompleteConfig;
+#[allow(unused_imports)]
+pub use types::{ThemeConfig, ThemeMode};
 
 // Re-export for integration tests
 #[allow(unused_imports)]
@@ -58,8 +60,9 @@ pub fn load_config() -> ConfigResult {
             config.autocomplete.array_sample_size =
                 config.autocomplete.array_sample_size.clamp(1, 1000);
             log::debug!(
-                "Config: clipboard={:?}, ai.enabled={}, ai.provider={:?}, array_sample_size={}",
+                "Config: clipboard={:?}, theme={:?}, ai.enabled={}, ai.provider={:?}, array_sample_size={}",
                 config.clipboard.backend,
+                config.theme.mode,
                 config.ai.enabled,
                 config.ai.provider,
                 config.autocomplete.array_sample_size

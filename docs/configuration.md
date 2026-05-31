@@ -25,6 +25,19 @@ backend = "auto"
 | `system` | Local desktop only. |
 | `osc52` | SSH / tmux / mosh on a terminal that forwards OSC 52 (Ghostty, kitty, WezTerm, foot). |
 
+## Theme
+
+```toml
+[theme]
+mode = "auto"
+```
+
+| Value | Effect |
+|:---|:---|
+| `auto` (default) | Detect the terminal background at startup and pick the light or dark palette. Falls back to dark if detection is unavailable (e.g. inside tmux/screen without passthrough, or a non-responding terminal). |
+| `light` | Force the light palette. |
+| `dark` | Force the dark palette (the classic Galaxy theme). |
+
 ## Autocomplete
 
 ```toml
@@ -66,6 +79,9 @@ See [AI assistant](./features/ai-assistant) for per-provider config.
 ```toml
 [clipboard]
 backend = "auto"
+
+[theme]
+mode = "auto"
 
 [autocomplete]
 array_sample_size = 25

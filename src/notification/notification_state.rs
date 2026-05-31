@@ -27,19 +27,19 @@ impl NotificationType {
     fn style(self) -> NotificationStyle {
         match self {
             NotificationType::Info => NotificationStyle {
-                fg: theme::notification::INFO.fg,
-                bg: theme::notification::INFO.bg,
-                border: theme::notification::INFO.border,
+                fg: theme::notification::info().fg,
+                bg: theme::notification::info().bg,
+                border: theme::notification::info().border,
             },
             NotificationType::Warning => NotificationStyle {
-                fg: theme::notification::WARNING.fg,
-                bg: theme::notification::WARNING.bg,
-                border: theme::notification::WARNING.border,
+                fg: theme::notification::warning().fg,
+                bg: theme::notification::warning().bg,
+                border: theme::notification::warning().border,
             },
             NotificationType::Error => NotificationStyle {
-                fg: theme::notification::ERROR.fg,
-                bg: theme::notification::ERROR.bg,
-                border: theme::notification::ERROR.border,
+                fg: theme::notification::error().fg,
+                bg: theme::notification::error().bg,
+                border: theme::notification::error().border,
             },
         }
     }

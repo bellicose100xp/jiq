@@ -1,469 +1,690 @@
 //! Centralized theme configuration for all UI components.
 //!
-//! All colors and styles are defined here. When adding or modifying UI components:
-//! - Add new colors to the appropriate module
-//! - Use `theme::module::CONSTANT` in render files
-//! - Do NOT hardcode `Color::*` values directly in render files
+//! Colors and styles are resolved at runtime from a single [`Theme`] held in a
+//! global [`OnceLock`]. Call sites use lowercase accessor functions
+//! (`theme::module::name()`); the active theme is chosen once at startup via
+//! [`init`]. When the theme is read before [`init`] runs, it falls back to
+//! [`galaxy_dark`] so tests stay deterministic.
 //!
-//! Theme: Galaxy - Purple/pink accents with deep space blue background
+//! When adding or modifying UI components:
+//! - Add new fields to the appropriate sub-struct and accessor module
+//! - Use `theme::module::name()` in render files
+//! - Do NOT hardcode `Color::*` values directly in render files
 
 use ratatui::style::{Color, Modifier, Style};
+use std::sync::OnceLock;
+
+pub mod detect;
+
+mod galaxy;
+pub use galaxy::{galaxy_dark, galaxy_light};
+
+mod structs;
+pub use structs::*;
+
+static THEME: OnceLock<Theme> = OnceLock::new();
+
+/// Install the active theme. The first call wins; later calls are ignored.
+pub fn init(t: Theme) {
+    let _ = THEME.set(t);
+}
+
+fn theme() -> &'static Theme {
+    THEME.get_or_init(galaxy_dark)
+}
 
 /// Core color palette - shared base colors.
-/// Only use these directly when a component truly shares the same color.
-/// Otherwise, define component-specific constants that reference these.
 pub mod palette {
     use super::*;
 
-    // Text colors - softer than pure white
-    pub const TEXT: Color = Color::Rgb(236, 236, 244);
-    pub const TEXT_DIM: Color = Color::Rgb(90, 92, 119);
-    pub const TEXT_MUTED: Color = Color::Rgb(130, 133, 158);
-
-    // Background colors - deep space blue tints
-    pub const BG_DARK: Color = Color::Rgb(26, 26, 46);
-    pub const BG_SURFACE: Color = Color::Rgb(35, 35, 58);
-    pub const BG_HOVER: Color = Color::Rgb(45, 45, 72);
-    pub const BG_HIGHLIGHT: Color = Color::Rgb(55, 55, 85);
-
-    // Semantic colors - vibrant Galaxy palette
-    pub const SUCCESS: Color = Color::Rgb(107, 203, 119);
-    pub const WARNING: Color = Color::Rgb(255, 217, 61);
-    pub const ERROR: Color = Color::Rgb(224, 108, 117);
-    pub const INFO: Color = Color::Rgb(0, 217, 255);
-
-    // Accent colors
-    pub const CYAN: Color = Color::Rgb(0, 217, 255);
-    pub const YELLOW: Color = Color::Rgb(255, 217, 61);
-    pub const GREEN: Color = Color::Rgb(107, 203, 119);
-    pub const MAGENTA: Color = Color::Rgb(198, 120, 221);
-    pub const PINK: Color = Color::Rgb(255, 107, 157);
-    pub const RED: Color = Color::Rgb(224, 108, 117);
-    pub const ORANGE: Color = Color::Rgb(255, 184, 108);
-    pub const PURPLE: Color = Color::Rgb(189, 147, 249);
-
-    // Shared cursor style (used by textarea widgets in history, search, snippets, input)
-    pub const CURSOR: Style = Style::new().add_modifier(Modifier::REVERSED);
+    pub fn text() -> Color {
+        super::theme().palette.text
+    }
+    pub fn text_dim() -> Color {
+        super::theme().palette.text_dim
+    }
+    pub fn text_muted() -> Color {
+        super::theme().palette.text_muted
+    }
+    pub fn bg_dark() -> Color {
+        super::theme().palette.bg_dark
+    }
+    pub fn bg_surface() -> Color {
+        super::theme().palette.bg_surface
+    }
+    pub fn bg_hover() -> Color {
+        super::theme().palette.bg_hover
+    }
+    pub fn bg_highlight() -> Color {
+        super::theme().palette.bg_highlight
+    }
+    pub fn success() -> Color {
+        super::theme().palette.success
+    }
+    pub fn warning() -> Color {
+        super::theme().palette.warning
+    }
+    pub fn error() -> Color {
+        super::theme().palette.error
+    }
+    pub fn info() -> Color {
+        super::theme().palette.info
+    }
+    pub fn cyan() -> Color {
+        super::theme().palette.cyan
+    }
+    pub fn yellow() -> Color {
+        super::theme().palette.yellow
+    }
+    pub fn green() -> Color {
+        super::theme().palette.green
+    }
+    pub fn magenta() -> Color {
+        super::theme().palette.magenta
+    }
+    pub fn pink() -> Color {
+        super::theme().palette.pink
+    }
+    pub fn red() -> Color {
+        super::theme().palette.red
+    }
+    pub fn orange() -> Color {
+        super::theme().palette.orange
+    }
+    pub fn purple() -> Color {
+        super::theme().palette.purple
+    }
+    pub fn cursor() -> Style {
+        super::theme().palette.cursor
+    }
 }
 
-/// Input field styles
+/// Input field styles.
 pub mod input {
     use super::*;
 
-    // Mode indicator colors - vibrant and distinct
-    pub const MODE_INSERT: Color = Color::Rgb(0, 217, 255); // Electric cyan
-    pub const MODE_NORMAL: Color = Color::Rgb(255, 217, 61); // Golden yellow
-    pub const MODE_OPERATOR: Color = Color::Rgb(107, 203, 119); // Fresh green
-    pub const MODE_CHAR_SEARCH: Color = Color::Rgb(255, 107, 157); // Hot pink
-
-    // Border colors (focused border uses mode color)
-    pub const BORDER_UNFOCUSED: Color = Color::Rgb(90, 92, 119);
-    pub const BORDER_ERROR: Color = Color::Rgb(224, 108, 117);
-
-    // Title hints
-    pub const SYNTAX_ERROR_WARNING: Color = Color::Rgb(255, 217, 61);
-    pub const TOOLTIP_HINT: Color = Color::Rgb(198, 120, 221); // Vibrant purple
-    pub const UNFOCUSED_HINT: Color = Color::Rgb(90, 92, 119);
-
-    // Unfocused query text
-    pub const QUERY_UNFOCUSED: Color = Color::Rgb(90, 92, 119);
-
-    pub const CURSOR: Style = Style::new().add_modifier(Modifier::REVERSED);
+    pub fn mode_insert() -> Color {
+        super::theme().input.mode_insert
+    }
+    pub fn mode_normal() -> Color {
+        super::theme().input.mode_normal
+    }
+    pub fn mode_operator() -> Color {
+        super::theme().input.mode_operator
+    }
+    pub fn mode_char_search() -> Color {
+        super::theme().input.mode_char_search
+    }
+    pub fn border_unfocused() -> Color {
+        super::theme().input.border_unfocused
+    }
+    pub fn border_error() -> Color {
+        super::theme().input.border_error
+    }
+    pub fn syntax_error_warning() -> Color {
+        super::theme().input.syntax_error_warning
+    }
+    pub fn tooltip_hint() -> Color {
+        super::theme().input.tooltip_hint
+    }
+    pub fn unfocused_hint() -> Color {
+        super::theme().input.unfocused_hint
+    }
+    pub fn query_unfocused() -> Color {
+        super::theme().input.query_unfocused
+    }
+    pub fn cursor() -> Style {
+        super::theme().input.cursor
+    }
 }
 
-/// Results pane styles
+/// Results pane styles.
 pub mod results {
     use super::*;
 
-    // Border colors
-    pub const BORDER_FOCUSED: Color = Color::Rgb(0, 217, 255); // Electric cyan
-    pub const BORDER_UNFOCUSED: Color = Color::Rgb(90, 92, 119);
-    pub const BORDER_WARNING: Color = Color::Rgb(255, 217, 61);
-    pub const BORDER_ERROR: Color = Color::Rgb(224, 108, 117);
-    pub const BACKGROUND: Color = Color::Rgb(26, 26, 46);
-
-    // Search mode text colors (in title)
-    pub const SEARCH_ACTIVE: Color = Color::Rgb(255, 107, 157); // Hot pink
-    pub const SEARCH_INACTIVE: Color = Color::Rgb(90, 92, 119);
-
-    // Query timing indicator colors
-    pub const TIMING_NORMAL: Color = Color::Rgb(0, 217, 255);
-    pub const TIMING_SLOW: Color = Color::Rgb(255, 217, 61);
-    pub const TIMING_VERY_SLOW: Color = Color::Rgb(224, 108, 117);
-
-    // Query state indicators
-    pub const RESULT_OK: Color = Color::Rgb(107, 203, 119);
-    pub const RESULT_WARNING: Color = Color::Rgb(255, 217, 61);
-    pub const RESULT_ERROR: Color = Color::Rgb(224, 108, 117);
-    pub const RESULT_PENDING: Color = Color::Rgb(130, 133, 158);
-
-    // Status badge styles - bright background with contrasting text for modern glow effect
-    pub const BADGE_SYNTAX_ERROR: Style = Style::new()
-        .fg(Color::Rgb(35, 30, 10)) // Deep dark yellow-tinted
-        .bg(Color::Rgb(255, 217, 61)); // Golden yellow
-
-    pub const BADGE_EMPTY_RESULT: Style = Style::new()
-        .fg(Color::Rgb(20, 25, 40)) // Deep dark blue-tinted
-        .bg(Color::Rgb(130, 140, 170)); // Brighter steel blue
-
-    // Clickable back-button badge on the results-pane top border. Cyan
-    // matches the global hint key color so the affordance reads as a
-    // keyboard shortcut and a button at the same time.
-    pub const BADGE_BACK: Style = Style::new()
-        .fg(Color::Rgb(15, 20, 35))
-        .bg(Color::Rgb(0, 217, 255));
-
-    pub const BADGE_BACK_HOVER: Style = Style::new()
-        .fg(Color::Rgb(15, 20, 35))
-        .bg(Color::Rgb(189, 147, 249))
-        .add_modifier(Modifier::BOLD);
-
-    // Search match highlighting
-    pub const MATCH_HIGHLIGHT_BG: Color = Color::Rgb(85, 85, 115);
-    pub const MATCH_HIGHLIGHT_FG: Color = Color::Rgb(236, 236, 244);
-    pub const CURRENT_MATCH_BG: Color = Color::Rgb(255, 184, 108); // Orange
-    pub const CURRENT_MATCH_FG: Color = Color::Rgb(26, 26, 46);
-
-    // Cursor and selection
-    pub const CURSOR_LINE_BG: Color = Color::Rgb(45, 45, 72);
-    pub const HOVERED_LINE_BG: Color = Color::Rgb(40, 40, 65);
-    pub const VISUAL_SELECTION_BG: Color = Color::Rgb(60, 60, 95);
-    pub const CURSOR_INDICATOR_FG: Color = Color::Rgb(255, 107, 157);
-
-    // Stale state
-    pub const STALE_MODIFIER: Modifier = Modifier::DIM;
-
-    // Path-at-cursor inline span on the stats line (results-pane focus)
-    pub const PATH_AT_CURSOR_SEPARATOR: Color = Color::Rgb(90, 92, 119);
-    pub const PATH_AT_CURSOR: Color = Color::Rgb(189, 147, 249);
-
-    // Hints (bottom of results pane)
-    pub const HINT_KEY: Color = Color::Rgb(0, 217, 255);
-    pub const HINT_DESCRIPTION: Style = Style::new()
-        .fg(Color::Rgb(0, 217, 255))
-        .add_modifier(Modifier::DIM);
-
-    // Spinner animation colors (galaxy rainbow)
-    pub const SPINNER_COLORS: &[Color] = &[
-        Color::Rgb(255, 107, 157), // Pink
-        Color::Rgb(255, 184, 108), // Orange
-        Color::Rgb(255, 217, 61),  // Yellow
-        Color::Rgb(107, 203, 119), // Green
-        Color::Rgb(0, 217, 255),   // Cyan
-        Color::Rgb(189, 147, 249), // Purple
-        Color::Rgb(198, 120, 221), // Magenta
-        Color::Rgb(224, 108, 117), // Red
-    ];
+    pub fn border_focused() -> Color {
+        super::theme().results.border_focused
+    }
+    pub fn border_unfocused() -> Color {
+        super::theme().results.border_unfocused
+    }
+    pub fn border_warning() -> Color {
+        super::theme().results.border_warning
+    }
+    pub fn border_error() -> Color {
+        super::theme().results.border_error
+    }
+    pub fn background() -> Color {
+        super::theme().results.background
+    }
+    pub fn search_active() -> Color {
+        super::theme().results.search_active
+    }
+    pub fn search_inactive() -> Color {
+        super::theme().results.search_inactive
+    }
+    pub fn timing_normal() -> Color {
+        super::theme().results.timing_normal
+    }
+    pub fn timing_slow() -> Color {
+        super::theme().results.timing_slow
+    }
+    pub fn timing_very_slow() -> Color {
+        super::theme().results.timing_very_slow
+    }
+    pub fn result_ok() -> Color {
+        super::theme().results.result_ok
+    }
+    pub fn result_warning() -> Color {
+        super::theme().results.result_warning
+    }
+    pub fn result_error() -> Color {
+        super::theme().results.result_error
+    }
+    pub fn result_pending() -> Color {
+        super::theme().results.result_pending
+    }
+    pub fn badge_syntax_error() -> Style {
+        super::theme().results.badge_syntax_error
+    }
+    pub fn badge_empty_result() -> Style {
+        super::theme().results.badge_empty_result
+    }
+    pub fn badge_back() -> Style {
+        super::theme().results.badge_back
+    }
+    pub fn badge_back_hover() -> Style {
+        super::theme().results.badge_back_hover
+    }
+    pub fn match_highlight_bg() -> Color {
+        super::theme().results.match_highlight_bg
+    }
+    pub fn match_highlight_fg() -> Color {
+        super::theme().results.match_highlight_fg
+    }
+    pub fn current_match_bg() -> Color {
+        super::theme().results.current_match_bg
+    }
+    pub fn current_match_fg() -> Color {
+        super::theme().results.current_match_fg
+    }
+    pub fn cursor_line_bg() -> Color {
+        super::theme().results.cursor_line_bg
+    }
+    pub fn hovered_line_bg() -> Color {
+        super::theme().results.hovered_line_bg
+    }
+    pub fn visual_selection_bg() -> Color {
+        super::theme().results.visual_selection_bg
+    }
+    pub fn cursor_indicator_fg() -> Color {
+        super::theme().results.cursor_indicator_fg
+    }
+    pub fn stale_modifier() -> Modifier {
+        super::theme().results.stale_modifier
+    }
+    pub fn path_at_cursor_separator() -> Color {
+        super::theme().results.path_at_cursor_separator
+    }
+    pub fn path_at_cursor() -> Color {
+        super::theme().results.path_at_cursor
+    }
+    pub fn hint_key() -> Color {
+        super::theme().results.hint_key
+    }
+    pub fn hint_description() -> Style {
+        super::theme().results.hint_description
+    }
+    pub fn spinner_colors() -> &'static [Color] {
+        &super::theme().results.spinner_colors
+    }
+    pub fn jq_colors() -> [Color; 8] {
+        super::theme().results.jq_colors
+    }
 }
 
-/// Search bar styles
+/// Search bar styles.
 pub mod search {
     use super::*;
 
-    pub const BORDER_ACTIVE: Color = Color::Rgb(255, 107, 157); // Hot pink
-    pub const BORDER_INACTIVE: Color = Color::Rgb(90, 92, 119);
-    pub const BACKGROUND: Color = Color::Rgb(26, 26, 46);
-
-    // Text colors
-    pub const TEXT_ACTIVE: Color = Color::Rgb(236, 236, 244);
-    pub const TEXT_INACTIVE: Color = Color::Rgb(90, 92, 119);
-
-    // Match count display (legacy colors)
-    pub const NO_MATCHES: Color = Color::Rgb(224, 108, 117);
-    pub const MATCH_COUNT: Color = Color::Rgb(130, 133, 158);
-    pub const MATCH_COUNT_CONFIRMED: Color = Color::Rgb(90, 92, 119);
-
-    // Match count badge styles - pill-shaped badges with glow effect
-    pub const BADGE_NO_MATCHES: Style = Style::new()
-        .fg(Color::Rgb(45, 15, 20)) // Deep dark red-tinted
-        .bg(Color::Rgb(224, 108, 117)); // Error red
-
-    pub const BADGE_MATCH_COUNT: Style = Style::new()
-        .fg(Color::Rgb(35, 15, 30)) // Deep dark pink-tinted
-        .bg(Color::Rgb(255, 107, 157)); // Hot pink (matches search border)
-
-    pub const BADGE_MATCH_COUNT_CONFIRMED: Style = Style::new()
-        .fg(Color::Rgb(200, 205, 220)) // Light text
-        .bg(Color::Rgb(70, 72, 95)); // Muted surface
-
-    // Hints at bottom
-    pub const HINTS: Color = Color::Rgb(255, 107, 157);
+    pub fn border_active() -> Color {
+        super::theme().search.border_active
+    }
+    pub fn border_inactive() -> Color {
+        super::theme().search.border_inactive
+    }
+    pub fn background() -> Color {
+        super::theme().search.background
+    }
+    pub fn text_active() -> Color {
+        super::theme().search.text_active
+    }
+    pub fn text_inactive() -> Color {
+        super::theme().search.text_inactive
+    }
+    pub fn no_matches() -> Color {
+        super::theme().search.no_matches
+    }
+    pub fn match_count() -> Color {
+        super::theme().search.match_count
+    }
+    pub fn match_count_confirmed() -> Color {
+        super::theme().search.match_count_confirmed
+    }
+    pub fn badge_no_matches() -> Style {
+        super::theme().search.badge_no_matches
+    }
+    pub fn badge_match_count() -> Style {
+        super::theme().search.badge_match_count
+    }
+    pub fn badge_match_count_confirmed() -> Style {
+        super::theme().search.badge_match_count_confirmed
+    }
+    pub fn hints() -> Color {
+        super::theme().search.hints
+    }
 }
 
-/// Help popup styles
+/// Help popup styles.
 pub mod help {
     use super::*;
 
-    // Border and title
-    pub const BORDER: Color = Color::Rgb(0, 217, 255);
-    pub const BACKGROUND: Color = Color::Rgb(26, 26, 46);
-    pub const SCROLLBAR: Color = Color::Rgb(0, 217, 255);
-    pub const TITLE: Style = Style::new()
-        .fg(Color::Rgb(0, 217, 255))
-        .add_modifier(Modifier::BOLD);
-
-    // Tab bar
-    pub const TAB_ACTIVE: Style = Style::new()
-        .fg(Color::Rgb(0, 217, 255))
-        .add_modifier(Modifier::BOLD);
-    pub const TAB_INACTIVE: Style = Style::new()
-        .fg(Color::Rgb(0, 217, 255))
-        .add_modifier(Modifier::DIM);
-    pub const TAB_HOVER_FG: Color = Color::Rgb(0, 217, 255);
-    pub const TAB_HOVER_BG: Color = Color::Rgb(35, 35, 58);
-
-    // Content
-    pub const SECTION_HEADER: Style = Style::new()
-        .fg(Color::Rgb(0, 217, 255))
-        .add_modifier(Modifier::BOLD);
-    pub const KEY: Style = Style::new()
-        .fg(Color::Rgb(255, 217, 61))
-        .add_modifier(Modifier::BOLD);
-    pub const DESCRIPTION: Color = Color::Rgb(236, 236, 244);
-
-    // Footer
-    pub const FOOTER: Color = Color::Rgb(90, 92, 119);
+    pub fn border() -> Color {
+        super::theme().help.border
+    }
+    pub fn background() -> Color {
+        super::theme().help.background
+    }
+    pub fn scrollbar() -> Color {
+        super::theme().help.scrollbar
+    }
+    pub fn title() -> Style {
+        super::theme().help.title
+    }
+    pub fn tab_active() -> Style {
+        super::theme().help.tab_active
+    }
+    pub fn tab_inactive() -> Style {
+        super::theme().help.tab_inactive
+    }
+    pub fn tab_hover_fg() -> Color {
+        super::theme().help.tab_hover_fg
+    }
+    pub fn tab_hover_bg() -> Color {
+        super::theme().help.tab_hover_bg
+    }
+    pub fn section_header() -> Style {
+        super::theme().help.section_header
+    }
+    pub fn key() -> Style {
+        super::theme().help.key
+    }
+    pub fn description() -> Color {
+        super::theme().help.description
+    }
+    pub fn footer() -> Color {
+        super::theme().help.footer
+    }
 }
 
-/// History popup styles
+/// History popup styles.
 pub mod history {
     use super::*;
 
-    // Border and scrollbar
-    pub const BORDER: Color = Color::Rgb(0, 217, 255);
-    pub const SCROLLBAR: Color = Color::Rgb(0, 217, 255);
-    pub const BACKGROUND: Color = Color::Rgb(26, 26, 46);
-
-    // Selected item - clear highlight with accent indicator
-    pub const ITEM_SELECTED_BG: Color = Color::Rgb(45, 45, 72);
-    pub const ITEM_SELECTED_INDICATOR: Color = Color::Rgb(0, 217, 255);
-
-    // Normal items - clean, readable with uniform background
-    pub const ITEM_NORMAL_BG: Color = Color::Rgb(26, 26, 46);
-    pub const ITEM_NORMAL_FG: Color = Color::Rgb(180, 182, 200);
-
-    // Empty state
-    pub const NO_MATCHES: Color = Color::Rgb(90, 92, 119);
-
-    // Search textarea
-    pub const SEARCH_TEXT: Color = Color::Rgb(236, 236, 244);
-    pub const SEARCH_BG: Color = Color::Rgb(26, 26, 46);
-
-    // Delete button (rendered on selected/hovered rows)
-    pub const DELETE_BUTTON: Color = Color::Rgb(130, 133, 158);
-    pub const DELETE_BUTTON_HOVER: Color = Color::Rgb(255, 107, 107);
+    pub fn border() -> Color {
+        super::theme().history.border
+    }
+    pub fn scrollbar() -> Color {
+        super::theme().history.scrollbar
+    }
+    pub fn background() -> Color {
+        super::theme().history.background
+    }
+    pub fn item_selected_bg() -> Color {
+        super::theme().history.item_selected_bg
+    }
+    pub fn item_selected_indicator() -> Color {
+        super::theme().history.item_selected_indicator
+    }
+    pub fn item_normal_bg() -> Color {
+        super::theme().history.item_normal_bg
+    }
+    pub fn item_normal_fg() -> Color {
+        super::theme().history.item_normal_fg
+    }
+    pub fn no_matches() -> Color {
+        super::theme().history.no_matches
+    }
+    pub fn search_text() -> Color {
+        super::theme().history.search_text
+    }
+    pub fn search_bg() -> Color {
+        super::theme().history.search_bg
+    }
+    pub fn delete_button() -> Color {
+        super::theme().history.delete_button
+    }
+    pub fn delete_button_hover() -> Color {
+        super::theme().history.delete_button_hover
+    }
 }
 
-/// Snippets popup styles
+/// Snippets popup styles.
 pub mod snippets {
     use super::*;
 
-    // Border (distinct green color)
-    pub const BORDER: Color = Color::Rgb(107, 203, 119);
-    pub const SCROLLBAR: Color = Color::Rgb(107, 203, 119);
-    pub const BACKGROUND: Color = Color::Rgb(26, 26, 46);
-
-    // List items
-    pub const ITEM_NORMAL_FG: Color = Color::Rgb(236, 236, 244);
-    pub const ITEM_NORMAL_BG: Color = Color::Rgb(26, 26, 46);
-    pub const ITEM_SELECTED_FG: Color = Color::Rgb(26, 26, 46);
-    pub const ITEM_SELECTED_BG: Color = Color::Rgb(45, 45, 72);
-    pub const ITEM_SELECTED_INDICATOR: Color = Color::Rgb(107, 203, 119);
-    pub const ITEM_SELECTED_MODIFIER: Modifier = Modifier::BOLD;
-    pub const ITEM_HOVERED_FG: Color = Color::Rgb(236, 236, 244);
-    pub const ITEM_HOVERED_BG: Color = Color::Rgb(40, 40, 65);
-
-    // Content
-    pub const NAME: Color = Color::Rgb(236, 236, 244);
-    pub const DESCRIPTION: Color = Color::Rgb(90, 92, 119);
-    pub const QUERY_PREVIEW: Color = Color::Rgb(255, 217, 61);
-    pub const CATEGORY: Color = Color::Rgb(107, 203, 119);
-
-    // Edit/Create mode
-    pub const FIELD_ACTIVE_BORDER: Color = Color::Rgb(255, 217, 61);
-    pub const FIELD_INACTIVE_BORDER: Color = Color::Rgb(107, 203, 119);
-    pub const FIELD_TEXT: Color = Color::Rgb(236, 236, 244);
-    pub const FIELD_BG: Color = Color::Rgb(26, 26, 46);
-
-    // Delete confirmation
-    pub const DELETE_BORDER: Color = Color::Rgb(224, 108, 117);
-
-    // Keyboard hints
-    pub const HINT_KEY: Color = Color::Rgb(255, 217, 61);
-    pub const HINT_TEXT: Color = Color::Rgb(236, 236, 244);
-
-    // Search
-    pub const SEARCH_TEXT: Color = Color::Rgb(236, 236, 244);
-    pub const SEARCH_BG: Color = Color::Rgb(26, 26, 46);
+    pub fn border() -> Color {
+        super::theme().snippets.border
+    }
+    pub fn scrollbar() -> Color {
+        super::theme().snippets.scrollbar
+    }
+    pub fn background() -> Color {
+        super::theme().snippets.background
+    }
+    pub fn item_normal_fg() -> Color {
+        super::theme().snippets.item_normal_fg
+    }
+    pub fn item_normal_bg() -> Color {
+        super::theme().snippets.item_normal_bg
+    }
+    pub fn item_selected_fg() -> Color {
+        super::theme().snippets.item_selected_fg
+    }
+    pub fn item_selected_bg() -> Color {
+        super::theme().snippets.item_selected_bg
+    }
+    pub fn item_selected_indicator() -> Color {
+        super::theme().snippets.item_selected_indicator
+    }
+    pub fn item_selected_modifier() -> Modifier {
+        super::theme().snippets.item_selected_modifier
+    }
+    pub fn item_hovered_fg() -> Color {
+        super::theme().snippets.item_hovered_fg
+    }
+    pub fn item_hovered_bg() -> Color {
+        super::theme().snippets.item_hovered_bg
+    }
+    pub fn name() -> Color {
+        super::theme().snippets.name
+    }
+    pub fn description() -> Color {
+        super::theme().snippets.description
+    }
+    pub fn query_preview() -> Color {
+        super::theme().snippets.query_preview
+    }
+    pub fn category() -> Color {
+        super::theme().snippets.category
+    }
+    pub fn field_active_border() -> Color {
+        super::theme().snippets.field_active_border
+    }
+    pub fn field_inactive_border() -> Color {
+        super::theme().snippets.field_inactive_border
+    }
+    pub fn field_text() -> Color {
+        super::theme().snippets.field_text
+    }
+    pub fn field_bg() -> Color {
+        super::theme().snippets.field_bg
+    }
+    pub fn delete_border() -> Color {
+        super::theme().snippets.delete_border
+    }
+    pub fn hint_key() -> Color {
+        super::theme().snippets.hint_key
+    }
+    pub fn hint_text() -> Color {
+        super::theme().snippets.hint_text
+    }
+    pub fn search_text() -> Color {
+        super::theme().snippets.search_text
+    }
+    pub fn search_bg() -> Color {
+        super::theme().snippets.search_bg
+    }
 }
 
-/// Save-to-file popup styles
+/// Save-to-file popup styles.
 pub mod save {
     use super::*;
 
-    pub const TITLE: Color = Color::Rgb(255, 184, 108);
-    pub const BORDER: Color = Color::Rgb(255, 184, 108);
-
-    pub const INPUT_BORDER: Color = Color::Rgb(255, 217, 61);
-    pub const INPUT_FG: Color = Color::Rgb(236, 236, 244);
-    pub const INPUT_BG: Color = Color::Rgb(26, 26, 46);
-
-    pub const HINT_KEY: Color = Color::Rgb(255, 217, 61);
-    pub const HINT_TEXT: Color = Color::Rgb(236, 236, 244);
-
-    pub const PREVIEW_OK: Color = Color::Rgb(152, 195, 121);
-    pub const PREVIEW_WARN: Color = Color::Rgb(224, 108, 117);
-
-    pub const ERROR: Color = Color::Rgb(224, 108, 117);
+    pub fn title() -> Color {
+        super::theme().save.title
+    }
+    pub fn border() -> Color {
+        super::theme().save.border
+    }
+    pub fn input_border() -> Color {
+        super::theme().save.input_border
+    }
+    pub fn input_fg() -> Color {
+        super::theme().save.input_fg
+    }
+    pub fn input_bg() -> Color {
+        super::theme().save.input_bg
+    }
+    pub fn hint_key() -> Color {
+        super::theme().save.hint_key
+    }
+    pub fn hint_text() -> Color {
+        super::theme().save.hint_text
+    }
+    pub fn preview_ok() -> Color {
+        super::theme().save.preview_ok
+    }
+    pub fn preview_warn() -> Color {
+        super::theme().save.preview_warn
+    }
+    pub fn error() -> Color {
+        super::theme().save.error
+    }
 }
 
-/// AI assistant styles
+/// AI assistant styles.
 pub mod ai {
     use super::*;
 
-    // Border and title
-    pub const BORDER: Color = Color::Rgb(0, 217, 255);
-    pub const BACKGROUND: Color = Color::Rgb(26, 26, 46);
-    pub const SCROLLBAR: Color = Color::Rgb(0, 217, 255);
-    pub const TITLE: Style = Style::new()
-        .fg(Color::Rgb(0, 217, 255))
-        .add_modifier(Modifier::BOLD);
-
-    // Model display in title bar
-    pub const MODEL_DISPLAY: Color = Color::Rgb(189, 147, 249); // Purple
-
-    // Selection counter in title
-    pub const COUNTER: Color = Color::Rgb(255, 217, 61);
-
-    // Config not set state
-    pub const CONFIG_ICON: Color = Color::Rgb(255, 217, 61);
-    pub const CONFIG_TITLE: Style = Style::new()
-        .fg(Color::Rgb(255, 217, 61))
-        .add_modifier(Modifier::BOLD);
-    pub const CONFIG_DESC: Color = Color::Rgb(130, 133, 158);
-    pub const CONFIG_CODE: Color = Color::Rgb(0, 217, 255);
-    pub const CONFIG_LINK: Style = Style::new()
-        .fg(Color::Rgb(189, 147, 249))
-        .add_modifier(Modifier::UNDERLINED);
-
-    // Thinking state
-    pub const THINKING_ICON: Color = Color::Rgb(255, 217, 61);
-    pub const THINKING_TEXT: Style = Style::new()
-        .fg(Color::Rgb(255, 217, 61))
-        .add_modifier(Modifier::ITALIC);
-
-    // Error state
-    pub const ERROR_ICON: Color = Color::Rgb(224, 108, 117);
-    pub const ERROR_TITLE: Style = Style::new()
-        .fg(Color::Rgb(224, 108, 117))
-        .add_modifier(Modifier::BOLD);
-    pub const ERROR_MESSAGE: Color = Color::Rgb(224, 108, 117);
-
-    // Content text
-    pub const QUERY_TEXT: Color = Color::Rgb(0, 217, 255);
-    pub const RESULT_TEXT: Color = Color::Rgb(236, 236, 244);
-    pub const PREVIOUS_RESPONSE: Color = Color::Rgb(90, 92, 119);
-
-    // Suggestion list
-    pub const SUGGESTION_SELECTED_BG: Color = Color::Rgb(55, 55, 85);
-    pub const SUGGESTION_HOVERED_BG: Color = Color::Rgb(45, 45, 72);
-    pub const SUGGESTION_TEXT_SELECTED: Color = Color::Rgb(26, 26, 46);
-    pub const SUGGESTION_TEXT_NORMAL: Color = Color::Rgb(130, 133, 158);
-    pub const SUGGESTION_DESC_NORMAL: Color = Color::Rgb(90, 92, 119);
-    pub const SUGGESTION_DESC_MUTED: Color = Color::Rgb(130, 133, 158);
-
-    // Suggestion type colors
-    pub const SUGGESTION_FIX: Color = Color::Rgb(224, 108, 117);
-    pub const SUGGESTION_OPTIMIZE: Color = Color::Rgb(255, 217, 61);
-    pub const SUGGESTION_NEXT: Color = Color::Rgb(107, 203, 119);
-
-    // Hints
-    pub const HINT: Color = Color::Rgb(90, 92, 119);
+    pub fn border() -> Color {
+        super::theme().ai.border
+    }
+    pub fn background() -> Color {
+        super::theme().ai.background
+    }
+    pub fn scrollbar() -> Color {
+        super::theme().ai.scrollbar
+    }
+    pub fn title() -> Style {
+        super::theme().ai.title
+    }
+    pub fn model_display() -> Color {
+        super::theme().ai.model_display
+    }
+    pub fn counter() -> Color {
+        super::theme().ai.counter
+    }
+    pub fn config_icon() -> Color {
+        super::theme().ai.config_icon
+    }
+    pub fn config_title() -> Style {
+        super::theme().ai.config_title
+    }
+    pub fn config_desc() -> Color {
+        super::theme().ai.config_desc
+    }
+    pub fn config_code() -> Color {
+        super::theme().ai.config_code
+    }
+    pub fn config_link() -> Style {
+        super::theme().ai.config_link
+    }
+    pub fn thinking_icon() -> Color {
+        super::theme().ai.thinking_icon
+    }
+    pub fn thinking_text() -> Style {
+        super::theme().ai.thinking_text
+    }
+    pub fn error_icon() -> Color {
+        super::theme().ai.error_icon
+    }
+    pub fn error_title() -> Style {
+        super::theme().ai.error_title
+    }
+    pub fn error_message() -> Color {
+        super::theme().ai.error_message
+    }
+    pub fn query_text() -> Color {
+        super::theme().ai.query_text
+    }
+    pub fn result_text() -> Color {
+        super::theme().ai.result_text
+    }
+    pub fn previous_response() -> Color {
+        super::theme().ai.previous_response
+    }
+    pub fn suggestion_selected_bg() -> Color {
+        super::theme().ai.suggestion_selected_bg
+    }
+    pub fn suggestion_hovered_bg() -> Color {
+        super::theme().ai.suggestion_hovered_bg
+    }
+    pub fn suggestion_text_selected() -> Color {
+        super::theme().ai.suggestion_text_selected
+    }
+    pub fn suggestion_text_normal() -> Color {
+        super::theme().ai.suggestion_text_normal
+    }
+    pub fn suggestion_desc_normal() -> Color {
+        super::theme().ai.suggestion_desc_normal
+    }
+    pub fn suggestion_desc_muted() -> Color {
+        super::theme().ai.suggestion_desc_muted
+    }
+    pub fn suggestion_fix() -> Color {
+        super::theme().ai.suggestion_fix
+    }
+    pub fn suggestion_optimize() -> Color {
+        super::theme().ai.suggestion_optimize
+    }
+    pub fn suggestion_next() -> Color {
+        super::theme().ai.suggestion_next
+    }
+    pub fn hint() -> Color {
+        super::theme().ai.hint
+    }
 }
 
-/// Autocomplete dropdown styles
+/// Autocomplete dropdown styles.
 pub mod autocomplete {
     use super::*;
 
-    // Border and scrollbar
-    pub const BORDER: Color = Color::Rgb(0, 217, 255);
-    pub const SCROLLBAR: Color = Color::Rgb(0, 217, 255);
-    pub const BACKGROUND: Color = Color::Rgb(26, 26, 46);
-
-    // List items
-    pub const ITEM_NORMAL_FG: Color = Color::Rgb(236, 236, 244);
-    pub const ITEM_NORMAL_BG: Color = Color::Rgb(26, 26, 46);
-    pub const ITEM_SELECTED_FG: Color = Color::Rgb(26, 26, 46);
-    pub const ITEM_SELECTED_BG: Color = Color::Rgb(0, 217, 255);
-    pub const ITEM_SELECTED_MODIFIER: Modifier = Modifier::BOLD;
-
-    // Completion type colors
-    pub const TYPE_FUNCTION: Color = Color::Rgb(255, 217, 61);
-    pub const TYPE_FIELD: Color = Color::Rgb(0, 217, 255);
-    pub const TYPE_OPERATOR: Color = Color::Rgb(198, 120, 221);
-    pub const TYPE_PATTERN: Color = Color::Rgb(107, 203, 119);
-    pub const TYPE_VARIABLE: Color = Color::Rgb(224, 108, 117);
-    pub const TYPE_VALUE: Color = Color::Rgb(232, 165, 90);
+    pub fn border() -> Color {
+        super::theme().autocomplete.border
+    }
+    pub fn scrollbar() -> Color {
+        super::theme().autocomplete.scrollbar
+    }
+    pub fn background() -> Color {
+        super::theme().autocomplete.background
+    }
+    pub fn item_normal_fg() -> Color {
+        super::theme().autocomplete.item_normal_fg
+    }
+    pub fn item_normal_bg() -> Color {
+        super::theme().autocomplete.item_normal_bg
+    }
+    pub fn item_selected_fg() -> Color {
+        super::theme().autocomplete.item_selected_fg
+    }
+    pub fn item_selected_bg() -> Color {
+        super::theme().autocomplete.item_selected_bg
+    }
+    pub fn item_selected_modifier() -> Modifier {
+        super::theme().autocomplete.item_selected_modifier
+    }
+    pub fn type_function() -> Color {
+        super::theme().autocomplete.type_function
+    }
+    pub fn type_field() -> Color {
+        super::theme().autocomplete.type_field
+    }
+    pub fn type_operator() -> Color {
+        super::theme().autocomplete.type_operator
+    }
+    pub fn type_pattern() -> Color {
+        super::theme().autocomplete.type_pattern
+    }
+    pub fn type_variable() -> Color {
+        super::theme().autocomplete.type_variable
+    }
+    pub fn type_value() -> Color {
+        super::theme().autocomplete.type_value
+    }
 }
 
-/// Tooltip styles
+/// Tooltip styles.
 pub mod tooltip {
     use super::*;
 
-    // Border and title (distinct magenta/purple)
-    pub const BORDER: Color = Color::Rgb(198, 120, 221);
-    pub const BACKGROUND: Color = Color::Rgb(26, 26, 46);
-    pub const TITLE: Style = Style::new()
-        .fg(Color::Rgb(198, 120, 221))
-        .add_modifier(Modifier::BOLD);
-
-    // Content
-    pub const DESCRIPTION: Color = Color::Rgb(236, 236, 244);
-    pub const EXAMPLE: Color = Color::Rgb(0, 217, 255);
-    pub const EXAMPLE_DESC: Color = Color::Rgb(130, 133, 158);
-    pub const TIP: Color = Color::Rgb(255, 217, 61);
-    pub const SEPARATOR: Color = Color::Rgb(90, 92, 119);
-}
-
-/// Notification styles
-pub mod notification {
-    use super::*;
-
-    pub struct NotificationColors {
-        pub fg: Color,
-        pub bg: Color,
-        pub border: Color,
+    pub fn border() -> Color {
+        super::theme().tooltip.border
     }
-
-    pub const INFO: NotificationColors = NotificationColors {
-        fg: Color::Rgb(236, 236, 244),
-        bg: Color::Rgb(55, 55, 85),
-        border: Color::Rgb(130, 133, 158),
-    };
-
-    pub const WARNING: NotificationColors = NotificationColors {
-        fg: Color::Rgb(26, 26, 46),
-        bg: Color::Rgb(255, 217, 61),
-        border: Color::Rgb(255, 217, 61),
-    };
-
-    pub const ERROR: NotificationColors = NotificationColors {
-        fg: Color::Rgb(236, 236, 244),
-        bg: Color::Rgb(224, 108, 117),
-        border: Color::Rgb(255, 135, 145),
-    };
+    pub fn background() -> Color {
+        super::theme().tooltip.background
+    }
+    pub fn title() -> Style {
+        super::theme().tooltip.title
+    }
+    pub fn description() -> Color {
+        super::theme().tooltip.description
+    }
+    pub fn example() -> Color {
+        super::theme().tooltip.example
+    }
+    pub fn example_desc() -> Color {
+        super::theme().tooltip.example_desc
+    }
+    pub fn tip() -> Color {
+        super::theme().tooltip.tip
+    }
+    pub fn separator() -> Color {
+        super::theme().tooltip.separator
+    }
 }
 
-/// Help line (bottom status bar) styles
+/// Notification styles.
+pub mod notification {
+    pub use super::NotificationColors;
+
+    pub fn info() -> NotificationColors {
+        super::theme().notification.info
+    }
+    pub fn warning() -> NotificationColors {
+        super::theme().notification.warning
+    }
+    pub fn error() -> NotificationColors {
+        super::theme().notification.error
+    }
+}
+
+/// Help line (bottom status bar) styles.
 pub mod help_line {
     use super::*;
 
-    pub const KEY: Color = Color::Rgb(130, 133, 158);
-    pub const DESCRIPTION: Color = Color::Rgb(90, 92, 119);
-    pub const SEPARATOR: Color = Color::Rgb(90, 92, 119);
+    pub fn key() -> Color {
+        super::theme().help_line.key
+    }
+    pub fn description() -> Color {
+        super::theme().help_line.description
+    }
+    pub fn separator() -> Color {
+        super::theme().help_line.separator
+    }
 }
 
-/// Border hint utilities - for building styled keyboard shortcuts on borders
+/// Border hint utilities - for building styled keyboard shortcuts on borders.
 pub mod border_hints {
     use super::*;
     use ratatui::text::{Line, Span};
@@ -497,35 +718,54 @@ pub mod border_hints {
     }
 }
 
-/// Scrollbar styles (for components that share scrollbar appearance)
+/// Scrollbar styles (for components that share scrollbar appearance).
 pub mod scrollbar {
     use super::*;
 
-    pub const DEFAULT: Color = Color::Rgb(0, 217, 255);
-    pub const TRACK: Color = Color::Rgb(55, 55, 85);
+    pub fn default() -> Color {
+        super::theme().scrollbar.default
+    }
+    pub fn track() -> Color {
+        super::theme().scrollbar.track
+    }
 }
 
-/// Syntax highlighting styles (for jq query input)
+/// Syntax highlighting styles (for jq query input).
 pub mod syntax {
     use super::*;
 
-    pub const KEYWORD: Color = Color::Rgb(255, 107, 157); // Hot pink keywords
-    pub const FUNCTION: Color = Color::Rgb(0, 217, 255); // Electric cyan functions
-    pub const STRING: Color = Color::Rgb(107, 203, 119); // Fresh green strings
-    pub const NUMBER: Color = Color::Rgb(189, 147, 249); // Purple numbers
-    pub const OPERATOR: Color = Color::Rgb(198, 120, 221); // Magenta operators
-    pub const VARIABLE: Color = Color::Rgb(255, 184, 108); // Orange variables
-    pub const FIELD: Color = Color::Rgb(0, 217, 255); // Cyan fields
+    pub fn keyword() -> Color {
+        super::theme().syntax.keyword
+    }
+    pub fn function() -> Color {
+        super::theme().syntax.function
+    }
+    pub fn string() -> Color {
+        super::theme().syntax.string
+    }
+    pub fn number() -> Color {
+        super::theme().syntax.number
+    }
+    pub fn operator() -> Color {
+        super::theme().syntax.operator
+    }
+    pub fn variable() -> Color {
+        super::theme().syntax.variable
+    }
+    pub fn field() -> Color {
+        super::theme().syntax.field
+    }
 
-    /// Bracket pair matching style (color + bold + underlined)
-    /// Applied to matching brackets when cursor is on a bracket
+    /// Bracket pair matching style (color + bold + underlined).
+    /// Applied to matching brackets when cursor is on a bracket.
     pub mod bracket_match {
         use super::*;
 
-        pub const COLOR: Color = Color::Rgb(255, 217, 61);
-        pub const STYLE: Style = Style::new()
-            .fg(Color::Rgb(255, 217, 61))
-            .add_modifier(Modifier::BOLD)
-            .add_modifier(Modifier::UNDERLINED);
+        pub fn color() -> Color {
+            super::super::theme().syntax.bracket_match_color
+        }
+        pub fn style() -> Style {
+            super::super::theme().syntax.bracket_match_style
+        }
     }
 }

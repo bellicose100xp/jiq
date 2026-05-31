@@ -419,7 +419,7 @@ proptest! {
         let buffer = terminal.backend().buffer();
 
         // Check that at least one cell has the selected background (widget-level styling)
-        let expected_bg = theme::ai::SUGGESTION_SELECTED_BG;
+        let expected_bg = theme::ai::suggestion_selected_bg();
         let has_background = buffer.content.iter().any(|cell| {
             cell.bg == expected_bg
         });

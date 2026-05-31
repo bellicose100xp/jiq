@@ -8,7 +8,9 @@ use ratatui::text::{Line, Span, Text};
 #[cfg(test)]
 use crate::autocomplete::json_navigator::DEFAULT_ARRAY_SAMPLE_SIZE;
 use crate::query::executor::JqExecutor;
-use crate::query::worker::preprocess::{parse_and_detect_type, strip_ansi_codes};
+use crate::query::worker::preprocess::{
+    normalize_jq_text, parse_and_detect_type, strip_ansi_codes,
+};
 use crate::query::worker::types::RenderedLine;
 use crate::query::worker::{QueryRequest, QueryResponse, spawn_worker};
 use serde_json::Value;
@@ -143,10 +145,12 @@ impl QueryState {
 
         // Pre-render result to avoid expensive conversion in render loop
         let last_successful_result_rendered = last_successful_result.clone().map(|s| {
-            s.as_bytes()
+            let text = s
+                .as_bytes()
                 .to_vec()
                 .into_text()
-                .unwrap_or_else(|_| Text::raw(s.to_string()))
+                .unwrap_or_else(|_| Text::raw(s.to_string()));
+            normalize_jq_text(text)
         });
 
         // Cache line count, max width, and line widths for initial result
@@ -258,7 +262,7 @@ impl QueryState {
                 .into_text()
                 .unwrap_or_else(|_| Text::raw(output.clone()));
 
-            self.last_successful_result_rendered = Some(rendered);
+            self.last_successful_result_rendered = Some(normalize_jq_text(rendered));
             self.last_successful_result = Some(Arc::new(output));
             self.last_successful_result_unformatted = Some(Arc::new(unformatted.clone()));
 
