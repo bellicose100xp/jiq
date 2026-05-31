@@ -123,6 +123,38 @@ fn test_poll_processes_cancelled() {
 }
 
 #[test]
+fn test_poll_ignores_stale_cancelled_while_newer_request_in_flight() {
+    // Regression: a Cancelled response for an old, superseded request must not
+    // clear `loading` while a newer request is still streaming. Otherwise the
+    // popup drops out of the "Thinking..." state and renders a blank box until
+    // the newer request completes.
+    let mut ai_state = AiState::new(true);
+    let (tx, rx) = mpsc::channel();
+    ai_state.response_rx = Some(rx);
+
+    // First request (will be superseded).
+    ai_state.start_request();
+    let stale_id = ai_state.current_request_id();
+
+    // Newer request supersedes it; this is the in-flight one.
+    ai_state.start_request();
+    let current_id = ai_state.current_request_id();
+    assert!(current_id > stale_id);
+
+    // The stale request's cancellation arrives after the newer one started.
+    tx.send(AiResponse::Cancelled {
+        request_id: stale_id,
+    })
+    .unwrap();
+
+    poll_response_channel(&mut ai_state);
+
+    // Newer request is untouched: still loading, still tracked in-flight.
+    assert!(ai_state.loading, "stale cancel must not clear loading");
+    assert_eq!(ai_state.in_flight_request_id, Some(current_id));
+}
+
+#[test]
 fn test_poll_handles_disconnected_channel() {
     let mut ai_state = AiState::new(true);
     let (tx, rx) = mpsc::channel::<AiResponse>();
