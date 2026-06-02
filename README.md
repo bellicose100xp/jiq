@@ -13,6 +13,7 @@
 ## Features
 
 - **Real-time query execution** — results update as you type
+- **Output** — query or result
 - **AI assistant** — query suggestions, error fixes, natural-language input
 - **Context-aware autocomplete** — schema-aware fields with type hints, plus value suggestions in comparisons
 - **Save result to file**
