@@ -223,3 +223,7 @@ fn fmt_bytes(n: usize) -> String {
         format!("{} B", n)
     }
 }
+
+#[cfg(test)]
+#[path = "source_picker_render_tests.rs"]
+mod source_picker_render_tests;

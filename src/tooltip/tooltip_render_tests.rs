@@ -2,8 +2,40 @@
 
 use super::*;
 use crate::autocomplete::jq_functions::JQ_FUNCTION_METADATA;
+use crate::test_utils::test_helpers::test_app;
 use crate::tooltip::operator_content::OPERATOR_CONTENT;
 use proptest::prelude::*;
+use ratatui::Terminal;
+use ratatui::backend::TestBackend;
+
+/// Render `render_popup` for an App that already has its tooltip state set,
+/// returning both the popup area it reported and the rendered screen text.
+///
+/// Reuses the same TestBackend + `terminal.draw(|f| render_popup(...))` pattern
+/// the autocomplete render tests use, so individual tests only describe state.
+fn render_tooltip(app: &App, width: u16, height: u16) -> (Option<Rect>, String) {
+    let backend = TestBackend::new(width, height);
+    let mut terminal = Terminal::new(backend).unwrap();
+    // Place the input row near the bottom so the popup, drawn above it, has room
+    // for a non-zero height (popup_area.height = popup_height.min(input_area.y)).
+    let input_area = Rect::new(0, height.saturating_sub(3), width, 3);
+
+    let mut popup_area = None;
+    terminal
+        .draw(|f| {
+            popup_area = render_popup(app, f, input_area);
+        })
+        .unwrap();
+
+    (popup_area, terminal.backend().to_string())
+}
+
+/// Build an App with the given function name set as the active tooltip function.
+fn app_with_tooltip_function(name: &str) -> App {
+    let mut app = test_app("{}");
+    app.tooltip.set_current_function(Some(name.to_string()));
+    app
+}
 
 #[test]
 fn test_format_tooltip_title_function() {
@@ -114,4 +146,95 @@ fn test_wrap_text_exactly_two_lines() {
     let text = "First line text here and second line";
     let result = wrap_text(text, 20);
     assert!(!result.is_empty());
+}
+
+// =========================================================================
+// render_popup early-return guards and content-driven render branches
+// =========================================================================
+
+#[test]
+fn render_popup_returns_none_for_missing_content() {
+    // Case A: a function name with no matching tooltip content -> None (line 62).
+    let app = app_with_tooltip_function("definitely_not_a_real_jq_fn");
+    let (area, _screen) = render_tooltip(&app, 80, 24);
+    assert!(
+        area.is_none(),
+        "render_popup must return None when the function has no tooltip content"
+    );
+
+    // Case B: an operator with no matching content -> None (line 68).
+    let mut app = test_app("{}");
+    app.tooltip
+        .set_current_operator(Some("@@nope@@".to_string()));
+    let (area, _screen) = render_tooltip(&app, 80, 24);
+    assert!(
+        area.is_none(),
+        "render_popup must return None when the operator has no tooltip content"
+    );
+
+    // Case C: neither function nor operator set -> None (line 71).
+    let app = test_app("{}");
+    assert!(app.tooltip.current_function.is_none());
+    assert!(app.tooltip.current_operator.is_none());
+    let (area, _screen) = render_tooltip(&app, 80, 24);
+    assert!(
+        area.is_none(),
+        "render_popup must return None when no function or operator is active"
+    );
+}
+
+#[test]
+fn render_popup_renders_example_without_description() {
+    // group_by ships its second example with no '#' comment
+    // ("group_by(.type) | map({type: .[0].type, count: length})"). That example
+    // exercises the ('', code) parse arm (line 82), the desc.is_empty() width calc
+    // (line 100), and the single-Span code-only render branch (lines 171-175) -
+    // it renders as a plain "  {code}" line with no "code │ desc" separator column.
+    let app = app_with_tooltip_function("group_by");
+    let (area, screen) = render_tooltip(&app, 80, 24);
+
+    assert!(
+        area.is_some(),
+        "render_popup should return a popup area for a real function"
+    );
+
+    // "group_by(.type)" appears only in the no-'#' example, so finding it proves
+    // the code-only render arm drew that example. If the desc.is_empty() branch
+    // regressed (panicked or mis-parsed the empty desc), this would not render.
+    assert!(
+        screen.contains("group_by(.type)"),
+        "code-only example should be rendered verbatim, got:\n{screen}"
+    );
+}
+
+#[test]
+fn render_popup_renders_multiline_wrapped_tip() {
+    // getpath's tip ("Use .a.b.c for static paths; getpath for dynamic/computed
+    // paths") is long enough that it wraps to two lines at getpath's popup width.
+    // The continuation ("dynamic/computed paths") is rendered by the
+    // wrapped_tip_lines.iter().skip(1) loop, closing at line 208 - and unlike the
+    // first line it is short enough to render fully (not truncated by the border).
+    let tip = "Use .a.b.c for static paths; getpath for dynamic/computed paths";
+
+    // Precondition: at getpath's tip-available width the tip must wrap to 2 lines,
+    // so the skip(1) continuation loop is guaranteed to execute. (Popup inner
+    // width for getpath is ~56 columns; the tip is 63 chars.)
+    let wrapped = wrap_text(tip, 56);
+    assert_eq!(
+        wrapped.len(),
+        2,
+        "getpath tip should wrap to exactly 2 lines at the popup's tip width"
+    );
+
+    let app = app_with_tooltip_function("getpath");
+    let (area, screen) = render_tooltip(&app, 80, 24);
+
+    assert!(area.is_some(), "render_popup should render getpath");
+
+    // The continuation line text must appear on its own (indented) row, proving
+    // the skip(1) loop ran rather than dropping the tip remainder.
+    assert!(
+        screen.contains("dynamic/computed paths"),
+        "wrapped tip continuation line should be rendered, got:\n{screen}"
+    );
 }

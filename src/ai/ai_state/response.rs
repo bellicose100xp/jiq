@@ -131,3 +131,7 @@ impl AiState {
         self.in_flight_request_id.is_some()
     }
 }
+
+#[cfg(test)]
+#[path = "response_tests.rs"]
+mod response_tests;

@@ -745,6 +745,172 @@ fn test_trigger_ai_request_empty_result_uses_unformatted() {
     }
 }
 
+/// Shared JSON fixture for source-picker / path-at-row tests below.
+const PICKER_JSON: &str = r#"{"a":1}"#;
+
+/// Build an App that opens with the source picker pre-loaded from the
+/// given clipboard peek, so the picker's smart default and cached bytes
+/// match what `from_peek` produces at launch.
+fn app_with_picker(peek: crate::input::loader::ClipboardPeek) -> App {
+    let state = SourcePickerState::from_peek(peek);
+    App::new_with_source_picker(state, &Config::default())
+}
+
+#[test]
+fn test_confirm_source_picker_clipboard_loads_cached_bytes() {
+    let mut app = app_with_picker(crate::input::loader::ClipboardPeek::Usable(
+        PICKER_JSON.to_string(),
+    ));
+
+    assert!(app.query.is_none(), "no query before confirm");
+    assert!(app.source_picker.is_some(), "picker present before confirm");
+    assert_eq!(
+        app.source_picker.as_ref().unwrap().selection,
+        crate::input::SourceChoice::Clipboard,
+        "usable clipboard should pre-select Clipboard"
+    );
+
+    app.clear_dirty();
+    app.confirm_source_picker();
+
+    assert!(app.source_picker.is_none(), "picker consumed on confirm");
+    assert!(app.needs_render, "confirm should mark dirty");
+    // The clipboard loader is Complete, so confirm polls it inline and
+    // initializes QueryState in one step (no second keypress needed).
+    let query_state = app.query.as_ref().expect("query initialized from cache");
+    assert!(
+        query_state.result.is_ok(),
+        "cached JSON should produce a ready, successful QueryState"
+    );
+    // The cached bytes were reused, not re-read: paste recovery was never entered.
+    assert!(app.paste_recovery.is_none());
+    assert!(app.file_loader.is_none(), "loader drained on confirm");
+}
+
+#[test]
+fn test_confirm_source_picker_paste_enters_recovery() {
+    let mut app = app_with_picker(crate::input::loader::ClipboardPeek::Empty);
+
+    assert_eq!(
+        app.source_picker.as_ref().unwrap().selection,
+        crate::input::SourceChoice::Paste,
+        "empty clipboard should pre-select Paste"
+    );
+
+    app.clear_dirty();
+    app.confirm_source_picker();
+
+    let recovery = app
+        .paste_recovery
+        .as_ref()
+        .expect("Paste choice should enter recovery");
+    assert_eq!(
+        recovery.mode,
+        crate::input::paste_recovery::PasteRecoveryMode::Explicit,
+        "Paste choice drops into the explicit-paste editor"
+    );
+    assert!(app.source_picker.is_none(), "picker consumed on confirm");
+    assert!(app.query.is_none(), "no load happens for the Paste branch");
+    assert!(app.needs_render, "confirm should mark dirty");
+}
+
+#[test]
+fn test_path_at_row_returns_none_on_error_empty_and_synthetic() {
+    // Empty-result guard.
+    let mut app = test_app(PICKER_JSON);
+    app.query.as_mut().unwrap().is_empty_result = true;
+    assert!(
+        app.path_at_row(0).is_none(),
+        "empty result must not resolve a path"
+    );
+
+    // Errored-result guard.
+    let mut app = test_app(PICKER_JSON);
+    app.query.as_mut().unwrap().result = Err("boom".into());
+    assert!(
+        app.path_at_row(0).is_none(),
+        "errored result must not resolve a path"
+    );
+
+    // Synthetic-merge guard: parsed cache stays populated from the initial
+    // parse, yet the guard must still short-circuit before resolving.
+    let mut app = test_app(PICKER_JSON);
+    {
+        let qs = app.query.as_ref().unwrap();
+        assert!(
+            qs.last_successful_result_parsed.is_some(),
+            "initial parse should populate the parsed cache"
+        );
+        assert!(qs.result.is_ok() && !qs.is_empty_result);
+    }
+    app.query.as_mut().unwrap().is_synthetic_merge = true;
+    assert!(
+        app.path_at_row(0).is_none(),
+        "synthetic merge must not resolve a path even with a parsed cache"
+    );
+}
+
+#[test]
+fn test_new_with_openai_compatible_custom_base_url() {
+    use crate::config::ai_types::{AiConfig, AiProviderType, OpenAiConfig};
+
+    let config = Config {
+        ai: AiConfig {
+            enabled: true,
+            provider: Some(AiProviderType::Openai),
+            openai: OpenAiConfig {
+                api_key: Some("test-key".to_string()),
+                model: Some("gpt-4".to_string()),
+                base_url: Some("https://my-proxy.internal/v1".to_string()),
+            },
+            ..Default::default()
+        },
+        ..Default::default()
+    };
+
+    let app = App::new_with_loader(create_test_loader("{}".to_string()), &config);
+
+    assert_eq!(
+        app.ai.provider_name, "OpenAI-compatible",
+        "a base_url without api.openai.com should report the OpenAI-compatible label"
+    );
+}
+
+#[test]
+fn test_initialize_from_json_triggers_ai_when_visible() {
+    // Create the app with a loader but do NOT poll yet, so we can flip AI
+    // to visible before initialize_from_json runs.
+    let mut app = App::new_with_loader(
+        create_test_loader(PICKER_JSON.to_string()),
+        &Config::default(),
+    );
+
+    app.ai.enabled = true;
+    app.ai.configured = true;
+    app.ai.visible = true;
+    let (tx, rx) = std::sync::mpsc::channel();
+    let (_response_tx, response_rx) = std::sync::mpsc::channel();
+    app.ai.request_tx = Some(tx);
+    app.ai.response_rx = Some(response_rx);
+    app.ai.set_last_query_hash(".initial");
+
+    // Polling drives initialize_from_json, which should auto-fire the AI
+    // request because the popup is already visible at load time.
+    app.poll_file_loader();
+
+    let mut found_request = false;
+    while let Ok(msg) = rx.try_recv() {
+        if matches!(msg, crate::ai::ai_state::AiRequest::Query { .. }) {
+            found_request = true;
+            break;
+        }
+    }
+    assert!(
+        found_request,
+        "initialize_from_json should auto-fire an AI Query when the popup is visible at load"
+    );
+}
+
 #[cfg(test)]
 #[path = "app_state_tests/dirty_flag_tests.rs"]
 mod dirty_flag_tests;

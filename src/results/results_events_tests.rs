@@ -525,6 +525,139 @@ fn test_tab_exits_visual_mode() {
     assert_eq!(app.focus, Focus::InputField);
 }
 
+/// Like `setup_app_with_content` but also populates the unformatted result
+/// (what the clipboard actually copies) and selects the Osc52 backend so
+/// yank tests copy deterministically without a real terminal.
+fn setup_app_for_yank(line_count: u32, viewport_height: u16) -> crate::app::App {
+    let mut app = setup_app_with_content(line_count, viewport_height);
+    let content: String = (0..line_count).map(|i| format!("line{}\n", i)).collect();
+    if let Some(qs) = app.query.as_mut() {
+        qs.last_successful_result_unformatted = Some(Arc::new(content));
+    }
+    app.clipboard_backend = crate::config::ClipboardBackend::Osc52;
+    app
+}
+
+#[test]
+fn test_visual_mode_yank_copies_and_exits() {
+    let mut app = setup_app_for_yank(20, 10);
+    app.results_cursor.move_to_line(2);
+
+    app.handle_key_event(key(KeyCode::Char('v')));
+    app.handle_key_event(key(KeyCode::Char('j')));
+    app.handle_key_event(key(KeyCode::Char('y')));
+
+    assert!(
+        !app.results_cursor.is_visual_mode(),
+        "yank exits visual mode"
+    );
+    assert_eq!(
+        app.notification.current_message(),
+        Some("Copied 2 lines!"),
+        "yank copied the 2 selected lines"
+    );
+}
+
+#[test]
+fn test_visual_mode_dollar_jumps_to_widest_selected_line() {
+    let mut app = app_with_wide_content();
+    app.results_scroll.h_offset = 0;
+    app.results_cursor.move_to_line(0);
+
+    app.handle_key_event(key(KeyCode::Char('v')));
+    app.handle_key_event(key(KeyCode::Char('j')));
+    app.handle_key_event(key(KeyCode::Char('j')));
+    app.handle_key_event(key(KeyCode::Char('$')));
+
+    let width = app.results_cursor.get_max_selected_line_width();
+    let viewport_width = app.results_scroll.viewport_width;
+    let expected = width.saturating_sub(viewport_width);
+    assert_eq!(app.results_scroll.h_offset, expected);
+}
+
+#[test]
+fn test_capital_v_toggles_visual_mode() {
+    let mut app = setup_app_with_content(20, 10);
+    app.results_cursor.move_to_line(5);
+
+    app.handle_key_event(key(KeyCode::Char('V')));
+    assert!(
+        app.results_cursor.is_visual_mode(),
+        "`V` enters visual mode"
+    );
+
+    app.handle_key_event(key(KeyCode::Char('V')));
+    assert!(
+        !app.results_cursor.is_visual_mode(),
+        "`V` again exits visual mode"
+    );
+}
+
+#[test]
+fn test_backtab_exits_results_pane() {
+    let mut app = app_with_query(".");
+    app.focus = Focus::ResultsPane;
+
+    app.handle_key_event(key(KeyCode::BackTab));
+
+    assert_eq!(app.focus, Focus::InputField);
+}
+
+#[test]
+fn test_y_in_normal_mode_copies_result() {
+    let mut app = setup_app_for_yank(20, 10);
+
+    app.handle_key_event(key(KeyCode::Char('y')));
+
+    assert!(
+        !app.results_cursor.is_visual_mode(),
+        "normal-mode yank stays out of visual mode"
+    );
+    assert_eq!(
+        app.notification.current_message(),
+        Some("Copied result!"),
+        "normal-mode `y` copies the full result"
+    );
+}
+
+#[test]
+fn test_question_mark_closes_help_when_already_visible() {
+    let mut app = app_with_query(".");
+    app.focus = Focus::ResultsPane;
+    app.help.visible = true;
+    app.help.active_tab = HelpTab::Result;
+
+    app.handle_key_event(key(KeyCode::Char('?')));
+
+    assert!(!app.help.visible, "`?` toggles help off when visible");
+    assert_eq!(
+        app.help.active_tab,
+        HelpTab::Global,
+        "reset() restores the default tab"
+    );
+}
+
+#[test]
+fn test_question_mark_opens_search_help_tab_when_searching() {
+    let mut app = app_with_query(".");
+    crate::search::search_events::open_search(&mut app);
+    // A confirmed search delegates non-search keys (like `?`) to the
+    // results-pane handler; while unconfirmed they'd be typed into the
+    // search box, so the help-tab branch under test is only reachable here.
+    app.search.confirm();
+    assert!(app.search.is_visible());
+    app.help.visible = false;
+
+    app.handle_key_event(key(KeyCode::Char('?')));
+
+    assert!(app.help.visible, "`?` opens help");
+    assert_eq!(
+        app.help.active_tab,
+        HelpTab::Search,
+        "search-active opens the Search help tab"
+    );
+}
+
 mod drill_tests {
     use super::*;
     use crate::test_utils::test_helpers::test_app;
@@ -933,5 +1066,59 @@ mod drill_tests {
         app.handle_key_event(key(KeyCode::Char(']')));
 
         assert_eq!(app.focus, Focus::ResultsPane);
+    }
+
+    #[test]
+    fn iterate_keep_kv_step_out_chords_dispatch_and_notify() {
+        // `*` success: iterate splats the rightmost array index. Pretty layout
+        // of `{"users": [{"x": 1}]}` resolves row 2 to .users[0]; the `*`
+        // chord must route to apply_iterate -> .users[].
+        let mut app = test_app(r#"{"users": [{"x": 1}]}"#);
+        place(&mut app, 2);
+        app.handle_key_event(key(KeyCode::Char('*')));
+        assert_eq!(app.input.query(), ".users[]", "`*` routes to apply_iterate");
+
+        // `*` failure: no array index in path -> NoArrayToIterate notification.
+        let mut app = test_app(r#"{"a": {"b": 1}}"#);
+        place(&mut app, 2); // .a.b — no array index
+        app.handle_key_event(key(KeyCode::Char('*')));
+        assert_eq!(
+            app.notification.current_message(),
+            Some("No array in path to iterate")
+        );
+
+        // `}` success: wrap leaf key into a single-entry object literal.
+        let mut app = test_app(r#"{"users": [{"name": "alice"}]}"#);
+        place(&mut app, 3); // .users[0].name leaf
+        app.handle_key_event(key(KeyCode::Char('}')));
+        assert_eq!(
+            app.input.query(),
+            ".users[0] | {name}",
+            "`}}` routes to apply_keep_kv"
+        );
+
+        // `}` failure: array-element row has no leaf key -> NoKeyToWrap.
+        let mut app = test_app(r#"{"users": [{"name": "alice"}]}"#);
+        place(&mut app, 2); // .users[0] — last step is Index, not Key
+        app.handle_key_event(key(KeyCode::Char('}')));
+        assert_eq!(
+            app.notification.current_message(),
+            Some("No key at cursor to wrap")
+        );
+
+        // `^` failure: an unparseable (non-path) query -> Unparseable mapping.
+        let mut app = test_app(r#"{"a": 1}"#);
+        app.input.textarea.insert_str("map(select(.x))");
+        app.focus = Focus::ResultsPane;
+        app.handle_key_event(key(KeyCode::Char('^')));
+        assert_eq!(
+            app.input.query(),
+            "map(select(.x))",
+            "unparseable query left untouched"
+        );
+        assert_eq!(
+            app.notification.current_message(),
+            Some("Can't step out of complex query")
+        );
     }
 }

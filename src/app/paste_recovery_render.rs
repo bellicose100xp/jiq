@@ -188,3 +188,7 @@ fn bottom_hints(mode: EditorMode, color: Color) -> Line<'static> {
 
     theme::border_hints::build_hints(&entries, color)
 }
+
+#[cfg(test)]
+#[path = "paste_recovery_render_tests.rs"]
+mod paste_recovery_render_tests;

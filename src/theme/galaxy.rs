@@ -642,3 +642,7 @@ pub fn galaxy_light() -> Theme {
         },
     }
 }
+
+#[cfg(test)]
+#[path = "galaxy_tests.rs"]
+mod galaxy_tests;
