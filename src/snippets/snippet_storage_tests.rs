@@ -315,6 +315,15 @@ fn test_save_snippets_creates_file() {
 }
 
 #[test]
+fn test_load_snippets_from_path_unreadable_file() {
+    let temp_dir = TempDir::new().unwrap();
+    let dir_path = temp_dir.path().to_path_buf();
+
+    let snippets = load_snippets_from_path(&dir_path);
+    assert!(snippets.is_empty());
+}
+
+#[test]
 fn test_serialize_snippets_toml_special_characters() {
     let snippets = vec![Snippet {
         name: "Select errors".to_string(),

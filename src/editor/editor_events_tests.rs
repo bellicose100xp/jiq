@@ -1230,3 +1230,67 @@ fn test_escape_cancels_text_object_mode() {
 
     assert_eq!(app.input.editor_mode, EditorMode::Normal);
 }
+
+#[test]
+fn test_slash_opens_search() {
+    let mut app = app_with_query(".name");
+    app.input.editor_mode = EditorMode::Normal;
+    assert!(!app.search.is_visible());
+
+    app.handle_key_event(key(KeyCode::Char('/')));
+
+    assert!(app.search.is_visible());
+    assert_eq!(app.focus, Focus::ResultsPane);
+    assert_eq!(app.input.editor_mode, EditorMode::Normal);
+}
+
+#[test]
+fn test_char_search_non_char_key_returns_to_normal() {
+    let mut app = app_with_query(".name.first");
+    app.input.textarea.move_cursor(CursorMove::Head);
+    app.input.editor_mode = EditorMode::Normal;
+    assert!(app.input.last_char_search.is_none());
+
+    app.handle_key_event(key(KeyCode::Char('f')));
+    assert!(matches!(
+        app.input.editor_mode,
+        EditorMode::CharSearch(SearchDirection::Forward, SearchType::Find)
+    ));
+
+    app.handle_key_event(key(KeyCode::Left));
+
+    assert_eq!(app.input.editor_mode, EditorMode::Normal);
+    assert!(app.input.last_char_search.is_none());
+}
+
+#[test]
+fn test_text_object_non_char_key_cancels() {
+    let mut app = app_with_query(".name");
+    app.input.editor_mode = EditorMode::Normal;
+
+    app.handle_key_event(key(KeyCode::Char('d')));
+    app.handle_key_event(key(KeyCode::Char('i')));
+    assert!(matches!(
+        app.input.editor_mode,
+        EditorMode::TextObject('d', _)
+    ));
+    let original_query = app.query().to_string();
+
+    app.handle_key_event(key(KeyCode::Left));
+
+    assert_eq!(app.input.editor_mode, EditorMode::Normal);
+    assert_eq!(app.query(), original_query);
+}
+
+#[test]
+fn test_df_forward_on_last_char_cancels() {
+    let mut app = app_with_query("a.b");
+    move_cursor_to_position(&mut app, 2);
+    app.input.editor_mode = EditorMode::Normal;
+    let original_query = app.query().to_string();
+
+    run_operator_char_search(&mut app, 'd', 'f', 'z');
+
+    assert_eq!(app.query(), original_query);
+    assert_eq!(app.input.editor_mode, EditorMode::Normal);
+}

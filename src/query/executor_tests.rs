@@ -346,3 +346,132 @@ fn test_all_field_names_respects_sample_limit() {
         "Should NOT contain 'key_10' beyond sample limit"
     );
 }
+
+#[test]
+fn test_collect_string_values_skips_non_string_scalars() {
+    // all_string_values must collect ONLY string values, silently skipping
+    // numbers/booleans/null (the `_ => {}` arm), while still recursing into
+    // arrays and objects to reach nested strings.
+    let json = r#"{
+        "s": "hello",
+        "n": 42,
+        "b": true,
+        "nil": null,
+        "nested": ["world", 7, false],
+        "obj": {"deep": "value"}
+    }"#;
+    let executor = JqExecutor::new(json.to_string());
+    let values = executor.all_string_values();
+
+    assert_eq!(
+        values.len(),
+        3,
+        "expected exactly 3 distinct string values, got: {values:?}"
+    );
+    assert!(values.contains(&"hello".to_string()));
+    assert!(values.contains(&"world".to_string()));
+    assert!(values.contains(&"value".to_string()));
+    // Non-string scalars must never be stringified into the result.
+    assert!(
+        values
+            .iter()
+            .all(|v| v == "hello" || v == "world" || v == "value"),
+        "non-string scalars leaked into all_string_values: {values:?}"
+    );
+    assert!(!values.iter().any(|v| v == "42"));
+    assert!(!values.iter().any(|v| v == "true"));
+    assert!(!values.iter().any(|v| v == "false"));
+    assert!(!values.iter().any(|v| v == "null"));
+}
+
+#[test]
+fn test_all_string_values_frequency_order() {
+    // Distinct strings are returned sorted by descending frequency, so the
+    // most-repeated string sorts first.
+    let json = r#"["common", "common", "common", "common", "common", "rare", "mid", "mid"]"#;
+    let executor = JqExecutor::new(json.to_string());
+    let values = executor.all_string_values();
+
+    assert_eq!(
+        values.len(),
+        3,
+        "expected 3 distinct strings, got: {values:?}"
+    );
+    assert_eq!(
+        values[0], "common",
+        "most frequent string must sort first, got: {values:?}"
+    );
+    assert_eq!(
+        values[1], "mid",
+        "second-most frequent must sort second, got: {values:?}"
+    );
+    assert_eq!(values[2], "rare");
+}
+
+#[test]
+fn test_all_string_values_respects_cap() {
+    // Build more distinct strings than the cap, plus extra duplicates of an
+    // early high-frequency string. The result must be truncated to exactly
+    // MAX_GLOBAL_STRING_VALUES (exercising the >= cap drop-new branch and the
+    // truncate path), and the over-cap-frequency string must survive and sort
+    // first.
+    let over = MAX_GLOBAL_STRING_VALUES + 50;
+    let mut elems: Vec<String> = (0..over).map(|i| format!("\"v{i}\"")).collect();
+    // Make "v0" the most frequent so it must rank first after sorting.
+    for _ in 0..5 {
+        elems.push("\"v0\"".to_string());
+    }
+    let json = format!("[{}]", elems.join(","));
+    let executor = JqExecutor::new(json);
+    let values = executor.all_string_values();
+
+    assert_eq!(
+        values.len(),
+        MAX_GLOBAL_STRING_VALUES,
+        "result must be capped at MAX_GLOBAL_STRING_VALUES"
+    );
+    assert_eq!(
+        values[0], "v0",
+        "the string repeated past the cap must accumulate frequency and sort first"
+    );
+}
+
+#[test]
+fn test_jq_colors_env_formats_rgb_and_falls_back_for_non_rgb() {
+    use ratatui::style::Color;
+
+    // Mix one non-Rgb color (Reset) into an otherwise Rgb palette to exercise
+    // the `_ => (255,255,255)` fallback arm, and verify the bold prefix for
+    // indices >= 5 (arrays/objects/keys).
+    let palette = [
+        Color::Rgb(1, 2, 3),
+        Color::Reset,
+        Color::Rgb(4, 5, 6),
+        Color::Rgb(7, 8, 9),
+        Color::Rgb(10, 11, 12),
+        Color::Rgb(13, 14, 15),
+        Color::Rgb(16, 17, 18),
+        Color::Rgb(19, 20, 21),
+    ];
+    let env = jq_colors_env(palette);
+    let parts: Vec<&str> = env.split(':').collect();
+
+    assert_eq!(parts.len(), 8, "one colon-joined slot per palette entry");
+    assert_eq!(parts[0], "38;2;1;2;3", "Rgb slot formats as 38;2;r;g;b");
+    assert_eq!(
+        parts[1], "38;2;255;255;255",
+        "non-Rgb color must fall back to white 255;255;255"
+    );
+    assert_eq!(parts[4], "38;2;10;11;12", "index 4 has no bold prefix");
+    assert!(
+        parts[5].starts_with("1;38;2;"),
+        "index 5 (arrays) must be bold-prefixed, got: {}",
+        parts[5]
+    );
+    assert_eq!(parts[5], "1;38;2;13;14;15");
+    assert!(
+        parts[7].starts_with("1;38;2;"),
+        "index 7 (keys) must be bold-prefixed, got: {}",
+        parts[7]
+    );
+}

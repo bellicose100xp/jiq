@@ -66,3 +66,11 @@ fn test_char_before_field_at_start() {
     assert_eq!(find_char_before_field_access(".", ""), None);
     assert_eq!(find_char_before_field_access(".na", "na"), None);
 }
+
+#[test]
+fn test_char_before_field_all_whitespace_prefix_returns_none() {
+    // search_end > 0 (there are two leading spaces before ".x") but the scanned prefix is
+    // entirely whitespace, so the reverse loop finds no non-whitespace char and falls
+    // through to None. This is distinct from the search_end == 0 early return.
+    assert_eq!(find_char_before_field_access("  .x", "x"), None);
+}

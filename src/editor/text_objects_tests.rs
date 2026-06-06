@@ -353,6 +353,24 @@ mod quote_bounds_tests {
             Some((7, 10))
         );
     }
+
+    #[test]
+    fn empty_string_returns_none() {
+        // Line 114: empty `chars` short-circuits before any delimiter scan.
+        assert_eq!(find_quote_bounds("", 0, '"', TextObjectScope::Inner), None);
+        assert_eq!(find_quote_bounds("", 0, '"', TextObjectScope::Around), None);
+    }
+
+    #[test]
+    fn cursor_past_closing_quote_returns_none() {
+        // Line 144: a complete pair exists (open=0, close=4) but the cursor at 6
+        // sits beyond the closing quote, so the post-close guard fires.
+        let text = r#""foo" x"#;
+        assert_eq!(
+            find_quote_bounds(text, 6, '"', TextObjectScope::Inner),
+            None
+        );
+    }
 }
 
 mod bracket_bounds_tests {
@@ -493,6 +511,28 @@ mod bracket_bounds_tests {
         assert_eq!(
             find_bracket_bounds(text, 3, '(', ')', TextObjectScope::Inner),
             Some((4, 5))
+        );
+    }
+
+    #[test]
+    fn empty_string_returns_none() {
+        // Line 165: empty `chars` short-circuits before any scan.
+        assert_eq!(
+            find_bracket_bounds("", 0, '(', ')', TextObjectScope::Inner),
+            None
+        );
+    }
+
+    #[test]
+    fn backward_scan_skips_balanced_inner_pair() {
+        // Lines 187-188: the backward scan from the cursor on 'c' (index 7) first
+        // meets ')' at 5 (depth 1), then '(' at 3 which decrements depth back to 0
+        // (skipping the balanced inner (b) pair) before locating the enclosing '('
+        // at 0. The forward scan then matches ')' at 8.
+        let text = "(a (b) c)";
+        assert_eq!(
+            find_bracket_bounds(text, 7, '(', ')', TextObjectScope::Inner),
+            Some((1, 8))
         );
     }
 }
@@ -713,6 +753,31 @@ mod find_text_object_bounds_tests {
         assert_eq!(
             find_text_object_bounds(text, 7, TextObjectTarget::Pipe, TextObjectScope::Inner),
             find_pipe_bounds(text, 7, TextObjectScope::Inner)
+        );
+    }
+
+    #[test]
+    fn delegates_to_single_quote() {
+        // Line 319: SingleQuote dispatches to find_quote_bounds with '\''.
+        let text = "'hello'";
+        assert_eq!(
+            find_text_object_bounds(
+                text,
+                3,
+                TextObjectTarget::SingleQuote,
+                TextObjectScope::Inner
+            ),
+            find_quote_bounds(text, 3, '\'', TextObjectScope::Inner)
+        );
+    }
+
+    #[test]
+    fn delegates_to_backtick() {
+        // Line 320: Backtick dispatches to find_quote_bounds with '`'.
+        let text = "`hello`";
+        assert_eq!(
+            find_text_object_bounds(text, 3, TextObjectTarget::Backtick, TextObjectScope::Inner),
+            find_quote_bounds(text, 3, '`', TextObjectScope::Inner)
         );
     }
 }
@@ -973,5 +1038,23 @@ mod execute_text_object_tests {
 
         assert!(result);
         assert_eq!(content(&ta), ".items |  | sort | unique");
+    }
+
+    #[test]
+    fn empty_delimiters_returns_false() {
+        // Line 344: an empty quoted pair `""` yields Some((1, 1)) (start == end),
+        // so the zero-width guard returns false and the buffer is left unchanged
+        // instead of performing a spurious no-op cut.
+        let mut ta = textarea_with(r#""""#);
+        move_to(&mut ta, 0);
+
+        let result = execute_text_object(
+            &mut ta,
+            TextObjectTarget::DoubleQuote,
+            TextObjectScope::Inner,
+        );
+
+        assert!(!result);
+        assert_eq!(content(&ta), r#""""#);
     }
 }

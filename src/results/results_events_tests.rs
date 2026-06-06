@@ -658,6 +658,72 @@ fn test_question_mark_opens_search_help_tab_when_searching() {
     );
 }
 
+#[test]
+fn test_slash_opens_search_in_results_pane() {
+    // `/` is NOT intercepted by any earlier dispatch tier, so it routes
+    // through handle_results_pane_key and opens the search overlay.
+    let mut app = app_with_query(".");
+    app.focus = Focus::ResultsPane;
+    assert!(!app.search.is_visible(), "search starts hidden");
+
+    app.handle_key_event(key(KeyCode::Char('/')));
+
+    assert!(app.search.is_visible(), "`/` opens the search overlay");
+    assert_eq!(
+        app.focus,
+        Focus::ResultsPane,
+        "open_search keeps focus on the results pane"
+    );
+}
+
+#[test]
+fn test_results_pane_backtab_arm_exits_pane() {
+    // global::handle_global_keys intercepts BackTab before focus routing,
+    // so the normal handle_key_event path hits the global arm. This module's
+    // BackTab arm is reachable only by calling the handler directly.
+    let mut app = app_with_query(".");
+    app.focus = Focus::ResultsPane;
+    app.results_cursor.enter_visual_mode();
+    assert!(app.results_cursor.is_visual_mode(), "test guard");
+
+    super::handle_results_pane_key(&mut app, key(KeyCode::BackTab));
+
+    assert_eq!(app.focus, Focus::InputField, "BackTab exits to input field");
+    assert!(
+        !app.results_cursor.is_visual_mode(),
+        "BackTab also exits visual mode"
+    );
+}
+
+#[test]
+fn test_results_pane_question_mark_arm_toggles_help_with_result_tab() {
+    // The `?` arm is shadowed by the duplicate handler in global.rs, so it is
+    // only reachable via a direct handler call. With help hidden and search
+    // inactive, `?` opens help on HelpTab::Result; a second press resets help.
+    let mut app = app_with_query(".");
+    app.focus = Focus::ResultsPane;
+    assert!(!app.search.is_visible(), "search inactive");
+    assert!(!app.help.visible, "help starts hidden");
+
+    super::handle_results_pane_key(&mut app, key(KeyCode::Char('?')));
+
+    assert!(app.help.visible, "`?` opens help");
+    assert_eq!(
+        app.help.active_tab,
+        HelpTab::Result,
+        "search inactive opens the Result help tab"
+    );
+
+    super::handle_results_pane_key(&mut app, key(KeyCode::Char('?')));
+
+    assert!(!app.help.visible, "second `?` resets (closes) help");
+    assert_eq!(
+        app.help.active_tab,
+        HelpTab::Global,
+        "reset() restores the default tab"
+    );
+}
+
 mod drill_tests {
     use super::*;
     use crate::test_utils::test_helpers::test_app;
@@ -1066,6 +1132,46 @@ mod drill_tests {
         app.handle_key_event(key(KeyCode::Char(']')));
 
         assert_eq!(app.focus, Focus::ResultsPane);
+    }
+
+    #[test]
+    fn caret_step_out_success_rewrites_query() {
+        // `^` success arm (StepOutOutcome::Stepped): a multi-segment path
+        // query drops its trailing segment. Existing coverage only hits the
+        // Unparseable failure arm.
+        let mut app = test_app(r#"{"a": {"b": 1}}"#);
+        app.input.textarea.insert_str(".a.b");
+        app.focus = Focus::ResultsPane;
+
+        app.handle_key_event(key(KeyCode::Char('^')));
+
+        assert_eq!(app.input.query(), ".a", "`^` pops the trailing segment");
+        assert_eq!(
+            app.notification.current_message(),
+            None,
+            "successful step-out shows no notification"
+        );
+    }
+
+    #[test]
+    fn sibling_chord_with_no_parsed_result_notifies_no_path() {
+        // `]` sibling chord with no resolvable parsed result
+        // (last_successful_result_parsed = None) hits SiblingCursorOutcome::NoPath.
+        // Mirrors drill_in_with_no_resolvable_path_notifies but for `]`.
+        let mut app = test_app(r#"{"a": 1}"#);
+        app.input.textarea.insert_str(".existing");
+        app.focus = Focus::ResultsPane;
+        if let Some(qs) = app.query.as_mut() {
+            qs.last_successful_result_parsed = None;
+        }
+
+        app.handle_key_event(key(KeyCode::Char(']')));
+
+        assert_eq!(app.input.query(), ".existing", "query untouched");
+        assert_eq!(
+            app.notification.current_message(),
+            Some("No path at cursor")
+        );
     }
 
     #[test]

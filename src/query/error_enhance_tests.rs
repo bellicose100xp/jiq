@@ -420,3 +420,131 @@ fn plain_renders_summary_hint_and_location() {
     assert!(plain.contains("Try: do the thing"));
     assert!(plain.contains("jq: line 1, column 5"));
 }
+
+// --------------------------------------------------------------------------
+// unclosed_delimiter: string-literal scanning and balanced-delimiter popping
+// --------------------------------------------------------------------------
+
+#[test]
+fn unclosed_delimiter_ignores_string_literals() {
+    // A ']' inside a string literal must not satisfy the open '['.
+    assert_eq!(unclosed_delimiter(".a[\"x]\""), Some('['));
+    // An unterminated string reports the quote, not any earlier delimiter.
+    assert_eq!(unclosed_delimiter(".a + \"hello"), Some('"'));
+    // An escaped quote keeps the string open, so it stays unterminated.
+    assert_eq!(unclosed_delimiter(".a + \"he\\\"llo"), Some('"'));
+}
+
+#[test]
+fn unclosed_delimiter_pops_balanced_delimiters() {
+    // Each closer matches the top of the stack, exercising the three pop arms.
+    assert_eq!(unclosed_delimiter("(.a)"), None);
+    assert_eq!(unclosed_delimiter(".a[0]"), None);
+    assert_eq!(unclosed_delimiter("{a:1}"), None);
+}
+
+// --------------------------------------------------------------------------
+// Runtime: arithmetic multiply / divide / generic verb arms
+// --------------------------------------------------------------------------
+
+#[test]
+fn arithmetic_multiply_and_generic_verb_mismatch() {
+    let multiply = "jq: error (at <stdin>:1): string (\"a\") and number (1) cannot be multiplied";
+    let e = enhance_jq_error(multiply, "\"a\" * 1").unwrap();
+    assert!(
+        e.summary
+            .contains("a string and a number can't be multiplied"),
+        "summary was: {}",
+        e.summary
+    );
+
+    // No "divisor is zero", so it bypasses the division-by-zero guard and lands
+    // on the `divided` verb arm rather than the Division-by-zero summary.
+    let divide = "jq: error (at <stdin>:1): null (null) and number (1) cannot be divided";
+    let e = enhance_jq_error(divide, "null / 1").unwrap();
+    assert_ne!(e.summary, "Division by zero.");
+    assert!(
+        e.summary.contains("a null and a number can't be divided"),
+        "summary was: {}",
+        e.summary
+    );
+
+    // An unknown verb falls through the `other => other` arm verbatim.
+    let compared = "jq: error (at <stdin>:1): array ([]) and object ({}) cannot be compared";
+    let e = enhance_jq_error(compared, "[] < {}").unwrap();
+    assert!(
+        e.summary
+            .contains("an array and an object can't be compared"),
+        "summary was: {}",
+        e.summary
+    );
+}
+
+// --------------------------------------------------------------------------
+// Syntax: incomplete query - unterminated string and generic dangling hints
+// --------------------------------------------------------------------------
+
+#[test]
+fn incomplete_query_unterminated_string_and_generic_hints() {
+    // EOF syntax error with an open string literal -> "closing" hint.
+    let eof = "jq: error: syntax error, unexpected end of file at <top-level>, line 1, column 8:\n    .a + \"hi\n           ^\njq: 1 compile error";
+    let e = enhance_jq_error(eof, ".a + \"hi").unwrap();
+    assert!(e.summary.contains("Incomplete query"));
+    assert!(
+        e.hint.as_deref().unwrap().contains("closing"),
+        "hint was: {:?}",
+        e.hint
+    );
+
+    // EOF syntax error with a dangling '+' (no unclosed delimiter, no trailing
+    // '|' or ',') -> the generic "Finish the expression" hint.
+    let eof2 = "jq: error: syntax error, unexpected end of file at <top-level>, line 1, column 5:\n    .a +\n        ^\njq: 1 compile error";
+    let e = enhance_jq_error(eof2, ".a +").unwrap();
+    assert!(e.summary.contains("Incomplete query"));
+    assert!(
+        e.hint.as_deref().unwrap().contains("Finish the expression"),
+        "hint was: {:?}",
+        e.hint
+    );
+}
+
+// --------------------------------------------------------------------------
+// Compile: unrecognized error passes through capitalized
+// --------------------------------------------------------------------------
+
+#[test]
+fn unrecognized_compile_error_passes_through_capitalized() {
+    // Not INVALID_CHARACTER, not "is not defined", not "Division by zero", and
+    // not "syntax error" -> the final capitalizing fallthrough.
+    let raw = "jq: error: optional not allowed here at <top-level>, line 1, column 5:\n    .a?.b\n        ^\njq: 1 compile error";
+    let e = enhance_jq_error(raw, ".a?.b").unwrap();
+    assert_eq!(e.summary, "Optional not allowed here");
+    assert_eq!(e.location.as_deref(), Some("line 1, column 5"));
+    assert_eq!(e.hint, None);
+}
+
+// --------------------------------------------------------------------------
+// Helper edge cases: closest_builtin exact match, capitalize_first, extract_quoted_field
+// --------------------------------------------------------------------------
+
+#[test]
+fn closest_builtin_skips_exact_match() {
+    // "length" exactly equals a builtin (d == 0 -> continue) and no *other*
+    // builtin is within edit distance, so the result is None -- the function
+    // never suggests a builtin as a "did you mean" for an already-valid name.
+    assert_eq!(closest_builtin("length"), None);
+}
+
+#[test]
+fn capitalize_first_empty_string() {
+    assert_eq!(capitalize_first(""), "");
+}
+
+#[test]
+fn extract_quoted_field_empty_value_returns_none() {
+    // The text right after the label trims to empty before the next comma.
+    assert_eq!(
+        extract_quoted_field("unexpected , expecting", "unexpected "),
+        None
+    );
+}

@@ -110,6 +110,15 @@ mod variable_definition_no_suggestions {
     }
 
     #[test]
+    fn after_label_keyword_with_preceding_token() {
+        // When "label" appears mid-query (not as the whole trimmed string), the early
+        // len == 5 return is skipped and is_after_definition_keyword inspects the char
+        // before "label" (nth(len-6)). A space precedes it, so it is a real label keyword
+        // and variable suggestions must be suppressed.
+        assert_context_is_not_variable(". | label $");
+    }
+
+    #[test]
     fn in_array_destructuring() {
         assert_context_is_not_variable(". as [$");
         assert_context_is_not_variable(". as [$a, $");
@@ -329,5 +338,14 @@ mod definition_context_edge_cases {
     #[test]
     fn as_with_opening_brace_no_space() {
         assert_context_is_not_variable(". as{$");
+    }
+
+    #[test]
+    fn destructure_at_expression_start_no_leading_space() {
+        // "(as [" has no leading space before "as", so the " as [" loop patterns in
+        // has_unclosed_as_destructure don't match. The post-loop fallback (ends_with
+        // "as [") catches it, suppressing variable suggestions for destructuring that
+        // begins at an expression boundary rather than after a leading space.
+        assert_context_is_not_variable("(as [$");
     }
 }

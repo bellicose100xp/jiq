@@ -144,3 +144,114 @@ fn test_config_path_consistency() {
         path_str
     );
 }
+
+// --- load_config() end-to-end tests ---
+//
+// load_config() resolves its path from dirs::home_dir(), which reads the
+// process-global HOME env var. Cargo runs tests in parallel threads and other
+// tests also read dirs::home_dir(), so these tests must be serialized against
+// each other and against any sibling that touches HOME. We guard every HOME
+// mutation with a single static Mutex and always restore the previous value.
+
+use std::path::Path;
+use std::sync::Mutex;
+
+static HOME_LOCK: Mutex<()> = Mutex::new(());
+
+/// Sets HOME to `home`, runs `body` (which calls load_config), then restores the
+/// previous HOME. Serialized via HOME_LOCK so concurrent tests don't race on the
+/// shared env var. Returns whatever `body` produces.
+fn with_home<R>(home: &Path, body: impl FnOnce() -> R) -> R {
+    // SAFETY: HOME_LOCK serializes every HOME mutation in this binary so no
+    // other test reads HOME concurrently while we swap it.
+    let _guard = HOME_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+    let saved = std::env::var_os("HOME");
+    unsafe {
+        std::env::set_var("HOME", home);
+    }
+    let result = body();
+    unsafe {
+        match saved {
+            Some(value) => std::env::set_var("HOME", value),
+            None => std::env::remove_var("HOME"),
+        }
+    }
+    result
+}
+
+/// Builds <home>/.config/jiq/'s dir and returns the config.toml file path.
+fn jiq_config_path(home: &Path) -> std::path::PathBuf {
+    let dir = home.join(".config").join("jiq");
+    std::fs::create_dir_all(&dir).unwrap();
+    dir.join("config.toml")
+}
+
+#[test]
+fn test_load_config_missing_file_returns_silent_defaults() {
+    let tmp = tempfile::tempdir().unwrap();
+    // No .config/jiq/config.toml created under this HOME.
+    let result = with_home(tmp.path(), load_config);
+
+    assert!(
+        result.warning.is_none(),
+        "absent config file must be silent (no warning), got {:?}",
+        result.warning
+    );
+    assert_eq!(
+        result.config.clipboard.backend,
+        ClipboardBackend::Auto,
+        "missing config must fall back to defaults"
+    );
+}
+
+#[test]
+fn test_load_config_invalid_toml_returns_defaults_with_warning() {
+    let tmp = tempfile::tempdir().unwrap();
+    let config_file = jiq_config_path(tmp.path());
+    std::fs::write(&config_file, "[clipboard\nbackend = \"auto\"").unwrap();
+
+    let result = with_home(tmp.path(), load_config);
+
+    assert_eq!(
+        result.config.clipboard.backend,
+        ClipboardBackend::Auto,
+        "malformed TOML must fall back to defaults"
+    );
+    let warning = result
+        .warning
+        .expect("malformed TOML must produce a warning");
+    assert!(
+        warning.starts_with("Invalid config:"),
+        "parse-error warning must use the 'Invalid config:' prefix, got: {}",
+        warning
+    );
+}
+
+#[test]
+fn test_load_config_unreadable_file_returns_read_warning() {
+    let tmp = tempfile::tempdir().unwrap();
+    // Make config.toml a DIRECTORY: it exists() == true but read_to_string
+    // fails with EISDIR, driving the read-error arm (root-immune unlike chmod).
+    let config_file = jiq_config_path(tmp.path());
+    std::fs::create_dir_all(&config_file).unwrap();
+    assert!(
+        config_file.exists(),
+        "directory-as-config-file should exist"
+    );
+
+    let result = with_home(tmp.path(), load_config);
+
+    assert_eq!(
+        result.config.clipboard.backend,
+        ClipboardBackend::Auto,
+        "unreadable config must fall back to defaults"
+    );
+    let warning = result
+        .warning
+        .expect("unreadable config must produce a warning");
+    assert!(
+        warning.starts_with("Failed to read config:"),
+        "read-error warning must use the 'Failed to read config:' prefix, got: {}",
+        warning
+    );
+}

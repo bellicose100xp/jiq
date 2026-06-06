@@ -911,6 +911,88 @@ fn test_initialize_from_json_triggers_ai_when_visible() {
     );
 }
 
+#[test]
+fn test_new_with_paste_recovery_constructs_with_recovery_state() {
+    // Public constructor used by `--paste` / the picker's Paste option.
+    // It must install the supplied recovery state and leave every
+    // deferred-load slot empty so the app drops straight into the
+    // explicit-paste editor.
+    let app = App::new_with_paste_recovery(
+        crate::input::PasteRecoveryState::new_explicit(),
+        &Config::default(),
+    );
+
+    let recovery = app
+        .paste_recovery
+        .as_ref()
+        .expect("constructor must install the paste-recovery state");
+    assert_eq!(
+        recovery.mode,
+        crate::input::paste_recovery::PasteRecoveryMode::Explicit,
+        "explicit recovery state must survive into app.paste_recovery"
+    );
+    assert!(app.query.is_none(), "no query before any paste is accepted");
+    assert!(
+        app.file_loader.is_none(),
+        "paste-recovery launch must not wire up a file loader"
+    );
+    assert!(
+        app.source_picker.is_none(),
+        "paste-recovery launch must not show the source picker"
+    );
+    assert_eq!(app.focus, Focus::InputField);
+}
+
+#[test]
+fn test_confirm_source_picker_noop_when_no_picker() {
+    // A fresh test_app has no source_picker; confirm must hit the
+    // let-else early return at the top of confirm_source_picker rather
+    // than panicking or mutating any pre-input slot.
+    let mut app = test_app(PICKER_JSON);
+    app.source_picker = None;
+    app.paste_recovery = None;
+    app.clear_dirty();
+
+    app.confirm_source_picker();
+
+    assert!(app.source_picker.is_none());
+    assert!(
+        app.paste_recovery.is_none(),
+        "early return must not enter paste recovery"
+    );
+    assert!(
+        !app.needs_render,
+        "early return must not mark dirty when there is no picker"
+    );
+}
+
+#[test]
+fn test_focus_input_field_noop_when_already_focused() {
+    // A fresh app starts focused on the input field, so calling
+    // focus_input_field is a redundant no-op. The idempotence guard at
+    // the top of focus_input_field must prevent it from clobbering live
+    // ai/tooltip visibility with the stale saved-for-results snapshot.
+    let mut app = test_app(PICKER_JSON);
+    assert_eq!(app.focus, Focus::InputField);
+
+    app.ai.visible = true;
+    app.tooltip.enabled = true;
+    app.saved_ai_visibility_for_results = false;
+    app.saved_tooltip_visibility_for_results = false;
+
+    app.focus_input_field();
+
+    assert_eq!(app.focus, Focus::InputField);
+    assert!(
+        app.ai.visible,
+        "early return must not overwrite ai.visible with stale saved value"
+    );
+    assert!(
+        app.tooltip.enabled,
+        "early return must not overwrite tooltip.enabled with stale saved value"
+    );
+}
+
 #[cfg(test)]
 #[path = "app_state_tests/dirty_flag_tests.rs"]
 mod dirty_flag_tests;

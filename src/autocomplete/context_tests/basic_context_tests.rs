@@ -10,6 +10,18 @@ fn test_empty_query() {
 }
 
 #[test]
+fn test_whitespace_only_query_is_function_context() {
+    // A non-empty all-whitespace query is distinct from the empty-string guard: it passes
+    // the is_empty() check, then skip_trailing_whitespace collapses end to 0, hitting the
+    // `end == 0` guard which returns (FunctionContext, "").
+    let query = "   ";
+    let tracker = tracker_for(query);
+    let (ctx, partial) = analyze_context(query, &tracker);
+    assert_eq!(ctx, SuggestionContext::FunctionContext);
+    assert_eq!(partial, "");
+}
+
+#[test]
 fn test_function_context() {
     let tracker = tracker_for("ma");
     let (ctx, partial) = analyze_context("ma", &tracker);

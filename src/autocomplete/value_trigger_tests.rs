@@ -411,3 +411,91 @@ fn fold_recursion_safety_bounded() {
     // Whether it folds or returns None, it must not panic or hang.
     let _ = classify(&q, q.len());
 }
+
+// === Round 2: fold give-up branches, interpolation escape, IN-lhs guards ===
+
+#[test]
+fn fold_gives_up_on_unknown_named_call_wrapper() {
+    // `foo(.x == "` — `foo` is not an identity/iterating wrapper. Folding from
+    // the `.x` LHS hits the named-call Unknown arm and gives up, so the trigger
+    // still fires (kind + partial correct) but lhs_path falls back to None.
+    let t = classify_at_end("foo(.x == \"a").expect("trigger");
+    assert_eq!(t.kind, TriggerKind::Eq);
+    assert!(t.lhs_path.is_none());
+    assert_eq!(t.partial, "a");
+}
+
+#[test]
+fn fold_gives_up_across_logical_or() {
+    // `.a || .x == "` — the `||` immediately before `.x` is a logical-OR
+    // boundary, distinct from a `|` pipe. Folding classifies it as Unknown and
+    // gives up, so lhs_path is None (must NOT be mis-anchored as a pipe).
+    let t = classify_at_end(".a || .x == \"b").expect("trigger");
+    assert_eq!(t.kind, TriggerKind::Eq);
+    assert!(t.lhs_path.is_none());
+    assert_eq!(t.partial, "b");
+}
+
+#[test]
+fn fold_gives_up_on_bare_open_paren_before_path() {
+    // `(.x == "` — a bare grouping paren (no function name) immediately before
+    // the `.x` LHS. The empty-name guard classifies it as Unknown and folding
+    // gives up, so lhs_path is None.
+    let t = classify_at_end("(.x == \"a").expect("trigger");
+    assert_eq!(t.kind, TriggerKind::Eq);
+    assert!(t.lhs_path.is_none());
+    assert_eq!(t.partial, "a");
+}
+
+#[test]
+fn map_with_predicate_no_inner_path_yields_array_iter() {
+    // `map(contains("` — folding out of `contains` (no inner LHS path) through
+    // the iterating wrapper `map` prepends `[]` onto an empty accumulator,
+    // yielding the bare array iterator `.[]` (right-empty concat short-circuit).
+    let t = classify_at_end("map(contains(\"a").expect("trigger");
+    assert_eq!(t.kind, TriggerKind::Contains);
+    assert_eq!(t.lhs_path.as_deref(), Some(".[]"));
+    assert_eq!(t.partial, "a");
+}
+
+#[test]
+fn escaped_non_paren_does_not_trip_interpolation_guard() {
+    // `select(.x == "a\nb` — the `\n` escape is NOT `\(` interpolation. The
+    // interpolation detector must advance past the escape and return false, so
+    // the trigger still fires with the literal backslash escape preserved.
+    let t = classify_at_end("select(.x == \"a\\nb").expect("trigger");
+    assert_eq!(t.kind, TriggerKind::Eq);
+    assert_eq!(t.lhs_path.as_deref(), Some(".x"));
+    assert!(t.partial.contains("\\n"));
+}
+
+#[test]
+fn bare_open_paren_before_quote_no_function_name() {
+    // `("` and `( "` — an unclosed grouping paren immediately before the quote
+    // with no preceding identifier is not a function call. enclosing_function_call
+    // hits its empty-name guard and classify returns None.
+    assert!(classify_at_end("(\"a").is_none());
+    assert!(classify_at_end("( \"a").is_none());
+}
+
+#[test]
+fn in_with_empty_lhs_before_semicolon_no_path() {
+    // `IN(; "a` — semicolon present but nothing before it. extract_in_lhs_path
+    // slices an empty LHS and returns None at the empty-check, so the In trigger
+    // fires with lhs_path None.
+    let t = classify_at_end("IN(; \"a").expect("trigger");
+    assert_eq!(t.kind, TriggerKind::In);
+    assert!(t.lhs_path.is_none());
+    assert_eq!(t.partial, "a");
+}
+
+#[test]
+fn in_with_non_path_lhs_before_semicolon_no_path() {
+    // `IN(foo; "a` — a bare identifier as the IN LHS. canonicalize_path rejects
+    // it because it does not start with `.`, so the In trigger fires with
+    // lhs_path None.
+    let t = classify_at_end("IN(foo; \"a").expect("trigger");
+    assert_eq!(t.kind, TriggerKind::In);
+    assert!(t.lhs_path.is_none());
+    assert_eq!(t.partial, "a");
+}

@@ -471,3 +471,150 @@ fn test_drag_with_scroll_offset() {
 
     assert_eq!(app.results_cursor.selection_range(), (3, 6));
 }
+
+#[test]
+fn test_hover_back_button_clears_all_pane_hover() {
+    use crate::help::HelpTab;
+
+    let mut app = create_test_app();
+
+    // Seed stale hover state across every pane that the BackButton arm clears.
+    app.results_cursor.update_total_lines(1);
+    app.results_cursor.set_hovered(Some(0));
+
+    app.ai.visible = true;
+    app.ai.suggestions = vec![Suggestion {
+        query: ".test".to_string(),
+        suggestion_type: SuggestionType::Fix,
+        description: String::new(),
+    }];
+    app.ai.selection.set_hovered(Some(0));
+
+    app.snippets.open();
+    app.snippets.set_snippets(vec![crate::snippets::Snippet {
+        name: "test1".to_string(),
+        query: ".test1".to_string(),
+        description: None,
+    }]);
+    app.snippets.set_hovered(Some(0));
+
+    app.help.visible = true;
+    app.help.set_hovered_tab(Some(HelpTab::Input));
+
+    app.history.add_entry_in_memory(".entry");
+    app.history.open(None);
+    app.history.set_hovered(Some(0));
+
+    handle_hover(&mut app, Some(Region::BackButton), create_mouse_event(0, 0));
+
+    assert!(app.back_button_hovered);
+    assert_eq!(app.results_cursor.hovered_line(), None);
+    assert_eq!(app.ai.selection.get_hovered(), None);
+    assert_eq!(app.snippets.get_hovered(), None);
+    assert_eq!(app.help.get_hovered_tab(), None);
+    assert_eq!(app.history.hovered_index(), None);
+}
+
+#[test]
+fn test_hover_results_pane_below_last_line_clears_hover() {
+    let mut app = test_app(r#"["line1","line2"]"#);
+    app.results_cursor.update_total_lines(2);
+    app.layout_regions.results_pane = Some(Rect::new(0, 0, 50, 12));
+    app.results_cursor.set_hovered(Some(0));
+
+    // inner_y = 1, inner_height = 10. Row 5 is well inside the pane, with
+    // offset 0 -> hovered_line = 4, which is >= total_lines (2) -> else branch.
+    handle_hover(
+        &mut app,
+        Some(Region::ResultsPane),
+        create_mouse_event(5, 5),
+    );
+
+    assert_eq!(app.results_cursor.hovered_line(), None);
+}
+
+#[test]
+fn test_hover_ai_window_over_suggestion_sets_hovered() {
+    let mut app = create_test_app();
+    app.ai.visible = true;
+    app.ai.suggestions = vec![
+        Suggestion {
+            query: ".a".to_string(),
+            suggestion_type: SuggestionType::Fix,
+            description: String::new(),
+        },
+        Suggestion {
+            query: ".b".to_string(),
+            suggestion_type: SuggestionType::Fix,
+            description: String::new(),
+        },
+    ];
+    app.layout_regions.ai_window = Some(Rect::new(10, 5, 30, 10));
+    // Suggestion 0 occupies content_y 0, suggestion 1 occupies content_y 1.
+    app.ai.selection.update_layout(vec![1, 1], 8);
+
+    // inner_y = 6, so row 7 -> relative_y = 1 -> suggestion_at_y -> Some(1).
+    handle_hover(&mut app, Some(Region::AiWindow), create_mouse_event(15, 7));
+
+    assert!(!app.ai.selection.is_navigation_active());
+    assert_eq!(app.ai.selection.get_hovered(), Some(1));
+}
+
+#[test]
+fn test_hover_ai_window_out_of_bounds_right_and_bottom_clear() {
+    let mut app = create_test_app();
+    app.ai.visible = true;
+    app.ai.suggestions = vec![Suggestion {
+        query: ".a".to_string(),
+        suggestion_type: SuggestionType::Fix,
+        description: String::new(),
+    }];
+    // inner_x = 11, inner_width = 28 (right exclusive = 39),
+    // inner_y = 6, inner_height = 8 (bottom exclusive = 14).
+    app.layout_regions.ai_window = Some(Rect::new(10, 5, 30, 10));
+    app.ai.selection.update_layout(vec![1], 8);
+
+    // Case A: column at the right exclusive bound triggers the column check.
+    app.ai.selection.set_hovered(Some(0));
+    handle_hover(&mut app, Some(Region::AiWindow), create_mouse_event(39, 7));
+    assert_eq!(app.ai.selection.get_hovered(), None);
+
+    // Case B: row at the bottom exclusive bound triggers the row check.
+    app.ai.selection.set_hovered(Some(0));
+    handle_hover(&mut app, Some(Region::AiWindow), create_mouse_event(15, 14));
+    assert_eq!(app.ai.selection.get_hovered(), None);
+}
+
+#[test]
+fn test_hover_help_popup_right_of_tab_bar_clears_hover() {
+    use crate::help::HelpTab;
+
+    let mut app = create_test_app();
+    app.help.visible = true;
+    // tab_bar_y = 6, inner_x = 11, tab_bar_width = 68 (right exclusive = 79).
+    app.layout_regions.help_popup = Some(Rect::new(10, 5, 70, 20));
+    app.help.set_hovered_tab(Some(HelpTab::Input));
+
+    // On the tab-bar row but at the right exclusive bound -> horizontal clear.
+    handle_hover(&mut app, Some(Region::HelpPopup), create_mouse_event(79, 6));
+
+    assert_eq!(app.help.get_hovered_tab(), None);
+}
+
+#[test]
+fn test_hover_history_popup_when_not_visible_returns_early() {
+    let mut app = create_test_app();
+    // Add entries but do NOT open(), so is_visible() is false.
+    app.history.add_entry_in_memory(".entry");
+    app.layout_regions.history_popup = Some(Rect::new(0, 0, 80, 10));
+
+    assert!(!app.history.is_visible());
+
+    handle_hover(
+        &mut app,
+        Some(Region::HistoryPopup),
+        create_mouse_event(10, 4),
+    );
+
+    assert_eq!(app.history.hovered_index(), None);
+}

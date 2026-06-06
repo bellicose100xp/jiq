@@ -901,3 +901,345 @@ mod back_button_tests {
         );
     }
 }
+
+#[cfg(test)]
+mod timing_format_tests {
+    use super::super::{format_execution_time, get_timing_color};
+    use crate::theme;
+    use ratatui::style::Color;
+
+    #[test]
+    fn format_execution_time_sub_second_and_seconds() {
+        // ms < 1000 renders raw milliseconds.
+        assert_eq!(format_execution_time(0), "0ms");
+        assert_eq!(format_execution_time(999), "999ms");
+        // ms >= 1000 switches to one-decimal seconds with {:.1} rounding.
+        assert_eq!(format_execution_time(1000), "1.0s");
+        assert_eq!(format_execution_time(1500), "1.5s");
+        assert_eq!(format_execution_time(12345), "12.3s");
+    }
+
+    #[test]
+    fn get_timing_color_three_tiers() {
+        // A sentinel border color distinct from every timing theme color so we
+        // can tell the fast (border) arm apart from the slow / very-slow arms.
+        let border = Color::Magenta;
+        assert_ne!(border, theme::results::timing_slow());
+        assert_ne!(border, theme::results::timing_very_slow());
+
+        // Fast tier (ms < 200) returns the passed border color unchanged.
+        assert_eq!(get_timing_color(0, border), border);
+        assert_eq!(get_timing_color(199, border), border);
+
+        // Slow tier (200 <= ms < 1000) returns timing_slow().
+        assert_eq!(get_timing_color(200, border), theme::results::timing_slow());
+        assert_eq!(get_timing_color(999, border), theme::results::timing_slow());
+
+        // Very-slow tier (ms >= 1000) returns timing_very_slow().
+        assert_eq!(
+            get_timing_color(1000, border),
+            theme::results::timing_very_slow()
+        );
+        assert_eq!(
+            get_timing_color(5000, border),
+            theme::results::timing_very_slow()
+        );
+    }
+}
+
+#[cfg(test)]
+mod bottom_center_budget_tests {
+    use super::super::bottom_center_budget;
+    use ratatui::style::Style;
+    use ratatui::text::{Line, Span};
+
+    #[test]
+    fn bottom_center_budget_with_side_titles() {
+        const PADDING: u16 = 2; // BOTTOM_CHROME_PADDING_PER_SIDE
+
+        // Both titles None: side widths are 0 so bind = PADDING, leaving
+        // area_width - 2 (rounded corners) - 2*PADDING for the centered strip.
+        let area_width: u16 = 100;
+        assert_eq!(
+            bottom_center_budget(area_width, None, None),
+            area_width - 2 - 2 * PADDING
+        );
+
+        // A non-None left title with spans summing to 8 cells ("12345" + "678").
+        let left: Line = Line::from(vec![
+            Span::styled("12345", Style::default()),
+            Span::styled("678", Style::default()),
+        ]);
+        let left_w: u16 = 8;
+        // bind = max(left_w, 0) + PADDING; budget = area_width - 2 - 2*bind.
+        let bind = left_w + PADDING;
+        let expected = area_width - 2 - 2 * bind;
+        assert_eq!(
+            bottom_center_budget(area_width, Some(&left), None),
+            expected
+        );
+
+        // The right title binds when it is the wider of the two sides.
+        let right: Line = Line::from(Span::styled("a-much-wider-right-title", Style::default()));
+        let right_w: u16 = "a-much-wider-right-title".len() as u16;
+        let bind_r = right_w + PADDING;
+        let expected_r = area_width - 2 - 2 * bind_r;
+        assert_eq!(
+            bottom_center_budget(area_width, Some(&left), Some(&right)),
+            expected_r
+        );
+
+        // Saturating-to-0: side titles wider than half the row drive the budget
+        // to zero rather than underflowing.
+        let huge: Line = Line::from(Span::styled("x".repeat(60), Style::default()));
+        assert_eq!(bottom_center_budget(40, Some(&huge), None), 0);
+    }
+}
+
+#[cfg(test)]
+mod truncate_hints_tests {
+    use super::super::{build_results_pane_hints, truncate_hints_to_width};
+    use unicode_width::UnicodeWidthStr;
+
+    fn line_width(line: &ratatui::text::Line<'_>) -> u16 {
+        line.spans
+            .iter()
+            .map(|s| UnicodeWidthStr::width(s.content.as_ref()) as u16)
+            .sum()
+    }
+
+    #[test]
+    fn truncate_hints_per_span_fallback_at_extreme_narrow() {
+        // A full hint line is far wider than 1 cell. The triple-pop loop stops
+        // once <= 3 spans remain, so a pathological max_width of 1 forces the
+        // secondary per-span fallback loop to run until the line fits or empties.
+        let hints = build_results_pane_hints(true);
+        let original = line_width(&hints);
+        assert!(
+            original > 1,
+            "fixture must start wider than the target width"
+        );
+
+        let truncated = truncate_hints_to_width(hints, 1);
+        assert!(
+            line_width(&truncated) <= 1,
+            "per-span fallback must shrink the line to <= max_width=1, got {}",
+            line_width(&truncated)
+        );
+
+        // Width 0 is the extreme degenerate case: the fallback must empty it.
+        let hints0 = build_results_pane_hints(true);
+        let truncated0 = truncate_hints_to_width(hints0, 0);
+        assert_eq!(
+            line_width(&truncated0),
+            0,
+            "max_width=0 must yield an empty (zero-width) line"
+        );
+    }
+}
+
+#[cfg(test)]
+mod back_badge_tests {
+    use super::super::{BACK_BADGE_TEXT, build_back_badge};
+    use crate::theme;
+    use ratatui::layout::Rect;
+
+    #[test]
+    fn build_back_badge_hovered_style() {
+        let area = Rect::new(5, 3, 40, 10);
+
+        // Hovered: the badge body span carries the hover style.
+        let (spans_hover, rect_hover) = build_back_badge(area, 0, true);
+        assert_eq!(spans_hover.len(), 2, "leading space span + badge span");
+        assert_eq!(
+            spans_hover[1].style,
+            theme::results::badge_back_hover(),
+            "hovered badge must use the hover style"
+        );
+
+        // Rest state uses the non-hover style — proves the branch actually
+        // diverges rather than always returning the same style.
+        let (spans_rest, _) = build_back_badge(area, 0, false);
+        assert_eq!(spans_rest[1].style, theme::results::badge_back());
+        assert_ne!(
+            theme::results::badge_back_hover(),
+            theme::results::badge_back(),
+            "hover and rest styles must differ for the assertion to be meaningful"
+        );
+
+        // Rect geometry: width is the badge text length, height 1, x offset
+        // is area.x + 2 + start_col_offset (here 0), y is the title row.
+        assert_eq!(rect_hover.width, BACK_BADGE_TEXT.len() as u16);
+        assert_eq!(rect_hover.height, 1);
+        assert_eq!(rect_hover.x, area.x + 2);
+        assert_eq!(rect_hover.y, area.y);
+
+        // A non-zero start_col_offset (e.g. the 2-cell spinner prefix) shifts x.
+        let (_, rect_offset) = build_back_badge(area, 2, true);
+        assert_eq!(rect_offset.x, area.x + 2 + 2);
+    }
+}
+
+#[cfg(test)]
+mod apply_search_highlights_tests {
+    use super::super::apply_search_highlights;
+    use crate::search::SearchState;
+    use ratatui::style::{Color, Style};
+    use ratatui::text::{Line, Span, Text};
+
+    #[test]
+    fn apply_search_highlights_empty_matches_passthrough() {
+        // With no matches, the early-return branch copies every span through
+        // unchanged (content and style) rather than running highlight logic.
+        let input = Text::from(vec![
+            Line::from(vec![
+                Span::styled("hello ", Style::default().fg(Color::Green)),
+                Span::styled("world", Style::default().fg(Color::Red)),
+            ]),
+            Line::from(Span::styled("second", Style::default().fg(Color::Blue))),
+        ]);
+
+        let search = SearchState::default();
+        assert!(search.matches().is_empty(), "fixture must have no matches");
+
+        let out = apply_search_highlights(input, &search, 0, 24);
+
+        assert_eq!(out.lines.len(), 2);
+        // Line 0: two spans preserved verbatim.
+        assert_eq!(out.lines[0].spans.len(), 2);
+        assert_eq!(out.lines[0].spans[0].content.as_ref(), "hello ");
+        assert_eq!(out.lines[0].spans[0].style.fg, Some(Color::Green));
+        assert_eq!(out.lines[0].spans[1].content.as_ref(), "world");
+        assert_eq!(out.lines[0].spans[1].style.fg, Some(Color::Red));
+        // Line 1: single span preserved.
+        assert_eq!(out.lines[1].spans[0].content.as_ref(), "second");
+        assert_eq!(out.lines[1].spans[0].style.fg, Some(Color::Blue));
+    }
+}
+
+#[cfg(test)]
+mod apply_cursor_highlights_tests {
+    use super::super::apply_cursor_highlights;
+    use crate::results::cursor_state::CursorState;
+    use crate::theme;
+    use ratatui::style::Style;
+    use ratatui::text::{Line, Span, Text};
+
+    fn text_three_lines() -> Text<'static> {
+        Text::from(vec![
+            Line::from(Span::styled("line0", Style::default())),
+            Line::from(Span::styled("line1", Style::default())),
+            Line::from(Span::styled("line2", Style::default())),
+        ])
+    }
+
+    #[test]
+    fn apply_cursor_highlights_visual_and_hover_backgrounds() {
+        // Visual selection: enter visual at line 0, move down to line 1 so the
+        // range covers lines 0..=1. Both selected lines get visual_selection_bg.
+        let mut cursor = CursorState::new();
+        cursor.update_total_lines(3);
+        cursor.enter_visual_mode();
+        cursor.move_down(1);
+        assert!(cursor.is_visual_mode());
+        assert_eq!(cursor.selection_range(), (0, 1));
+
+        let out = apply_cursor_highlights(text_three_lines(), &cursor, 0);
+        assert_eq!(
+            out.lines[0].spans[0].style.bg,
+            Some(theme::results::visual_selection_bg()),
+            "line 0 is in the visual selection range"
+        );
+        assert_eq!(
+            out.lines[1].spans[0].style.bg,
+            Some(theme::results::visual_selection_bg()),
+            "line 1 is in the visual selection range"
+        );
+        // Line 2 is outside the selection and not the cursor/hover -> no bg.
+        assert_eq!(out.lines[2].spans[0].style.bg, None);
+
+        // Hover (normal mode): hovering a line that is not the cursor row paints
+        // hovered_line_bg. Cursor sits at line 0; hover line 2.
+        let mut cursor2 = CursorState::new();
+        cursor2.update_total_lines(3);
+        cursor2.set_hovered(Some(2));
+        assert!(!cursor2.is_visual_mode());
+
+        let out2 = apply_cursor_highlights(text_three_lines(), &cursor2, 0);
+        assert_eq!(
+            out2.lines[2].spans[0].style.bg,
+            Some(theme::results::hovered_line_bg()),
+            "the hovered non-cursor line must carry hovered_line_bg"
+        );
+        // The cursor line (0) takes cursor_line_bg, distinct from hover.
+        assert_eq!(
+            out2.lines[0].spans[0].style.bg,
+            Some(theme::results::cursor_line_bg()),
+        );
+        assert_ne!(
+            theme::results::hovered_line_bg(),
+            theme::results::cursor_line_bg(),
+            "hover and cursor backgrounds must differ for the assertion to bite"
+        );
+    }
+}
+
+#[cfg(test)]
+mod cursor_indicator_tests {
+    use super::super::render_cursor_indicator;
+    use crate::results::cursor_state::CursorState;
+    use ratatui::Terminal;
+    use ratatui::backend::TestBackend;
+    use ratatui::layout::Rect;
+
+    const INDICATOR: &str = "▌";
+
+    fn render_with(cursor: &CursorState, scroll_offset: u16, width: u16, height: u16) -> String {
+        let backend = TestBackend::new(width, height);
+        let mut terminal = Terminal::new(backend).unwrap();
+        terminal
+            .draw(|frame| {
+                let area = Rect::new(0, 0, width, height);
+                render_cursor_indicator(frame, area, cursor, scroll_offset, 0);
+            })
+            .unwrap();
+        terminal.backend().to_string()
+    }
+
+    #[test]
+    fn render_cursor_indicator_offscreen_early_returns() {
+        // Above the viewport: cursor_line (1) < scroll_offset (5) -> nothing drawn.
+        let mut above = CursorState::new();
+        above.update_total_lines(100);
+        above.move_to_line(1);
+        let out_above = render_with(&above, 5, 20, 12);
+        assert!(
+            !out_above.contains(INDICATOR),
+            "no indicator when cursor is above the scroll offset:\n{}",
+            out_above
+        );
+
+        // Below the viewport: with height 12, viewport_height = 10. A cursor at
+        // relative_line >= 10 (here line 50, offset 0) sits past the viewport.
+        let mut below = CursorState::new();
+        below.update_total_lines(100);
+        below.move_to_line(50);
+        let out_below = render_with(&below, 0, 20, 12);
+        assert!(
+            !out_below.contains(INDICATOR),
+            "no indicator when cursor is below the viewport:\n{}",
+            out_below
+        );
+
+        // In view: cursor at line 3, offset 0 -> indicator is painted.
+        let mut visible = CursorState::new();
+        visible.update_total_lines(100);
+        visible.move_to_line(3);
+        let out_visible = render_with(&visible, 0, 20, 12);
+        assert!(
+            out_visible.contains(INDICATOR),
+            "indicator must paint when the cursor is within the viewport:\n{}",
+            out_visible
+        );
+    }
+}

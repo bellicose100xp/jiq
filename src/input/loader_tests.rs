@@ -465,6 +465,62 @@ fn test_file_loader_loads_jsonl() {
     assert_eq!(result.unwrap(), jsonl_content);
 }
 
+// ============================================================================
+// poll() Disconnected error branch & ClipboardPeek::is_usable accessor
+// ============================================================================
+
+#[test]
+fn test_poll_returns_io_error_when_thread_disconnects_without_sending() {
+    // Simulate a worker thread that drops its sender without sending a result
+    // (e.g. it panicked). poll() must surface a user-visible Io error rather
+    // than hanging in Loading forever.
+    let (tx, rx) = std::sync::mpsc::channel::<Result<String, JiqError>>();
+    let mut loader = FileLoader {
+        state: LoadingState::Loading,
+        rx: Some(rx),
+        source: LoaderSource::File,
+    };
+    drop(tx);
+
+    let result = loader.poll();
+    assert!(
+        matches!(result, Some(Err(JiqError::Io(_)))),
+        "Disconnected sender should yield Some(Err(JiqError::Io)), got {:?}",
+        result
+    );
+    match result {
+        Some(Err(JiqError::Io(msg))) => {
+            assert!(
+                msg.contains("disconnected"),
+                "error message should mention disconnection, got {:?}",
+                msg
+            );
+        }
+        other => panic!("expected Some(Err(JiqError::Io(_))), got {:?}", other),
+    }
+    assert!(
+        matches!(loader.state(), LoadingState::Error(_)),
+        "state should transition to Error after disconnect"
+    );
+    assert_eq!(
+        loader.poll(),
+        None,
+        "rx should be cleared so subsequent polls return None"
+    );
+}
+
+#[test]
+fn test_clipboard_peek_is_usable_only_for_usable_variant() {
+    assert!(
+        ClipboardPeek::Usable("{}".to_string()).is_usable(),
+        "Usable variant must report usable"
+    );
+    assert!(!ClipboardPeek::Empty.is_usable());
+    assert!(!ClipboardPeek::Invalid.is_usable());
+    assert!(!ClipboardPeek::Primitive.is_usable());
+    assert!(!ClipboardPeek::Unreadable.is_usable());
+}
+
 #[cfg(test)]
 mod property_tests {
     use super::*;

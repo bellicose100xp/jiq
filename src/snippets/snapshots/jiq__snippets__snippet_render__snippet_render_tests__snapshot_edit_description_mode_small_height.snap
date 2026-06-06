@@ -3,7 +3,7 @@ source: src/snippets/snippet_render_tests.rs
 expression: output
 ---
 "╭ Edit Snippet - Description ──────────────────────────────────────────────────╮"
-"│An existing description                                                       │"
+"│Existing description                                                          │"
 "│                                                                              │"
 "╰──────────────────────────────────────────────────────────────────────────────╯"
 "                                                                                "

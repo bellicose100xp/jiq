@@ -172,6 +172,20 @@ mod detect_entry_context_tests {
     }
 
     #[test]
+    fn test_to_entries_direct_iteration_without_pipe() {
+        // Direct, pipe-less `to_entries.[].key` routes through is_in_entry_element_context's
+        // no-pipe `.[` branch and find_entry_element_start's direct-.[] block (the segments of
+        // the detector that the `to_entries | .[].` form never exercises). The parser accepts
+        // this form and it must classify as Direct entry access (we can suggest .key/.value).
+        let query = "to_entries.[].key";
+        assert_eq!(
+            detect_entry_context(query, query.len()),
+            EntryContext::Direct,
+            "to_entries.[].key (no pipe) should be Direct entry access"
+        );
+    }
+
+    #[test]
     fn test_nested_functions_trigger_opaque() {
         let nested_patterns = [
             ("with_entries(.value | map(.", EntryContext::OpaqueValue),

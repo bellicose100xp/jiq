@@ -573,3 +573,16 @@ fn test_entry_at_display_index_out_of_bounds() {
     let state = create_test_state(vec![".foo"]);
     assert_eq!(state.entry_at_display_index(5), None);
 }
+
+#[test]
+fn test_delete_selected_returns_none_for_stale_filtered_index() {
+    let mut state = create_test_state(vec![".foo"]);
+    state.filtered_indices = vec![5];
+    state.selected_index = 0;
+
+    let removed = state.delete_selected();
+
+    assert_eq!(removed, None);
+    assert_eq!(state.total_count(), 1);
+    assert_eq!(state.entry_at_display_index(0), None);
+}
