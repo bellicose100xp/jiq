@@ -261,32 +261,5 @@ impl AsyncBedrockClient {
 }
 
 #[cfg(test)]
-mod async_bedrock_tests {
-    use super::*;
-
-    #[test]
-    fn test_new_creates_client_with_fields() {
-        let client = AsyncBedrockClient::new(
-            "us-east-1".to_string(),
-            "anthropic.claude-3-haiku-20240307-v1:0".to_string(),
-            Some("my-profile".to_string()),
-        );
-
-        assert_eq!(client.region, "us-east-1");
-        assert_eq!(client.model, "anthropic.claude-3-haiku-20240307-v1:0");
-        assert_eq!(client.profile, Some("my-profile".to_string()));
-    }
-
-    #[test]
-    fn test_new_without_profile() {
-        let client = AsyncBedrockClient::new(
-            "us-west-2".to_string(),
-            "amazon.titan-text-express-v1".to_string(),
-            None,
-        );
-
-        assert_eq!(client.region, "us-west-2");
-        assert_eq!(client.model, "amazon.titan-text-express-v1");
-        assert_eq!(client.profile, None);
-    }
-}
+#[path = "async_bedrock_tests.rs"]
+mod async_bedrock_tests;

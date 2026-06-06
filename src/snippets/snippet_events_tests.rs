@@ -8,6 +8,8 @@ mod delete_tests;
 mod description_tests;
 #[path = "snippet_events_tests/edit_query_tests.rs"]
 mod edit_query_tests;
+#[path = "snippet_events_tests/mode_navigation_tests.rs"]
+mod mode_navigation_tests;
 #[path = "snippet_events_tests/navigation_tests.rs"]
 mod navigation_tests;
 #[path = "snippet_events_tests/open_close_tests.rs"]

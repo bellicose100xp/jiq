@@ -107,3 +107,7 @@ where
 
     lines
 }
+
+#[cfg(test)]
+#[path = "suggestions_tests.rs"]
+mod suggestions_tests;

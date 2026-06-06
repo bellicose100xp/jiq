@@ -1,0 +1,28 @@
+---
+source: src/snippets/snippet_render_tests.rs
+expression: output
+---
+"                                                                                "
+"                                                                                "
+"                                                                                "
+"                                                                                "
+"     ╭ Replace Snippet Query ─────────────────────────────────────────────╮     "
+"     │                                                                    │     "
+"     │ Replace query for "My Snippet"?                                    │     "
+"     │                                                                    │     "
+"     │ Old query:                                                         │     "
+"     │   .old | keys                                                      │     "
+"     │                                                                    │     "
+"     │ New query:                                                         │     "
+"     │   .new | keys | sort                                               │     "
+"     │                                                                    │     "
+"     │ Enter Confirm • Esc Cancel                                         │     "
+"     ╰────────────────────────────────────────────────────────────────────╯     "
+"                                                                                "
+"                                                                                "
+"                                                                                "
+"                                                                                "
+"                                                                                "
+"                                                                                "
+"                                                                                "
+"                                                                                "

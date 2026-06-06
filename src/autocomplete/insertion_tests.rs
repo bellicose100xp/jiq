@@ -17,6 +17,8 @@ mod property_tests;
 mod query_execution_tests;
 #[path = "insertion_tests/utf8_tests.rs"]
 mod utf8_tests;
+#[path = "insertion_tests/value_context_tests.rs"]
+mod value_context_tests;
 #[path = "insertion_tests/variable_insertion_tests.rs"]
 mod variable_insertion_tests;
 

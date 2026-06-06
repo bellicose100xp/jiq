@@ -462,6 +462,39 @@ fn test_handle_query_result_wrapper() {
     assert!(!ai_state.is_query_changed(".new"));
 }
 
+// Test: handle_query_result wrapper forwards an Err result
+// Exercises the Err(e) => Err(e.clone()) conversion arm, which then drives
+// handle_execution_result to send an error-context AI request.
+#[test]
+fn test_handle_query_result_wrapper_forwards_error() {
+    let mut ai_state = AiState::new(true);
+    ai_state.enabled = true;
+    ai_state.visible = true; // Popup must be visible for requests to be sent
+    let (tx, rx) = mpsc::channel();
+    ai_state.request_tx = Some(tx);
+    ai_state.set_last_query_hash(".old");
+
+    // Err arm of the generic Result<T, String> wrapper.
+    let result: Result<String, String> = Err("syntax error".to_string());
+    handle_query_result(&mut ai_state, &result, ".new", 4, empty_params());
+
+    // The error was forwarded: a Query request whose prompt carries the error.
+    let request = rx.try_recv();
+    assert!(
+        request.is_ok(),
+        "Err wrapper input should forward an AI request"
+    );
+    let AiRequest::Query { prompt, .. } = request.unwrap();
+    assert!(
+        prompt.contains("troubleshoot"),
+        "Error prompt should mention troubleshooting"
+    );
+    assert!(
+        prompt.contains("syntax error"),
+        "Error prompt should contain the forwarded error message"
+    );
+}
+
 // Test: same query repeated → no duplicate AI requests
 #[test]
 fn test_same_query_no_duplicate_requests() {

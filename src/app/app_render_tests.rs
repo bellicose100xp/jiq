@@ -36,3 +36,6 @@ mod result_state_tests;
 
 #[cfg(test)]
 mod paste_recovery_render_tests;
+
+#[cfg(test)]
+mod render_routing_tests;

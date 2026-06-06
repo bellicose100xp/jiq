@@ -1,3 +1,5 @@
+#[path = "search_events_tests/chord_tests.rs"]
+mod chord_tests;
 #[path = "search_events_tests/drill_tests.rs"]
 mod drill_tests;
 #[path = "search_events_tests/lifecycle_tests.rs"]

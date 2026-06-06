@@ -1,0 +1,28 @@
+---
+source: src/snippets/snippet_render_tests.rs
+expression: output
+---
+"                                                                                "
+"                                                                                "
+"                                                                                "
+"     ╭ Replace Snippet Query ─────────────────────────────────────────────╮     "
+"     │                                                                    │     "
+"     │ Replace query for "This is a very long snippet name that s…"?      │     "
+"     │                                                                    │     "
+"     │ Old query:                                                         │     "
+"     │   .data[] | select(.status == "active" and .type == "premium") | {i│     "
+"     │   email, created_at, metadata, owner, region}                      │     "
+"     │                                                                    │     "
+"     │ New query:                                                         │     "
+"     │   .items[] | select(.enabled == true and .priority == "high") | {uu│     "
+"     │   label, contact, updated_at, tags, group, locale}                 │     "
+"     │                                                                    │     "
+"     │ Enter Confirm • Esc Cancel                                         │     "
+"     ╰────────────────────────────────────────────────────────────────────╯     "
+"                                                                                "
+"                                                                                "
+"                                                                                "
+"                                                                                "
+"                                                                                "
+"                                                                                "
+"                                                                                "

@@ -545,39 +545,5 @@ fn handle_output(app: &App) -> Result<()> {
 }
 
 #[cfg(test)]
-mod main_tests {
-    use super::*;
-    use theme::ResolvedTheme;
-
-    #[test]
-    fn light_mode_ignores_detection() {
-        assert_eq!(
-            resolve_theme(config::ThemeMode::Light, || ResolvedTheme::Dark),
-            ResolvedTheme::Light
-        );
-    }
-
-    #[test]
-    fn dark_mode_ignores_detection() {
-        assert_eq!(
-            resolve_theme(config::ThemeMode::Dark, || ResolvedTheme::Light),
-            ResolvedTheme::Dark
-        );
-    }
-
-    #[test]
-    fn auto_mode_uses_detected_dark() {
-        assert_eq!(
-            resolve_theme(config::ThemeMode::Auto, || ResolvedTheme::Dark),
-            ResolvedTheme::Dark
-        );
-    }
-
-    #[test]
-    fn auto_mode_uses_detected_light() {
-        assert_eq!(
-            resolve_theme(config::ThemeMode::Auto, || ResolvedTheme::Light),
-            ResolvedTheme::Light
-        );
-    }
-}
+#[path = "main_tests.rs"]
+mod main_tests;

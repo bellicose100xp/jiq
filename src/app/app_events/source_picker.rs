@@ -65,3 +65,7 @@ fn can_confirm(app: &App) -> bool {
         SourceChoice::Paste => true,
     }
 }
+
+#[cfg(test)]
+#[path = "source_picker_tests.rs"]
+mod source_picker_tests;
