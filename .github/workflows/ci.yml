@@ -76,6 +76,11 @@ jobs:
           files: coverage/cobertura.xml
           token: ${{ secrets.CODECOV_TOKEN }}
           fail_ci_if_error: true
+          # Pin the Codecov CLI: `latest` (v11.x) ships a GPG-signed binary
+          # whose public key the action can't verify ("Could not verify
+          # signature"), hard-failing the upload. v0.8.0 predates that
+          # verification path and uploads reliably.
+          version: v0.8.0
 
       - name: Upload coverage artifact
         uses: actions/upload-artifact@v4
