@@ -869,3 +869,275 @@ fn test_single_click_autocomplete_only_highlights() {
         "single click must highlight the clicked suggestion"
     );
 }
+
+// Tests for AI window click handling
+
+/// Make the AI window visible with a single suggestion whose query is `.picked`,
+/// layout populated so that inner row 0 maps to suggestion index 0, and the
+/// `ai_window` layout rect tracked at the given origin/size. Returns nothing;
+/// the caller drives `handle_click` and asserts on `app`.
+fn setup_ai_window_one_suggestion(app: &mut crate::app::App, rect: Option<ratatui::layout::Rect>) {
+    use crate::ai::{Suggestion, SuggestionType};
+
+    app.ai.visible = true;
+    app.ai.suggestions = vec![Suggestion {
+        query: ".picked".to_string(),
+        description: String::new(),
+        suggestion_type: SuggestionType::Next,
+    }];
+    // One suggestion of height 1, viewport 10: inner row 0 -> suggestion index 0.
+    app.ai.selection.update_layout(vec![1], 10);
+    app.layout_regions.ai_window = rect;
+}
+
+#[test]
+fn test_click_ai_window_applies_clicked_suggestion() {
+    use ratatui::layout::Rect;
+
+    let mut app = setup_app();
+    setup_ai_window_one_suggestion(&mut app, Some(Rect::new(0, 0, 40, 10)));
+    // Pre-select so the post-click assertion can prove clear_selection ran.
+    app.ai.selection.select_index(0);
+    assert_eq!(app.ai.selection.get_selected(), Some(0));
+
+    // Inner cell (col 1, row 1): inner_x=1, inner_y=1 -> relative_y=0 -> suggestion 0.
+    let mouse = create_mouse_event(1, 1);
+    handle_click(&mut app, Some(Region::AiWindow), mouse);
+
+    assert_eq!(
+        app.input.query(),
+        ".picked",
+        "in-bounds click on a suggestion row should replace the query with that suggestion"
+    );
+    assert!(
+        app.ai.selection.get_selected().is_none(),
+        "applying a clicked suggestion should clear the selection"
+    );
+}
+
+#[test]
+fn test_click_ai_window_out_of_bounds_does_nothing() {
+    use ratatui::layout::Rect;
+
+    let mut app = setup_app();
+    setup_ai_window_one_suggestion(&mut app, Some(Rect::new(0, 0, 40, 10)));
+    let query_before = app.input.query().to_string();
+
+    // Border cell (col 0, row 0) fails the inner-bounds check.
+    let mouse = create_mouse_event(0, 0);
+    handle_click(&mut app, Some(Region::AiWindow), mouse);
+
+    assert_eq!(
+        app.input.query(),
+        query_before,
+        "a click on the AI window border must not apply any suggestion"
+    );
+}
+
+#[test]
+fn test_click_ai_window_no_layout_rect() {
+    let mut app = setup_app();
+    setup_ai_window_one_suggestion(&mut app, None);
+    let query_before = app.input.query().to_string();
+
+    let mouse = create_mouse_event(5, 3);
+    handle_click(&mut app, Some(Region::AiWindow), mouse);
+
+    assert_eq!(
+        app.input.query(),
+        query_before,
+        "with no tracked ai_window rect the click must return without applying"
+    );
+}
+
+// Tests for autocomplete click guard branches
+
+#[test]
+fn test_click_autocomplete_not_visible_does_nothing() {
+    let mut app = setup_app();
+    app.focus = Focus::InputField;
+    // No suggestions pushed -> autocomplete is not visible.
+    assert!(!app.autocomplete.is_visible());
+    app.layout_regions.autocomplete = Some(ratatui::layout::Rect::new(0, 0, 30, 6));
+    let before = app.autocomplete.selected_index();
+
+    let mouse = create_mouse_event(5, 1);
+    handle_click(&mut app, Some(Region::Autocomplete), mouse);
+
+    assert_eq!(
+        app.autocomplete.selected_index(),
+        before,
+        "an invisible autocomplete popup must ignore clicks"
+    );
+}
+
+#[test]
+fn test_click_autocomplete_no_layout_rect() {
+    use crate::autocomplete::autocomplete_state::{Suggestion, SuggestionType};
+
+    let mut app = setup_app();
+    app.focus = Focus::InputField;
+    app.autocomplete.update_suggestions(vec![
+        Suggestion::new("name", SuggestionType::Field),
+        Suggestion::new("age", SuggestionType::Field),
+    ]);
+    assert!(app.autocomplete.is_visible());
+    app.layout_regions.autocomplete = None;
+    let before = app.autocomplete.selected_index();
+
+    let mouse = create_mouse_event(5, 1);
+    handle_click(&mut app, Some(Region::Autocomplete), mouse);
+
+    assert_eq!(
+        app.autocomplete.selected_index(),
+        before,
+        "with no tracked autocomplete rect the click must not select"
+    );
+}
+
+#[test]
+fn test_click_autocomplete_out_of_vertical_bounds() {
+    use crate::autocomplete::autocomplete_state::{Suggestion, SuggestionType};
+
+    let mut app = setup_app();
+    app.focus = Focus::InputField;
+    app.autocomplete.update_suggestions(vec![
+        Suggestion::new("name", SuggestionType::Field),
+        Suggestion::new("age", SuggestionType::Field),
+    ]);
+    app.layout_regions.autocomplete = Some(ratatui::layout::Rect::new(0, 0, 30, 6));
+    let before = app.autocomplete.selected_index();
+
+    // Row 0 is the top border (< inner_y = 1).
+    let mouse = create_mouse_event(5, 0);
+    handle_click(&mut app, Some(Region::Autocomplete), mouse);
+
+    assert_eq!(
+        app.autocomplete.selected_index(),
+        before,
+        "a click above the inner row range must not select"
+    );
+}
+
+#[test]
+fn test_click_autocomplete_index_beyond_suggestions() {
+    use crate::autocomplete::autocomplete_state::{Suggestion, SuggestionType};
+
+    let mut app = setup_app();
+    app.focus = Focus::InputField;
+    app.autocomplete.update_suggestions(vec![
+        Suggestion::new("name", SuggestionType::Field),
+        Suggestion::new("age", SuggestionType::Field),
+    ]);
+    // Tall popup so row 3 is in-bounds but maps to visible_index 2 >= len 2.
+    app.layout_regions.autocomplete = Some(ratatui::layout::Rect::new(0, 0, 30, 8));
+    let before = app.autocomplete.selected_index();
+
+    let mouse = create_mouse_event(5, 3);
+    handle_click(&mut app, Some(Region::Autocomplete), mouse);
+
+    assert_eq!(
+        app.autocomplete.selected_index(),
+        before,
+        "a click on an in-bounds row past the last suggestion must not select"
+    );
+}
+
+#[test]
+fn test_click_results_pane_out_of_vertical_bounds_no_select() {
+    use crate::results::cursor_state::SelectionMode;
+
+    let mut app = setup_app();
+    app.layout_regions.results_pane = Some(ratatui::layout::Rect::new(0, 0, 40, 10));
+
+    // Row 0 is the top border (< inner_y = 1), so the cursor must not move.
+    let mouse = create_mouse_event(5, 0);
+    handle_click(&mut app, Some(Region::ResultsPane), mouse);
+
+    assert_eq!(
+        app.focus,
+        Focus::ResultsPane,
+        "clicking the results pane focuses it even when out of vertical bounds"
+    );
+    assert_eq!(
+        app.results_cursor.cursor_line(),
+        0,
+        "an out-of-bounds row click must not move the cursor"
+    );
+    assert_eq!(
+        app.results_cursor.mode(),
+        SelectionMode::Normal,
+        "an out-of-bounds row click must not trigger click_select (which enters Visual mode)"
+    );
+}
+
+#[test]
+fn test_click_history_popup_when_not_visible_does_nothing() {
+    let mut app = setup_app();
+    assert!(!app.history.is_visible());
+    app.layout_regions.history_popup = Some(ratatui::layout::Rect::new(0, 0, 80, 10));
+    let query_before = app.query().to_string();
+
+    let mouse = create_mouse_event(10, 4);
+    handle_click(&mut app, Some(Region::HistoryPopup), mouse);
+
+    assert_eq!(
+        app.history.total_count(),
+        0,
+        "an invisible history popup must not delete or alter entries"
+    );
+    assert_eq!(
+        app.query(),
+        query_before,
+        "an invisible history popup click must not rewrite the query"
+    );
+}
+
+#[test]
+fn test_click_snippet_list_no_layout_rect() {
+    let mut app = setup_app();
+    app.snippets.open();
+    app.snippets.set_snippets(vec![
+        crate::snippets::Snippet {
+            name: "test1".to_string(),
+            query: ".test1".to_string(),
+            description: None,
+        },
+        crate::snippets::Snippet {
+            name: "test2".to_string(),
+            query: ".test2".to_string(),
+            description: None,
+        },
+    ]);
+    app.layout_regions.snippet_list = None;
+    assert_eq!(app.snippets.selected_index(), 0);
+
+    let mouse = create_mouse_event(5, 2);
+    handle_click(&mut app, Some(Region::SnippetList), mouse);
+
+    assert_eq!(
+        app.snippets.selected_index(),
+        0,
+        "with no tracked snippet_list rect the click must not change selection"
+    );
+}
+
+#[test]
+fn test_click_help_popup_column_out_of_horizontal_bounds() {
+    use crate::help::HelpTab;
+
+    let mut app = setup_app();
+    app.help.visible = true;
+    app.help.active_tab = HelpTab::Global;
+    app.layout_regions.help_popup = Some(ratatui::layout::Rect::new(10, 5, 70, 20));
+
+    // Tab-bar row is y = 6 (help_rect.y + 1). Column 9 is < inner_x = 11.
+    let mouse = create_mouse_event(9, 6);
+    handle_click(&mut app, Some(Region::HelpPopup), mouse);
+
+    assert_eq!(
+        app.help.active_tab,
+        HelpTab::Global,
+        "a tab-bar-row click left of the inner bounds must not change the active tab"
+    );
+}

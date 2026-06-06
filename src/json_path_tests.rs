@@ -806,3 +806,67 @@ mod sibling_at_tests {
         assert_eq!(sibling_at(&v, &p, SiblingDir::Next), SiblingOutcome::Single);
     }
 }
+
+mod parse_error_branch_tests {
+    use super::*;
+
+    #[test]
+    fn parse_rejects_dot_followed_by_non_identifier() {
+        // After consuming `.`, the bareword loop refuses to consume the next
+        // char (pipe, operator), leaving start == i -> None (line 181).
+        // Distinct from a trailing dot (`.users.`), which bails at line 165.
+        // (`. ` is not usable here: the outer trim() collapses it to `.`,
+        // which returns an empty path before reaching this branch.)
+        assert!(parse_jq_path(".|").is_none());
+        assert!(parse_jq_path(".-foo").is_none());
+        assert!(parse_jq_path(".+").is_none());
+    }
+
+    #[test]
+    fn parse_rejects_digit_leading_bareword_key() {
+        // The bareword loop consumes `1abc`/`2` fully, but
+        // is_simple_jq_identifier rejects a digit-leading name -> None (185).
+        assert!(parse_jq_path(".1abc").is_none());
+        assert!(parse_jq_path(".2").is_none());
+    }
+
+    #[test]
+    fn parse_rejects_bare_trailing_open_bracket() {
+        // A `[` with nothing after it bails right after consumption (line 192).
+        // Distinct from `.[5` (digit present, fails later at line 228).
+        assert!(parse_jq_path(".users[").is_none());
+        assert!(parse_jq_path("[").is_none());
+    }
+
+    #[test]
+    fn parse_quoted_key_with_escapes_and_rejects_trailing_backslash() {
+        // Escaped quote inside a quoted key is consumed via the backslash-skip
+        // branch (lines 203-205, 207) and yields a key containing a literal `"`.
+        let p = parse_jq_path(r#".["a\"b"]"#).unwrap();
+        assert_eq!(p.steps().len(), 1);
+        assert_eq!(p.steps()[0], JsonPathStep::Key("a\"b".into()));
+        // Round-trips: `a"b` is not a simple identifier, so to_jq re-escapes it.
+        assert_eq!(p.to_jq(), r#".["a\"b"]"#);
+
+        // A lone trailing backslash (last byte) is the dangling-escape case:
+        // i advances past end inside the skip branch -> None (line 206).
+        assert!(parse_jq_path(".[\"x\\").is_none());
+    }
+
+    #[test]
+    fn parse_rejects_quoted_key_missing_closing_bracket() {
+        // Closing quote is present but the following byte is not `]` (line 219).
+        // Distinct from `.[\"foo` (unterminated string, fails at line 211).
+        assert!(parse_jq_path(r#".["foo"x]"#).is_none());
+        assert!(parse_jq_path(r#".["foo""#).is_none());
+    }
+
+    #[test]
+    fn parse_rejects_bracket_with_invalid_content() {
+        // `[` followed by something other than `]`, `"`, or a digit hits the
+        // inner else -> None (line 236). Distinct from line 239's outer `_`.
+        assert!(parse_jq_path(".[x]").is_none());
+        assert!(parse_jq_path(".[-1]").is_none());
+        assert!(parse_jq_path(".[ ]").is_none());
+    }
+}

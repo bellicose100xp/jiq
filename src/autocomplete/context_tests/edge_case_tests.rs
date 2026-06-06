@@ -542,6 +542,138 @@ mod middle_of_query_tests {
     }
 }
 
+mod no_result_cache {
+    use super::*;
+
+    #[test]
+    fn test_non_executing_context_at_end_with_no_result_is_empty() {
+        // Inside an array builder (non-executing) at the logical end with result_parsed=None,
+        // get_suggestions hits the inner else-arm that returns an empty Vec because there is
+        // no cached result to navigate from.
+        let query = "[.foo.";
+        let tracker = tracker_for(query);
+
+        let suggestions = get_suggestions(
+            query,
+            query.len(),
+            None,                     // no cached result
+            Some(ResultType::Object), // result_type present but unused without a result
+            None,
+            empty_field_names(),
+            &tracker,
+            DEFAULT_ARRAY_SAMPLE_SIZE,
+        );
+
+        assert!(
+            suggestions.is_empty(),
+            "Non-executing context with no cached result should yield no suggestions. Got: {:?}",
+            suggestions.iter().map(|s| &s.text).collect::<Vec<_>>()
+        );
+    }
+
+    #[test]
+    fn test_middle_of_query_with_no_original_json_falls_back_to_all_fields() {
+        let json = r#"{"user": {"name": "a"}}"#;
+        let parsed = Arc::new(serde_json::from_str::<Value>(json).unwrap());
+        let all_fields = field_names_from(&parsed);
+
+        // Cursor after ".user." (middle of query) with original_json=None forces the
+        // !is_at_end branch into its else-arm: fall back to all cached field names.
+        let query = ".user.name";
+        let cursor_pos = 6; // after ".user."
+        let tracker = tracker_for(query);
+
+        let suggestions = get_suggestions(
+            query,
+            cursor_pos,
+            Some(parsed.clone()),
+            Some(ResultType::Object),
+            None, // no original_json
+            all_fields,
+            &tracker,
+            DEFAULT_ARRAY_SAMPLE_SIZE,
+        );
+
+        // No navigation possible, so the degraded fallback shows all known field names.
+        assert!(
+            suggestions.iter().any(|s| s.text == "user"),
+            "Should fall back to all field names when original_json is None. Got: {:?}",
+            suggestions.iter().map(|s| &s.text).collect::<Vec<_>>()
+        );
+    }
+}
+
+mod top_level_pipe_boundary {
+    use super::*;
+
+    #[test]
+    fn test_pipe_boundary_in_middle_of_top_level_expression() {
+        let json = r#"{"foo": {"bar": 1}, "baz": 2}"#;
+        let parsed = Arc::new(serde_json::from_str::<Value>(json).unwrap());
+
+        // No enclosing brace, but a top-level pipe before the path being edited and the
+        // cursor in the middle of the query (text follows). find_expression_boundary takes
+        // its top-level Some(pos) arm, extracting the ".foo." path after the pipe for
+        // navigation. The empty partial after the trailing dot keeps the navigated children
+        // unfiltered.
+        let query = ".baz | .foo. extra";
+        let cursor_pos = ".baz | .foo.".len();
+        let tracker = tracker_for(query);
+
+        let suggestions = get_suggestions(
+            query,
+            cursor_pos,
+            Some(parsed.clone()),
+            Some(ResultType::Object),
+            Some(parsed),
+            empty_field_names(),
+            &tracker,
+            DEFAULT_ARRAY_SAMPLE_SIZE,
+        );
+
+        // Path after the pipe is ".foo", which navigates to {"bar": 1}, suggesting "bar".
+        assert!(
+            suggestions.iter().any(|s| s.text.contains("bar")),
+            "Pipe boundary path extraction should navigate to .foo and suggest 'bar'. Got: {:?}",
+            suggestions.iter().map(|s| &s.text).collect::<Vec<_>>()
+        );
+    }
+}
+
+mod array_builder_after_pipe {
+    use super::*;
+
+    #[test]
+    fn test_dot_after_pipe_in_array_builder_is_opaque() {
+        let json = r#"{"a": 1}"#;
+        let parsed = Arc::new(serde_json::from_str::<Value>(json).unwrap());
+
+        // Inside an array builder (non-element, non-executing) after a pipe with only "."
+        // typed, the path has no segments and is_after_pipe is true. get_nested_field_suggestions
+        // returns None (line 960 guard) because "." after a pipe refers to the pipe's input,
+        // which cannot be known without execution. With no original_json, the result is empty.
+        let query = "[. | .";
+        let tracker = tracker_for(query);
+
+        let suggestions = get_suggestions(
+            query,
+            query.len(),
+            Some(parsed),
+            Some(ResultType::Object),
+            None, // no original_json fallback
+            empty_field_names(),
+            &tracker,
+            DEFAULT_ARRAY_SAMPLE_SIZE,
+        );
+
+        assert!(
+            suggestions.is_empty(),
+            "'.' after a pipe in an array builder is opaque and should yield no fields. Got: {:?}",
+            suggestions.iter().map(|s| &s.text).collect::<Vec<_>>()
+        );
+    }
+}
+
 mod performance_tests {
     use super::*;
     use std::time::Instant;

@@ -1073,3 +1073,179 @@ fn test_poll_response_with_no_receiver() {
     let result = state.poll_response();
     assert!(result.is_none());
 }
+
+// ============================================================================
+// Deterministic Async Error/Staleness Branch Tests (Round 2)
+//
+// These drive the std::sync::mpsc channel state and process_response directly
+// instead of relying on the timing-dependent real worker thread, so the
+// disconnect/stale/cancelled branches are covered reliably.
+// ============================================================================
+
+const ASYNC_TEST_JSON: &str = r#"{"test": true}"#;
+
+/// Build a minimal ProcessedResult for a successful response with the given
+/// query and is_only_nulls flag. Used to construct QueryResponse values
+/// directly without round-tripping through the worker thread.
+fn make_processed_result(
+    query: &str,
+    is_only_nulls: bool,
+) -> crate::query::worker::types::ProcessedResult {
+    crate::query::worker::types::ProcessedResult {
+        output: Arc::new("42".to_string()),
+        unformatted: Arc::new("42".to_string()),
+        rendered_lines: Vec::new(),
+        parsed: None,
+        line_count: 0,
+        max_width: 0,
+        line_widths: Arc::new(Vec::new()),
+        result_type: ResultType::Number,
+        is_synthetic_merge: false,
+        query: query.to_string(),
+        execution_time_ms: None,
+        is_only_nulls,
+    }
+}
+
+#[test]
+fn test_execute_async_send_failure_clears_channels() {
+    let mut state = QueryState::new(ASYNC_TEST_JSON.to_string());
+
+    // Replace the request channel with one whose receiver is dropped, so the
+    // worker appears dead and tx.send() fails.
+    let (tx, rx) = channel::<QueryRequest>();
+    drop(rx);
+    state.request_tx = Some(tx);
+
+    state.execute_async(".");
+
+    // Send-failure recovery path: all channels and in-flight tracking cleared,
+    // and result set to the disconnected error (not left pending).
+    assert!(state.request_tx.is_none());
+    assert!(state.response_rx.is_none());
+    assert!(state.in_flight_request_id.is_none());
+    assert!(state.current_cancel_token.is_none());
+    assert!(!state.is_pending());
+    assert!(state.result.is_err());
+    assert!(
+        state.result.as_ref().unwrap_err().contains("disconnected"),
+        "expected disconnected error, got: {:?}",
+        state.result
+    );
+}
+
+#[test]
+fn test_poll_response_handles_worker_disconnect() {
+    let mut state = QueryState::new(ASYNC_TEST_JSON.to_string());
+
+    // Replace the response channel with one whose sender is dropped, so the
+    // next try_recv() yields Disconnected.
+    let (tx, rx) = channel::<QueryResponse>();
+    drop(tx);
+    state.response_rx = Some(rx);
+    // Force the in_flight is_some() branch so the failure path runs.
+    state.in_flight_request_id = Some(7);
+    state.current_cancel_token = Some(CancellationToken::new());
+
+    let out = state.poll_response();
+
+    // Disconnected-with-in-flight path: returns the empty-string sentinel,
+    // clears in-flight tracking + channels, and records the error.
+    assert_eq!(out, Some(String::new()));
+    assert!(state.in_flight_request_id.is_none());
+    assert!(state.current_cancel_token.is_none());
+    assert!(state.request_tx.is_none());
+    // Receiver is NOT put back when disconnected.
+    assert!(state.response_rx.is_none());
+    assert!(state.result.is_err());
+    assert!(
+        state.result.as_ref().unwrap_err().contains("disconnected"),
+        "expected disconnected error, got: {:?}",
+        state.result
+    );
+}
+
+#[test]
+fn test_process_response_discards_stale_processed_success() {
+    let mut state = QueryState::new(ASYNC_TEST_JSON.to_string());
+
+    // Current in-flight request is 100; the response below carries id 42.
+    state.in_flight_request_id = Some(100);
+    let cache_before = state.base_query_for_suggestions.clone();
+    let result_before = state.result.clone();
+
+    let response = QueryResponse::ProcessedSuccess {
+        processed: make_processed_result(".stale", false),
+        request_id: 42,
+    };
+    let returned = state.process_response(response);
+
+    // Stale response: ignored entirely, no state change.
+    assert!(returned.is_none());
+    assert_eq!(state.in_flight_request_id, Some(100));
+    assert_eq!(state.base_query_for_suggestions, cache_before);
+    assert_eq!(state.result, result_before);
+}
+
+#[test]
+fn test_process_response_error_arm_matching_and_stale() {
+    let mut state = QueryState::new(ASYNC_TEST_JSON.to_string());
+
+    // Matching request-level error applies: returns the query, sets Err,
+    // clears in-flight tracking, and is_empty_result is reset.
+    state.in_flight_request_id = Some(5);
+    state.is_empty_result = true;
+    let returned = state.process_response(QueryResponse::Error {
+        message: "boom".to_string(),
+        query: ".x".to_string(),
+        request_id: 5,
+    });
+    assert_eq!(returned, Some(".x".to_string()));
+    assert_eq!(state.result, Err("boom".to_string()));
+    assert!(!state.is_empty_result);
+    assert!(state.in_flight_request_id.is_none());
+
+    // Stale request-level error (id 1, non-zero, != in-flight 9): no-op.
+    state.in_flight_request_id = Some(9);
+    let result_before = state.result.clone();
+    let returned = state.process_response(QueryResponse::Error {
+        message: "late".to_string(),
+        query: ".old".to_string(),
+        request_id: 1,
+    });
+    assert!(returned.is_none());
+    assert_eq!(state.in_flight_request_id, Some(9));
+    assert_eq!(state.result, result_before);
+
+    // Worker-level error (request_id == 0) applies even when in-flight differs.
+    state.in_flight_request_id = Some(9);
+    let returned = state.process_response(QueryResponse::Error {
+        message: "worker dead".to_string(),
+        query: ".w".to_string(),
+        request_id: 0,
+    });
+    assert_eq!(returned, Some(".w".to_string()));
+    assert_eq!(state.result, Err("worker dead".to_string()));
+    assert!(state.in_flight_request_id.is_none());
+}
+
+#[test]
+fn test_process_response_cancelled_arm() {
+    let mut state = QueryState::new(ASYNC_TEST_JSON.to_string());
+
+    // Matching cancellation: clears in-flight tracking and cancel token.
+    state.in_flight_request_id = Some(3);
+    state.current_cancel_token = Some(CancellationToken::new());
+    let returned = state.process_response(QueryResponse::Cancelled { request_id: 3 });
+    assert!(returned.is_none());
+    assert!(state.in_flight_request_id.is_none());
+    assert!(state.current_cancel_token.is_none());
+
+    // Non-matching cancellation (99 != in-flight 3): leaves state untouched.
+    state.in_flight_request_id = Some(3);
+    state.current_cancel_token = Some(CancellationToken::new());
+    let returned = state.process_response(QueryResponse::Cancelled { request_id: 99 });
+    assert!(returned.is_none());
+    assert_eq!(state.in_flight_request_id, Some(3));
+    assert!(state.current_cancel_token.is_some());
+}

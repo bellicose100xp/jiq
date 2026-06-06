@@ -131,6 +131,25 @@ fn expand_empty_pattern_errors() {
 }
 
 #[test]
+fn expand_path_post_expansion_empty_errors() {
+    // A syntactically valid pattern (passes the pre-expansion non-empty check)
+    // can still resolve to nothing once an empty env var is substituted. This
+    // exercises the post-expansion guard at save_io.rs:66-67, distinct from the
+    // pre-expansion branch covered by expand_empty_pattern_errors.
+    unsafe {
+        env::set_var("JIQ_TEST_EXPAND_EMPTY", "");
+    }
+    let err = expand_path("${JIQ_TEST_EXPAND_EMPTY}", "json", ts()).unwrap_err();
+    unsafe {
+        env::remove_var("JIQ_TEST_EXPAND_EMPTY");
+    }
+    match err {
+        SaveError::BadPath(msg) => assert_eq!(msg, "expanded path is empty"),
+        other => panic!("expected BadPath, got {:?}", other),
+    }
+}
+
+#[test]
 fn expand_combines_multiple_placeholders() {
     unsafe {
         env::set_var("JIQ_TEST_BASE", "/base");

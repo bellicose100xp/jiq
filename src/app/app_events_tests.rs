@@ -2,7 +2,7 @@
 
 use crate::app::Focus;
 use crate::editor::EditorMode;
-use crate::test_utils::test_helpers::{app_with_query, key_with_mods, test_app};
+use crate::test_utils::test_helpers::{app_with_query, key, key_with_mods, test_app};
 use proptest::prelude::*;
 use ratatui::crossterm::event::{KeyCode, KeyModifiers, MouseButton, MouseEvent, MouseEventKind};
 use std::sync::Arc;
@@ -491,6 +491,208 @@ fn test_esc_closes_help_before_snippets() {
     );
 }
 
+#[test]
+fn help_shift_tab_navigates_to_previous_tab() {
+    use crate::help::HelpTab;
+    // Some terminals encode shift-tab as Tab + SHIFT (rather than BackTab).
+    // That path is a distinct match arm from the BackTab arm and must also
+    // move to the previous tab.
+    let mut app = app_with_query(".");
+    app.help.visible = true;
+    app.help.active_tab = HelpTab::Input;
+
+    app.handle_key_event(key_with_mods(KeyCode::Tab, KeyModifiers::SHIFT));
+
+    assert_eq!(app.help.active_tab, HelpTab::Global);
+}
+
+#[test]
+fn backtab_with_history_visible_swaps_results_to_input_focus() {
+    // BackTab closes the history popup and swaps focus. From ResultsPane it
+    // must land on InputField (the ResultsPane arm of the focus swap).
+    let mut app = app_with_query(".");
+    app.history.add_entry(".test");
+    app.history.open(None);
+    app.focus = Focus::ResultsPane;
+    assert!(app.history.is_visible());
+
+    app.handle_key_event(key(KeyCode::BackTab));
+
+    assert!(!app.history.is_visible(), "BackTab should close history");
+    assert_eq!(
+        app.focus,
+        Focus::InputField,
+        "BackTab from ResultsPane should swap focus to InputField"
+    );
+}
+
+#[test]
+fn save_popup_key_routes_through_handle_key_event() {
+    // With the save popup visible and no higher popup active, handle_key_event
+    // must route the key to save_events::handle_save_popup_key. Esc closes the
+    // filename editor, proving the key reached the save handler.
+    let mut app = app_with_query(".name");
+    app.save.open("2026-01-01_00-00-00".to_string());
+    assert!(app.save.is_visible());
+
+    app.handle_key_event(key(KeyCode::Esc));
+
+    assert!(
+        !app.save.is_visible(),
+        "Esc should close the save popup via the key pipeline"
+    );
+}
+
+#[test]
+fn ctrl_y_clipboard_copy_routes_and_returns_via_handle_key_event() {
+    use crate::config::ClipboardBackend;
+    // Ctrl+Y reaches the clipboard stage of handle_key_event (global keys do
+    // not consume it), copy_query succeeds via the Osc52 backend (writes an
+    // escape sequence to stdout, no system clipboard), and handle_clipboard_key
+    // returns true causing the early return. The "Copied query!" notification
+    // is the observable proof the clipboard branch ran.
+    let mut app = app_with_query(".name");
+    app.clipboard_backend = ClipboardBackend::Osc52;
+    app.focus = Focus::InputField;
+
+    app.handle_key_event(key_with_mods(KeyCode::Char('y'), KeyModifiers::CONTROL));
+
+    let notif = app.notification.current().expect("notification expected");
+    assert_eq!(notif.message, "Copied query!");
+}
+
+#[test]
+fn poll_query_response_returns_false_when_no_query() {
+    // No query state -> nothing to poll, returns false (None path).
+    let mut app = test_app(r#"{"x": 1}"#);
+    app.query = None;
+
+    assert!(!app.poll_query_response());
+}
+
+#[test]
+fn poll_query_response_completes_non_ai_query_and_updates_stats() {
+    // Drive an async query through the live worker, then poll via the App
+    // wrapper. The completion arm updates stats and returns true. Polling
+    // directly (not via wait_for_query_completion) so poll_query_response
+    // itself consumes the worker response.
+    let mut app = app_with_query(".name");
+    app.ai.visible = false;
+    if let Some(qs) = app.query.as_mut() {
+        qs.execute_async(".name");
+    }
+
+    let start = std::time::Instant::now();
+    let mut completed = false;
+    while start.elapsed() < std::time::Duration::from_millis(2000) {
+        if app.poll_query_response() {
+            completed = true;
+            break;
+        }
+        std::thread::sleep(std::time::Duration::from_millis(10));
+    }
+
+    assert!(completed, "poll_query_response should report completion");
+    let result = app.query.as_ref().unwrap().result.as_ref().unwrap();
+    assert!(
+        result.contains("test"),
+        "completed result should reflect .name -> \"test\""
+    );
+}
+
+#[test]
+fn poll_query_response_completes_with_ai_visible_without_network() {
+    // When ai.visible, the completion arm builds AI context params and calls
+    // handle_query_result. The default test AiState has request_tx == None, so
+    // send_request short-circuits (no network). poll_query_response still
+    // returns true and the result is applied.
+    let mut app = app_with_query(".name");
+    app.ai.visible = true;
+    assert!(app.ai.request_tx.is_none(), "no AI worker in tests");
+    if let Some(qs) = app.query.as_mut() {
+        qs.execute_async(".name");
+    }
+
+    let start = std::time::Instant::now();
+    let mut completed = false;
+    while start.elapsed() < std::time::Duration::from_millis(2000) {
+        if app.poll_query_response() {
+            completed = true;
+            break;
+        }
+        std::thread::sleep(std::time::Duration::from_millis(10));
+    }
+
+    assert!(
+        completed,
+        "poll_query_response should complete even with AI visible"
+    );
+    assert!(app.query.as_ref().unwrap().result.is_ok());
+}
+
+#[cfg(test)]
+mod source_picker_router_tests {
+    use super::*;
+    use crate::app::App;
+    use crate::config::Config;
+    use crate::input::loader::ClipboardPeek;
+    use crate::input::{SourceChoice, SourcePickerState};
+
+    fn picker_app() -> App {
+        App::new_with_source_picker(
+            SourcePickerState::from_peek(ClipboardPeek::Empty),
+            &Config::default(),
+        )
+    }
+
+    #[test]
+    fn router_ctrl_c_quits_before_picker() {
+        // Truly global Ctrl+C is handled first and short-circuits the picker.
+        let mut app = picker_app();
+        assert!(!app.should_quit);
+
+        app.handle_source_picker_key_event(key_with_mods(
+            KeyCode::Char('c'),
+            KeyModifiers::CONTROL,
+        ));
+
+        assert!(app.should_quit);
+    }
+
+    #[test]
+    fn router_help_visible_routes_to_help_handler() {
+        // F1 help can be shown over the picker; the router then sends keys to
+        // handle_help_keys (Esc closes help) before the picker handler.
+        let mut app = picker_app();
+        app.help.visible = true;
+
+        app.handle_source_picker_key_event(key(KeyCode::Esc));
+
+        assert!(!app.help.visible, "Esc must close help over the picker");
+        assert!(!app.should_quit, "Esc closed help, did not quit");
+    }
+
+    #[test]
+    fn router_delegates_navigation_key_to_picker() {
+        // With help hidden and Ctrl+C not pressed, the router delegates to
+        // source_picker::handle_key. 'h' selects the previous option, moving
+        // the empty-clipboard default (Paste) to Clipboard.
+        let mut app = picker_app();
+        assert_eq!(
+            app.source_picker.as_ref().unwrap().selection,
+            SourceChoice::Paste
+        );
+
+        app.handle_source_picker_key_event(key(KeyCode::Char('h')));
+
+        assert_eq!(
+            app.source_picker.as_ref().unwrap().selection,
+            SourceChoice::Clipboard,
+            "'h' should reach the picker and move the highlight"
+        );
+    }
+}
+
 #[cfg(test)]
 mod paste_recovery_event_tests {
     use super::*;
@@ -889,6 +1091,42 @@ mod paste_recovery_event_tests {
             KeyModifiers::CONTROL,
         ));
         assert!(app.should_quit);
+    }
+
+    #[test]
+    fn recovery_router_help_visible_routes_to_help_handler() {
+        // When help is shown on top of recovery, the router must hand the
+        // key to handle_help_keys (Esc closes help) before reaching the
+        // recovery editor. Covers the help-visible branch in
+        // handle_paste_recovery_key_event.
+        let mut app = app_in_recovery();
+        app.help.visible = true;
+        app.input.textarea.insert_str("untouched");
+
+        app.handle_paste_recovery_key_event(key(KeyCode::Esc));
+
+        assert!(!app.help.visible, "Esc must close help while recovering");
+        // The recovery editor never saw the Esc, so its content is intact.
+        assert_eq!(app.input.textarea.lines().join("\n"), "untouched");
+        assert!(app.paste_recovery.is_some(), "still in recovery");
+    }
+
+    #[test]
+    fn recovery_router_delegates_ordinary_key_to_recovery_handler() {
+        // With help hidden and Ctrl+C not pressed, the router delegates to
+        // paste_recovery::handle_key. In Normal mode 'x' deletes the char
+        // under the cursor, proving the key reached the recovery editor
+        // through the wrapper (not via a direct handle_key call).
+        let mut app = app_in_recovery();
+        app.input.textarea.insert_str("abc");
+        app.input
+            .textarea
+            .move_cursor(tui_textarea::CursorMove::Head);
+        app.input.editor_mode = EditorMode::Normal;
+
+        app.handle_paste_recovery_key_event(key(KeyCode::Char('x')));
+
+        assert_eq!(app.input.textarea.lines().join("\n"), "bc");
     }
 
     #[test]

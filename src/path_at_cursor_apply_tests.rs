@@ -7,6 +7,14 @@ fn place_cursor(app: &mut App, row: u32) {
     app.results_cursor.move_to_line(row);
 }
 
+/// Drop the parsed result so `resolve_path` (and `App::current_cursor_path`)
+/// can't resolve a cursor path, exercising the upstream `NoPath` guards.
+fn clear_parsed_result(app: &mut App) {
+    if let Some(qs) = app.query.as_mut() {
+        qs.last_successful_result_parsed = None;
+    }
+}
+
 #[test]
 fn apply_schedules_debouncer_does_not_run_query_synchronously() {
     let mut app = test_app(r#"{"a": 1, "b": 2}"#);
@@ -615,4 +623,119 @@ fn sibling_walk_inside_object_with_special_keys() {
     let outcome = apply_sibling_cursor(&mut app, PathSource::CursorRow, SiblingDir::Next);
 
     assert_eq!(outcome, SiblingCursorOutcome::Moved(2));
+}
+
+// ----- resolve guards on iterate / keep-kv / explicit-row -----
+
+#[test]
+fn iterate_returns_no_path_when_resolution_fails() {
+    // `*` must be a hard no-op (NoPath, not NoArrayToIterate) when there is
+    // no resolvable cursor path — guarding apply_iterate's own resolve arm,
+    // distinct from apply_path's.
+    let mut app = test_app(r#"{"a": 1}"#);
+    app.input.textarea.insert_str(".existing");
+    clear_parsed_result(&mut app);
+
+    let outcome = apply_iterate(&mut app, PathSource::CursorRow);
+
+    assert_eq!(outcome, ApplyOutcome::NoPath);
+    assert_eq!(app.input.query(), ".existing", "input untouched on NoPath");
+}
+
+#[test]
+fn keep_kv_returns_no_path_when_resolution_fails() {
+    // `}` distinguishes "no resolvable path" (NoPath) from "path resolved
+    // but ends in no Key" (NoKeyToWrap). With no parsed result we hit the
+    // upstream resolve guard, not NoKeyToWrap.
+    let mut app = test_app(r#"{"a": 1}"#);
+    app.input.textarea.insert_str(".existing");
+    clear_parsed_result(&mut app);
+
+    let outcome = apply_keep_kv(&mut app, PathSource::CursorRow);
+
+    assert_eq!(outcome, ApplyOutcome::NoPath);
+    assert_eq!(app.input.query(), ".existing", "input untouched on NoPath");
+}
+
+#[test]
+fn row_source_gated_by_synthetic_merge_result() {
+    // The explicit-Row source mirrors current_cursor_path's gating: a
+    // synthetic-merge result must not be drilled into, so resolve_path
+    // returns None and apply_path reports NoPath even though a parsed
+    // result is present.
+    let mut app = test_app(r#"{"a": 1, "b": 2}"#);
+    place_cursor(&mut app, 0);
+    if let Some(qs) = app.query.as_mut() {
+        // Leave last_successful_result_parsed = Some so the earlier `?`
+        // passes; the synthetic-merge flag is what trips the gate.
+        assert!(
+            qs.last_successful_result_parsed.is_some(),
+            "precondition: parsed result present"
+        );
+        qs.is_synthetic_merge = true;
+    }
+
+    let outcome = apply_path(&mut app, PathSource::Row(2));
+
+    assert_eq!(outcome, ApplyOutcome::NoPath);
+    assert_eq!(
+        app.input.query(),
+        "",
+        "synthetic-merge row must not drill in"
+    );
+}
+
+// ----- step out (`[`) — pipe-tail edge cases -----
+
+#[test]
+fn step_out_with_literal_pipe_dot_tail_walks_into_prefix() {
+    // A trailing `| .` segment parses to an empty (root) path, so the whole
+    // ` | .` is dropped and we step into the prefix `.a`.
+    let mut app = test_app(r#"{"a": {"b": 1}}"#);
+    app.input.textarea.insert_str(".a | .");
+
+    let outcome = apply_step_out(&mut app);
+
+    assert_eq!(outcome, StepOutOutcome::Stepped(".a".into()));
+    assert_eq!(app.input.query(), ".a");
+}
+
+#[test]
+fn step_out_multistep_tail_keeps_pipe_prefix() {
+    // The post-pipe tail `.b.c` pops to a still-non-root `.b`, so it is
+    // reassembled with the prefix as `.a | .b`.
+    let mut app = test_app(r#"{"a": {"b": {"c": 1}}}"#);
+    app.input.textarea.insert_str(".a | .b.c");
+
+    let outcome = apply_step_out(&mut app);
+
+    assert_eq!(outcome, StepOutOutcome::Stepped(".a | .b".into()));
+    assert_eq!(app.input.query(), ".a | .b");
+}
+
+// ----- deferred viewport restore -----
+
+#[test]
+fn viewport_restore_is_noop_when_nothing_pending() {
+    // The deferred-restore fn must early-return (no cursor/scroll mutation)
+    // when no restore was queued by a prior `<`.
+    let mut app = test_app(r#"{"a": 1}"#);
+    place_cursor(&mut app, 1);
+    app.results_scroll.offset = 7;
+    app.results_scroll.h_offset = 3;
+    assert!(app.pending_viewport_restore.is_none());
+
+    apply_pending_viewport_restore(&mut app);
+
+    assert!(
+        app.pending_viewport_restore.is_none(),
+        "no restore queued, so nothing to take"
+    );
+    assert_eq!(
+        app.results_cursor.cursor_line(),
+        1,
+        "cursor must be untouched when nothing pending"
+    );
+    assert_eq!(app.results_scroll.offset, 7, "scroll offset untouched");
+    assert_eq!(app.results_scroll.h_offset, 3, "h_offset untouched");
 }

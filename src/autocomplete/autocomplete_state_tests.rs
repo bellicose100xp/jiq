@@ -1,7 +1,16 @@
 //! Tests for autocomplete_state
 
 use super::*;
-use crate::test_utils::test_helpers::test_app;
+use crate::test_utils::test_helpers::{app_with_query, test_app};
+
+/// Collect the suggestion texts currently offered, in order.
+fn suggestion_texts(app: &App) -> Vec<&str> {
+    app.autocomplete
+        .suggestions()
+        .iter()
+        .map(|s| s.text.as_str())
+        .collect()
+}
 
 #[test]
 fn test_update_suggestions_from_app_when_query_none() {
@@ -282,4 +291,144 @@ fn test_scrollable_content_fits_in_viewport() {
 
     state.scroll_view_down(5);
     assert_eq!(Scrollable::scroll_offset(&state), 0); // Can't scroll when content fits
+}
+
+// Value-string autocomplete pipeline (update_suggestions_from_app value branch)
+
+#[test]
+fn test_value_eq_trigger_collects_path_scoped_strings() {
+    // `.name == "` fires an Eq trigger with lhs_path Some(".name"); the
+    // collector walks the JSON at that path and returns the value(s) there.
+    let mut app = app_with_query(r#".name == ""#);
+
+    update_suggestions_from_app(&mut app);
+
+    assert!(app.autocomplete.is_visible());
+    assert_eq!(suggestion_texts(&app), ["test"]);
+    let first = &app.autocomplete.suggestions()[0];
+    assert_eq!(first.suggestion_type, SuggestionType::Value);
+    assert_eq!(first.field_type, Some(JsonFieldType::String));
+}
+
+#[test]
+fn test_value_trigger_with_unresolvable_path_uses_global_firehose() {
+    // `contains("` yields lhs_path None, so the collector falls back to the
+    // executor's global string list (every distinct string in the JSON).
+    let mut app = app_with_query(r#"contains(""#);
+
+    update_suggestions_from_app(&mut app);
+
+    assert!(app.autocomplete.is_visible());
+    let texts = suggestion_texts(&app);
+    // TEST_JSON distinct strings: NYC, arn1, svc1, tag1, test.
+    assert!(
+        texts.contains(&"NYC"),
+        "expected global firehose, got {texts:?}"
+    );
+    assert!(
+        texts.contains(&"svc1"),
+        "expected global firehose, got {texts:?}"
+    );
+    assert!(
+        texts.contains(&"test"),
+        "expected global firehose, got {texts:?}"
+    );
+    // The path-scoped collector would have returned only [".name"]'s value;
+    // the firehose returns multiple distinct strings.
+    assert!(texts.len() >= 3);
+    assert!(
+        app.autocomplete
+            .suggestions()
+            .iter()
+            .all(|s| s.suggestion_type == SuggestionType::Value)
+    );
+}
+
+#[test]
+fn test_has_on_object_lhs_falls_through_to_field_dispatch() {
+    // `. | has("` classifies as HasOrIn with lhs_path resolving to the root
+    // object; lhs_resolves_to_object is true so update_value_suggestions
+    // returns false and the dispatcher falls through to field-name suggestions
+    // (no SuggestionType::Value entries).
+    let mut app = app_with_query(r#". | has(""#);
+
+    update_suggestions_from_app(&mut app);
+
+    assert!(
+        app.autocomplete
+            .suggestions()
+            .iter()
+            .all(|s| s.suggestion_type != SuggestionType::Value),
+        "has() over an object lhs must not offer value strings, got {:?}",
+        suggestion_texts(&app)
+    );
+}
+
+#[test]
+fn test_value_trigger_hides_when_input_json_unparseable() {
+    // query is Some but the input JSON failed to parse, so json_input_parsed()
+    // is None. A value trigger over invalid JSON hides the popup and reports
+    // handled, distinct from the query==None early hide.
+    let mut app = test_app("not json at all");
+    app.autocomplete
+        .update_suggestions(vec![Suggestion::new("x", SuggestionType::Field)]);
+    assert!(app.autocomplete.is_visible());
+    app.input.textarea.insert_str(r#".name == ""#);
+
+    update_suggestions_from_app(&mut app);
+
+    assert!(!app.autocomplete.is_visible());
+}
+
+#[test]
+fn test_value_memo_reuses_walk_on_consecutive_keystroke() {
+    // First keystroke at `.name == "` walks the JSON and memoizes
+    // [path:.name -> ["test"]]. Typing `t` reuses the cached list (same memo
+    // key) and filters it by the new partial via the contains branch.
+    let mut app = app_with_query(r#".name == ""#);
+    update_suggestions_from_app(&mut app);
+    assert_eq!(suggestion_texts(&app), ["test"]);
+
+    app.input.textarea.insert_str("t");
+    update_suggestions_from_app(&mut app);
+
+    assert!(app.autocomplete.is_visible());
+    // "t" is a substring of "test", so the memoized value survives filtering.
+    assert_eq!(suggestion_texts(&app), ["test"]);
+    assert_eq!(
+        app.autocomplete.suggestions()[0].suggestion_type,
+        SuggestionType::Value
+    );
+}
+
+#[test]
+fn test_value_memo_partial_filters_out_non_matches() {
+    // Same memo reuse path, but a partial that does NOT match the cached
+    // value filters it out, leaving an empty (hidden) suggestion list.
+    let mut app = app_with_query(r#".name == ""#);
+    update_suggestions_from_app(&mut app);
+    assert_eq!(suggestion_texts(&app), ["test"]);
+
+    app.input.textarea.insert_str("z");
+    update_suggestions_from_app(&mut app);
+
+    // "z" is not in "test"; the cached list filters to nothing.
+    assert!(suggestion_texts(&app).is_empty());
+    assert!(!app.autocomplete.is_visible());
+}
+
+#[test]
+fn test_suggestion_type_value_display() {
+    assert_eq!(SuggestionType::Value.to_string(), "value");
+}
+
+#[test]
+fn test_set_selected_index_no_op_when_empty() {
+    let mut state = AutocompleteState::new();
+    assert_eq!(state.selected_index(), 0);
+
+    state.set_selected_index(3);
+
+    // Empty list: the guard returns early, leaving the index untouched.
+    assert_eq!(state.selected_index(), 0);
 }

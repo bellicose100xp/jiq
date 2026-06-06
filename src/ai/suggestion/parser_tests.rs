@@ -498,4 +498,65 @@ Hope this helps!"#;
         let suggestions = parse_suggestions(response);
         assert_eq!(suggestions.len(), 1);
     }
+
+    #[test]
+    fn extraction_path_handles_escaped_quote_inside_string() {
+        // Prose-wrapped (no fences) so the whole-string parse fails and the
+        // extraction fallback in extract_suggestions_json runs. The query
+        // contains an escaped quote (\") inside a string literal: the manual
+        // brace matcher must treat the backslash as an escape (not toggle
+        // in_string off) so the matching closing brace is found correctly.
+        let response = r#"Here:
+{"suggestions":[{"type":"fix","query":".[\"a\"]","details":"d"}]}
+bye"#;
+        let suggestions = parse_suggestions(response);
+        assert_eq!(suggestions.len(), 1);
+        // .["a"] survives the sanitizer unchanged ('.' is followed by '[').
+        assert_eq!(suggestions[0].query, r#".["a"]"#);
+        assert_eq!(suggestions[0].suggestion_type, SuggestionType::Fix);
+    }
+}
+
+// =========================================================================
+// Legacy-text line-parsing edge cases
+// =========================================================================
+
+mod legacy_text_edge_cases {
+    use super::*;
+
+    #[test]
+    fn legacy_line_with_non_digit_prefix_rejected() {
+        // A line containing the ". [" marker but whose prefix is not all ASCII
+        // digits must not be treated as a numbered suggestion.
+        let non_digit = "x. [Fix] .users[]";
+        assert!(parse_suggestions(non_digit).is_empty());
+
+        // An empty prefix (leading ". [") must also be rejected.
+        let empty_prefix = ". [Fix] .foo";
+        assert!(parse_suggestions(empty_prefix).is_empty());
+
+        // Sanity: a genuine digit prefix on the same shape DOES parse, proving
+        // the rejection above is the digit/emptiness guard, not the marker.
+        let valid = "1. [Fix] .users[]";
+        assert_eq!(parse_suggestions(valid).len(), 1);
+    }
+
+    #[test]
+    fn legacy_back_to_back_numbered_without_blank_line() {
+        // Two numbered suggestions on consecutive lines with NO blank line
+        // between them. The description-collection loop must detect the second
+        // numbered line and break so the outer loop re-parses it as its own
+        // suggestion (rather than folding "2. [Next] .b" into suggestion 1's
+        // description).
+        let response = "1. [Fix] .a\n   desc for a\n2. [Next] .b\n   desc for b";
+        let suggestions = parse_suggestions(response);
+
+        assert_eq!(suggestions.len(), 2);
+        assert_eq!(suggestions[0].query, ".a");
+        assert_eq!(suggestions[0].description, "desc for a");
+        assert_eq!(suggestions[0].suggestion_type, SuggestionType::Fix);
+        assert_eq!(suggestions[1].query, ".b");
+        assert_eq!(suggestions[1].description, "desc for b");
+        assert_eq!(suggestions[1].suggestion_type, SuggestionType::Next);
+    }
 }

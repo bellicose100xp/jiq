@@ -979,6 +979,85 @@ fn test_sample_size_two_takes_first_two() {
     );
 }
 
+// ============================================================================
+// parse_ansi_to_rendered_lines Entry Cancellation Test
+// ============================================================================
+
+#[test]
+fn test_parse_ansi_to_rendered_lines_cancelled_at_entry() {
+    use super::parse_ansi_to_rendered_lines;
+
+    // Token already cancelled before the private parse begins: the entry guard
+    // must abort the expensive ANSI-to-Text parse for a superseded query.
+    let cancel_token = CancellationToken::new();
+    cancel_token.cancel();
+
+    let result = parse_ansi_to_rendered_lines(r#"{"a":1}"#, &cancel_token);
+
+    assert!(
+        matches!(result, Err(QueryError::Cancelled)),
+        "entry guard should return Cancelled for an already-cancelled token"
+    );
+}
+
+// ============================================================================
+// normalize_base_query Trailing-Pattern Tests
+// ============================================================================
+
+#[test]
+fn test_preprocess_result_normalizes_trailing_incomplete_pipe() {
+    let cancel_token = CancellationToken::new();
+
+    // Bare trailing " |" (pipe typed, no next stage yet) strips to base query.
+    // Distinct from the " | ." identity branch covered elsewhere.
+    let result = preprocess_result(
+        "null".to_string(),
+        ".services |",
+        &cancel_token,
+        DEFAULT_ARRAY_SAMPLE_SIZE,
+    );
+    assert!(result.is_ok());
+
+    let processed = result.unwrap();
+    assert_eq!(
+        processed.query, ".services",
+        "Should strip trailing incomplete ' |'"
+    );
+}
+
+#[test]
+fn test_preprocess_result_normalizes_trailing_dot() {
+    let cancel_token = CancellationToken::new();
+
+    // Incomplete trailing field-access dot strips when len > 1.
+    let result = preprocess_result(
+        "null".to_string(),
+        ".services.",
+        &cancel_token,
+        DEFAULT_ARRAY_SAMPLE_SIZE,
+    );
+    assert!(result.is_ok());
+    assert_eq!(
+        result.unwrap().query,
+        ".services",
+        "Should strip incomplete trailing '.'"
+    );
+
+    // Root "." (len == 1) is preserved by the len > 1 guard.
+    let root_result = preprocess_result(
+        "null".to_string(),
+        ".",
+        &cancel_token,
+        DEFAULT_ARRAY_SAMPLE_SIZE,
+    );
+    assert!(root_result.is_ok());
+    assert_eq!(
+        root_result.unwrap().query,
+        ".",
+        "Root '.' must be preserved (len > 1 guard)"
+    );
+}
+
 #[test]
 fn test_normalize_jq_text_strips_bg_keeps_fg() {
     use ansi_to_tui::IntoText;

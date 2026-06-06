@@ -214,6 +214,29 @@ fn test_detect_operator_triple_dot_not_detected() {
     assert_eq!(detect_operator_at_cursor("...", 2), None);
 }
 
+#[test]
+fn test_detect_enclosing_skips_balanced_and_unknown_inner_parens() {
+    // Cursor on the final ')'; Phase 1 yields no word, so Phase 2 scans back over
+    // the closed inner ')' (incrementing depth) before reaching map's '('.
+    assert_eq!(detect_function_at_cursor("map(test(.x))", 12), Some("map"));
+    // Inner '(' is preceded by the unknown name 'foo', so find_function_before_paren
+    // returns None; depth resets to 0 and the scan continues out to map.
+    assert_eq!(detect_function_at_cursor("map(foo(.x))", 8), Some("map"));
+}
+
+#[test]
+fn test_find_function_before_paren_boundary_guards() {
+    // '(' lives at position 0: find_function_before_paren bails immediately (no char
+    // before it to read), so no enclosing function is found.
+    assert_eq!(detect_function_at_cursor("(.x", 2), None);
+    // Whitespace between the function name and '(': the skip-whitespace loop walks
+    // back over the space to recover 'select'.
+    assert_eq!(detect_function_at_cursor("select (.x)", 8), Some("select"));
+    // The char immediately before '(' is '.', a non-word, non-whitespace char, so it
+    // is not treated as a function name.
+    assert_eq!(detect_function_at_cursor(".(.x", 3), None);
+}
+
 // **Feature: function-tooltip, Property 6: Function detection correctness**
 // *For any* query string and cursor position:
 // - If cursor is directly on a known function name, returns that function

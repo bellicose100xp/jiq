@@ -832,3 +832,276 @@ fn snapshot_scrollbar_at_bottom() {
     let output = render_snippet_popup_to_string(&mut state, results_area, 80, 24);
     assert_snapshot!(output);
 }
+
+// Helper: drive into edit mode for a single seeded snippet, advancing
+// `next_field` `advances` times so we land on the desired Edit* field.
+fn edit_state_advanced(snippet: Snippet, advances: usize) -> SnippetState {
+    let mut state = SnippetState::new_without_persistence();
+    state.set_snippets(vec![snippet]);
+    state.enter_edit_mode();
+    for _ in 0..advances {
+        state.next_field();
+    }
+    state
+}
+
+#[test]
+fn snapshot_confirm_update_mode() {
+    let mut state = create_state_with_snippets(vec![Snippet {
+        name: "My Snippet".to_string(),
+        query: ".old | keys".to_string(),
+        description: None,
+    }]);
+    state.disable_persistence();
+    state
+        .enter_update_confirmation(".new | keys | sort".to_string())
+        .unwrap();
+
+    assert!(
+        matches!(state.mode(), SnippetMode::ConfirmUpdate { .. }),
+        "expected ConfirmUpdate mode after enter_update_confirmation"
+    );
+
+    let results_area = Rect {
+        x: 0,
+        y: 0,
+        width: 80,
+        height: 24,
+    };
+    let output = render_snippet_popup_to_string(&mut state, results_area, 80, 24);
+    // The diff-confirmation dialog must show its title, both query labels,
+    // and the snippet name.
+    assert!(output.contains("Replace Snippet Query"));
+    assert!(output.contains("Old query:"));
+    assert!(output.contains("New query:"));
+    assert!(output.contains("My Snippet"));
+    assert_snapshot!(output);
+}
+
+#[test]
+fn snapshot_confirm_update_mode_long_name() {
+    let long_name = "A".repeat(60);
+    let mut state = create_state_with_snippets(vec![Snippet {
+        name: long_name,
+        query: ".old".to_string(),
+        description: None,
+    }]);
+    state.disable_persistence();
+    state
+        .enter_update_confirmation(".brand_new_query".to_string())
+        .unwrap();
+
+    let results_area = Rect {
+        x: 0,
+        y: 0,
+        width: 80,
+        height: 24,
+    };
+    let output = render_snippet_popup_to_string(&mut state, results_area, 80, 24);
+    // Names longer than 40 chars are truncated with an ellipsis (lines 971-972).
+    assert!(
+        output.contains('…'),
+        "long name should be truncated with ellipsis"
+    );
+    assert_snapshot!(output);
+}
+
+#[test]
+fn snapshot_edit_query_mode_active_full_height() {
+    let mut state = edit_state_advanced(
+        Snippet {
+            name: "My Snippet".to_string(),
+            query: ".test | keys".to_string(),
+            description: Some("Existing description".to_string()),
+        },
+        1,
+    );
+    assert!(
+        matches!(state.mode(), SnippetMode::EditQuery { .. }),
+        "expected EditQuery mode after one next_field"
+    );
+
+    let results_area = Rect {
+        x: 0,
+        y: 0,
+        width: 80,
+        height: 20,
+    };
+    let output = render_snippet_popup_to_string(&mut state, results_area, 80, 24);
+    assert!(output.contains("Name"));
+    assert!(output.contains("Query"));
+    assert_snapshot!(output);
+}
+
+#[test]
+fn snapshot_edit_description_mode_active_full_height() {
+    let mut state = edit_state_advanced(
+        Snippet {
+            name: "My Snippet".to_string(),
+            query: ".test | keys".to_string(),
+            description: Some("Existing description".to_string()),
+        },
+        2,
+    );
+    assert!(
+        matches!(state.mode(), SnippetMode::EditDescription { .. }),
+        "expected EditDescription mode after two next_field calls"
+    );
+
+    let results_area = Rect {
+        x: 0,
+        y: 0,
+        width: 80,
+        height: 20,
+    };
+    let output = render_snippet_popup_to_string(&mut state, results_area, 80, 24);
+    assert!(output.contains("Description"));
+    assert_snapshot!(output);
+}
+
+#[test]
+fn snapshot_edit_query_mode_small_height_query_field() {
+    let mut state = edit_state_advanced(
+        Snippet {
+            name: "My Snippet".to_string(),
+            query: ".test | keys".to_string(),
+            description: None,
+        },
+        1,
+    );
+    assert!(matches!(state.mode(), SnippetMode::EditQuery { .. }));
+
+    let results_area = Rect {
+        x: 0,
+        y: 0,
+        width: 80,
+        height: 4,
+    };
+    let output = render_snippet_popup_to_string(&mut state, results_area, 80, 10);
+    // The minimal-height fallback renders the dedicated Query title.
+    assert!(output.contains("Edit Snippet - Query"));
+    assert_snapshot!(output);
+}
+
+#[test]
+fn snapshot_edit_description_mode_small_height() {
+    let mut state = edit_state_advanced(
+        Snippet {
+            name: "My Snippet".to_string(),
+            query: ".test | keys".to_string(),
+            description: Some("Existing description".to_string()),
+        },
+        2,
+    );
+    assert!(matches!(state.mode(), SnippetMode::EditDescription { .. }));
+
+    let results_area = Rect {
+        x: 0,
+        y: 0,
+        width: 80,
+        height: 4,
+    };
+    let output = render_snippet_popup_to_string(&mut state, results_area, 80, 10);
+    assert!(output.contains("Edit Snippet - Description"));
+    assert_snapshot!(output);
+}
+
+#[test]
+fn snapshot_create_description_mode_active_full_height() {
+    let mut state = SnippetState::new();
+    state.enter_create_mode(".test | keys");
+    state.next_field();
+    state.next_field();
+    assert_eq!(
+        *state.mode(),
+        SnippetMode::CreateDescription,
+        "expected CreateDescription after two next_field calls"
+    );
+
+    let results_area = Rect {
+        x: 0,
+        y: 0,
+        width: 80,
+        height: 20,
+    };
+    let output = render_snippet_popup_to_string(&mut state, results_area, 80, 24);
+    assert!(output.contains("Description (optional)"));
+    assert_snapshot!(output);
+}
+
+#[test]
+fn snapshot_create_description_mode_small_height_active() {
+    let mut state = SnippetState::new();
+    state.enter_create_mode(".test");
+    state.next_field();
+    state.next_field();
+    assert_eq!(*state.mode(), SnippetMode::CreateDescription);
+
+    let results_area = Rect {
+        x: 0,
+        y: 0,
+        width: 80,
+        height: 6,
+    };
+    let output = render_snippet_popup_to_string(&mut state, results_area, 80, 10);
+    // The minimal-height create fallback for the Description field.
+    assert!(output.contains("New Snippet - Description"));
+    assert_snapshot!(output);
+}
+
+#[test]
+fn snapshot_list_item_hovered() {
+    let snippets = vec![
+        Snippet {
+            name: "Select all keys".to_string(),
+            query: "keys".to_string(),
+            description: Some("Returns array of all keys".to_string()),
+        },
+        Snippet {
+            name: "Flatten arrays".to_string(),
+            query: "flatten".to_string(),
+            description: None,
+        },
+    ];
+    let mut state = create_state_with_snippets(snippets);
+    // selected_index stays at 0; hovered differs so the `&& !is_selected`
+    // guard takes the hovered styling branch for item 1.
+    state.set_hovered(Some(1));
+    assert_eq!(state.get_hovered(), Some(1));
+
+    let results_area = Rect {
+        x: 0,
+        y: 0,
+        width: 80,
+        height: 20,
+    };
+    let output = render_snippet_popup_to_string(&mut state, results_area, 80, 24);
+    assert!(output.contains("Flatten arrays"));
+    assert_snapshot!(output);
+}
+
+#[test]
+fn snapshot_list_item_description_truncated() {
+    let long_desc = "z".repeat(90);
+    let snippets = vec![Snippet {
+        name: "X".to_string(),
+        query: ".".to_string(),
+        description: Some(long_desc),
+    }];
+    let mut state = create_state_with_snippets(snippets);
+
+    let results_area = Rect {
+        x: 0,
+        y: 0,
+        width: 80,
+        height: 20,
+    };
+    let output = render_snippet_popup_to_string(&mut state, results_area, 80, 24);
+    // A 90-char description exceeds the available width on an 80-col list,
+    // so it is truncated with a trailing ellipsis.
+    assert!(
+        output.contains('…'),
+        "long description should be truncated with ellipsis"
+    );
+    assert_snapshot!(output);
+}
