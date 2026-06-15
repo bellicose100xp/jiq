@@ -17,6 +17,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **Tooltip toggle moves to `Ctrl+I`; `Ctrl+T` becomes a focus toggle between the query input and the results pane.** The previous `Ctrl+T` shortcut for showing/hiding the function tooltip now lives at `Ctrl+I` (mnemonic: "info"). `Ctrl+T` joins `Shift+Tab` as a second way to bounce focus between the two main panes, freeing the tooltip toggle from a key that overlapped a "switch panes" mental model. On-screen border hints, the F1 help window, README, and the docs site (`quick-reference`, `features/tooltip`, `configuration`) all reflect the new bindings.
+- **Bottom-border focus hint now advertises `Ctrl+T` and reads context-aware.** The pane's bottom-border strip previously showed `Shift+Tab Navigate Results` (on the query input) and `Tab Edit Query` (on the results pane). It now leads with `Ctrl+T`, switching its label by context: `Ctrl+T Navigate Results` while the query input is focused, `Ctrl+T Edit Query` while the results pane is focused (the global help-line strip updates to match). `Shift+Tab` and `Tab` still work as before - this only changes which key the on-screen hint promotes.
+
 ## [3.32.1] - 2026-05-31
 
 ### Fixed

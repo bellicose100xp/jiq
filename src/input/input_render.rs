@@ -90,7 +90,7 @@ pub fn render_field(app: &mut App, frame: &mut Frame, area: Rect) -> Rect {
     } else if has_tooltip_available {
         // Neither active, tooltip available: show both hints
         let combined = theme::border_hints::build_hints(
-            &[("Ctrl+T", "Tooltip"), ("Ctrl+A", "AI Assistant")],
+            &[("Ctrl+I", "Tooltip"), ("Ctrl+A", "AI Assistant")],
             border_color,
         );
         block = block.title_top(combined.alignment(Alignment::Right));
@@ -104,7 +104,7 @@ pub fn render_field(app: &mut App, frame: &mut Frame, area: Rect) -> Rect {
         if has_error {
             block = block.title_bottom(
                 theme::border_hints::build_hints(
-                    &[("Shift+Tab", "Navigate Results"), ("Ctrl+E", "Show Error")],
+                    &[("Ctrl+T", "Navigate Results"), ("Ctrl+E", "Show Error")],
                     theme::input::border_error(),
                 )
                 .alignment(Alignment::Center),
@@ -113,7 +113,7 @@ pub fn render_field(app: &mut App, frame: &mut Frame, area: Rect) -> Rect {
             block = block.title_bottom(
                 theme::border_hints::build_hints(
                     &[
-                        ("Shift+Tab", "Navigate Results"),
+                        ("Ctrl+T", "Navigate Results"),
                         ("Enter", "Output Result"),
                         ("Ctrl+Q", "Output Query"),
                     ],
@@ -125,7 +125,7 @@ pub fn render_field(app: &mut App, frame: &mut Frame, area: Rect) -> Rect {
             block = block.title_bottom(
                 theme::border_hints::build_hints(
                     &[
-                        ("Shift+Tab", "Navigate Results"),
+                        ("Ctrl+T", "Navigate Results"),
                         ("Ctrl+P", "Previous Query"),
                         ("Ctrl+N", "Next Query"),
                         ("Ctrl+R", "History"),

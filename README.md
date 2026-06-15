@@ -112,12 +112,12 @@ jiq --paste
 | Key | Action |
 |-----|--------|
 | `F1` or `?` | Toggle keyboard shortcuts help popup |
-| `Shift+Tab` | Switch focus between Input and Results |
+| `Shift+Tab` / `Ctrl+T` | Switch focus between Input and Results |
 | `Ctrl+Y` | Copy current query or results to clipboard (focus-aware) |
 | `Ctrl+O` | Copy results to clipboard regardless of focus |
 | `Ctrl+W` | Save result to file (live path preview, overwrite warning) |
 | `yy` | Copy current query or results to clipboard (NORMAL mode) |
-| `Ctrl+T` | Toggle function tooltip (when cursor is on a function) |
+| `Ctrl+I` | Toggle function tooltip (when cursor is on a function) |
 | `Ctrl+E` | Toggle error overlay (when syntax error exists) |
 | `Ctrl+A` | Toggle AI assistant popup |
 | `Enter` | Exit and output filtered JSON |

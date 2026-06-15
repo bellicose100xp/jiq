@@ -25,6 +25,8 @@ pub const HELP_CATEGORIES: &[HelpCategory] = &[
                     ("Enter", "Output filtered JSON and exit"),
                     ("Ctrl+Q", "Output query string only and exit"),
                     ("Shift+Tab", "Switch focus (Input / Results)"),
+                    ("Ctrl+T", "Switch focus (Input / Results)"),
+                    ("Ctrl+I", "Toggle function tooltip"),
                     ("Ctrl+Y", "Copy focused pane (query or results)"),
                     ("Ctrl+O", "Copy results from any focus"),
                     ("Ctrl+W", "Save result to file"),

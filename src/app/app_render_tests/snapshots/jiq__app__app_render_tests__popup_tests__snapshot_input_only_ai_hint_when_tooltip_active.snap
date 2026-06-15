@@ -1,5 +1,6 @@
 ---
 source: src/app/app_render_tests/popup_tests.rs
+assertion_line: 381
 expression: output
 ---
 "╭ Object ───────────────────────────────────────────────────────── L1-4/4 (0%) ╮"
@@ -21,8 +22,8 @@ expression: output
 "│                 │                                                          │ │"
 "│                 │ 💡 For null-safe checks, use select(.field? // false)    │ │" Hidden by multi-width symbols: [(21, " ")]
 "│                 │                                                          │ │"
-"╰─────────────────╰───────────────────── Ctrl+T Dismiss ─────────────────────╯─╯"
+"╰─────────────────╰───────────────────── Ctrl+I Dismiss ─────────────────────╯─╯"
 "╭ Query [INSERT] ───────────────────────────────────────── Ctrl+A AI Assistant ╮"
 "│                                                                              │"
-"╰t+Tab Navigate Results • Ctrl+P Previous Query • Ctrl+N Next Query • Ctrl+R Hi╯"
+"╰l+T Navigate Results • Ctrl+P Previous Query • Ctrl+N Next Query • Ctrl+R Hist╯"
 " F1 Help • Ctrl+S Snippets • Ctrl+F Search • Enter Output Result • Ctrl+O Copy R"

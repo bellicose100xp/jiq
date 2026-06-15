@@ -1,5 +1,6 @@
 ---
 source: src/app/app_render_tests/popup_tests.rs
+assertion_line: 186
 expression: output
 ---
 "╭ Object ───────────────────────────────────────────────────────────────────────────────────────────────── L1-4/4 (0%) ╮"
@@ -27,8 +28,8 @@ expression: output
 "│                                                               │ 💡 Use [.[] | expr] for same result - less memory  │ │" Hidden by multi-width symbols: [(67, " ")]
 "│                                                               │    for large arrays                                │ │"
 "│                                                               │                                                    │ │"
-"╰───────────────────────────────────────────────────────────────╰────────────────── Ctrl+T Dismiss ──────────────────╯─╯"
+"╰───────────────────────────────────────────────────────────────╰────────────────── Ctrl+I Dismiss ──────────────────╯─╯"
 "╭ Query [INSERT] ───────────────────────────────────────────────────────────────────────────────── Ctrl+A AI Assistant ╮"
 "│                                                                                                                      │"
-"╰────────────── Shift+Tab Navigate Results • Ctrl+P Previous Query • Ctrl+N Next Query • Ctrl+R History ───────────────╯"
+"╰──────────────── Ctrl+T Navigate Results • Ctrl+P Previous Query • Ctrl+N Next Query • Ctrl+R History ────────────────╯"
 " F1 Help • Ctrl+S Snippets • Ctrl+F Search • Enter Output Result • Ctrl+O Copy Result • Ctrl+W Save • Ctrl+Q Output Quer"

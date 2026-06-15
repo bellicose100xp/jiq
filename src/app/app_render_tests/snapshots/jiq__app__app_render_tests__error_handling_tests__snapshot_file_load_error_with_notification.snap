@@ -1,5 +1,6 @@
 ---
 source: src/app/app_render_tests/error_handling_tests.rs
+assertion_line: 78
 expression: output
 ---
 "╭ Error ───────────────────────────────────────────────────────────────────────╮"
@@ -24,5 +25,5 @@ expression: output
 "╰──────────────────────────────────────────────────────────────────────────────╯"
 "╭ Query [INSERT] ───────────────────────────────────────── Ctrl+A AI Assistant ╮"
 "│                                                                              │"
-"╰t+Tab Navigate Results • Ctrl+P Previous Query • Ctrl+N Next Query • Ctrl+R Hi╯"
+"╰l+T Navigate Results • Ctrl+P Previous Query • Ctrl+N Next Query • Ctrl+R Hist╯"
 " F1 Help • Ctrl+S Snippets • Ctrl+F Search • Enter Output Result • Ctrl+O Copy R"

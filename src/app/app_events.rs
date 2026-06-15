@@ -191,8 +191,9 @@ fn handle_popup_passthrough_keys(app: &mut App, key: KeyEvent) -> bool {
         }
     }
 
-    // BackTab closes history and switches focus
-    if key.code == KeyCode::BackTab && app.history.is_visible() {
+    // BackTab and Ctrl+T close history and switch focus
+    let is_ctrl_t = key.code == KeyCode::Char('t') && key.modifiers.contains(KeyModifiers::CONTROL);
+    if (key.code == KeyCode::BackTab || is_ctrl_t) && app.history.is_visible() {
         app.history.close();
         app.focus = match app.focus {
             Focus::InputField => Focus::ResultsPane,

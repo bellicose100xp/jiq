@@ -1,5 +1,6 @@
 ---
 source: src/input/input_render_tests.rs
+assertion_line: 133
 expression: output
 ---
 "╭   ⚠ Syntax Error   Object | Showing last successful result ───── L1-3/3 (0%) ╮"
@@ -21,8 +22,8 @@ expression: output
 "│                                                                              │"
 "│                                                                              │"
 "│                                                                              │"
-"╰── Tab Edit Query • i Edit Query • > value • * iterate • ^ parent • } wrap ───╯"
+"╰───── Ctrl+T Edit Query • i Edit Query • > value • * iterate • ^ parent ──────╯"
 "╭ Query [INSERT] ───────────────────────────────────────── Ctrl+A AI Assistant ╮"
 "│.invalid[                                                                     │"
 "╰──────────────────────────────────────────────────────────────────────────────╯"
-" F1/? Help • Shift+Tab Edit Query • Ctrl+S Snippets • Ctrl+F Search • Ctrl+W Sav"
+" F1/? Help • Ctrl+T Edit Query • Ctrl+S Snippets • Ctrl+F Search • Ctrl+W Save •"

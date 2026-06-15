@@ -1,5 +1,6 @@
 ---
 source: src/app/app_render_tests/popup_tests.rs
+assertion_line: 61
 expression: output
 ---
 "╭ Object ───────────────────────────────────────────────────────── L1-3/3 (0%) ╮"
@@ -15,14 +16,14 @@ expression: output
 "│    │     Enter          Output filtered JSON and exit                   █    │"
 "│    │     Ctrl+Q         Output query string only and exit               █    │"
 "│    │     Shift+Tab      Switch focus (Input / Results)                  █    │"
-"│    │     Ctrl+Y         Copy focused pane (query or results)            █    │"
-"│    │     Ctrl+O         Copy results from any focus                     █    │"
-"│    │     Ctrl+W         Save result to file                             █    │"
+"│    │     Ctrl+T         Switch focus (Input / Results)                  █    │"
+"│    │     Ctrl+I         Toggle function tooltip                         ║    │"
+"│    │     Ctrl+Y         Copy focused pane (query or results)            ║    │"
+"│    │     Ctrl+O         Copy results from any focus                     ║    │"
+"│    │     Ctrl+W         Save result to file                             ║    │"
 "│    │     q              Quit (in Normal mode or Results pane)           ║    │"
-"│    │     Ctrl+E         Toggle error overlay                            ║    │"
-"│    │                                                                    ║    │"
-"╰────│     ── PASTE RECOVERY (no input on launch) ──                      ║────╯"
+"╰────│     Ctrl+E         Toggle error overlay                            ║────╯"
 "╭ Que│                                                                    ║ant ╮"
 "│    ╰───── 1-7 Jump • Tab Next • h/l Switch • j/k Scroll • q Close ──────╯    │"
-"╰t+Tab Navigate Results • Ctrl+P Previous Query • Ctrl+N Next Query • Ctrl+R Hi╯"
+"╰l+T Navigate Results • Ctrl+P Previous Query • Ctrl+N Next Query • Ctrl+R Hist╯"
 " F1 Help • Ctrl+S Snippets • Ctrl+F Search • Enter Output Result • Ctrl+O Copy R"

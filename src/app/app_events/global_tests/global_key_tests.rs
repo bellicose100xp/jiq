@@ -536,7 +536,51 @@ fn test_backtab_round_trip_preserves_popup_state() {
     assert!(app.tooltip.enabled);
 }
 
-// ========== Tooltip Toggle Tests (Ctrl+T) ==========
+// ========== Focus Toggle Tests (Ctrl+T) ==========
+
+#[test]
+fn test_ctrl_t_switches_focus_input_to_results() {
+    let mut app = app_with_query(".");
+    app.focus = Focus::InputField;
+
+    app.handle_key_event(key_with_mods(KeyCode::Char('t'), KeyModifiers::CONTROL));
+    assert_eq!(app.focus, Focus::ResultsPane);
+}
+
+#[test]
+fn test_ctrl_t_switches_focus_results_to_input() {
+    let mut app = app_with_query(".");
+    app.focus = Focus::ResultsPane;
+
+    app.handle_key_event(key_with_mods(KeyCode::Char('t'), KeyModifiers::CONTROL));
+    assert_eq!(app.focus, Focus::InputField);
+}
+
+#[test]
+fn test_ctrl_t_round_trip_focus() {
+    let mut app = app_with_query(".");
+    app.focus = Focus::InputField;
+
+    app.handle_key_event(key_with_mods(KeyCode::Char('t'), KeyModifiers::CONTROL));
+    app.handle_key_event(key_with_mods(KeyCode::Char('t'), KeyModifiers::CONTROL));
+    assert_eq!(app.focus, Focus::InputField);
+}
+
+#[test]
+fn test_ctrl_t_closes_history_when_switching_focus() {
+    let mut app = app_with_query("");
+    app.input.editor_mode = EditorMode::Insert;
+    app.history.add_entry_in_memory(".foo");
+    app.handle_key_event(key_with_mods(KeyCode::Char('r'), KeyModifiers::CONTROL));
+    assert!(app.history.is_visible());
+
+    app.handle_key_event(key_with_mods(KeyCode::Char('t'), KeyModifiers::CONTROL));
+
+    assert!(!app.history.is_visible());
+    assert_eq!(app.focus, Focus::ResultsPane);
+}
+
+// ========== Tooltip Toggle Tests (Ctrl+I) ==========
 
 #[test]
 fn test_tooltip_initializes_enabled() {
@@ -545,63 +589,63 @@ fn test_tooltip_initializes_enabled() {
 }
 
 #[test]
-fn test_ctrl_t_toggles_tooltip_from_enabled() {
+fn test_ctrl_i_toggles_tooltip_from_enabled() {
     let mut app = app_with_query(".");
     assert!(app.tooltip.enabled);
 
-    app.handle_key_event(key_with_mods(KeyCode::Char('t'), KeyModifiers::CONTROL));
+    app.handle_key_event(key_with_mods(KeyCode::Char('i'), KeyModifiers::CONTROL));
     assert!(!app.tooltip.enabled);
 }
 
 #[test]
-fn test_ctrl_t_toggles_tooltip_from_disabled() {
+fn test_ctrl_i_toggles_tooltip_from_disabled() {
     let mut app = app_with_query(".");
     app.tooltip.toggle(); // disable first
     assert!(!app.tooltip.enabled);
 
-    app.handle_key_event(key_with_mods(KeyCode::Char('t'), KeyModifiers::CONTROL));
+    app.handle_key_event(key_with_mods(KeyCode::Char('i'), KeyModifiers::CONTROL));
     assert!(app.tooltip.enabled);
 }
 
 #[test]
-fn test_ctrl_t_works_in_insert_mode() {
+fn test_ctrl_i_works_in_insert_mode() {
     let mut app = app_with_query(".");
     app.input.editor_mode = EditorMode::Insert;
     app.focus = Focus::InputField;
     assert!(app.tooltip.enabled);
 
-    app.handle_key_event(key_with_mods(KeyCode::Char('t'), KeyModifiers::CONTROL));
+    app.handle_key_event(key_with_mods(KeyCode::Char('i'), KeyModifiers::CONTROL));
     assert!(!app.tooltip.enabled);
 }
 
 #[test]
-fn test_ctrl_t_works_in_normal_mode() {
+fn test_ctrl_i_works_in_normal_mode() {
     let mut app = app_with_query(".");
     app.input.editor_mode = EditorMode::Normal;
     app.focus = Focus::InputField;
     assert!(app.tooltip.enabled);
 
-    app.handle_key_event(key_with_mods(KeyCode::Char('t'), KeyModifiers::CONTROL));
+    app.handle_key_event(key_with_mods(KeyCode::Char('i'), KeyModifiers::CONTROL));
     assert!(!app.tooltip.enabled);
 }
 
 #[test]
-fn test_ctrl_t_works_when_results_pane_focused() {
+fn test_ctrl_i_works_when_results_pane_focused() {
     let mut app = app_with_query(".");
     app.focus = Focus::ResultsPane;
     assert!(app.tooltip.enabled);
 
-    app.handle_key_event(key_with_mods(KeyCode::Char('t'), KeyModifiers::CONTROL));
+    app.handle_key_event(key_with_mods(KeyCode::Char('i'), KeyModifiers::CONTROL));
     assert!(!app.tooltip.enabled);
 }
 
 #[test]
-fn test_ctrl_t_preserves_current_function() {
+fn test_ctrl_i_preserves_current_function() {
     let mut app = app_with_query("select(.x)");
     app.tooltip.set_current_function(Some("select".to_string()));
     assert!(app.tooltip.enabled);
 
-    app.handle_key_event(key_with_mods(KeyCode::Char('t'), KeyModifiers::CONTROL));
+    app.handle_key_event(key_with_mods(KeyCode::Char('i'), KeyModifiers::CONTROL));
 
     // Should toggle enabled but preserve current_function
     assert!(!app.tooltip.enabled);
@@ -609,13 +653,13 @@ fn test_ctrl_t_preserves_current_function() {
 }
 
 #[test]
-fn test_ctrl_t_round_trip() {
+fn test_ctrl_i_round_trip() {
     let mut app = app_with_query(".");
     let initial_enabled = app.tooltip.enabled;
 
     // Toggle twice should return to original state
-    app.handle_key_event(key_with_mods(KeyCode::Char('t'), KeyModifiers::CONTROL));
-    app.handle_key_event(key_with_mods(KeyCode::Char('t'), KeyModifiers::CONTROL));
+    app.handle_key_event(key_with_mods(KeyCode::Char('i'), KeyModifiers::CONTROL));
+    app.handle_key_event(key_with_mods(KeyCode::Char('i'), KeyModifiers::CONTROL));
 
     assert_eq!(app.tooltip.enabled, initial_enabled);
 }

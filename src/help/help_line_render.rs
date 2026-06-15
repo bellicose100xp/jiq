@@ -30,7 +30,7 @@ fn get_context_hints(app: &App) -> Vec<(&'static str, &'static str)> {
     } else if app.focus == Focus::InputField && app.input.editor_mode == EditorMode::Insert {
         hints!["F1" => "Help", "Ctrl+S" => "Snippets", "Ctrl+F" => "Search", "Enter" => "Output Result", "Ctrl+O" => "Copy Result", "Ctrl+W" => "Save", "Ctrl+Q" => "Output Query", "Ctrl+C" => "Quit"]
     } else if app.focus == Focus::ResultsPane {
-        hints!["F1/?" => "Help", "Shift+Tab" => "Edit Query", "Ctrl+S" => "Snippets", "Ctrl+F" => "Search", "Ctrl+W" => "Save", "Ctrl+C" => "Quit"]
+        hints!["F1/?" => "Help", "Ctrl+T" => "Edit Query", "Ctrl+S" => "Snippets", "Ctrl+F" => "Search", "Ctrl+W" => "Save", "Ctrl+C" => "Quit"]
     } else {
         hints!["F1/?" => "Help", "Ctrl+S" => "Snippets", "Ctrl+F" => "Search", "Enter" => "Output Result", "Ctrl+O" => "Copy Result", "Ctrl+W" => "Save", "Ctrl+Q" => "Output Query", "Ctrl+C" => "Quit"]
     }

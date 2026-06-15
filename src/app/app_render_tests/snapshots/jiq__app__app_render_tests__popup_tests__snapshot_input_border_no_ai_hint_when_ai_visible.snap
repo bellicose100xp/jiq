@@ -1,5 +1,6 @@
 ---
 source: src/app/app_render_tests/popup_tests.rs
+assertion_line: 285
 expression: output
 ---
 "╭ Object ───────────────────────────────────────────────────────── L1-4/4 (0%) ╮"
@@ -24,5 +25,5 @@ expression: output
 "╰──────────────────────────────────────╰──────────── Ctrl+A Close ────────────╯╯"
 "╭ Query [INSERT] ──────────────────────────────────────────────────────────────╮"
 "│                                                                              │"
-"╰t+Tab Navigate Results • Ctrl+P Previous Query • Ctrl+N Next Query • Ctrl+R Hi╯"
+"╰l+T Navigate Results • Ctrl+P Previous Query • Ctrl+N Next Query • Ctrl+R Hist╯"
 " F1 Help • Ctrl+S Snippets • Ctrl+F Search • Enter Output Result • Ctrl+O Copy R"
