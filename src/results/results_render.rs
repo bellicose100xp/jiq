@@ -56,7 +56,7 @@ fn path_chord_hints(can_undo: bool) -> Vec<(&'static str, &'static str)> {
 
 fn build_results_pane_hints(can_undo: bool) -> Line<'static> {
     let mut hints: Vec<(&'static str, &'static str)> =
-        vec![("Tab", "Edit Query"), ("i", "Edit Query")];
+        vec![("Ctrl+T", "Edit Query"), ("i", "Edit Query")];
     hints.extend(path_chord_hints(can_undo));
     theme::border_hints::build_hints(&hints, theme::results::hint_key())
 }

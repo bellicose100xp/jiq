@@ -1,5 +1,6 @@
 ---
 source: src/app/app_render_tests/result_state_tests.rs
+assertion_line: 51
 expression: output
 ---
 "╭   ∅ No Results   Array [2 objects] | Showing last non-empty result ───────────────────────────────────── L1-8/8 (0%) ╮"
@@ -27,8 +28,8 @@ expression: output
 "│                                                                                                                      │"
 "│                                                                                                                      │"
 "│                                                                                                                      │"
-"╰─────────────── Tab Edit Query • i Edit Query • > value • * iterate • ^ parent • } wrap • ]/[ siblings ───────────────╯"
+"╰───────────── Ctrl+T Edit Query • i Edit Query • > value • * iterate • ^ parent • } wrap • ]/[ siblings ──────────────╯"
 "╭ Query [INSERT] ───────────────────────────────────────────────────────────────────────────────── Ctrl+A AI Assistant ╮"
 "│.[] | select(.name == "nonexistent")                                                                                  │"
 "╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯"
-" F1/? Help • Shift+Tab Edit Query • Ctrl+S Snippets • Ctrl+F Search • Ctrl+W Save • Ctrl+C Quit                         "
+" F1/? Help • Ctrl+T Edit Query • Ctrl+S Snippets • Ctrl+F Search • Ctrl+W Save • Ctrl+C Quit                            "

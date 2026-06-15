@@ -222,7 +222,7 @@ pub fn render_popup(app: &App, frame: &mut Frame, input_area: Rect) -> Option<Re
 
     // Build dismiss hint for bottom-center of border
     let dismiss_hint =
-        theme::border_hints::build_hints(&[("Ctrl+T", "Dismiss")], theme::tooltip::border());
+        theme::border_hints::build_hints(&[("Ctrl+I", "Dismiss")], theme::tooltip::border());
 
     // Create the popup widget with purple border
     // Title on top-left, dismiss hint on bottom-center, padding inside

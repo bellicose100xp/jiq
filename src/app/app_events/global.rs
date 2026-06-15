@@ -168,8 +168,19 @@ pub fn handle_global_keys(app: &mut App, key: KeyEvent) -> bool {
             true
         }
 
-        KeyCode::Char('t') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+        KeyCode::Char('i') if key.modifiers.contains(KeyModifiers::CONTROL) => {
             crate::tooltip::tooltip_events::handle_tooltip_toggle(&mut app.tooltip);
+            true
+        }
+
+        KeyCode::Char('t') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+            if app.history.is_visible() {
+                app.history.close();
+            }
+            match app.focus {
+                Focus::InputField => app.focus_results_pane(),
+                Focus::ResultsPane => app.focus_input_field(),
+            };
             true
         }
 

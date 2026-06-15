@@ -43,7 +43,7 @@ Move your cursor onto any jq function name in the query input. A tooltip appears
 - Return type information
 - An inline example
 
-Press <kbd>Ctrl</kbd>+<kbd>T</kbd> to toggle the tooltip on or off manually.
+Press <kbd>Ctrl</kbd>+<kbd>I</kbd> to toggle the tooltip on or off manually.
 
 To disable auto-show, add to `~/.config/jiq/config.toml`:
 
@@ -93,7 +93,7 @@ Click any tab header to switch, or press <kbd>Esc</kbd> to close.
 
 | Key | Action |
 |---|---|
-| `Ctrl+T` | Toggle function tooltip |
+| `Ctrl+I` | Toggle function tooltip |
 | `Ctrl+E` | Toggle error overlay |
 | `F1` / `?` | Toggle help popup |
 | `Esc` | Close any overlay |

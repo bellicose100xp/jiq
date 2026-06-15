@@ -54,7 +54,7 @@ For heterogeneous arrays, increase to union more keys (range: 1–1000).
 auto_show = true
 ```
 
-When `true` (default), the function tooltip appears automatically as the cursor lands on a known jq function. Set to `false` to require <kbd>Ctrl</kbd>+<kbd>T</kbd> to open it.
+When `true` (default), the function tooltip appears automatically as the cursor lands on a known jq function. Set to `false` to require <kbd>Ctrl</kbd>+<kbd>I</kbd> to open it.
 
 ## AI
 
