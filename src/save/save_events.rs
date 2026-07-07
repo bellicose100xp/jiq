@@ -38,6 +38,20 @@ fn handle_enter_filename(app: &mut App, key: KeyEvent) {
     }
 }
 
+/// Route a bracketed-paste into the save filename field. Returns `true`
+/// when the paste was consumed (save popup is open), keeping it out of the
+/// query box.
+pub fn handle_save_paste(app: &mut App, text: &str) -> bool {
+    if !app.save.is_visible() {
+        return false;
+    }
+
+    if app.save.filename_mut().insert_str(text) {
+        app.save.mark_filename_edited();
+    }
+    true
+}
+
 fn attempt_write_from_filename(app: &mut App) {
     match app.save.prepare_write() {
         WriteOutcome::ReadyToWrite(path) => write_to_path(app, &path),

@@ -171,6 +171,38 @@ pub fn handle_search_key(app: &mut App, key: KeyEvent) -> bool {
     }
 }
 
+/// Route a bracketed-paste into the search bar. Returns `true` when the
+/// paste was consumed (search is open), keeping it out of the query box.
+/// While editing the query, the pasted text is inserted and matches are
+/// refreshed; once confirmed the bar has no text field, so the paste is
+/// swallowed without effect.
+pub fn handle_search_paste(app: &mut App, text: &str) -> bool {
+    if !app.search.is_visible() {
+        return false;
+    }
+
+    if app.search.is_confirmed() {
+        return true;
+    }
+
+    app.search.search_textarea_mut().insert_str(text);
+
+    if let Some(query_state) = &app.query
+        && let Some(content) = &query_state.last_successful_result_unformatted
+    {
+        app.search.update_matches(content);
+    }
+
+    if let Some(m) = app.search.current_match() {
+        scroll_to_line(app, m.line);
+    } else if !app.search.query().is_empty() {
+        app.results_scroll.offset = 0;
+        app.results_scroll.h_offset = 0;
+    }
+
+    true
+}
+
 pub fn open_search(app: &mut App) {
     app.saved_ai_visibility_for_search = app.ai.visible;
     app.ai.visible = false;

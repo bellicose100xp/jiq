@@ -342,8 +342,31 @@ impl App {
         self.handle_paste_event(normalised);
     }
 
+    /// Route a bracketed-paste to whichever surface owns text entry,
+    /// mirroring the precedence in `handle_key_event`. Only when no text
+    /// overlay is active does the paste land in the query box. Help has no
+    /// text field, so a paste while help is open is swallowed.
     fn handle_paste_event(&mut self, text: String) {
-        self.input.textarea.insert_str(&text);
+        if self.help.visible {
+            return;
+        }
+        if crate::search::search_events::handle_search_paste(self, &text) {
+            return;
+        }
+        if snippets::snippet_events::handle_snippet_paste(self, &text) {
+            return;
+        }
+        if history::history_events::handle_history_paste(self, &text) {
+            return;
+        }
+        if crate::save::save_events::handle_save_paste(self, &text) {
+            return;
+        }
+        self.paste_into_query(&text);
+    }
+
+    fn paste_into_query(&mut self, text: &str) {
+        self.input.textarea.insert_str(text);
 
         self.input
             .brace_tracker
