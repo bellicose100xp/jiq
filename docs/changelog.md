@@ -17,6 +17,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.32.3] - 2026-07-07
+
+### Fixed
+- **Paste now lands in whatever overlay text box is focused, not the query bar** ([#190](https://github.com/bellicose100xp/jiq/pull/190)) - Pasting while the search bar, snippet fields, history filter, or save-filename prompt was open sent the clipboard text into the query input underneath instead of the focused box - most visibly with `Ctrl+F` search, where a paste typed into the query bar behind the search overlay. Bracketed-paste events now follow the same precedence as keystrokes: search, then snippets, then history, then save, and only the query input when no text overlay is open. A paste while the search is confirmed (navigation mode, no text field) or on a confirm-delete/confirm-update prompt is discarded rather than leaking to the query bar, and a paste while the help window is open is ignored.
+
 ## [3.32.2] - 2026-06-15
 
 ### Changed
