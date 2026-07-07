@@ -40,6 +40,19 @@ pub fn handle_history_popup_key(app: &mut App, key: KeyEvent) {
     }
 }
 
+/// Route a bracketed-paste into the history filter box. Returns `true`
+/// when the paste was consumed (history is open), keeping it out of the
+/// query box.
+pub fn handle_history_paste(app: &mut App, text: &str) -> bool {
+    if !app.history.is_visible() {
+        return false;
+    }
+
+    app.history.search_textarea_mut().insert_str(text);
+    app.history.on_search_input_changed();
+    true
+}
+
 fn replace_query_with(app: &mut App, text: &str) {
     app.input.textarea.delete_line_by_head();
     app.input.textarea.delete_line_by_end();

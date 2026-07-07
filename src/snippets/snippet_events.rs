@@ -263,6 +263,35 @@ fn handle_confirm_update_mode(app: &mut App, key: KeyEvent) {
     }
 }
 
+/// Route a bracketed-paste into the snippet field that currently owns
+/// text entry. Returns `true` when the paste was consumed (snippets is
+/// open), keeping it out of the query box. Confirm-delete / confirm-update
+/// modes have no text field, so the paste is swallowed without effect.
+pub fn handle_snippet_paste(app: &mut App, text: &str) -> bool {
+    if !app.snippets.is_visible() {
+        return false;
+    }
+
+    match app.snippets.mode() {
+        SnippetMode::Browse => {
+            app.snippets.search_textarea_mut().insert_str(text);
+            app.snippets.on_search_input_changed();
+        }
+        SnippetMode::CreateName | SnippetMode::EditName { .. } => {
+            app.snippets.name_textarea_mut().insert_str(text);
+        }
+        SnippetMode::CreateQuery | SnippetMode::EditQuery { .. } => {
+            app.snippets.query_textarea_mut().insert_str(text);
+        }
+        SnippetMode::CreateDescription | SnippetMode::EditDescription { .. } => {
+            app.snippets.description_textarea_mut().insert_str(text);
+        }
+        SnippetMode::ConfirmDelete { .. } | SnippetMode::ConfirmUpdate { .. } => {}
+    }
+
+    true
+}
+
 fn apply_snippet(app: &mut App, query: &str) {
     app.input.textarea.delete_line_by_head();
     app.input.textarea.delete_line_by_end();

@@ -56,6 +56,93 @@ fn test_paste_event_with_multiline_text() {
     assert!(app.query().contains(".name"));
 }
 
+#[test]
+fn test_paste_routes_to_search_box_when_search_open() {
+    let mut app = app_with_query(".");
+    crate::search::search_events::open_search(&mut app);
+
+    app.handle_paste_event("needle".to_string());
+
+    assert_eq!(app.search.query(), "needle");
+    assert_eq!(app.query(), ".", "query box must be untouched");
+}
+
+#[test]
+fn test_paste_swallowed_when_search_confirmed() {
+    let mut app = app_with_query(".");
+    crate::search::search_events::open_search(&mut app);
+    app.search.confirm();
+
+    app.handle_paste_event("needle".to_string());
+
+    assert_eq!(app.search.query(), "", "confirmed search has no text field");
+    assert_eq!(app.query(), ".", "query box must be untouched");
+}
+
+#[test]
+fn test_paste_routes_to_history_filter_when_history_open() {
+    let mut app = app_with_query(".");
+    app.history.open(None);
+
+    app.handle_paste_event("foo".to_string());
+
+    assert_eq!(app.history.search_query(), "foo");
+    assert_eq!(app.query(), ".", "query box must be untouched");
+}
+
+#[test]
+fn test_paste_routes_to_save_filename_when_save_open() {
+    let mut app = app_with_query(".");
+    crate::save::save_events::open_save_popup(&mut app);
+
+    app.handle_paste_event("myfile".to_string());
+
+    assert!(app.save.current_filename_text().contains("myfile"));
+    assert_eq!(app.query(), ".", "query box must be untouched");
+}
+
+#[test]
+fn test_paste_routes_to_snippet_search_in_browse_mode() {
+    let mut app = app_with_query(".");
+    app.snippets.open();
+
+    app.handle_paste_event("term".to_string());
+
+    assert_eq!(app.snippets.search_query(), "term");
+    assert_eq!(app.query(), ".", "query box must be untouched");
+}
+
+#[test]
+fn test_paste_routes_to_snippet_name_field_in_create_mode() {
+    let mut app = app_with_query(".");
+    app.snippets.open();
+    app.snippets.enter_create_mode(".");
+
+    app.handle_paste_event("myname".to_string());
+
+    assert_eq!(app.snippets.name_input(), "myname");
+    assert_eq!(app.query(), ".", "query box must be untouched");
+}
+
+#[test]
+fn test_paste_swallowed_when_help_visible() {
+    let mut app = app_with_query(".");
+    app.help.visible = true;
+
+    app.handle_paste_event("ignored".to_string());
+
+    assert_eq!(app.query(), ".", "help has no text field, paste is dropped");
+}
+
+#[test]
+fn test_paste_falls_through_to_query_when_no_overlay() {
+    let mut app = test_app(r#"{"name": "test"}"#);
+
+    app.handle_paste_event(".name".to_string());
+
+    assert_eq!(app.query(), ".name");
+}
+
 // Feature: performance, Property 1: Paste text insertion integrity
 // *For any* string pasted into the application, the input field content after
 // the paste operation should contain exactly that string at the cursor position.
