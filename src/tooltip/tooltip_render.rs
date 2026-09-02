@@ -56,17 +56,9 @@ fn wrap_text(text: &str, max_width: usize) -> Vec<String> {
 pub fn render_popup(app: &App, frame: &mut Frame, input_area: Rect) -> Option<Rect> {
     // Determine what to show: function takes priority over operator
     let (title_prefix, name, content) = if let Some(func) = &app.tooltip.current_function {
-        if let Some(c) = get_tooltip_content(func) {
-            ("fn", func.as_str(), c)
-        } else {
-            return None;
-        }
+        ("fn", func.as_str(), get_tooltip_content(func)?)
     } else if let Some(op) = &app.tooltip.current_operator {
-        if let Some(c) = get_operator_content(op) {
-            ("operator", op.as_str(), c)
-        } else {
-            return None;
-        }
+        ("operator", op.as_str(), get_operator_content(op)?)
     } else {
         return None;
     };
