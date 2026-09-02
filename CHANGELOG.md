@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.34.0] - 2026-09-02
+
+### Added
+- **Reasoning effort on every provider** ([#192](https://github.com/bellicose100xp/jiq/pull/192)) - The `effort` option added for Bedrock and OpenAI in 3.33.0 now covers the remaining providers. `[ai.anthropic] effort` sends Claude's adaptive thinking with `output_config.effort` (Claude 4.6+). `[ai.gemini] effort` maps to Gemini's `thinkingLevel` (Gemini 3+; `xhigh` and `max` clamp to Gemini's highest level, `high`; omit on Gemini 2.5 models, which reject it). OpenAI-compatible endpoints (Ollama, LM Studio, x.ai) share `[ai.openai] effort` - the field is only sent when set, so servers without reasoning support are unaffected.
+- **1M-token context window for the Anthropic provider** ([#192](https://github.com/bellicose100xp/jiq/pull/192)) - `[ai.anthropic] context_1m = true` opts Claude Sonnet 4/4.5 into the 1M-token context beta on the direct Anthropic API, matching the Bedrock option from 3.33.0. Raise `max_context_length` alongside it or jiq keeps sending the same small sample.
+- **README configuration reference now lists every option** ([#192](https://github.com/bellicose100xp/jiq/pull/192)) - The README's Configuration section covers all sections (`clipboard`, `theme`, `tooltip`, `query`, `history`, `save`, `autocomplete`, `ai` and all four providers) with each key's default and a one-line description, so the full config surface is visible without leaving the repo page.
+
 ## [3.33.0] - 2026-09-02
 
 ### Added
