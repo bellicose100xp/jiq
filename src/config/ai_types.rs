@@ -18,6 +18,11 @@ fn default_max_context_length() -> u32 {
     100_000
 }
 
+/// Default AI request timeout in seconds (0 = no timeout)
+fn default_request_timeout_secs() -> u64 {
+    120
+}
+
 /// AI provider selection
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -26,6 +31,37 @@ pub enum AiProviderType {
     Bedrock,
     Openai,
     Gemini,
+}
+
+/// Reasoning effort level for models that support it.
+///
+/// Maps to Claude's `output_config.effort` on Bedrock and to the OpenAI
+/// Chat Completions `reasoning_effort` field on the OpenAI-compatible endpoint.
+/// Not every level is valid for every model; unsupported values are rejected
+/// by the provider API.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum AiEffort {
+    Minimal,
+    Low,
+    Medium,
+    High,
+    Xhigh,
+    Max,
+}
+
+impl AiEffort {
+    /// The wire value expected by the provider APIs.
+    pub fn as_str(self) -> &'static str {
+        match self {
+            AiEffort::Minimal => "minimal",
+            AiEffort::Low => "low",
+            AiEffort::Medium => "medium",
+            AiEffort::High => "high",
+            AiEffort::Xhigh => "xhigh",
+            AiEffort::Max => "max",
+        }
+    }
 }
 
 /// Anthropic-specific configuration
@@ -59,6 +95,12 @@ pub struct BedrockConfig {
     pub model: Option<String>,
     /// AWS profile name (optional - if not specified, uses default credential chain)
     pub profile: Option<String>,
+    /// Reasoning effort for Claude Sonnet/Opus 4.6+ (None = model default)
+    pub effort: Option<AiEffort>,
+    /// Enable the 1M-token context window beta (Claude Sonnet 4 / 4.5).
+    /// Also raise `max_context_length` to send larger samples, or this has no effect.
+    #[serde(default)]
+    pub context_1m: bool,
 }
 
 /// OpenAI-specific configuration
@@ -70,6 +112,8 @@ pub struct OpenAiConfig {
     pub model: Option<String>,
     /// Base URL for OpenAI-compatible API (optional, defaults to api.openai.com)
     pub base_url: Option<String>,
+    /// Reasoning effort for models that support it, e.g. GPT-5.x (None = model default)
+    pub effort: Option<AiEffort>,
 }
 
 /// Gemini-specific configuration
@@ -82,7 +126,7 @@ pub struct GeminiConfig {
 }
 
 /// AI assistant configuration section
-#[derive(Debug, Clone, Default, Deserialize)]
+#[derive(Debug, Clone, Deserialize)]
 pub struct AiConfig {
     /// Whether AI features are enabled
     #[serde(default)]
@@ -93,6 +137,14 @@ pub struct AiConfig {
     /// Maximum character length for JSON context samples sent to AI
     #[serde(default = "default_max_context_length")]
     pub max_context_length: u32,
+    /// Extra instructions appended to the built-in prompt (e.g. style
+    /// preferences). Never replaces the built-in prompt: the output-format
+    /// contract the suggestion parser depends on always takes precedence.
+    #[serde(default)]
+    pub extra_instructions: Option<String>,
+    /// Whole-request timeout for AI API calls in seconds (0 disables it)
+    #[serde(default = "default_request_timeout_secs")]
+    pub request_timeout_secs: u64,
     /// Anthropic-specific configuration
     #[serde(default)]
     pub anthropic: AnthropicConfig,
@@ -105,6 +157,24 @@ pub struct AiConfig {
     /// Gemini-specific configuration
     #[serde(default)]
     pub gemini: GeminiConfig,
+}
+
+// Manual impl so `AiConfig::default()` matches the serde field defaults
+// (a derived impl would zero max_context_length and request_timeout_secs).
+impl Default for AiConfig {
+    fn default() -> Self {
+        AiConfig {
+            enabled: false,
+            provider: None,
+            max_context_length: default_max_context_length(),
+            extra_instructions: None,
+            request_timeout_secs: default_request_timeout_secs(),
+            anthropic: AnthropicConfig::default(),
+            bedrock: BedrockConfig::default(),
+            openai: OpenAiConfig::default(),
+            gemini: GeminiConfig::default(),
+        }
+    }
 }
 
 #[cfg(test)]

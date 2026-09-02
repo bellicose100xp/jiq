@@ -17,6 +17,8 @@ fn test_async_from_config_missing_api_key() {
         openai: OpenAiConfig::default(),
         gemini: GeminiConfig::default(),
         max_context_length: TEST_MAX_CONTEXT_LENGTH,
+        extra_instructions: None,
+        request_timeout_secs: 120,
     };
 
     let result = AsyncAiProvider::from_config(&config);
@@ -38,6 +40,8 @@ fn test_async_from_config_empty_api_key() {
         openai: OpenAiConfig::default(),
         gemini: GeminiConfig::default(),
         max_context_length: TEST_MAX_CONTEXT_LENGTH,
+        extra_instructions: None,
+        request_timeout_secs: 120,
     };
 
     let result = AsyncAiProvider::from_config(&config);
@@ -59,6 +63,8 @@ fn test_async_from_config_whitespace_api_key() {
         openai: OpenAiConfig::default(),
         gemini: GeminiConfig::default(),
         max_context_length: TEST_MAX_CONTEXT_LENGTH,
+        extra_instructions: None,
+        request_timeout_secs: 120,
     };
 
     let result = AsyncAiProvider::from_config(&config);
@@ -80,6 +86,8 @@ fn test_async_from_config_valid_api_key() {
         openai: OpenAiConfig::default(),
         gemini: GeminiConfig::default(),
         max_context_length: TEST_MAX_CONTEXT_LENGTH,
+        extra_instructions: None,
+        request_timeout_secs: 120,
     };
 
     let result = AsyncAiProvider::from_config(&config);
@@ -100,6 +108,8 @@ fn test_async_from_config_disabled() {
         openai: OpenAiConfig::default(),
         gemini: GeminiConfig::default(),
         max_context_length: TEST_MAX_CONTEXT_LENGTH,
+        extra_instructions: None,
+        request_timeout_secs: 120,
     };
 
     let result = AsyncAiProvider::from_config(&config);

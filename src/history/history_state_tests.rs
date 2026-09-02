@@ -12,6 +12,7 @@ fn create_test_state(entries: Vec<&str>) -> HistoryState {
         visible: false,
         matcher: HistoryMatcher::new(),
         persist_to_disk: false,
+        max_entries: storage::DEFAULT_MAX_HISTORY_ENTRIES,
         cycling_index: None,
         hovered_index: None,
     }
@@ -361,6 +362,7 @@ fn create_scrollable_test_state(entry_count: usize) -> HistoryState {
         visible: false,
         matcher: HistoryMatcher::new(),
         persist_to_disk: false,
+        max_entries: storage::DEFAULT_MAX_HISTORY_ENTRIES,
         cycling_index: None,
         hovered_index: None,
     }

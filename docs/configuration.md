@@ -60,9 +60,11 @@ When `true` (default), the function tooltip appears automatically as the cursor 
 
 ```toml
 [ai]
-enabled            = true
-provider           = "anthropic"   # "openai" | "gemini" | "bedrock"
-max_context_length = 100000        # characters of schema/sample context
+enabled              = true
+provider             = "anthropic"   # "openai" | "gemini" | "bedrock"
+max_context_length   = 100000        # characters of schema/sample context
+extra_instructions   = ""            # optional guidance appended to every AI prompt
+request_timeout_secs = 120           # whole-request timeout; 0 disables it
 ```
 
 | Provider | Recommended model |
@@ -71,6 +73,25 @@ max_context_length = 100000        # characters of schema/sample context
 | OpenAI | `gpt-4o-mini` |
 | Gemini | `gemini-3-flash` |
 | Bedrock | `global.anthropic.claude-haiku-4-5-20251001-v1:0` |
+
+Reasoning-capable models take an optional `effort` level, and Bedrock Claude takes an optional `context_1m` toggle:
+
+```toml
+[ai.bedrock]
+region     = "us-east-1"
+model      = "global.anthropic.claude-sonnet-4-6-v1:0"
+effort     = "high"    # low | medium | high | xhigh | max
+context_1m = false     # 1M-token context window (Claude Sonnet 4/4.5)
+
+# OpenAI GPT-5.x on Bedrock, via the OpenAI-compatible endpoint
+[ai.openai]
+api_key  = "your-bedrock-api-key"
+base_url = "https://bedrock-runtime.us-east-1.amazonaws.com/openai/v1"
+model    = "openai.gpt-5.6-sol"
+effort   = "medium"    # minimal | low | medium | high | xhigh | max
+```
+
+OpenAI models on Bedrock also work through `provider = "bedrock"` (Converse + AWS profile) — jiq shapes the effort field per model family. See [AI assistant](./features/ai-assistant) for both routes.
 
 See [AI assistant](./features/ai-assistant) for per-provider config.
 
@@ -95,6 +116,31 @@ max_context_length = 80000
 api_key = "sk-ant-..."
 model   = "claude-haiku-4-5-20251001"
 ```
+
+## Query
+
+```toml
+[query]
+debounce_ms = 150   # delay between the last keystroke and the jq re-run
+```
+
+Lower values feel snappier on small files; raise it if large inputs make retyping laggy.
+
+## History
+
+```toml
+[history]
+max_entries = 1000   # cap on persisted query-history entries
+```
+
+## Save
+
+```toml
+[save]
+default_pattern = "jiq-{timestamp}.json"   # initial filename in the save dialog
+```
+
+Supports `{timestamp}`, `{cwd}`, and `~` expansion, e.g. `~/exports/jiq-{timestamp}.json`.
 
 ## Environment overrides
 

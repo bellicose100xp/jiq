@@ -13,6 +13,7 @@ use tokio_util::sync::CancellationToken;
 use super::AiError;
 use super::sse::{OpenAiEventParser, SseParser};
 use crate::ai::ai_state::AiResponse;
+use crate::config::ai_types::AiEffort;
 
 /// OpenAI API endpoint
 const OPENAI_API_URL: &str = "https://api.openai.com/v1/chat/completions";
@@ -27,6 +28,7 @@ pub struct AsyncOpenAiClient {
     api_key: String,
     model: String,
     api_url: String,
+    effort: Option<AiEffort>,
 }
 
 impl AsyncOpenAiClient {
@@ -38,7 +40,27 @@ impl AsyncOpenAiClient {
             api_key,
             model,
             api_url,
+            effort: None,
         }
+    }
+
+    /// Set the reasoning effort for models that support it (e.g. GPT-5.x).
+    /// None leaves the model default.
+    pub fn with_effort(mut self, effort: Option<AiEffort>) -> Self {
+        self.effort = effort;
+        self
+    }
+
+    /// Apply a whole-request timeout (from `[ai] request_timeout_secs`).
+    /// None leaves requests unbounded.
+    pub fn with_timeout(mut self, timeout: Option<std::time::Duration>) -> Self {
+        if let Some(duration) = timeout {
+            self.client = Client::builder()
+                .timeout(duration)
+                .build()
+                .unwrap_or_default();
+        }
+        self
     }
 
     /// Build the API URL from an optional base URL
@@ -84,6 +106,8 @@ impl AsyncOpenAiClient {
             model: String,
             messages: Vec<Message>,
             stream: bool,
+            #[serde(skip_serializing_if = "Option::is_none")]
+            reasoning_effort: Option<&'static str>,
         }
 
         let body = RequestBody {
@@ -93,6 +117,7 @@ impl AsyncOpenAiClient {
                 content: prompt.to_string(),
             }],
             stream: true,
+            reasoning_effort: self.effort.map(AiEffort::as_str),
         };
 
         serde_json::to_string(&body).map_err(|e| AiError::Parse {

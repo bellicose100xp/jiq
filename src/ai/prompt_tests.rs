@@ -113,7 +113,7 @@ fn test_build_prompt_dispatches_to_error_prompt() {
         base_query_result: None,
     };
 
-    let prompt = build_prompt(&ctx);
+    let prompt = build_prompt(&ctx, None);
     assert!(prompt.contains("troubleshoot"));
     assert!(prompt.contains("syntax error"));
 }
@@ -132,9 +132,58 @@ fn test_build_prompt_dispatches_to_success_prompt() {
         base_query_result: None,
     };
 
-    let prompt = build_prompt(&ctx);
+    let prompt = build_prompt(&ctx, None);
     assert!(prompt.contains("optimize"));
     assert!(!prompt.contains("troubleshoot"));
+}
+
+#[test]
+fn test_build_prompt_appends_extra_instructions() {
+    let ctx = QueryContext {
+        query: ".name".to_string(),
+        cursor_pos: 5,
+        output_sample: Some(r#""test""#.to_string()),
+        error: None,
+        is_success: true,
+        is_empty_result: false,
+        input_schema: None,
+        base_query: None,
+        base_query_result: None,
+    };
+
+    let prompt = build_prompt(&ctx, Some("Prefer map() over .[] pipelines."));
+    assert!(prompt.contains("## Additional User Preferences"));
+    assert!(prompt.contains("Prefer map() over .[] pipelines."));
+
+    // Extra instructions come after the built-in output-format contract so
+    // they cannot displace it.
+    let format_pos = prompt.find("## Output Format (STRICT)").unwrap();
+    let extra_pos = prompt.find("## Additional User Preferences").unwrap();
+    assert!(extra_pos > format_pos);
+}
+
+#[test]
+fn test_build_prompt_ignores_blank_extra_instructions() {
+    let ctx = QueryContext {
+        query: ".name".to_string(),
+        cursor_pos: 5,
+        output_sample: Some(r#""test""#.to_string()),
+        error: None,
+        is_success: true,
+        is_empty_result: false,
+        input_schema: None,
+        base_query: None,
+        base_query_result: None,
+    };
+
+    for extra in [None, Some(""), Some("   \n  ")] {
+        let prompt = build_prompt(&ctx, extra);
+        assert!(
+            !prompt.contains("## Additional User Preferences"),
+            "blank extra instructions should not add a section (case {:?})",
+            extra
+        );
+    }
 }
 
 #[test]

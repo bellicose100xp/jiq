@@ -20,9 +20,18 @@ fn test_deduplicate_keeps_first_occurrence() {
 #[test]
 fn test_trim_to_max() {
     let entries: Vec<String> = (0..1500).map(|i| format!("entry{}", i)).collect();
-    let trimmed = trim_to_max(&entries);
-    assert_eq!(trimmed.len(), MAX_HISTORY_ENTRIES);
+    let trimmed = trim_to_max(&entries, DEFAULT_MAX_HISTORY_ENTRIES);
+    assert_eq!(trimmed.len(), DEFAULT_MAX_HISTORY_ENTRIES);
     assert_eq!(trimmed[0], "entry0");
+}
+
+#[test]
+fn test_trim_to_max_honors_custom_cap() {
+    let entries: Vec<String> = (0..50).map(|i| format!("entry{}", i)).collect();
+    let trimmed = trim_to_max(&entries, 10);
+    assert_eq!(trimmed.len(), 10);
+    assert_eq!(trimmed[0], "entry0");
+    assert_eq!(trimmed[9], "entry9");
 }
 
 /// Exercises the entire filesystem-backed persistence layer (save_history,
@@ -50,11 +59,14 @@ fn test_storage_full_lifecycle_via_xdg_data_home() {
 
     // save_history writes entries; load_history reads them back in order,
     // skipping blank lines that may exist in the file.
-    save_history(&[
-        "first".to_string(),
-        "second".to_string(),
-        "third".to_string(),
-    ])
+    save_history(
+        &[
+            "first".to_string(),
+            "second".to_string(),
+            "third".to_string(),
+        ],
+        DEFAULT_MAX_HISTORY_ENTRIES,
+    )
     .unwrap();
     assert_eq!(load_history(), vec!["first", "second", "third"]);
 
@@ -67,15 +79,15 @@ fn test_storage_full_lifecycle_via_xdg_data_home() {
     let mut many: Vec<String> = Vec::new();
     many.push("dup".to_string());
     many.push("dup".to_string()); // duplicate of the first -> dropped
-    for i in 0..(MAX_HISTORY_ENTRIES + 50) {
+    for i in 0..(DEFAULT_MAX_HISTORY_ENTRIES + 50) {
         many.push(format!("e{}", i));
     }
-    save_history(&many).unwrap();
+    save_history(&many, DEFAULT_MAX_HISTORY_ENTRIES).unwrap();
     let reloaded = load_history();
     assert_eq!(
         reloaded.len(),
-        MAX_HISTORY_ENTRIES,
-        "save_history trims to MAX_HISTORY_ENTRIES"
+        DEFAULT_MAX_HISTORY_ENTRIES,
+        "save_history trims to DEFAULT_MAX_HISTORY_ENTRIES"
     );
     assert_eq!(reloaded[0], "dup", "first occurrence of dup is kept");
     assert_eq!(
@@ -86,14 +98,18 @@ fn test_storage_full_lifecycle_via_xdg_data_home() {
 
     // add_entry on a non-empty query moves it to the front, removing any prior
     // duplicate (retain + insert(0)).
-    save_history(&["a".to_string(), "b".to_string(), "c".to_string()]).unwrap();
-    add_entry("b").unwrap();
+    save_history(
+        &["a".to_string(), "b".to_string(), "c".to_string()],
+        DEFAULT_MAX_HISTORY_ENTRIES,
+    )
+    .unwrap();
+    add_entry("b", DEFAULT_MAX_HISTORY_ENTRIES).unwrap();
     assert_eq!(
         load_history(),
         vec!["b", "a", "c"],
         "add_entry moves existing query to front"
     );
-    add_entry("new").unwrap();
+    add_entry("new", DEFAULT_MAX_HISTORY_ENTRIES).unwrap();
     assert_eq!(
         load_history(),
         vec!["new", "b", "a", "c"],
@@ -101,7 +117,7 @@ fn test_storage_full_lifecycle_via_xdg_data_home() {
     );
 
     // add_entry ignores blank/whitespace-only queries (empty guard).
-    add_entry("   ").unwrap();
+    add_entry("   ", DEFAULT_MAX_HISTORY_ENTRIES).unwrap();
     assert_eq!(
         load_history(),
         vec!["new", "b", "a", "c"],
@@ -113,7 +129,7 @@ fn test_storage_full_lifecycle_via_xdg_data_home() {
     // save_history's dedup) so we can prove delete_entry's retain() drops
     // *every* matching occurrence, while distinct survivors stay in order.
     fs::write(&path, "k1\ndrop\nk2\ndrop\nk3\n").unwrap();
-    delete_entry("drop").unwrap();
+    delete_entry("drop", DEFAULT_MAX_HISTORY_ENTRIES).unwrap();
     assert_eq!(
         load_history(),
         vec!["k1", "k2", "k3"],
@@ -122,7 +138,7 @@ fn test_storage_full_lifecycle_via_xdg_data_home() {
 
     // delete_entry of an absent query short-circuits without rewriting the file.
     let before = fs::read_to_string(&path).unwrap();
-    delete_entry("absent").unwrap();
+    delete_entry("absent", DEFAULT_MAX_HISTORY_ENTRIES).unwrap();
     let after = fs::read_to_string(&path).unwrap();
     assert_eq!(
         before, after,

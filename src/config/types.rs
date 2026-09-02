@@ -82,6 +82,63 @@ impl Default for AutocompleteConfig {
     }
 }
 
+/// Query execution configuration section
+#[derive(Debug, Clone, Deserialize)]
+pub struct QueryConfig {
+    /// Delay between the last keystroke and the jq re-run, in milliseconds
+    #[serde(default = "default_debounce_ms")]
+    pub debounce_ms: u64,
+}
+
+fn default_debounce_ms() -> u64 {
+    150
+}
+
+impl Default for QueryConfig {
+    fn default() -> Self {
+        QueryConfig { debounce_ms: 150 }
+    }
+}
+
+/// History configuration section
+#[derive(Debug, Clone, Deserialize)]
+pub struct HistoryConfig {
+    /// Maximum number of entries kept in the persisted history file
+    #[serde(default = "default_max_history_entries")]
+    pub max_entries: usize,
+}
+
+fn default_max_history_entries() -> usize {
+    1000
+}
+
+impl Default for HistoryConfig {
+    fn default() -> Self {
+        HistoryConfig { max_entries: 1000 }
+    }
+}
+
+/// Save dialog configuration section
+#[derive(Debug, Clone, Deserialize)]
+pub struct SaveConfig {
+    /// Initial filename pattern in the save dialog.
+    /// Supports `{timestamp}`, `{cwd}`, and `~` expansion.
+    #[serde(default = "default_save_pattern")]
+    pub default_pattern: String,
+}
+
+fn default_save_pattern() -> String {
+    crate::save::DEFAULT_PATH_PATTERN.to_string()
+}
+
+impl Default for SaveConfig {
+    fn default() -> Self {
+        SaveConfig {
+            default_pattern: default_save_pattern(),
+        }
+    }
+}
+
 /// Root configuration structure
 #[derive(Debug, Clone, Deserialize, Default)]
 pub struct Config {
@@ -95,6 +152,12 @@ pub struct Config {
     pub ai: AiConfig,
     #[serde(default)]
     pub autocomplete: AutocompleteConfig,
+    #[serde(default)]
+    pub query: QueryConfig,
+    #[serde(default)]
+    pub history: HistoryConfig,
+    #[serde(default)]
+    pub save: SaveConfig,
 }
 
 #[cfg(test)]

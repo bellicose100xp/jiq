@@ -116,6 +116,10 @@ impl AsyncAiProvider {
             });
         }
 
+        // 0 disables the timeout; anything else bounds the whole request
+        let timeout = (config.request_timeout_secs > 0)
+            .then(|| std::time::Duration::from_secs(config.request_timeout_secs));
+
         match provider_type {
             AiProviderType::Anthropic => {
                 let api_key = config
@@ -138,11 +142,14 @@ impl AsyncAiProvider {
                         message: "Missing model. Add 'model' in [ai.anthropic] section (e.g., 'claude-haiku-4-5-20251001'). See https://github.com/bellicose100xp/jiq#configuration for examples.".to_string(),
                     })?;
 
-                let provider = AsyncAiProvider::Anthropic(AsyncAnthropicClient::new(
-                    api_key.clone(),
-                    model.clone(),
-                    config.anthropic.max_tokens,
-                ));
+                let provider = AsyncAiProvider::Anthropic(
+                    AsyncAnthropicClient::new(
+                        api_key.clone(),
+                        model.clone(),
+                        config.anthropic.max_tokens,
+                    )
+                    .with_timeout(timeout),
+                );
 
                 // Use provider_name to avoid dead code warning
                 let _ = provider.provider_name();
@@ -169,11 +176,16 @@ impl AsyncAiProvider {
                         message: "Missing model. Add 'model' in [ai.bedrock] section (e.g., 'anthropic.claude-3-haiku-20240307-v1:0'). See https://github.com/bellicose100xp/jiq#configuration for examples.".to_string(),
                     })?;
 
-                let provider = AsyncAiProvider::Bedrock(AsyncBedrockClient::new(
-                    region.clone(),
-                    model.clone(),
-                    config.bedrock.profile.clone(),
-                ));
+                let provider = AsyncAiProvider::Bedrock(
+                    AsyncBedrockClient::new(
+                        region.clone(),
+                        model.clone(),
+                        config.bedrock.profile.clone(),
+                    )
+                    .with_effort(config.bedrock.effort)
+                    .with_context_1m(config.bedrock.context_1m)
+                    .with_timeout(timeout),
+                );
 
                 // Use provider_name to avoid dead code warning
                 let _ = provider.provider_name();
@@ -215,11 +227,11 @@ impl AsyncAiProvider {
                         message: "Missing model. Add 'model' in [ai.openai] section.".to_string(),
                     })?;
 
-                let provider = AsyncAiProvider::Openai(AsyncOpenAiClient::new(
-                    api_key,
-                    model.clone(),
-                    config.openai.base_url.clone(),
-                ));
+                let provider = AsyncAiProvider::Openai(
+                    AsyncOpenAiClient::new(api_key, model.clone(), config.openai.base_url.clone())
+                        .with_effort(config.openai.effort)
+                        .with_timeout(timeout),
+                );
 
                 // Use provider_name to avoid dead code warning
                 let _ = provider.provider_name();
@@ -247,8 +259,9 @@ impl AsyncAiProvider {
                         message: "Missing model. Add 'model' in [ai.gemini] section.".to_string(),
                     })?;
 
-                let provider =
-                    AsyncAiProvider::Gemini(AsyncGeminiClient::new(api_key.clone(), model.clone()));
+                let provider = AsyncAiProvider::Gemini(
+                    AsyncGeminiClient::new(api_key.clone(), model.clone()).with_timeout(timeout),
+                );
 
                 // Use provider_name to avoid dead code warning
                 let _ = provider.provider_name();

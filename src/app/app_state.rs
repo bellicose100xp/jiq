@@ -163,13 +163,14 @@ impl App {
             None => String::new(),
         };
 
-        let ai_state = AiState::new_with_config(
+        let mut ai_state = AiState::new_with_config(
             config.ai.enabled,
             ai_configured,
             provider_name,
             model_name,
             config.ai.max_context_length as usize,
         );
+        ai_state.extra_instructions = config.ai.extra_instructions.clone();
 
         let tooltip_enabled = if ai_state.visible {
             false
@@ -191,7 +192,11 @@ impl App {
             autocomplete: AutocompleteState::new(),
             value_memo: ValueMemo::new(),
             error_overlay_visible: false,
-            history: HistoryState::new(),
+            history: {
+                let mut history = HistoryState::new();
+                history.set_max_entries(config.history.max_entries);
+                history
+            },
             help: HelpPopupState::new(),
             notification: NotificationState::new(),
             clipboard_backend: config.clipboard.backend,
@@ -200,10 +205,14 @@ impl App {
             path_at_cursor: PathAtCursorCache::new(),
             query_undo: QueryUndoRing::new(),
             pending_viewport_restore: None,
-            debouncer: Debouncer::new(),
+            debouncer: Debouncer::with_debounce_ms(config.query.debounce_ms),
             search: SearchState::new(),
             snippets: SnippetState::new(),
-            save: SaveState::new(),
+            save: {
+                let mut save = SaveState::new();
+                save.set_default_pattern(config.save.default_pattern.clone());
+                save
+            },
             ai: ai_state,
             saved_tooltip_visibility: config.tooltip.auto_show,
             saved_ai_visibility_for_search: false,

@@ -23,6 +23,7 @@ pub struct HistoryState {
     visible: bool,
     matcher: HistoryMatcher,
     persist_to_disk: bool,
+    max_entries: usize,
     cycling_index: Option<usize>,
     hovered_index: Option<usize>,
 }
@@ -47,9 +48,15 @@ impl HistoryState {
             visible: false,
             matcher: HistoryMatcher::new(),
             persist_to_disk: true,
+            max_entries: storage::DEFAULT_MAX_HISTORY_ENTRIES,
             cycling_index: None,
             hovered_index: None,
         }
+    }
+
+    /// Set the persisted-history cap (from `[history] max_entries`)
+    pub fn set_max_entries(&mut self, max_entries: usize) {
+        self.max_entries = max_entries;
     }
 
     #[cfg(test)]
@@ -63,6 +70,7 @@ impl HistoryState {
             visible: false,
             matcher: HistoryMatcher::new(),
             persist_to_disk: false,
+            max_entries: storage::DEFAULT_MAX_HISTORY_ENTRIES,
             cycling_index: None,
             hovered_index: None,
         }
@@ -206,7 +214,7 @@ impl HistoryState {
 
         // Only persist to disk if enabled (disabled for tests)
         if self.persist_to_disk
-            && let Err(e) = storage::add_entry(query)
+            && let Err(e) = storage::add_entry(query, self.max_entries)
         {
             eprintln!("Warning: Failed to save query history to disk: {}", e);
             eprintln!("History will work for this session only.");
@@ -306,7 +314,7 @@ impl HistoryState {
         let removed = self.entries.remove(entry_idx);
 
         if self.persist_to_disk
-            && let Err(e) = storage::delete_entry(&removed)
+            && let Err(e) = storage::delete_entry(&removed, self.max_entries)
         {
             eprintln!(
                 "Warning: Failed to delete query history entry on disk: {}",

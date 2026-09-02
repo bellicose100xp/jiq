@@ -13,10 +13,14 @@ fn test_bedrock_missing_model_produces_error() {
             region: Some("us-east-1".to_string()),
             model: None,
             profile: None,
+            effort: None,
+            context_1m: false,
         },
         openai: OpenAiConfig::default(),
         gemini: GeminiConfig::default(),
         max_context_length: TEST_MAX_CONTEXT_LENGTH,
+        extra_instructions: None,
+        request_timeout_secs: 120,
     };
 
     let result = AsyncAiProvider::from_config(&config);
@@ -40,10 +44,14 @@ fn test_bedrock_empty_model_produces_error() {
             region: Some("us-east-1".to_string()),
             model: Some("".to_string()),
             profile: None,
+            effort: None,
+            context_1m: false,
         },
         openai: OpenAiConfig::default(),
         gemini: GeminiConfig::default(),
         max_context_length: TEST_MAX_CONTEXT_LENGTH,
+        extra_instructions: None,
+        request_timeout_secs: 120,
     };
 
     let result = AsyncAiProvider::from_config(&config);
@@ -67,10 +75,14 @@ fn test_bedrock_whitespace_model_produces_error() {
             region: Some("us-east-1".to_string()),
             model: Some("   ".to_string()),
             profile: None,
+            effort: None,
+            context_1m: false,
         },
         openai: OpenAiConfig::default(),
         gemini: GeminiConfig::default(),
         max_context_length: TEST_MAX_CONTEXT_LENGTH,
+        extra_instructions: None,
+        request_timeout_secs: 120,
     };
 
     let result = AsyncAiProvider::from_config(&config);
@@ -94,10 +106,14 @@ fn test_bedrock_missing_region_produces_error() {
             region: None,
             model: Some("anthropic.claude-3-haiku".to_string()),
             profile: None,
+            effort: None,
+            context_1m: false,
         },
         openai: OpenAiConfig::default(),
         gemini: GeminiConfig::default(),
         max_context_length: TEST_MAX_CONTEXT_LENGTH,
+        extra_instructions: None,
+        request_timeout_secs: 120,
     };
 
     let result = AsyncAiProvider::from_config(&config);
@@ -121,10 +137,14 @@ fn test_bedrock_empty_region_produces_error() {
             region: Some("".to_string()),
             model: Some("anthropic.claude-3-haiku".to_string()),
             profile: None,
+            effort: None,
+            context_1m: false,
         },
         openai: OpenAiConfig::default(),
         gemini: GeminiConfig::default(),
         max_context_length: TEST_MAX_CONTEXT_LENGTH,
+        extra_instructions: None,
+        request_timeout_secs: 120,
     };
 
     let result = AsyncAiProvider::from_config(&config);
@@ -148,10 +168,14 @@ fn test_bedrock_valid_config_creates_provider() {
             region: Some("us-east-1".to_string()),
             model: Some("anthropic.claude-3-haiku".to_string()),
             profile: None,
+            effort: None,
+            context_1m: false,
         },
         openai: OpenAiConfig::default(),
         gemini: GeminiConfig::default(),
         max_context_length: TEST_MAX_CONTEXT_LENGTH,
+        extra_instructions: None,
+        request_timeout_secs: 120,
     };
 
     let result = AsyncAiProvider::from_config(&config);
@@ -174,10 +198,14 @@ fn test_bedrock_valid_config_with_profile_creates_provider() {
             region: Some("us-west-2".to_string()),
             model: Some("anthropic.claude-3-sonnet".to_string()),
             profile: Some("my-profile".to_string()),
+            effort: None,
+            context_1m: false,
         },
         openai: OpenAiConfig::default(),
         gemini: GeminiConfig::default(),
         max_context_length: TEST_MAX_CONTEXT_LENGTH,
+        extra_instructions: None,
+        request_timeout_secs: 120,
     };
 
     let result = AsyncAiProvider::from_config(&config);

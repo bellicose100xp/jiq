@@ -25,9 +25,12 @@ mod openai_error_snapshots {
                 api_key: None,
                 model: Some("gpt-4o-mini".to_string()),
                 base_url: None,
+                effort: None,
             },
             gemini: GeminiConfig::default(),
             max_context_length: TEST_MAX_CONTEXT_LENGTH,
+            extra_instructions: None,
+            request_timeout_secs: 120,
         };
 
         let result = AsyncAiProvider::from_config(&config);
@@ -47,9 +50,12 @@ mod openai_error_snapshots {
                 api_key: Some("sk-proj-test123".to_string()),
                 model: None,
                 base_url: None,
+                effort: None,
             },
             gemini: GeminiConfig::default(),
             max_context_length: TEST_MAX_CONTEXT_LENGTH,
+            extra_instructions: None,
+            request_timeout_secs: 120,
         };
 
         let result = AsyncAiProvider::from_config(&config);
@@ -69,9 +75,12 @@ mod openai_error_snapshots {
                 api_key: Some("   ".to_string()),
                 model: Some("gpt-4o-mini".to_string()),
                 base_url: None,
+                effort: None,
             },
             gemini: GeminiConfig::default(),
             max_context_length: TEST_MAX_CONTEXT_LENGTH,
+            extra_instructions: None,
+            request_timeout_secs: 120,
         };
 
         let result = AsyncAiProvider::from_config(&config);
@@ -91,9 +100,12 @@ mod openai_error_snapshots {
                 api_key: Some("sk-proj-test123".to_string()),
                 model: Some("   ".to_string()),
                 base_url: None,
+                effort: None,
             },
             gemini: GeminiConfig::default(),
             max_context_length: TEST_MAX_CONTEXT_LENGTH,
+            extra_instructions: None,
+            request_timeout_secs: 120,
         };
 
         let result = AsyncAiProvider::from_config(&config);
@@ -178,9 +190,12 @@ fn test_openai_provider_name_default() {
             api_key: Some("sk-test".to_string()),
             model: Some("gpt-4o-mini".to_string()),
             base_url: None,
+            effort: None,
         },
         gemini: GeminiConfig::default(),
         max_context_length: TEST_MAX_CONTEXT_LENGTH,
+        extra_instructions: None,
+        request_timeout_secs: 120,
     };
 
     let provider = AsyncAiProvider::from_config(&config).unwrap();
@@ -198,9 +213,12 @@ fn test_openai_provider_name_explicit_openai_url() {
             api_key: Some("sk-test".to_string()),
             model: Some("gpt-4o-mini".to_string()),
             base_url: Some("https://api.openai.com/v1".to_string()),
+            effort: None,
         },
         gemini: GeminiConfig::default(),
         max_context_length: TEST_MAX_CONTEXT_LENGTH,
+        extra_instructions: None,
+        request_timeout_secs: 120,
     };
 
     let provider = AsyncAiProvider::from_config(&config).unwrap();
@@ -218,9 +236,12 @@ fn test_openai_provider_name_custom_endpoint() {
             api_key: None,
             model: Some("llama3".to_string()),
             base_url: Some("http://localhost:11434/v1".to_string()),
+            effort: None,
         },
         gemini: GeminiConfig::default(),
         max_context_length: TEST_MAX_CONTEXT_LENGTH,
+        extra_instructions: None,
+        request_timeout_secs: 120,
     };
 
     let provider = AsyncAiProvider::from_config(&config).unwrap();

@@ -48,6 +48,75 @@ fn test_empty_tooltip_section_uses_default() {
 }
 
 #[test]
+fn test_query_config_default() {
+    let config = QueryConfig::default();
+    assert_eq!(config.debounce_ms, 150);
+}
+
+#[test]
+fn test_parse_query_debounce_ms() {
+    let toml = r#"
+[query]
+debounce_ms = 300
+"#;
+    let config: Config = toml::from_str(toml).unwrap();
+    assert_eq!(config.query.debounce_ms, 300);
+}
+
+#[test]
+fn test_missing_query_section_uses_default() {
+    let config: Config = toml::from_str("").unwrap();
+    assert_eq!(config.query.debounce_ms, 150);
+}
+
+#[test]
+fn test_history_config_default() {
+    let config = HistoryConfig::default();
+    assert_eq!(config.max_entries, 1000);
+}
+
+#[test]
+fn test_parse_history_max_entries() {
+    let toml = r#"
+[history]
+max_entries = 250
+"#;
+    let config: Config = toml::from_str(toml).unwrap();
+    assert_eq!(config.history.max_entries, 250);
+}
+
+#[test]
+fn test_missing_history_section_uses_default() {
+    let config: Config = toml::from_str("").unwrap();
+    assert_eq!(config.history.max_entries, 1000);
+}
+
+#[test]
+fn test_save_config_default() {
+    let config = SaveConfig::default();
+    assert_eq!(config.default_pattern, "jiq-{timestamp}.json");
+}
+
+#[test]
+fn test_parse_save_default_pattern() {
+    let toml = r#"
+[save]
+default_pattern = "~/exports/out-{timestamp}.json"
+"#;
+    let config: Config = toml::from_str(toml).unwrap();
+    assert_eq!(
+        config.save.default_pattern,
+        "~/exports/out-{timestamp}.json"
+    );
+}
+
+#[test]
+fn test_missing_save_section_uses_default() {
+    let config: Config = toml::from_str("").unwrap();
+    assert_eq!(config.save.default_pattern, "jiq-{timestamp}.json");
+}
+
+#[test]
 fn test_parse_auto_backend() {
     let toml = r#"
 [clipboard]

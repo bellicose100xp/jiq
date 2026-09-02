@@ -40,6 +40,22 @@ fn open_locks_timestamp() {
 }
 
 #[test]
+fn open_prefills_filename_with_configured_pattern() {
+    let mut s = SaveState::new();
+    s.set_default_pattern("out-{timestamp}.json".to_string());
+    s.open(TS.to_string());
+    assert_eq!(s.current_filename_text(), format!("out-{}.json", TS));
+}
+
+#[test]
+fn blank_configured_pattern_keeps_builtin_default() {
+    let mut s = SaveState::new();
+    s.set_default_pattern("   ".to_string());
+    s.open(TS.to_string());
+    assert_eq!(s.current_filename_text(), format!("jiq-{}.json", TS));
+}
+
+#[test]
 fn open_prefills_filename_with_default_pattern() {
     let s = open_state(None);
     let text = s.current_filename_text();

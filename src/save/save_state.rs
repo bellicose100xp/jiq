@@ -35,6 +35,7 @@ pub struct SaveState {
     filename: TextArea<'static>,
     filename_dirty: bool,
     locked_timestamp: String,
+    default_pattern: String,
 }
 
 impl Default for SaveState {
@@ -50,6 +51,14 @@ impl SaveState {
             filename: TextArea::default(),
             filename_dirty: false,
             locked_timestamp: String::new(),
+            default_pattern: DEFAULT_PATH_PATTERN.to_string(),
+        }
+    }
+
+    /// Set the initial filename pattern (from `[save] default_pattern`)
+    pub fn set_default_pattern(&mut self, pattern: String) {
+        if !pattern.trim().is_empty() {
+            self.default_pattern = pattern;
         }
     }
 
@@ -57,7 +66,7 @@ impl SaveState {
         self.mode = SaveMode::EnterFilename;
         self.filename_dirty = false;
         self.locked_timestamp = locked_timestamp;
-        let initial = expand_initial_pattern(DEFAULT_PATH_PATTERN, &self.locked_timestamp);
+        let initial = expand_initial_pattern(&self.default_pattern, &self.locked_timestamp);
         self.filename = make_textarea(&initial);
     }
 

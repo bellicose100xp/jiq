@@ -24,6 +24,7 @@ impl AiState {
             provider_name: "AI".to_string(),
             model_name: String::new(),
             max_context_length: TEST_MAX_CONTEXT_LENGTH,
+            extra_instructions: None,
             loading: false,
             error: None,
             response: String::new(),
@@ -50,6 +51,9 @@ impl AiState {
     /// * `provider_name` - Name of the AI provider (e.g., "Anthropic", "Bedrock", "OpenAI")
     /// * `model_name` - Model name (e.g., "claude-3-5-sonnet-20241022", "gpt-4o-mini")
     /// * `max_context_length` - Maximum character length for JSON context samples
+    ///
+    /// `extra_instructions` starts as None; the app sets it from config after
+    /// construction (keeps this constructor stable across its many test callers).
     pub fn new_with_config(
         enabled: bool,
         configured: bool,
@@ -64,6 +68,7 @@ impl AiState {
             provider_name,
             model_name,
             max_context_length,
+            extra_instructions: None,
             loading: false,
             error: None,
             response: String::new(),
