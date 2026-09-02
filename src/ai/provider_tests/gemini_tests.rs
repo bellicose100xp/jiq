@@ -20,6 +20,8 @@ fn test_gemini_from_config_missing_api_key() {
             model: Some("gemini-2.0-flash".to_string()),
         },
         max_context_length: TEST_MAX_CONTEXT_LENGTH,
+        extra_instructions: None,
+        request_timeout_secs: 120,
     };
 
     let result = AsyncAiProvider::from_config(&config);
@@ -45,6 +47,8 @@ fn test_gemini_from_config_missing_model() {
             model: None,
         },
         max_context_length: TEST_MAX_CONTEXT_LENGTH,
+        extra_instructions: None,
+        request_timeout_secs: 120,
     };
 
     let result = AsyncAiProvider::from_config(&config);
@@ -70,6 +74,8 @@ fn test_gemini_from_config_valid_creates_client() {
             model: Some("gemini-2.0-flash".to_string()),
         },
         max_context_length: TEST_MAX_CONTEXT_LENGTH,
+        extra_instructions: None,
+        request_timeout_secs: 120,
     };
 
     let result = AsyncAiProvider::from_config(&config);
@@ -94,6 +100,8 @@ fn test_gemini_provider_name() {
             model: Some("gemini-2.0-flash".to_string()),
         },
         max_context_length: TEST_MAX_CONTEXT_LENGTH,
+        extra_instructions: None,
+        request_timeout_secs: 120,
     };
 
     let provider = AsyncAiProvider::from_config(&config).unwrap();

@@ -555,6 +555,7 @@ fn test_new_with_openai_provider() {
                 api_key: Some("test-key".to_string()),
                 model: Some("gpt-4".to_string()),
                 base_url: None,
+                effort: None,
             },
             ..Default::default()
         },
@@ -862,6 +863,7 @@ fn test_new_with_openai_compatible_custom_base_url() {
                 api_key: Some("test-key".to_string()),
                 model: Some("gpt-4".to_string()),
                 base_url: Some("https://my-proxy.internal/v1".to_string()),
+                effort: None,
             },
             ..Default::default()
         },

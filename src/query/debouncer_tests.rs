@@ -32,6 +32,24 @@ fn test_should_execute_true_after_debounce_period() {
 }
 
 #[test]
+fn test_custom_debounce_ms_changes_delay() {
+    let mut debouncer = Debouncer::with_debounce_ms(500);
+    debouncer.schedule_execution_at(0);
+    assert!(
+        !debouncer.should_execute_at(499),
+        "must still be waiting before the custom delay elapses"
+    );
+    assert!(
+        debouncer.should_execute_at(500),
+        "must fire once the custom delay elapses"
+    );
+
+    let mut fast = Debouncer::with_debounce_ms(10);
+    fast.schedule_execution_at(0);
+    assert!(fast.should_execute_at(10));
+}
+
+#[test]
 fn test_mark_executed_clears_state() {
     let mut debouncer = Debouncer::new();
     debouncer.schedule_execution_at(0);

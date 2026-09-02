@@ -4,6 +4,18 @@ use aws_sdk_bedrockruntime::types::{
     ContentBlockDelta, ContentBlockDeltaEvent, ConverseStreamOutput, MessageStopEvent, StopReason,
     ToolUseBlockDelta,
 };
+use aws_smithy_types::Document;
+use std::collections::HashMap;
+
+use crate::config::ai_types::AiEffort;
+
+/// Unwrap a `Document::Object` map or panic, for asserting on request fields.
+fn as_object(doc: &Document) -> &HashMap<String, Document> {
+    match doc {
+        Document::Object(map) => map,
+        other => panic!("expected Document::Object, got {:?}", other),
+    }
+}
 
 /// Wrap a `ContentBlockDelta` in the `ConverseStreamOutput::ContentBlockDelta`
 /// event shape that `extract_text_from_event` matches against.
@@ -42,6 +54,121 @@ fn test_new_without_profile() {
     assert_eq!(client.region, "us-west-2");
     assert_eq!(client.model, "amazon.titan-text-express-v1");
     assert_eq!(client.profile, None);
+}
+
+#[test]
+fn test_with_effort_and_context_1m_store_fields() {
+    let client = AsyncBedrockClient::new("us-east-1".to_string(), "model".to_string(), None)
+        .with_effort(Some(AiEffort::High))
+        .with_context_1m(true);
+
+    assert_eq!(client.effort, Some(AiEffort::High));
+    assert!(client.context_1m);
+}
+
+#[test]
+fn test_with_timeout_stores_duration() {
+    let client = AsyncBedrockClient::new("us-east-1".to_string(), "model".to_string(), None)
+        .with_timeout(Some(std::time::Duration::from_secs(30)));
+    assert_eq!(client.timeout, Some(std::time::Duration::from_secs(30)));
+
+    let unbounded = AsyncBedrockClient::new("us-east-1".to_string(), "model".to_string(), None)
+        .with_timeout(None);
+    assert_eq!(unbounded.timeout, None);
+}
+
+// build_additional_fields: with neither effort nor 1M context configured, no
+// additionalModelRequestFields document is attached (preserves prior behavior).
+#[test]
+fn test_build_additional_fields_none_when_unset() {
+    let client = AsyncBedrockClient::new("us-east-1".to_string(), "model".to_string(), None);
+    assert!(client.build_additional_fields().is_none());
+}
+
+// build_additional_fields: effort alone yields adaptive thinking plus the
+// output_config.effort level, and does not add the 1M-context beta.
+#[test]
+fn test_build_additional_fields_effort_only() {
+    let client = AsyncBedrockClient::new("us-east-1".to_string(), "model".to_string(), None)
+        .with_effort(Some(AiEffort::Xhigh));
+
+    let doc = client
+        .build_additional_fields()
+        .expect("effort should produce fields");
+    let obj = as_object(&doc);
+
+    assert!(!obj.contains_key("anthropic_beta"));
+
+    let thinking = as_object(obj.get("thinking").expect("thinking present"));
+    assert!(matches!(thinking.get("type"), Some(Document::String(s)) if s == "adaptive"));
+
+    let output_config = as_object(obj.get("output_config").expect("output_config present"));
+    assert!(matches!(output_config.get("effort"), Some(Document::String(s)) if s == "xhigh"));
+}
+
+// build_additional_fields: the 1M-context flag alone yields only the
+// anthropic_beta array and no reasoning fields.
+#[test]
+fn test_build_additional_fields_context_1m_only() {
+    let client = AsyncBedrockClient::new("us-east-1".to_string(), "model".to_string(), None)
+        .with_context_1m(true);
+
+    let doc = client
+        .build_additional_fields()
+        .expect("context_1m should produce fields");
+    let obj = as_object(&doc);
+
+    assert!(!obj.contains_key("thinking"));
+    assert!(!obj.contains_key("output_config"));
+
+    match obj.get("anthropic_beta") {
+        Some(Document::Array(items)) => {
+            assert_eq!(items.len(), 1);
+            assert!(matches!(&items[0], Document::String(s) if s == "context-1m-2025-08-07"));
+        }
+        other => panic!("expected anthropic_beta array, got {:?}", other),
+    }
+}
+
+// build_additional_fields: OpenAI models on Converse take the chat-completions
+// `reasoning_effort` field, not Claude's thinking/output_config shape (which
+// those models reject).
+#[test]
+fn test_build_additional_fields_openai_model_uses_reasoning_effort() {
+    for model in ["openai.gpt-oss-120b-1:0", "us.openai.gpt-oss-20b-1:0"] {
+        let client = AsyncBedrockClient::new("us-east-1".to_string(), model.to_string(), None)
+            .with_effort(Some(AiEffort::High));
+
+        let doc = client
+            .build_additional_fields()
+            .expect("effort should produce fields");
+        let obj = as_object(&doc);
+
+        assert!(
+            matches!(obj.get("reasoning_effort"), Some(Document::String(s)) if s == "high"),
+            "OpenAI model should get reasoning_effort, got {:?}",
+            obj
+        );
+        assert!(!obj.contains_key("thinking"));
+        assert!(!obj.contains_key("output_config"));
+    }
+}
+
+// build_additional_fields: effort and 1M context together produce all three keys.
+#[test]
+fn test_build_additional_fields_effort_and_context_1m() {
+    let client = AsyncBedrockClient::new("us-east-1".to_string(), "model".to_string(), None)
+        .with_effort(Some(AiEffort::Max))
+        .with_context_1m(true);
+
+    let doc = client
+        .build_additional_fields()
+        .expect("effort + context_1m should produce fields");
+    let obj = as_object(&doc);
+
+    assert!(obj.contains_key("thinking"));
+    assert!(obj.contains_key("output_config"));
+    assert!(obj.contains_key("anthropic_beta"));
 }
 
 // extract_text_from_event: the happy path that streams tokens to the user.

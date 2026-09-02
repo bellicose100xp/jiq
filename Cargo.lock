@@ -1914,6 +1914,7 @@ dependencies = [
  "assert_cmd",
  "aws-config",
  "aws-sdk-bedrockruntime",
+ "aws-smithy-types",
  "base64",
  "bytes",
  "chrono",

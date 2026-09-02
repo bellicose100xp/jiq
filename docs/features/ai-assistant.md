@@ -166,6 +166,51 @@ model = "gemini-3-flash-preview"
 region = "us-east-1"
 model = "global.anthropic.claude-haiku-4-5-20251001-v1:0"
 profile = "default"  # optional: uses default credential chain if omitted
+effort = "high"      # optional: low | medium | high | xhigh | max (Claude Sonnet/Opus 4.6+)
+context_1m = false   # optional: enable the 1M-token context window (Claude Sonnet 4/4.5)
+```
+
+`effort` sets the reasoning depth for Claude models that support it (Sonnet/Opus 4.6 and newer). Omit it to use the model default. Setting it on a model without reasoning support makes Bedrock reject the request.
+
+`context_1m` opts into the 1M-token context window (Claude Sonnet 4 and 4.5; newer Sonnet models already default to 1M). On its own it only lifts the ceiling — raise [`max_context_length`](#tuning-context-size) too, or jiq still sends the same small sample. Prompts over 200K tokens are billed at a higher rate.
+
+### OpenAI models on Bedrock (gpt-oss, GPT-5.x)
+
+Two routes, depending on how you want to authenticate:
+
+**AWS credentials / profile (Converse).** OpenAI models on Bedrock — gpt-oss and GPT-5.6 (Sol/Terra/Luna) — support the Converse API, so the regular `bedrock` provider works with the same region/profile setup as Claude. jiq sends `effort` as the OpenAI `reasoning_effort` field automatically when the model ID contains `openai.`:
+
+```toml
+[ai.bedrock]
+region = "us-east-1"
+profile = "my-profile"
+model = "us.openai.gpt-5.6-sol"   # or "openai.gpt-oss-120b-1:0"
+effort = "low"       # gpt-oss: low | medium | high; GPT-5.6 also takes minimal/xhigh/max
+```
+
+**Bedrock API key (OpenAI-compatible endpoint).** GPT-5.x models are served through Bedrock's OpenAI-compatible endpoint. Point the `openai` provider at it with a Bedrock API key (generate one in the Bedrock console under API keys, or mint a short-term one from AWS credentials with the `aws-bedrock-token-generator` package):
+
+```toml
+[ai]
+enabled = true
+provider = "openai"
+
+[ai.openai]
+api_key = "your-bedrock-api-key"
+base_url = "https://bedrock-runtime.us-east-1.amazonaws.com/openai/v1"
+model = "openai.gpt-5.6-sol"
+effort = "medium"    # optional: minimal | low | medium | high | xhigh | max
+```
+
+`effort` maps to the OpenAI `reasoning_effort` field. Omit it to use the model default.
+
+### Extra instructions
+
+`extra_instructions` appends your own guidance to every AI prompt — style preferences, house conventions, favored jq idioms. It never replaces the built-in prompt: the output-format contract jiq's suggestion parser depends on always takes precedence.
+
+```toml
+[ai]
+extra_instructions = "Prefer map() over .[] pipelines. Keep suggestions POSIX-shell safe."
 ```
 
 ### OpenAI-compatible APIs (Ollama, LM Studio, x.ai)

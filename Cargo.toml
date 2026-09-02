@@ -81,6 +81,8 @@ bytes = "1.5"
 # rustls feature provides TLS without OpenSSL dependency for musl compatibility
 aws-config = { version = "1", features = ["rustls"] }
 aws-sdk-bedrockruntime = { version = "1", features = ["rustls"] }
+# Document type for Bedrock Converse additionalModelRequestFields (effort, 1M context)
+aws-smithy-types = "1"
 
 # Logging (activated via --debug flag or JIQ_DEBUG=1 env var)
 log = "0.4"

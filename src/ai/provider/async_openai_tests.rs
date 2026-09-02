@@ -155,6 +155,69 @@ proptest! {
     }
 }
 
+// with_timeout rebuilds the HTTP client without disturbing the request body
+// (model, effort, and URL survive the rebuild).
+#[test]
+fn test_with_timeout_preserves_request_building() {
+    use crate::config::ai_types::AiEffort;
+
+    let client = AsyncOpenAiClient::new("sk-test".to_string(), "gpt-5.6-sol".to_string(), None)
+        .with_effort(Some(AiEffort::Low))
+        .with_timeout(Some(std::time::Duration::from_secs(30)));
+
+    let body = client
+        .build_request_body("prompt")
+        .expect("request body should serialize");
+    let json: serde_json::Value = serde_json::from_str(&body).expect("valid JSON");
+    assert_eq!(
+        json.get("model").and_then(|v| v.as_str()),
+        Some("gpt-5.6-sol")
+    );
+    assert_eq!(
+        json.get("reasoning_effort").and_then(|v| v.as_str()),
+        Some("low")
+    );
+}
+
+// reasoning_effort: when effort is configured, the request body carries the
+// OpenAI `reasoning_effort` field with the mapped wire value.
+#[test]
+fn test_request_body_includes_reasoning_effort_when_set() {
+    use crate::config::ai_types::AiEffort;
+
+    let client = AsyncOpenAiClient::new("sk-test".to_string(), "gpt-5.6-terra".to_string(), None)
+        .with_effort(Some(AiEffort::High));
+
+    let body = client
+        .build_request_body("extract user names")
+        .expect("request body should serialize");
+    let json: serde_json::Value = serde_json::from_str(&body).expect("valid JSON");
+
+    assert_eq!(
+        json.get("reasoning_effort").and_then(|v| v.as_str()),
+        Some("high"),
+        "request should include reasoning_effort when effort is set"
+    );
+}
+
+// reasoning_effort: when effort is not configured, the field is omitted so the
+// model uses its own default (and OpenAI-compatible servers without the field
+// are unaffected).
+#[test]
+fn test_request_body_omits_reasoning_effort_when_unset() {
+    let client = AsyncOpenAiClient::new("sk-test".to_string(), "gpt-4o-mini".to_string(), None);
+
+    let body = client
+        .build_request_body("extract user names")
+        .expect("request body should serialize");
+    let json: serde_json::Value = serde_json::from_str(&body).expect("valid JSON");
+
+    assert!(
+        json.get("reasoning_effort").is_none(),
+        "request should omit reasoning_effort when effort is unset"
+    );
+}
+
 // Subtask 6.2: Write snapshot test for request format
 // Snapshot of serialized OpenAI request body
 // Verify JSON structure matches API specification

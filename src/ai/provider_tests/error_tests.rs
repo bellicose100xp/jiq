@@ -17,6 +17,8 @@ fn test_from_config_returns_error_when_provider_is_none() {
         openai: OpenAiConfig::default(),
         gemini: GeminiConfig::default(),
         max_context_length: TEST_MAX_CONTEXT_LENGTH,
+        extra_instructions: None,
+        request_timeout_secs: 120,
     };
 
     let result = AsyncAiProvider::from_config(&config);
@@ -55,17 +57,22 @@ fn test_from_config_error_when_provider_none_even_with_all_credentials() {
             region: Some("us-east-1".to_string()),
             model: Some("anthropic.claude-3-haiku".to_string()),
             profile: None,
+            effort: None,
+            context_1m: false,
         },
         openai: OpenAiConfig {
             api_key: Some("openai-key".to_string()),
             model: Some("gpt-4".to_string()),
             base_url: None,
+            effort: None,
         },
         gemini: GeminiConfig {
             api_key: Some("gemini-key".to_string()),
             model: Some("gemini-pro".to_string()),
         },
         max_context_length: TEST_MAX_CONTEXT_LENGTH,
+        extra_instructions: None,
+        request_timeout_secs: 120,
     };
 
     let result = AsyncAiProvider::from_config(&config);
@@ -172,6 +179,8 @@ fn test_provider_name_returns_correct_identifier() {
         openai: OpenAiConfig::default(),
         gemini: GeminiConfig::default(),
         max_context_length: TEST_MAX_CONTEXT_LENGTH,
+        extra_instructions: None,
+        request_timeout_secs: 120,
     };
 
     let provider = AsyncAiProvider::from_config(&config).unwrap();
@@ -192,6 +201,8 @@ fn test_config_error_includes_correct_provider_for_missing_api_key() {
         openai: OpenAiConfig::default(),
         gemini: GeminiConfig::default(),
         max_context_length: TEST_MAX_CONTEXT_LENGTH,
+        extra_instructions: None,
+        request_timeout_secs: 120,
     };
 
     let result = AsyncAiProvider::from_config(&config);
@@ -218,6 +229,8 @@ fn test_config_error_includes_correct_provider_for_disabled() {
         openai: OpenAiConfig::default(),
         gemini: GeminiConfig::default(),
         max_context_length: TEST_MAX_CONTEXT_LENGTH,
+        extra_instructions: None,
+        request_timeout_secs: 120,
     };
 
     let result = AsyncAiProvider::from_config(&config);

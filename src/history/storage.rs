@@ -2,7 +2,7 @@ use std::fs::{self, File};
 use std::io::{self, BufRead, BufReader, Write};
 use std::path::PathBuf;
 
-const MAX_HISTORY_ENTRIES: usize = 1000;
+pub const DEFAULT_MAX_HISTORY_ENTRIES: usize = 1000;
 const HISTORY_DIR: &str = "jiq";
 const HISTORY_FILE: &str = "history";
 
@@ -31,7 +31,7 @@ pub fn load_history() -> Vec<String> {
     entries
 }
 
-pub fn save_history(entries: &[String]) -> io::Result<()> {
+pub fn save_history(entries: &[String], max_entries: usize) -> io::Result<()> {
     let Some(path) = history_path() else {
         return Err(io::Error::new(
             io::ErrorKind::NotFound,
@@ -46,7 +46,7 @@ pub fn save_history(entries: &[String]) -> io::Result<()> {
     let mut file = File::create(&path)?;
 
     let unique_entries = deduplicate(entries);
-    let trimmed = trim_to_max(&unique_entries);
+    let trimmed = trim_to_max(&unique_entries, max_entries);
 
     for entry in &trimmed {
         writeln!(file, "{}", entry)?;
@@ -57,7 +57,7 @@ pub fn save_history(entries: &[String]) -> io::Result<()> {
 }
 
 /// No file locking - last writer wins if multiple instances run simultaneously.
-pub fn add_entry(query: &str) -> io::Result<()> {
+pub fn add_entry(query: &str, max_entries: usize) -> io::Result<()> {
     let query = query.trim();
     if query.is_empty() {
         return Ok(());
@@ -68,13 +68,13 @@ pub fn add_entry(query: &str) -> io::Result<()> {
     entries.retain(|e| e != query);
     entries.insert(0, query.to_string());
 
-    save_history(&entries)
+    save_history(&entries, max_entries)
 }
 
 /// Removes all occurrences of `query` from the persisted history.
 ///
 /// No file locking - last writer wins if multiple instances run simultaneously.
-pub fn delete_entry(query: &str) -> io::Result<()> {
+pub fn delete_entry(query: &str, max_entries: usize) -> io::Result<()> {
     let mut entries = load_history();
     let original_len = entries.len();
     entries.retain(|e| e != query);
@@ -83,7 +83,7 @@ pub fn delete_entry(query: &str) -> io::Result<()> {
         return Ok(());
     }
 
-    save_history(&entries)
+    save_history(&entries, max_entries)
 }
 
 /// Removes duplicate entries, keeping the first occurrence of each.
@@ -97,8 +97,8 @@ fn deduplicate(entries: &[String]) -> Vec<String> {
 }
 
 /// Trims the entries to the maximum allowed size.
-fn trim_to_max(entries: &[String]) -> Vec<String> {
-    entries.iter().take(MAX_HISTORY_ENTRIES).cloned().collect()
+fn trim_to_max(entries: &[String], max_entries: usize) -> Vec<String> {
+    entries.iter().take(max_entries).cloned().collect()
 }
 
 #[cfg(test)]

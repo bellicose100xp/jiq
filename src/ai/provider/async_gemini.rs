@@ -38,6 +38,18 @@ impl AsyncGeminiClient {
         }
     }
 
+    /// Apply a whole-request timeout (from `[ai] request_timeout_secs`).
+    /// None leaves requests unbounded.
+    pub fn with_timeout(mut self, timeout: Option<std::time::Duration>) -> Self {
+        if let Some(duration) = timeout {
+            self.client = Client::builder()
+                .timeout(duration)
+                .build()
+                .unwrap_or_default();
+        }
+        self
+    }
+
     /// Returns the stored API key (used in tests)
     #[cfg(test)]
     pub fn api_key(&self) -> &str {

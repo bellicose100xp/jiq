@@ -38,6 +38,8 @@ mod round2_coverage_tests {
             openai: OpenAiConfig::default(),
             gemini: GeminiConfig::default(),
             max_context_length: TEST_MAX_CONTEXT_LENGTH,
+            extra_instructions: None,
+            request_timeout_secs: 120,
         };
         match provider {
             AiProviderType::Anthropic => {
@@ -52,6 +54,8 @@ mod round2_coverage_tests {
                     region: Some("us-east-1".to_string()),
                     model: Some("anthropic.claude-3-haiku".to_string()),
                     profile: None,
+                    effort: None,
+                    context_1m: false,
                 };
             }
             AiProviderType::Openai => {
@@ -59,6 +63,7 @@ mod round2_coverage_tests {
                     api_key: Some("sk-openai-test".to_string()),
                     model: Some("gpt-4o-mini".to_string()),
                     base_url: None,
+                    effort: None,
                 };
             }
             AiProviderType::Gemini => {
@@ -138,6 +143,8 @@ mod round2_coverage_tests {
             openai: OpenAiConfig::default(),
             gemini: GeminiConfig::default(),
             max_context_length: TEST_MAX_CONTEXT_LENGTH,
+            extra_instructions: None,
+            request_timeout_secs: 120,
         };
 
         let result = AsyncAiProvider::from_config(&config);
@@ -171,6 +178,8 @@ mod round2_coverage_tests {
             openai: OpenAiConfig::default(),
             gemini: GeminiConfig::default(),
             max_context_length: TEST_MAX_CONTEXT_LENGTH,
+            extra_instructions: None,
+            request_timeout_secs: 120,
         };
 
         let result = AsyncAiProvider::from_config(&config);

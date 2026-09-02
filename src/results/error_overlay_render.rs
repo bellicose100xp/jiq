@@ -25,10 +25,7 @@ const MAX_CONTENT_LINES: usize = 7;
 ///
 /// Returns the error overlay area for region tracking.
 pub fn render_error_overlay(app: &App, frame: &mut Frame, results_area: Rect) -> Option<Rect> {
-    let query_state = match &app.query {
-        Some(q) => q,
-        None => return None,
-    };
+    let query_state = app.query.as_ref()?;
 
     if let Err(error) = &query_state.result {
         // Inset matches the legacy overlay; content width subtracts borders (2)

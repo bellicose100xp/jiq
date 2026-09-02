@@ -11,15 +11,32 @@ fn system_time_ms() -> u64 {
     START.get_or_init(Instant::now).elapsed().as_millis() as u64
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct Debouncer {
     scheduled_at_ms: Option<u64>,
     pending_execution: bool,
+    debounce_ms: u64,
+}
+
+impl Default for Debouncer {
+    fn default() -> Self {
+        Self::with_debounce_ms(DEBOUNCE_MS)
+    }
 }
 
 impl Debouncer {
+    #[cfg(test)]
     pub fn new() -> Self {
         Self::default()
+    }
+
+    /// Create a debouncer with a custom delay (from `[query] debounce_ms`)
+    pub fn with_debounce_ms(debounce_ms: u64) -> Self {
+        Self {
+            scheduled_at_ms: None,
+            pending_execution: false,
+            debounce_ms,
+        }
     }
 
     pub fn schedule_execution(&mut self) {
@@ -40,7 +57,7 @@ impl Debouncer {
             return false;
         }
         match self.scheduled_at_ms {
-            Some(scheduled) => current_time_ms >= scheduled + DEBOUNCE_MS,
+            Some(scheduled) => current_time_ms >= scheduled + self.debounce_ms,
             None => false,
         }
     }

@@ -75,6 +75,8 @@ pub struct AiState {
     pub model_name: String,
     /// Maximum character length for JSON context samples
     pub max_context_length: usize,
+    /// User-supplied instructions appended to the built-in prompt (from config)
+    pub extra_instructions: Option<String>,
     /// Whether we're waiting for or receiving a response
     pub loading: bool,
     /// Current error message (if any)

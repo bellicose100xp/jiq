@@ -6,14 +6,21 @@
 use std::panic::AssertUnwindSafe;
 use std::sync::mpsc::Sender;
 
+use std::collections::HashMap;
+
 use aws_config::BehaviorVersion;
 use aws_sdk_bedrockruntime::Client as BedrockRuntimeClient;
 use aws_sdk_bedrockruntime::types::{ContentBlock, ConversationRole, Message};
+use aws_smithy_types::Document;
 use futures::FutureExt;
 use tokio_util::sync::CancellationToken;
 
 use super::AiError;
 use crate::ai::ai_state::AiResponse;
+use crate::config::ai_types::AiEffort;
+
+/// Anthropic beta flag that opts a request into the 1M-token context window.
+const CONTEXT_1M_BETA: &str = "context-1m-2025-08-07";
 
 /// Async AWS Bedrock client with streaming support
 ///
@@ -24,6 +31,9 @@ pub struct AsyncBedrockClient {
     region: String,
     model: String,
     profile: Option<String>,
+    effort: Option<AiEffort>,
+    context_1m: bool,
+    timeout: Option<std::time::Duration>,
 }
 
 impl AsyncBedrockClient {
@@ -38,6 +48,79 @@ impl AsyncBedrockClient {
             region,
             model,
             profile,
+            effort: None,
+            context_1m: false,
+            timeout: None,
+        }
+    }
+
+    /// Apply a whole-operation timeout (from `[ai] request_timeout_secs`).
+    /// None leaves the AWS SDK defaults.
+    pub fn with_timeout(mut self, timeout: Option<std::time::Duration>) -> Self {
+        self.timeout = timeout;
+        self
+    }
+
+    /// Set the reasoning effort (Claude Sonnet/Opus 4.6+). None leaves the model default.
+    pub fn with_effort(mut self, effort: Option<AiEffort>) -> Self {
+        self.effort = effort;
+        self
+    }
+
+    /// Enable the 1M-token context window beta (Claude Sonnet 4 / 4.5).
+    pub fn with_context_1m(mut self, context_1m: bool) -> Self {
+        self.context_1m = context_1m;
+        self
+    }
+
+    /// Build the `additionalModelRequestFields` document for reasoning effort and
+    /// the 1M-context beta, or None when neither is configured.
+    ///
+    /// The effort field shape depends on the model family, since Converse passes
+    /// these through to the model verbatim and each family rejects the other's:
+    /// - OpenAI models (`openai.` in the model ID): `{"reasoning_effort": "<level>"}`
+    /// - Claude and everything else: adaptive thinking, i.e.
+    ///   `{"thinking": {"type": "adaptive"}, "output_config": {"effort": "<level>"}}`
+    ///
+    /// The 1M-context beta is opted in via `{"anthropic_beta": ["context-1m-2025-08-07"]}`.
+    fn build_additional_fields(&self) -> Option<Document> {
+        let mut fields: HashMap<String, Document> = HashMap::new();
+
+        if let Some(effort) = self.effort {
+            if self.model.contains("openai.") {
+                fields.insert(
+                    "reasoning_effort".to_string(),
+                    Document::String(effort.as_str().to_string()),
+                );
+            } else {
+                fields.insert(
+                    "thinking".to_string(),
+                    Document::Object(HashMap::from([(
+                        "type".to_string(),
+                        Document::String("adaptive".to_string()),
+                    )])),
+                );
+                fields.insert(
+                    "output_config".to_string(),
+                    Document::Object(HashMap::from([(
+                        "effort".to_string(),
+                        Document::String(effort.as_str().to_string()),
+                    )])),
+                );
+            }
+        }
+
+        if self.context_1m {
+            fields.insert(
+                "anthropic_beta".to_string(),
+                Document::Array(vec![Document::String(CONTEXT_1M_BETA.to_string())]),
+            );
+        }
+
+        if fields.is_empty() {
+            None
+        } else {
+            Some(Document::Object(fields))
         }
     }
 
@@ -49,28 +132,25 @@ impl AsyncBedrockClient {
     async fn build_client(&self) -> Result<BedrockRuntimeClient, AiError> {
         let region = aws_config::Region::new(self.region.clone());
         let profile = self.profile.clone();
+        let timeout = self.timeout;
 
         // Wrap the AWS SDK config loading in catch_unwind to prevent panics
         // from corrupting the TUI. The AWS SDK can panic in certain credential
         // loading scenarios (e.g., web identity token issues).
         let config_result = AssertUnwindSafe(async {
-            match &profile {
-                Some(profile_name) => {
-                    // Use named profile credentials
-                    aws_config::defaults(BehaviorVersion::latest())
-                        .profile_name(profile_name)
-                        .region(region)
-                        .load()
-                        .await
-                }
-                None => {
-                    // Use default credential chain
-                    aws_config::defaults(BehaviorVersion::latest())
-                        .region(region)
-                        .load()
-                        .await
-                }
+            // Named profile credentials when set, otherwise the default chain
+            let mut loader = aws_config::defaults(BehaviorVersion::latest()).region(region);
+            if let Some(profile_name) = &profile {
+                loader = loader.profile_name(profile_name);
             }
+            if let Some(duration) = timeout {
+                loader = loader.timeout_config(
+                    aws_config::timeout::TimeoutConfig::builder()
+                        .operation_timeout(duration)
+                        .build(),
+                );
+            }
+            loader.load().await
         })
         .catch_unwind()
         .await;
@@ -133,47 +213,58 @@ impl AsyncBedrockClient {
 
         // Start the streaming conversation
         // Note: For inference profile ARNs, the region in the ARN should match the client region
-        let mut stream_output = client
+        let mut request = client
             .converse_stream()
             .model_id(&self.model)
-            .messages(message)
-            .send()
-            .await
-            .map_err(|e| {
-                let err_msg = e.to_string();
+            .messages(message);
 
-                // Provide more detailed error messages
-                if err_msg.contains("credentials")
-                    || err_msg.contains("Credentials")
-                    || err_msg.contains("authentication")
-                {
-                    AiError::NotConfigured {
-                        provider: "Bedrock".to_string(),
-                        message: format!("AWS credentials error: {}", err_msg),
-                    }
-                } else if err_msg.contains("network")
-                    || err_msg.contains("connection")
-                    || err_msg.contains("timeout")
-                {
-                    AiError::Network {
-                        provider: "Bedrock".to_string(),
-                        message: err_msg,
-                    }
-                } else if err_msg.contains("ValidationException") || err_msg.contains("validation") {
-                    AiError::NotConfigured {
-                        provider: "Bedrock".to_string(),
-                        message: format!("Invalid configuration: {}. Check that model ID and region are correct.", err_msg),
-                    }
-                } else if err_msg.contains("ResourceNotFoundException") || err_msg.contains("not found") {
-                    AiError::NotConfigured {
-                        provider: "Bedrock".to_string(),
-                        message: format!("Model not found: {}. Verify model access is enabled in your AWS account.", err_msg),
-                    }
-                } else {
-                    // Include full error for debugging
-                    AiError::AwsSdk(format!("Bedrock API error: {}", err_msg))
+        // Attach reasoning effort and/or the 1M-context beta when configured
+        if let Some(fields) = self.build_additional_fields() {
+            request = request.additional_model_request_fields(fields);
+        }
+
+        let mut stream_output = request.send().await.map_err(|e| {
+            let err_msg = e.to_string();
+
+            // Provide more detailed error messages
+            if err_msg.contains("credentials")
+                || err_msg.contains("Credentials")
+                || err_msg.contains("authentication")
+            {
+                AiError::NotConfigured {
+                    provider: "Bedrock".to_string(),
+                    message: format!("AWS credentials error: {}", err_msg),
                 }
-            })?;
+            } else if err_msg.contains("network")
+                || err_msg.contains("connection")
+                || err_msg.contains("timeout")
+            {
+                AiError::Network {
+                    provider: "Bedrock".to_string(),
+                    message: err_msg,
+                }
+            } else if err_msg.contains("ValidationException") || err_msg.contains("validation") {
+                AiError::NotConfigured {
+                    provider: "Bedrock".to_string(),
+                    message: format!(
+                        "Invalid configuration: {}. Check that model ID and region are correct.",
+                        err_msg
+                    ),
+                }
+            } else if err_msg.contains("ResourceNotFoundException") || err_msg.contains("not found")
+            {
+                AiError::NotConfigured {
+                    provider: "Bedrock".to_string(),
+                    message: format!(
+                        "Model not found: {}. Verify model access is enabled in your AWS account.",
+                        err_msg
+                    ),
+                }
+            } else {
+                // Include full error for debugging
+                AiError::AwsSdk(format!("Bedrock API error: {}", err_msg))
+            }
+        })?;
 
         // Process stream with cancellation support
         loop {

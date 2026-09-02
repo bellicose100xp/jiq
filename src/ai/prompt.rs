@@ -71,13 +71,31 @@ are required, not optional.\n\n\
 /// Build a prompt based on query context
 ///
 /// Dispatches to either error troubleshooting or success optimization prompt
-/// based on the `is_success` field in the context.
-pub fn build_prompt(context: &QueryContext) -> String {
-    if context.is_success {
+/// based on the `is_success` field in the context. User-supplied
+/// `extra_instructions` are appended after the built-in prompt so they can
+/// steer style without displacing the output-format contract the suggestion
+/// parser depends on.
+pub fn build_prompt(context: &QueryContext, extra_instructions: Option<&str>) -> String {
+    let mut prompt = if context.is_success {
         build_success_prompt(context)
     } else {
         build_error_prompt(context)
+    };
+
+    if let Some(extra) = extra_instructions {
+        let extra = extra.trim();
+        if !extra.is_empty() {
+            prompt.push_str("## Additional User Preferences\n");
+            prompt.push_str(
+                "Apply these user preferences where they don't conflict with the rules above. \
+                 The Output Format rules always take precedence.\n",
+            );
+            prompt.push_str(extra);
+            prompt.push_str("\n\n");
+        }
     }
+
+    prompt
 }
 
 /// Build a prompt for error troubleshooting

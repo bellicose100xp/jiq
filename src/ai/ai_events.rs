@@ -171,7 +171,7 @@ pub fn handle_execution_result(
                     params,
                     ai_state.max_context_length,
                 );
-                let prompt = build_prompt(&context);
+                let prompt = build_prompt(&context, ai_state.extra_instructions.as_deref());
                 ai_state.send_request(prompt);
             }
         }
@@ -185,7 +185,7 @@ pub fn handle_execution_result(
                     params,
                     ai_state.max_context_length,
                 );
-                let prompt = build_prompt(&context);
+                let prompt = build_prompt(&context, ai_state.extra_instructions.as_deref());
                 ai_state.send_request(prompt);
             }
         }
