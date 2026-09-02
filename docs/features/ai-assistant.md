@@ -141,7 +141,11 @@ max_context_length = 100000  # characters of JSON context sent to AI (default 10
 [ai.anthropic]
 api_key = "sk-ant-..."
 model = "claude-haiku-4-5-20251001"
+effort = "high"      # optional: low | medium | high | xhigh | max (Claude 4.6+)
+context_1m = false   # optional: 1M-token context window beta (Claude Sonnet 4/4.5)
 ```
+
+`effort` sets the reasoning depth on Claude models that support it. `context_1m` opts into the 1M-token context window — raise [`max_context_length`](#tuning-context-size) too, or jiq still sends the same small sample.
 
 ### OpenAI
 
@@ -149,7 +153,10 @@ model = "claude-haiku-4-5-20251001"
 [ai.openai]
 api_key = "sk-proj-..."
 model = "gpt-4o-mini"
+effort = "medium"    # optional: minimal | low | medium | high | xhigh | max (reasoning models)
 ```
+
+`effort` maps to the OpenAI `reasoning_effort` field and is only sent when set.
 
 ### Gemini
 
@@ -157,7 +164,10 @@ model = "gpt-4o-mini"
 [ai.gemini]
 api_key = "AIza..."
 model = "gemini-3-flash-preview"
+effort = "medium"    # optional: minimal | low | medium | high (Gemini 3+; xhigh/max clamp to high)
 ```
+
+`effort` maps to Gemini's `thinkingLevel`. Gemini 2.5-series models use a different mechanism and reject it — omit `effort` on those.
 
 ### AWS Bedrock
 
@@ -236,6 +246,8 @@ model = "grok-4-fast-non-reasoning"
 ```
 
 For local providers that don't require authentication, omit the `api_key` field entirely.
+
+These endpoints share the `[ai.openai]` options, including `effort` — jiq only sends `reasoning_effort` when you set it, so servers that don't support the field are unaffected. Set it only for models that take it (e.g. gpt-oss on Ollama).
 
 ### Tuning context size
 

@@ -34,6 +34,34 @@ fn test_anthropic_config_default_values() {
     assert!(config.api_key.is_none());
     assert!(config.model.is_none());
     assert_eq!(config.max_tokens, 512);
+    assert!(config.effort.is_none());
+    assert!(!config.context_1m);
+}
+
+#[test]
+fn test_parse_anthropic_effort_and_context_1m() {
+    let toml = r#"
+[ai.anthropic]
+api_key = "sk-ant-test"
+model = "claude-sonnet-4-6"
+effort = "high"
+context_1m = true
+"#;
+    let config: Config = toml::from_str(toml).unwrap();
+    assert_eq!(config.ai.anthropic.effort, Some(AiEffort::High));
+    assert!(config.ai.anthropic.context_1m);
+}
+
+#[test]
+fn test_parse_gemini_effort() {
+    let toml = r#"
+[ai.gemini]
+api_key = "AIza-test"
+model = "gemini-3-flash"
+effort = "medium"
+"#;
+    let config: Config = toml::from_str(toml).unwrap();
+    assert_eq!(config.ai.gemini.effort, Some(AiEffort::Medium));
 }
 
 #[test]
@@ -186,6 +214,7 @@ fn test_gemini_config_default_values() {
     let config = GeminiConfig::default();
     assert!(config.api_key.is_none());
     assert!(config.model.is_none());
+    assert!(config.effort.is_none());
 }
 
 #[test]

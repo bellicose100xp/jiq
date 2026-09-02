@@ -579,6 +579,7 @@ fn test_new_with_gemini_provider() {
             gemini: GeminiConfig {
                 api_key: Some("test-key".to_string()),
                 model: Some("gemini-pro".to_string()),
+                effort: None,
             },
             ..Default::default()
         },

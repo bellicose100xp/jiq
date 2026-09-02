@@ -10,6 +10,8 @@ fn test_async_from_config_missing_api_key() {
         provider: Some(AiProviderType::Anthropic),
         anthropic: AnthropicConfig {
             max_tokens: 512,
+            effort: None,
+            context_1m: false,
             api_key: None,
             ..Default::default()
         },
@@ -33,6 +35,8 @@ fn test_async_from_config_empty_api_key() {
         provider: Some(AiProviderType::Anthropic),
         anthropic: AnthropicConfig {
             max_tokens: 512,
+            effort: None,
+            context_1m: false,
             api_key: Some("".to_string()),
             ..Default::default()
         },
@@ -56,6 +60,8 @@ fn test_async_from_config_whitespace_api_key() {
         provider: Some(AiProviderType::Anthropic),
         anthropic: AnthropicConfig {
             max_tokens: 512,
+            effort: None,
+            context_1m: false,
             api_key: Some("   ".to_string()),
             ..Default::default()
         },
@@ -79,6 +85,8 @@ fn test_async_from_config_valid_api_key() {
         provider: Some(AiProviderType::Anthropic),
         anthropic: AnthropicConfig {
             max_tokens: 512,
+            effort: None,
+            context_1m: false,
             api_key: Some("sk-ant-test-key".to_string()),
             model: Some("claude-3-haiku".to_string()),
         },
@@ -101,6 +109,8 @@ fn test_async_from_config_disabled() {
         provider: Some(AiProviderType::Anthropic),
         anthropic: AnthropicConfig {
             max_tokens: 512,
+            effort: None,
+            context_1m: false,
             api_key: Some("sk-ant-test-key".to_string()),
             ..Default::default()
         },

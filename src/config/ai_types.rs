@@ -74,6 +74,12 @@ pub struct AnthropicConfig {
     /// Maximum tokens in response
     #[serde(default = "default_max_tokens")]
     pub max_tokens: u32,
+    /// Reasoning effort for Claude 4.6+ models (None = model default)
+    pub effort: Option<AiEffort>,
+    /// Enable the 1M-token context window beta (Claude Sonnet 4 / 4.5).
+    /// Also raise `max_context_length` to send larger samples, or this has no effect.
+    #[serde(default)]
+    pub context_1m: bool,
 }
 
 impl Default for AnthropicConfig {
@@ -82,6 +88,8 @@ impl Default for AnthropicConfig {
             api_key: None,
             model: None,
             max_tokens: default_max_tokens(),
+            effort: None,
+            context_1m: false,
         }
     }
 }
@@ -123,6 +131,9 @@ pub struct GeminiConfig {
     pub api_key: Option<String>,
     /// Model to use (required, e.g., "gemini-2.0-flash")
     pub model: Option<String>,
+    /// Reasoning effort, mapped to the Gemini 3 thinking level (None = model default).
+    /// `xhigh`/`max` clamp to Gemini's highest level.
+    pub effort: Option<AiEffort>,
 }
 
 /// AI assistant configuration section

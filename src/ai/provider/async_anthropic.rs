@@ -12,12 +12,16 @@ use tokio_util::sync::CancellationToken;
 use super::AiError;
 use super::sse::{AnthropicEventParser, SseParser};
 use crate::ai::ai_state::AiResponse;
+use crate::config::ai_types::AiEffort;
 
 /// Anthropic API endpoint
 const ANTHROPIC_API_URL: &str = "https://api.anthropic.com/v1/messages";
 
 /// Anthropic API version header
 const ANTHROPIC_VERSION: &str = "2023-06-01";
+
+/// Anthropic beta flag that opts a request into the 1M-token context window.
+const CONTEXT_1M_BETA: &str = "context-1m-2025-08-07";
 
 /// Async Anthropic Claude API client
 ///
@@ -29,6 +33,8 @@ pub struct AsyncAnthropicClient {
     api_key: String,
     model: String,
     max_tokens: u32,
+    effort: Option<AiEffort>,
+    context_1m: bool,
 }
 
 impl AsyncAnthropicClient {
@@ -39,7 +45,49 @@ impl AsyncAnthropicClient {
             api_key,
             model,
             max_tokens,
+            effort: None,
+            context_1m: false,
         }
+    }
+
+    /// Set the reasoning effort (Claude 4.6+). None leaves the model default.
+    pub fn with_effort(mut self, effort: Option<AiEffort>) -> Self {
+        self.effort = effort;
+        self
+    }
+
+    /// Enable the 1M-token context window beta (Claude Sonnet 4 / 4.5).
+    pub fn with_context_1m(mut self, context_1m: bool) -> Self {
+        self.context_1m = context_1m;
+        self
+    }
+
+    /// Build the request body JSON for the Anthropic Messages API.
+    ///
+    /// Effort rides Claude's adaptive-thinking shape:
+    /// `{"thinking": {"type": "adaptive"}, "output_config": {"effort": "<level>"}}`.
+    fn build_request_body(&self, prompt: &str) -> Result<String, AiError> {
+        let mut request_body = serde_json::json!({
+            "model": self.model,
+            "max_tokens": self.max_tokens,
+            "stream": true,
+            "messages": [
+                {
+                    "role": "user",
+                    "content": prompt
+                }
+            ]
+        });
+
+        if let Some(effort) = self.effort {
+            request_body["thinking"] = serde_json::json!({"type": "adaptive"});
+            request_body["output_config"] = serde_json::json!({"effort": effort.as_str()});
+        }
+
+        serde_json::to_string(&request_body).map_err(|e| AiError::Parse {
+            provider: "Anthropic".to_string(),
+            message: e.to_string(),
+        })
     }
 
     /// Apply a whole-request timeout (from `[ai] request_timeout_secs`).
@@ -81,30 +129,22 @@ impl AsyncAnthropicClient {
             return Err(AiError::Cancelled);
         }
 
-        let request_body = serde_json::json!({
-            "model": self.model,
-            "max_tokens": self.max_tokens,
-            "stream": true,
-            "messages": [
-                {
-                    "role": "user",
-                    "content": prompt
-                }
-            ]
-        });
-
-        let body = serde_json::to_string(&request_body).map_err(|e| AiError::Parse {
-            provider: "Anthropic".to_string(),
-            message: e.to_string(),
-        })?;
+        let body = self.build_request_body(prompt)?;
 
         // Make the request
-        let response = self
+        let mut request = self
             .client
             .post(ANTHROPIC_API_URL)
             .header("x-api-key", &self.api_key)
             .header("anthropic-version", ANTHROPIC_VERSION)
-            .header("content-type", "application/json")
+            .header("content-type", "application/json");
+
+        // Opt into the 1M-token context window beta when configured
+        if self.context_1m {
+            request = request.header("anthropic-beta", CONTEXT_1M_BETA);
+        }
+
+        let response = request
             .body(body)
             .send()
             .await

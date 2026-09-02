@@ -47,6 +47,8 @@ mod round2_coverage_tests {
                     api_key: Some("sk-ant-test".to_string()),
                     model: Some("claude-3-haiku".to_string()),
                     max_tokens: 512,
+                    effort: None,
+                    context_1m: false,
                 };
             }
             AiProviderType::Bedrock => {
@@ -70,6 +72,7 @@ mod round2_coverage_tests {
                 config.gemini = GeminiConfig {
                     api_key: Some("AIzaSyTest".to_string()),
                     model: Some("gemini-2.0-flash".to_string()),
+                    effort: None,
                 };
             }
         }
@@ -138,6 +141,8 @@ mod round2_coverage_tests {
                 api_key: Some("sk-ant-test".to_string()),
                 model: None,
                 max_tokens: 512,
+                effort: None,
+                context_1m: false,
             },
             bedrock: BedrockConfig::default(),
             openai: OpenAiConfig::default(),
@@ -173,6 +178,8 @@ mod round2_coverage_tests {
                 api_key: Some("sk-ant-test".to_string()),
                 model: Some("   ".to_string()),
                 max_tokens: 512,
+                effort: None,
+                context_1m: false,
             },
             bedrock: BedrockConfig::default(),
             openai: OpenAiConfig::default(),
