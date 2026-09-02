@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.33.0] - 2026-09-02
+
+### Added
+- **Reasoning effort for Bedrock and OpenAI models** ([#191](https://github.com/bellicose100xp/jiq/pull/191)) - `effort` in `[ai.bedrock]` and `[ai.openai]` sets the reasoning depth (`low` through `max`) for models that support it. The Bedrock provider shapes the field per model family: Claude models get adaptive thinking with `output_config.effort`, while OpenAI models on Bedrock (gpt-oss, GPT-5.6 Sol/Terra/Luna via the Converse API) get the `reasoning_effort` field - so both Claude and OpenAI models run through the same `[ai.bedrock]` section with the same AWS profile, switching by model ID alone. On the `openai` provider the field maps to `reasoning_effort` and is omitted when unset, leaving Ollama and other OpenAI-compatible endpoints untouched.
+- **1M-token context window for Claude on Bedrock** ([#191](https://github.com/bellicose100xp/jiq/pull/191)) - `context_1m = true` in `[ai.bedrock]` opts Claude Sonnet 4/4.5 into the 1M-token context beta via the `context-1m-2025-08-07` flag. Raise `max_context_length` alongside it, or jiq keeps sending the same small JSON sample; prompts over 200K tokens bill at a higher rate. Newer models like Claude Fable default to 1M with no flag.
+- **Extra instructions appended to every AI prompt** ([#191](https://github.com/bellicose100xp/jiq/pull/191)) - `extra_instructions` in `[ai]` adds your own guidance (style preferences, favored jq idioms) to the end of each prompt. It never replaces the built-in prompt: the output-format contract the suggestion parser depends on always takes precedence, and blank values are ignored.
+- **AI request timeout** ([#191](https://github.com/bellicose100xp/jiq/pull/191)) - `request_timeout_secs` in `[ai]` (default 120, `0` disables) bounds the whole AI request on every provider. Previously no timeout existed at all, so a hung provider connection waited forever until manually cancelled.
+- **Query debounce, history cap, and save pattern are now configurable** ([#191](https://github.com/bellicose100xp/jiq/pull/191)) - `[query] debounce_ms` (default 150) sets the delay between the last keystroke and the jq re-run; `[history] max_entries` (default 1000) caps the persisted query history; `[save] default_pattern` (default `jiq-{timestamp}.json`) sets the initial filename in the save dialog with `{timestamp}`, `{cwd}`, and `~` expansion.
+
 ## [3.32.3] - 2026-07-07
 
 ### Fixed
