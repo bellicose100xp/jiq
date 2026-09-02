@@ -155,6 +155,49 @@ fn snapshot_request_body_format() {
     assert_snapshot!(pretty_json);
 }
 
+// build_request_body: without effort no generationConfig is sent, preserving
+// prior behavior (and the model's own default thinking level).
+#[test]
+fn test_request_body_omits_generation_config_when_effort_unset() {
+    let client = AsyncGeminiClient::new("AIza-test".to_string(), "gemini-3-flash".to_string());
+
+    let body = client.build_request_body("prompt").unwrap();
+    let json: serde_json::Value = serde_json::from_str(&body).unwrap();
+
+    assert!(json.get("generationConfig").is_none());
+}
+
+// build_request_body: effort maps to generationConfig.thinkingConfig.thinkingLevel,
+// with xhigh/max clamped to Gemini's highest level ("high").
+#[test]
+fn test_request_body_maps_effort_to_thinking_level() {
+    use crate::config::ai_types::AiEffort;
+
+    for (effort, expected) in [
+        (AiEffort::Minimal, "minimal"),
+        (AiEffort::Low, "low"),
+        (AiEffort::Medium, "medium"),
+        (AiEffort::High, "high"),
+        (AiEffort::Xhigh, "high"),
+        (AiEffort::Max, "high"),
+    ] {
+        let client = AsyncGeminiClient::new("AIza-test".to_string(), "gemini-3-flash".to_string())
+            .with_effort(Some(effort));
+
+        let body = client.build_request_body("prompt").unwrap();
+        let json: serde_json::Value = serde_json::from_str(&body).unwrap();
+
+        assert_eq!(
+            json.pointer("/generationConfig/thinkingConfig/thinkingLevel")
+                .and_then(|v| v.as_str()),
+            Some(expected),
+            "effort {:?} should map to thinkingLevel {}",
+            effort,
+            expected
+        );
+    }
+}
+
 #[test]
 fn test_build_url_format() {
     let client =

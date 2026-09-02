@@ -409,6 +409,22 @@ backend = "auto"
 # - dark: force the dark palette (the classic Galaxy theme)
 mode = "auto"
 
+[tooltip]
+# Auto-show the function tooltip as the cursor lands on a known jq function (default: true)
+auto_show = true
+
+[query]
+# Delay in milliseconds between the last keystroke and the jq re-run (default: 150)
+debounce_ms = 150
+
+[history]
+# Maximum entries kept in the persisted query history (default: 1000)
+max_entries = 1000
+
+[save]
+# Initial filename in the save dialog; supports {timestamp}, {cwd}, and ~ (default: "jiq-{timestamp}.json")
+default_pattern = "jiq-{timestamp}.json"
+
 [autocomplete]
 # Number of array elements sampled to discover field suggestions for arrays where fields
 # differ across elements. Increasing this may improve suggestions but adds a performance cost.
@@ -428,6 +444,10 @@ provider = "anthropic"
 # Larger values send more context to AI but increase token usage/costs
 # Smaller values send less context and decrease token usage/costs
 max_context_length = 100000
+# Extra instructions appended to every AI prompt (optional; never replaces the built-in prompt)
+extra_instructions = ""
+# Whole-request timeout in seconds; 0 disables it (default: 120)
+request_timeout_secs = 120
 
 # ─────────────────────────────────────────────────────────
 # Anthropic
@@ -436,6 +456,10 @@ max_context_length = 100000
 # Get your API key from: https://console.anthropic.com/settings/keys
 api_key = "your-api-key-here"
 model = "claude-haiku-4-5-20251001"
+# Optional reasoning effort for Claude 4.6+: "low", "medium", "high", "xhigh", "max"
+effort = "high"
+# Optional 1M-token context window beta (Claude Sonnet 4/4.5); raise max_context_length too
+context_1m = false
 
 # ─────────────────────────────────────────────────────────
 # OpenAI
@@ -444,6 +468,9 @@ model = "claude-haiku-4-5-20251001"
 # Get your OpenAI API key from: https://platform.openai.com/api-keys
 api_key = "sk-proj-..."
 model = "gpt-4o-mini"
+# Optional reasoning effort (sent as reasoning_effort, only when set):
+# "minimal", "low", "medium", "high", "xhigh", "max"
+effort = "medium"
 
 # ═════════════════════════════════════════════════════════
 # OpenAI-Compatible APIs
@@ -483,14 +510,22 @@ model = "grok-4-fast-non-reasoning"
 api_key = "AIza..."
 # Gemini model to use (e.g., "gemini-3-flash-preview", "gemini-1.5-flash")
 model = "gemini-3-flash-preview"
+# Optional thinking level for Gemini 3+: "minimal", "low", "medium", "high"
+# ("xhigh"/"max" clamp to "high"; omit for Gemini 2.5 models)
+effort = "medium"
 
 # ─────────────────────────────────────────────────────────
 # AWS Bedrock
 # ─────────────────────────────────────────────────────────
 [ai.bedrock]
 region = "us-east-1"
+# Claude and OpenAI models both work via the Converse API (e.g. "us.openai.gpt-5.6-sol")
 model = "global.anthropic.claude-haiku-4-5-20251001-v1:0"
 profile = "default"  # Optional: AWS profile name (uses default credential chain if omitted)
+# Optional reasoning effort, shaped per model family: "low", "medium", "high", "xhigh", "max"
+effort = "high"
+# Optional 1M-token context window beta (Claude Sonnet 4/4.5); raise max_context_length too
+context_1m = false
 ```
 
 ## Known Limitations

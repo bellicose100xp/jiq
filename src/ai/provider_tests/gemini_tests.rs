@@ -18,6 +18,7 @@ fn test_gemini_from_config_missing_api_key() {
         gemini: GeminiConfig {
             api_key: None,
             model: Some("gemini-2.0-flash".to_string()),
+            effort: None,
         },
         max_context_length: TEST_MAX_CONTEXT_LENGTH,
         extra_instructions: None,
@@ -45,6 +46,7 @@ fn test_gemini_from_config_missing_model() {
         gemini: GeminiConfig {
             api_key: Some("AIzaSyTest123".to_string()),
             model: None,
+            effort: None,
         },
         max_context_length: TEST_MAX_CONTEXT_LENGTH,
         extra_instructions: None,
@@ -72,6 +74,7 @@ fn test_gemini_from_config_valid_creates_client() {
         gemini: GeminiConfig {
             api_key: Some("AIzaSyTest123".to_string()),
             model: Some("gemini-2.0-flash".to_string()),
+            effort: None,
         },
         max_context_length: TEST_MAX_CONTEXT_LENGTH,
         extra_instructions: None,
@@ -98,6 +101,7 @@ fn test_gemini_provider_name() {
         gemini: GeminiConfig {
             api_key: Some("AIzaSyTest123".to_string()),
             model: Some("gemini-2.0-flash".to_string()),
+            effort: None,
         },
         max_context_length: TEST_MAX_CONTEXT_LENGTH,
         extra_instructions: None,

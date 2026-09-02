@@ -13,6 +13,7 @@ use tokio_util::sync::CancellationToken;
 use super::AiError;
 use super::sse::{GeminiEventParser, SseParser};
 use crate::ai::ai_state::AiResponse;
+use crate::config::ai_types::AiEffort;
 
 /// Gemini API endpoint
 const GEMINI_API_URL: &str = "https://generativelanguage.googleapis.com/v1beta/models";
@@ -26,6 +27,18 @@ pub struct AsyncGeminiClient {
     client: Client,
     api_key: String,
     model: String,
+    effort: Option<AiEffort>,
+}
+
+/// Map the shared effort scale onto Gemini's thinking levels.
+/// Gemini tops out at "high", so `xhigh` and `max` clamp to it.
+fn thinking_level(effort: AiEffort) -> &'static str {
+    match effort {
+        AiEffort::Minimal => "minimal",
+        AiEffort::Low => "low",
+        AiEffort::Medium => "medium",
+        AiEffort::High | AiEffort::Xhigh | AiEffort::Max => "high",
+    }
 }
 
 impl AsyncGeminiClient {
@@ -35,7 +48,15 @@ impl AsyncGeminiClient {
             client: Client::new(),
             api_key,
             model,
+            effort: None,
         }
+    }
+
+    /// Set the reasoning effort, mapped to the Gemini 3 thinking level.
+    /// None leaves the model default.
+    pub fn with_effort(mut self, effort: Option<AiEffort>) -> Self {
+        self.effort = effort;
+        self
     }
 
     /// Apply a whole-request timeout (from `[ai] request_timeout_secs`).
@@ -86,8 +107,22 @@ impl AsyncGeminiClient {
         }
 
         #[derive(Serialize)]
+        struct ThinkingConfig {
+            #[serde(rename = "thinkingLevel")]
+            thinking_level: &'static str,
+        }
+
+        #[derive(Serialize)]
+        struct GenerationConfig {
+            #[serde(rename = "thinkingConfig")]
+            thinking_config: ThinkingConfig,
+        }
+
+        #[derive(Serialize)]
         struct RequestBody {
             contents: Vec<Content>,
+            #[serde(rename = "generationConfig", skip_serializing_if = "Option::is_none")]
+            generation_config: Option<GenerationConfig>,
         }
 
         let body = RequestBody {
@@ -97,6 +132,11 @@ impl AsyncGeminiClient {
                     text: prompt.to_string(),
                 }],
             }],
+            generation_config: self.effort.map(|effort| GenerationConfig {
+                thinking_config: ThinkingConfig {
+                    thinking_level: thinking_level(effort),
+                },
+            }),
         };
 
         serde_json::to_string(&body).map_err(|e| AiError::Parse {

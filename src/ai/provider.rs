@@ -148,6 +148,8 @@ impl AsyncAiProvider {
                         model.clone(),
                         config.anthropic.max_tokens,
                     )
+                    .with_effort(config.anthropic.effort)
+                    .with_context_1m(config.anthropic.context_1m)
                     .with_timeout(timeout),
                 );
 
@@ -260,7 +262,9 @@ impl AsyncAiProvider {
                     })?;
 
                 let provider = AsyncAiProvider::Gemini(
-                    AsyncGeminiClient::new(api_key.clone(), model.clone()).with_timeout(timeout),
+                    AsyncGeminiClient::new(api_key.clone(), model.clone())
+                        .with_effort(config.gemini.effort)
+                        .with_timeout(timeout),
                 );
 
                 // Use provider_name to avoid dead code warning

@@ -19,6 +19,71 @@ fn test_async_anthropic_client_new() {
     assert!(format!("{:?}", client).contains("AsyncAnthropicClient"));
 }
 
+// build_request_body: without effort the body carries no thinking or
+// output_config keys, preserving prior behavior for all models.
+#[test]
+fn test_request_body_omits_effort_fields_when_unset() {
+    let client =
+        AsyncAnthropicClient::new("sk-ant-test".to_string(), "claude-3-haiku".to_string(), 512);
+
+    let body = client.build_request_body("prompt").unwrap();
+    let json: serde_json::Value = serde_json::from_str(&body).unwrap();
+
+    assert!(json.get("thinking").is_none());
+    assert!(json.get("output_config").is_none());
+    assert_eq!(
+        json.get("model").and_then(|v| v.as_str()),
+        Some("claude-3-haiku")
+    );
+    assert_eq!(json.get("max_tokens").and_then(|v| v.as_u64()), Some(512));
+    assert_eq!(json.get("stream").and_then(|v| v.as_bool()), Some(true));
+}
+
+// build_request_body: effort produces adaptive thinking plus output_config.effort.
+#[test]
+fn test_request_body_includes_effort_fields_when_set() {
+    use crate::config::ai_types::AiEffort;
+
+    let client = AsyncAnthropicClient::new(
+        "sk-ant-test".to_string(),
+        "claude-sonnet-4-6".to_string(),
+        512,
+    )
+    .with_effort(Some(AiEffort::Xhigh));
+
+    let body = client.build_request_body("prompt").unwrap();
+    let json: serde_json::Value = serde_json::from_str(&body).unwrap();
+
+    assert_eq!(
+        json.pointer("/thinking/type").and_then(|v| v.as_str()),
+        Some("adaptive")
+    );
+    assert_eq!(
+        json.pointer("/output_config/effort")
+            .and_then(|v| v.as_str()),
+        Some("xhigh")
+    );
+}
+
+// with_context_1m stores the flag that adds the anthropic-beta header at send time.
+#[test]
+fn test_with_context_1m_stores_flag() {
+    let client = AsyncAnthropicClient::new(
+        "sk-ant-test".to_string(),
+        "claude-sonnet-4-5".to_string(),
+        512,
+    )
+    .with_context_1m(true);
+    assert!(client.context_1m);
+
+    let default_client = AsyncAnthropicClient::new(
+        "sk-ant-test".to_string(),
+        "claude-sonnet-4-5".to_string(),
+        512,
+    );
+    assert!(!default_client.context_1m);
+}
+
 #[test]
 fn test_sse_parser_parse_delta_text_valid() {
     let data =

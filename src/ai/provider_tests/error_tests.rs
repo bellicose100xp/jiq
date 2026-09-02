@@ -10,6 +10,8 @@ fn test_from_config_returns_error_when_provider_is_none() {
         provider: None,
         anthropic: AnthropicConfig {
             max_tokens: 512,
+            effort: None,
+            context_1m: false,
             api_key: Some("valid-key".to_string()),
             model: Some("claude-3-haiku".to_string()),
         },
@@ -50,6 +52,8 @@ fn test_from_config_error_when_provider_none_even_with_all_credentials() {
         provider: None,
         anthropic: AnthropicConfig {
             max_tokens: 512,
+            effort: None,
+            context_1m: false,
             api_key: Some("anthropic-key".to_string()),
             model: Some("claude-3-haiku".to_string()),
         },
@@ -69,6 +73,7 @@ fn test_from_config_error_when_provider_none_even_with_all_credentials() {
         gemini: GeminiConfig {
             api_key: Some("gemini-key".to_string()),
             model: Some("gemini-pro".to_string()),
+            effort: None,
         },
         max_context_length: TEST_MAX_CONTEXT_LENGTH,
         extra_instructions: None,
@@ -172,6 +177,8 @@ fn test_provider_name_returns_correct_identifier() {
         provider: Some(AiProviderType::Anthropic),
         anthropic: AnthropicConfig {
             max_tokens: 512,
+            effort: None,
+            context_1m: false,
             api_key: Some("test-key".to_string()),
             model: Some("claude-3-haiku".to_string()),
         },
@@ -194,6 +201,8 @@ fn test_config_error_includes_correct_provider_for_missing_api_key() {
         provider: Some(AiProviderType::Anthropic),
         anthropic: AnthropicConfig {
             max_tokens: 512,
+            effort: None,
+            context_1m: false,
             api_key: None,
             model: Some("claude-3-haiku".to_string()),
         },
@@ -222,6 +231,8 @@ fn test_config_error_includes_correct_provider_for_disabled() {
         provider: Some(AiProviderType::Anthropic),
         anthropic: AnthropicConfig {
             max_tokens: 512,
+            effort: None,
+            context_1m: false,
             api_key: Some("valid-key".to_string()),
             model: Some("claude-3-haiku".to_string()),
         },
