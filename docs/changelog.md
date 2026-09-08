@@ -17,6 +17,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.34.1] - 2026-09-08
+
+### Fixed
+- **Search no longer crashes on length-changing Unicode** ([#193](https://github.com/bellicose100xp/jiq/pull/193)) - Searching a result that contained a character whose lowercase form has a different byte length (`İ`, `ẞ`, the Kelvin sign `K`) could panic and exit jiq. The matcher looked up the query in a lowercased copy of each line and then sliced the original line with that byte offset, which lands mid-character once the lengths diverge; a document like `{"k":"İxé"}` searched for `é` crashed every time. The same mismatch shifted every later column on the line by one, so a highlight sat one glyph to the right of the actual match. Columns and lengths are now computed against the original line's characters, and matches whose text changes length under lowercasing highlight exactly the characters they cover.
+- **Search matches follow the result when it changes** ([#193](https://github.com/bellicose100xp/jiq/pull/193)) - With the search bar open, drilling in with `>`, stepping back with `<`, or stepping out with `^` replaces the result but left the match list pointing at rows of the old one, so the count, `n`/`N` navigation, and the highlights all described a result that was no longer on screen. The matches are now rescanned against the new result as soon as it lands.
+- **Cancelled jq processes are reaped** ([#193](https://github.com/bellicose100xp/jiq/pull/193)) - Every query interrupted by a newer keystroke left its killed jq process as a zombie until jiq exited; typing a slow query on a large file accumulated one per keystroke. The process is now waited on right after it is killed. Reaping happens on the worker thread inside the debounce window, so typing latency is unchanged.
+
 ## [3.34.0] - 2026-09-02
 
 ### Added
