@@ -487,3 +487,35 @@ proptest! {
 #[cfg(test)]
 #[path = "search_state_tests/matches_by_line_tests.rs"]
 mod matches_by_line_tests;
+
+#[test]
+fn test_refresh_matches_rescans_when_content_changes() {
+    let mut state = SearchState::new();
+    state.open();
+    state.search_textarea_mut().insert_str("x");
+    state.update_matches("x\nx\nx");
+    assert_eq!(state.matches().len(), 3);
+
+    // Same query, different result: update_matches keeps the stale list...
+    state.update_matches("x");
+    assert_eq!(state.matches().len(), 3);
+
+    // ...refresh_matches rescans it.
+    state.refresh_matches("x");
+    assert_eq!(state.matches().len(), 1);
+    assert_eq!(state.matches()[0].line, 0);
+    assert_eq!(state.current_index(), 0);
+    assert_eq!(state.matches_on_line(2).count(), 0);
+}
+
+#[test]
+fn test_refresh_matches_with_empty_query_clears_matches() {
+    let mut state = SearchState::new();
+    state.matches = vec![Match {
+        line: 5,
+        col: 0,
+        len: 1,
+    }];
+    state.refresh_matches("anything");
+    assert!(state.matches().is_empty());
+}

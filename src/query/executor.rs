@@ -279,6 +279,9 @@ impl JqExecutor {
             if cancel_token.is_cancelled() {
                 log::debug!("jq process killed due to cancellation");
                 let _ = child.kill();
+                // Reap the killed child; dropping a `Child` does not, and
+                // every cancelled query would otherwise leave a zombie.
+                let _ = child.wait();
                 return Err(QueryError::Cancelled);
             }
 

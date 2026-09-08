@@ -156,8 +156,6 @@ impl SearchState {
 
     /// Update matches based on query and content
     pub fn update_matches(&mut self, content: &str) {
-        use super::matcher::SearchMatcher;
-
         let query = self.query().to_string();
 
         // Only update if query changed
@@ -165,10 +163,24 @@ impl SearchState {
             return;
         }
 
+        self.last_query = query;
+        self.rebuild_matches(content);
+    }
+
+    /// Rescan against new content even though the query is unchanged.
+    /// Called when the result behind an open search is replaced, so
+    /// matches never point at rows of a result that no longer exists.
+    pub fn refresh_matches(&mut self, content: &str) {
+        self.last_query = self.query().to_string();
+        self.rebuild_matches(content);
+    }
+
+    fn rebuild_matches(&mut self, content: &str) {
+        use super::matcher::SearchMatcher;
+
         let _t = crate::Timer::new("search update");
 
-        self.last_query = query.clone();
-        self.matches = SearchMatcher::find_all(content, &query);
+        self.matches = SearchMatcher::find_all(content, &self.last_query);
         self.current_index = 0;
 
         // Build line index for O(1) lookup during render

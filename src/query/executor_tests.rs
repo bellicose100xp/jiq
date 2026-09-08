@@ -475,3 +475,66 @@ fn test_jq_colors_env_formats_rgb_and_falls_back_for_non_rgb() {
         parts[7]
     );
 }
+
+/// Zombie `jq` children of this process, by pid. Other tests spawn jq
+/// concurrently and their children pass through the zombie state for a
+/// moment between exit and reap, so callers must poll rather than sample.
+#[cfg(target_os = "linux")]
+fn zombie_jq_children() -> Vec<u32> {
+    let mut zombies = Vec::new();
+    let Ok(tasks) = std::fs::read_dir("/proc/self/task") else {
+        return zombies;
+    };
+    for task in tasks.flatten() {
+        let Ok(children) = std::fs::read_to_string(task.path().join("children")) else {
+            continue;
+        };
+        for pid in children.split_whitespace() {
+            let Ok(stat) = std::fs::read_to_string(format!("/proc/{pid}/stat")) else {
+                continue;
+            };
+            let Some((_, rest)) = stat.split_once('(') else {
+                continue;
+            };
+            let Some((comm, after)) = rest.rsplit_once(')') else {
+                continue;
+            };
+            let state = after.split_whitespace().next();
+            if comm == "jq"
+                && state == Some("Z")
+                && let Ok(pid) = pid.parse()
+            {
+                zombies.push(pid);
+            }
+        }
+    }
+    zombies
+}
+
+// A cancelled jq must be reaped, not left as a zombie until jiq exits.
+// Before the fix every cancellation here added one permanent zombie.
+#[cfg(target_os = "linux")]
+#[test]
+fn test_cancelled_query_reaps_child() {
+    let executor = JqExecutor::new("null".to_string());
+    let cancel_token = CancellationToken::new();
+    cancel_token.cancel();
+
+    let before = zombie_jq_children().len();
+    for _ in 0..5 {
+        let result = executor.execute_with_cancel("[range(100000000)] | length", &cancel_token);
+        assert!(matches!(result, Err(QueryError::Cancelled)));
+    }
+
+    // Transient zombies from concurrent tests vanish within milliseconds;
+    // a leaked one never does.
+    let mut zombies = zombie_jq_children().len();
+    for _ in 0..40 {
+        if zombies <= before {
+            return;
+        }
+        std::thread::sleep(std::time::Duration::from_millis(25));
+        zombies = zombie_jq_children().len();
+    }
+    panic!("cancelled jq children were not reaped: {zombies} zombies, {before} before");
+}
