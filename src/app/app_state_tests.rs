@@ -1003,3 +1003,35 @@ mod dirty_flag_tests;
 #[cfg(test)]
 #[path = "app_state_tests/paste_recovery_tests.rs"]
 mod paste_recovery_tests;
+
+// A result swap while search is open (drill-in, `<`, `^`) must refresh the
+// matches, or n/N and the highlights keep addressing rows of the old result.
+#[test]
+fn test_update_stats_refreshes_open_search_matches() {
+    let mut app = test_app(r#"{"name": "test"}"#);
+    let qs = app.query.as_mut().unwrap();
+    qs.last_successful_result_unformatted = Some(Arc::new("x\nx\nx".to_string()));
+
+    app.search.open();
+    app.search.search_textarea_mut().insert_str("x");
+    app.search.update_matches("x\nx\nx");
+    assert_eq!(app.search.matches().len(), 3);
+
+    let qs = app.query.as_mut().unwrap();
+    qs.last_successful_result_unformatted = Some(Arc::new("x".to_string()));
+    app.update_stats();
+
+    assert_eq!(app.search.matches().len(), 1);
+}
+
+#[test]
+fn test_update_stats_leaves_closed_search_alone() {
+    let mut app = test_app(r#"{"name": "test"}"#);
+    app.search.search_textarea_mut().insert_str("x");
+    app.search.update_matches("x\nx");
+    assert_eq!(app.search.matches().len(), 2);
+
+    app.update_stats();
+
+    assert_eq!(app.search.matches().len(), 2);
+}

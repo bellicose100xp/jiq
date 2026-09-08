@@ -373,6 +373,17 @@ impl App {
     pub fn update_stats(&mut self) {
         stats::update_stats_from_app(self);
         self.path_at_cursor.invalidate();
+
+        // An open search must track the new result, or its matches keep
+        // pointing at rows of the result that was just replaced.
+        if self.search.is_visible()
+            && let Some(content) = self
+                .query
+                .as_ref()
+                .and_then(|q| q.last_successful_result_unformatted.as_ref())
+        {
+            self.search.refresh_matches(content);
+        }
     }
 
     /// Resolve the jq path of the value pretty-printed on the current
