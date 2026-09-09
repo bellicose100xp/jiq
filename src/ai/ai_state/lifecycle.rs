@@ -4,6 +4,7 @@
 
 use super::super::selection::SelectionState;
 use super::super::suggestion::{ParseOutcome, parse_response};
+use super::conversation::new_chat_input;
 use crate::ai::ai_state::AiState;
 
 /// Default max context length for tests
@@ -28,7 +29,6 @@ impl AiState {
             loading: false,
             error: None,
             response: String::new(),
-            previous_response: None,
             request_tx: None,
             response_rx: None,
             request_id: 0,
@@ -40,6 +40,11 @@ impl AiState {
             no_suggestions: false,
             selection: SelectionState::new(),
             previous_popup_height: None,
+            history: Vec::new(),
+            current_question: None,
+            current_query: String::new(),
+            answer: None,
+            chat_input: new_chat_input(),
         }
     }
 
@@ -72,7 +77,6 @@ impl AiState {
             loading: false,
             error: None,
             response: String::new(),
-            previous_response: None,
             request_tx: None,
             response_rx: None,
             request_id: 0,
@@ -84,10 +88,17 @@ impl AiState {
             no_suggestions: false,
             selection: SelectionState::new(),
             previous_popup_height: None,
+            history: Vec::new(),
+            current_question: None,
+            current_query: String::new(),
+            answer: None,
+            chat_input: new_chat_input(),
         }
     }
 
-    /// Toggle the visibility of the AI popup
+    /// Toggle the visibility of the AI popup (test helper; the app uses
+    /// `App::toggle_ai_popup` so focus follows the popup)
+    #[cfg(test)]
     pub fn toggle(&mut self) {
         self.visible = !self.visible;
     }
@@ -98,17 +109,18 @@ impl AiState {
         self.visible = false;
     }
 
-    /// Start a new request, preserving the current response
+    /// Start a new request
     ///
+    /// A completed chat exchange on screen is archived into `history` first
+    /// so it stays visible (dimmed) and is replayed on later requests.
     /// Increments the request_id to ensure stale responses from previous
     /// requests are filtered out. Also sets in_flight_request_id to track
     /// the active request for cancellation.
     pub fn start_request(&mut self) {
-        if !self.response.is_empty() {
-            self.previous_response = Some(self.response.clone());
-        }
+        self.archive_current_exchange();
         self.response.clear();
         self.error = None;
+        self.answer = None;
         self.loading = true;
         self.request_id = self.request_id.wrapping_add(1);
         self.in_flight_request_id = Some(self.request_id);
@@ -117,13 +129,14 @@ impl AiState {
         self.no_suggestions = false;
         self.selection.clear_selection();
         self.selection.clear_layout();
+        self.selection.request_scroll_to_bottom();
     }
 
     /// Mark the request as complete
     ///
-    /// Clears loading state, previous response, and in_flight_request_id, then
+    /// Clears loading state and in_flight_request_id, then
     /// classifies the accumulated response into one of three outcomes:
-    /// - parsed suggestions -> populate `suggestions`;
+    /// - parsed content -> populate `answer` and `suggestions`;
     /// - valid empty list -> set `no_suggestions` (model had nothing to say);
     /// - unparseable -> set `parse_failed` and log the raw response.
     ///
@@ -131,16 +144,19 @@ impl AiState {
     /// neither: it leaves all three cleared so the UI stays blank.
     pub fn complete_request(&mut self) {
         self.loading = false;
-        self.previous_response = None;
         self.in_flight_request_id = None;
 
         self.suggestions = Vec::new();
+        self.answer = None;
         self.parse_failed = false;
         self.no_suggestions = false;
 
         if !self.response.is_empty() {
             match parse_response(&self.response) {
-                ParseOutcome::Parsed(suggestions) => self.suggestions = suggestions,
+                ParseOutcome::Parsed(parsed) => {
+                    self.answer = parsed.answer;
+                    self.suggestions = parsed.suggestions;
+                }
                 ParseOutcome::Empty => self.no_suggestions = true,
                 ParseOutcome::Unparseable => {
                     self.parse_failed = true;
@@ -158,6 +174,7 @@ impl AiState {
         }
 
         self.selection.clear_layout();
+        self.selection.request_scroll_to_bottom();
     }
 
     /// Set an error state
@@ -176,18 +193,20 @@ impl AiState {
     pub fn clear_on_success(&mut self) {
         self.response.clear();
         self.error = None;
-        self.previous_response = None;
         self.loading = false;
     }
 
     /// Clear stale AI response when query changes
     ///
     /// This should be called when the query changes to remove
-    /// advice that was for a different query context.
+    /// advice that was for a different query context. A completed chat
+    /// exchange is archived rather than dropped so the conversation survives
+    /// query edits.
     pub fn clear_stale_response(&mut self) {
+        self.archive_current_exchange();
         self.response.clear();
         self.error = None;
-        self.previous_response = None;
+        self.answer = None;
         self.loading = false;
         self.parse_failed = false;
         self.no_suggestions = false;

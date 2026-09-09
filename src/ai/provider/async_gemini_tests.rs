@@ -4,6 +4,106 @@ use super::*;
 use insta::assert_snapshot;
 use proptest::prelude::*;
 
+use crate::ai::chat::{AiPrompt, ChatMessage};
+
+/// Parse a request body into JSON for field assertions.
+fn body_json(client: &AsyncGeminiClient, prompt: &AiPrompt) -> serde_json::Value {
+    let body = client.build_request_body(prompt).unwrap();
+    serde_json::from_str(&body).unwrap()
+}
+
+/// Two-turn conversation (user, assistant, user) with a system prompt.
+fn multi_turn_prompt() -> AiPrompt {
+    AiPrompt {
+        system: "You are a jq expert.".to_string(),
+        messages: vec![
+            ChatMessage::user("first question"),
+            ChatMessage::assistant("first answer"),
+            ChatMessage::user("follow-up"),
+        ],
+    }
+}
+
+/// Collapse the contents array into (role, first part text) pairs.
+fn turns(json: &serde_json::Value) -> Vec<(&str, &str)> {
+    json["contents"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|c| {
+            (
+                c["role"].as_str().unwrap(),
+                c["parts"][0]["text"].as_str().unwrap(),
+            )
+        })
+        .collect()
+}
+
+// A non-empty system prompt rides `systemInstruction.parts[0].text`, outside
+// the contents array.
+#[test]
+fn test_request_body_includes_system_instruction_when_set() {
+    let client = AsyncGeminiClient::new("AIza-test".to_string(), "gemini-2.0-flash".to_string());
+
+    let json = body_json(&client, &AiPrompt::single("You are a jq expert.", "prompt"));
+
+    assert_eq!(
+        json.pointer("/systemInstruction/parts/0/text")
+            .and_then(|v| v.as_str()),
+        Some("You are a jq expert.")
+    );
+    assert_eq!(turns(&json), vec![("user", "prompt")]);
+}
+
+// An empty system prompt leaves `systemInstruction` out entirely.
+#[test]
+fn test_request_body_omits_system_instruction_when_empty() {
+    let client = AsyncGeminiClient::new("AIza-test".to_string(), "gemini-2.0-flash".to_string());
+
+    let json = body_json(&client, &AiPrompt::single("", "prompt"));
+
+    assert!(json.get("systemInstruction").is_none());
+}
+
+// Turns are sent in order; Gemini names the assistant side "model".
+#[test]
+fn test_request_body_preserves_turn_order_with_model_role() {
+    let client = AsyncGeminiClient::new("AIza-test".to_string(), "gemini-2.0-flash".to_string());
+
+    let json = body_json(&client, &multi_turn_prompt());
+
+    assert_eq!(
+        turns(&json),
+        vec![
+            ("user", "first question"),
+            ("model", "first answer"),
+            ("user", "follow-up"),
+        ]
+    );
+}
+
+// System instruction and multi-turn contents coexist with generationConfig.
+#[test]
+fn test_request_body_keeps_generation_config_alongside_turns() {
+    use crate::config::ai_types::AiEffort;
+
+    let client = AsyncGeminiClient::new("AIza-test".to_string(), "gemini-3-flash".to_string())
+        .with_effort(Some(AiEffort::Medium));
+
+    let json = body_json(&client, &multi_turn_prompt());
+
+    assert_eq!(turns(&json).len(), 3);
+    assert_eq!(
+        json.pointer("/systemInstruction/parts/0/text").unwrap(),
+        "You are a jq expert."
+    );
+    assert_eq!(
+        json.pointer("/generationConfig/thinkingConfig/thinkingLevel")
+            .unwrap(),
+        "medium"
+    );
+}
+
 #[test]
 fn test_async_gemini_client_new() {
     let client =
@@ -89,7 +189,7 @@ proptest! {
         );
 
         // Build the request body
-        let result = client.build_request_body(&prompt);
+        let result = client.build_request_body(&AiPrompt::single("", &prompt));
 
         // Verify the request body was created successfully
         prop_assert!(result.is_ok(), "Request body should serialize successfully");
@@ -143,7 +243,10 @@ fn snapshot_request_body_format() {
     let client = AsyncGeminiClient::new("AIza-test123".to_string(), "gemini-2.0-flash".to_string());
 
     let body = client
-        .build_request_body("suggest jq filters for: extract user names")
+        .build_request_body(&AiPrompt::single(
+            "You are a jq expert.",
+            "suggest jq filters for: extract user names",
+        ))
         .expect("Request body should serialize successfully");
 
     // Parse and pretty-print for snapshot readability
@@ -161,7 +264,9 @@ fn snapshot_request_body_format() {
 fn test_request_body_omits_generation_config_when_effort_unset() {
     let client = AsyncGeminiClient::new("AIza-test".to_string(), "gemini-3-flash".to_string());
 
-    let body = client.build_request_body("prompt").unwrap();
+    let body = client
+        .build_request_body(&AiPrompt::single("", "prompt"))
+        .unwrap();
     let json: serde_json::Value = serde_json::from_str(&body).unwrap();
 
     assert!(json.get("generationConfig").is_none());
@@ -184,7 +289,9 @@ fn test_request_body_maps_effort_to_thinking_level() {
         let client = AsyncGeminiClient::new("AIza-test".to_string(), "gemini-3-flash".to_string())
             .with_effort(Some(effort));
 
-        let body = client.build_request_body("prompt").unwrap();
+        let body = client
+            .build_request_body(&AiPrompt::single("", "prompt"))
+            .unwrap();
         let json: serde_json::Value = serde_json::from_str(&body).unwrap();
 
         assert_eq!(
@@ -226,7 +333,7 @@ async fn test_cancellation_before_response() {
     cancel_token.cancel();
 
     let result = client
-        .stream_with_cancel("test prompt", 1, cancel_token, tx)
+        .stream_with_cancel(&AiPrompt::single("", "test prompt"), 1, cancel_token, tx)
         .await;
 
     // Should return Cancelled error

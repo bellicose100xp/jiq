@@ -13,7 +13,11 @@ fn test_new_ai_state_disabled() {
     assert!(!state.loading);
     assert!(state.error.is_none());
     assert!(state.response.is_empty());
-    assert!(state.previous_response.is_none());
+    assert!(state.history.is_empty());
+    assert!(state.current_question.is_none());
+    assert!(state.current_query.is_empty());
+    assert!(state.answer.is_none());
+    assert_eq!(state.chat_input_text(), "");
 }
 
 #[test]
@@ -74,13 +78,16 @@ fn test_close() {
 }
 
 #[test]
-fn test_start_request_preserves_response() {
+fn test_start_request_clears_response_and_answer() {
     let mut state = AiState::new(true);
     state.response = "previous answer".to_string();
+    state.answer = Some("prose".to_string());
+    state.error = Some("old error".to_string());
     state.start_request();
     assert!(state.loading);
     assert!(state.response.is_empty());
-    assert_eq!(state.previous_response, Some("previous answer".to_string()));
+    assert!(state.answer.is_none());
+    assert!(state.error.is_none());
 }
 
 #[test]
@@ -89,7 +96,6 @@ fn test_start_request_empty_response() {
     state.start_request();
     assert!(state.loading);
     assert!(state.response.is_empty());
-    assert!(state.previous_response.is_none());
 }
 
 #[test]
@@ -104,10 +110,9 @@ fn test_append_chunk() {
 fn test_complete_request() {
     let mut state = AiState::new(true);
     state.loading = true;
-    state.previous_response = Some("old".to_string());
     state.complete_request();
     assert!(!state.loading);
-    assert!(state.previous_response.is_none());
+    assert!(state.in_flight_request_id.is_none());
 }
 
 #[test]
@@ -125,7 +130,6 @@ fn test_clear_on_success() {
     state.visible = true;
     state.response = "Error explanation".to_string();
     state.error = Some("Query error".to_string());
-    state.previous_response = Some("Old response".to_string());
     state.loading = true;
 
     state.clear_on_success();
@@ -133,7 +137,6 @@ fn test_clear_on_success() {
     // Response and error should be cleared
     assert!(state.response.is_empty());
     assert!(state.error.is_none());
-    assert!(state.previous_response.is_none());
     assert!(!state.loading);
     // Visibility should be preserved (don't auto-close)
     assert!(state.visible);
@@ -145,15 +148,15 @@ fn test_clear_stale_response() {
     state.visible = true;
     state.response = "Old error explanation".to_string();
     state.error = Some("Old query error".to_string());
-    state.previous_response = Some("Previous response".to_string());
+    state.answer = Some("Previous answer".to_string());
     state.loading = true;
 
     state.clear_stale_response();
 
-    // Response and error should be cleared
+    // Response, error and answer should be cleared
     assert!(state.response.is_empty());
     assert!(state.error.is_none());
-    assert!(state.previous_response.is_none());
+    assert!(state.answer.is_none());
     assert!(!state.loading);
     // Visibility should be preserved
     assert!(state.visible);
@@ -341,6 +344,37 @@ fn test_complete_request_empty_suggestions_is_not_parse_failure() {
         !state.parse_failed,
         "valid empty list must NOT be flagged as a parse failure"
     );
+}
+
+#[test]
+fn test_complete_request_populates_answer_and_suggestions() {
+    let mut state = AiState::new(true);
+    state.response = r#"{"answer": " Because select() drops them. ", "suggestions": [{"type": "query", "query": ".users[]", "details": "d"}]}"#.to_string();
+    state.loading = true;
+
+    state.complete_request();
+
+    assert_eq!(
+        state.answer.as_deref(),
+        Some("Because select() drops them.")
+    );
+    assert_eq!(state.suggestions.len(), 1);
+    assert!(!state.parse_failed);
+    assert!(!state.no_suggestions);
+}
+
+#[test]
+fn test_complete_request_answer_only_is_not_no_suggestions() {
+    let mut state = AiState::new(true);
+    state.response = r#"{"answer": "Just prose.", "suggestions": []}"#.to_string();
+    state.loading = true;
+
+    state.complete_request();
+
+    assert_eq!(state.answer.as_deref(), Some("Just prose."));
+    assert!(state.suggestions.is_empty());
+    assert!(!state.no_suggestions);
+    assert!(!state.parse_failed);
 }
 
 #[test]

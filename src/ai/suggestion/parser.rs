@@ -1,11 +1,12 @@
 //! Suggestion parsing for AI responses
 //!
-//! Parses structured suggestions from AI responses in JSON format:
+//! Parses structured responses from the AI in JSON format:
 //! ```json
 //! {
+//!   "answer": "Optional prose reply to a chat question.",
 //!   "suggestions": [
 //!     {"type": "fix", "query": ".users[] | select(.active)", "details": "Filters to only active users"},
-//!     {"type": "next", "query": ".users[] | .email", "details": "Extracts email addresses"}
+//!     {"type": "query", "query": ".users[] | .email", "details": "Extracts email addresses"}
 //!   ]
 //! }
 //! ```
@@ -19,9 +20,12 @@ use crate::theme;
 // JSON Response Types
 // =========================================================================
 
-/// AI response wrapper containing suggestions array
+/// AI response wrapper: optional prose answer plus the suggestions array
 #[derive(Deserialize, Debug)]
 struct AiResponse {
+    #[serde(default)]
+    answer: Option<String>,
+    #[serde(default)]
     suggestions: Vec<JsonSuggestion>,
 }
 
@@ -43,15 +47,15 @@ struct JsonSuggestion {
 /// # Requirements
 /// - 5.4: Fix type displayed in red
 /// - 5.5: Optimize type displayed in yellow
-/// - 5.6: Next type displayed in green
+/// - 5.6: Query type displayed in green
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SuggestionType {
     /// Error corrections - displayed in red
     Fix,
     /// Performance/style improvements - displayed in yellow
     Optimize,
-    /// Next steps, NL interpretations - displayed in green
-    Next,
+    /// A query answering a chat question - displayed in green
+    Query,
 }
 
 impl SuggestionType {
@@ -60,16 +64,19 @@ impl SuggestionType {
         match self {
             SuggestionType::Fix => theme::ai::suggestion_fix(),
             SuggestionType::Optimize => theme::ai::suggestion_optimize(),
-            SuggestionType::Next => theme::ai::suggestion_next(),
+            SuggestionType::Query => theme::ai::suggestion_query(),
         }
     }
 
-    /// Parse suggestion type from string
+    /// Parse suggestion type from string.
+    ///
+    /// `next` and `answer` are accepted as aliases for `query` so responses
+    /// from models that drift back to the older vocabulary still apply.
     pub fn parse_type(s: &str) -> Option<Self> {
         match s.to_lowercase().as_str() {
             "fix" => Some(SuggestionType::Fix),
             "optimize" => Some(SuggestionType::Optimize),
-            "next" => Some(SuggestionType::Next),
+            "query" | "next" | "answer" => Some(SuggestionType::Query),
             _ => None,
         }
     }
@@ -79,7 +86,7 @@ impl SuggestionType {
         match self {
             SuggestionType::Fix => "[Fix]",
             SuggestionType::Optimize => "[Optimize]",
-            SuggestionType::Next => "[Next]",
+            SuggestionType::Query => "[Query]",
         }
     }
 }
@@ -95,8 +102,33 @@ pub struct Suggestion {
     pub query: String,
     /// Brief explanation of what the query does
     pub description: String,
-    /// Type of suggestion: Fix, Optimize, or Next
+    /// Type of suggestion: Fix, Optimize, or Query
     pub suggestion_type: SuggestionType,
+}
+
+/// The usable content of a parsed AI response.
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct ParsedResponse {
+    /// Prose reply, present for chat answers. Whitespace-only answers are dropped.
+    pub answer: Option<String>,
+    /// Applyable jq queries, in the order the model gave them.
+    pub suggestions: Vec<Suggestion>,
+}
+
+impl ParsedResponse {
+    pub fn new(answer: Option<String>, suggestions: Vec<Suggestion>) -> Self {
+        let answer = answer
+            .map(|a| a.trim().to_string())
+            .filter(|a| !a.is_empty());
+        Self {
+            answer,
+            suggestions,
+        }
+    }
+
+    fn is_empty(&self) -> bool {
+        self.answer.is_none() && self.suggestions.is_empty()
+    }
 }
 
 /// Classification of an AI response after parsing.
@@ -104,16 +136,18 @@ pub struct Suggestion {
 /// Distinguishes the three outcomes a response can have so the UI can react
 /// appropriately instead of collapsing "the model had nothing to suggest"
 /// into a parse error:
-/// - [`ParseOutcome::Parsed`] - one or more usable suggestions extracted.
+/// - [`ParseOutcome::Parsed`] - a prose answer and/or one or more usable
+///   suggestions were extracted.
 /// - [`ParseOutcome::Empty`] - the model explicitly returned an empty
-///   suggestion list (`{"suggestions": []}`). This is the prompt's own
-///   "no suggestions" sentinel: a valid, benign response, NOT a failure.
+///   suggestion list (`{"suggestions": []}`) with no answer. This is the
+///   prompt's own "no suggestions" sentinel: a valid, benign response, NOT a
+///   failure.
 /// - [`ParseOutcome::Unparseable`] - the response did not match any expected
 ///   format (genuine malformed / non-compliant output).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ParseOutcome {
-    /// Response yielded at least one usable suggestion.
-    Parsed(Vec<Suggestion>),
+    /// Response yielded an answer and/or at least one usable suggestion.
+    Parsed(ParsedResponse),
     /// Response was a valid, explicitly-empty suggestion list.
     Empty,
     /// Response did not match any expected format.
@@ -122,9 +156,9 @@ pub enum ParseOutcome {
 
 /// Outcome of attempting to parse a single JSON candidate string.
 enum JsonParse {
-    /// Parsed into at least one usable suggestion.
-    Suggestions(Vec<Suggestion>),
-    /// Valid JSON whose `suggestions` array was literally empty.
+    /// Parsed into an answer and/or at least one usable suggestion.
+    Content(ParsedResponse),
+    /// Valid JSON with no answer and a literally empty `suggestions` array.
     EmptyArray,
     /// Not valid JSON of the expected shape, or every item was unusable.
     NotJson,
@@ -157,25 +191,28 @@ pub fn parse_response(response: &str) -> ParseOutcome {
     // Try JSON format first — on the fence-stripped text.
     let cleaned_response = strip_markdown_fences(response);
     match try_parse_json(&cleaned_response) {
-        JsonParse::Suggestions(parsed) => return ParseOutcome::Parsed(parsed),
+        JsonParse::Content(parsed) => return ParseOutcome::Parsed(parsed),
         JsonParse::EmptyArray => saw_empty = true,
         JsonParse::NotJson => {}
     }
 
-    // Last-resort: scan for a JSON object containing "suggestions" anywhere
-    // in the response (handles extra prose, broken fences, streaming artifacts).
-    if let Some(extracted) = extract_suggestions_json(response) {
-        match try_parse_json(&extracted) {
-            JsonParse::Suggestions(parsed) => return ParseOutcome::Parsed(parsed),
-            JsonParse::EmptyArray => saw_empty = true,
-            JsonParse::NotJson => {}
+    // Last-resort: scan for a JSON object containing "suggestions" (or, for
+    // answer-only replies, "answer") anywhere in the response. Handles extra
+    // prose, broken fences, and streaming artifacts.
+    for key in [r#""suggestions""#, r#""answer""#] {
+        if let Some(extracted) = extract_json_object_containing(response, key) {
+            match try_parse_json(&extracted) {
+                JsonParse::Content(parsed) => return ParseOutcome::Parsed(parsed),
+                JsonParse::EmptyArray => saw_empty = true,
+                JsonParse::NotJson => {}
+            }
         }
     }
 
     // Fallback to legacy text format.
     let text_suggestions = parse_suggestions_text(response);
     if !text_suggestions.is_empty() {
-        return ParseOutcome::Parsed(text_suggestions);
+        return ParseOutcome::Parsed(ParsedResponse::new(None, text_suggestions));
     }
 
     // No usable suggestions in any format. An explicit empty-suggestions
@@ -196,16 +233,16 @@ pub fn parse_response(response: &str) -> ParseOutcome {
 #[cfg(test)]
 pub fn parse_suggestions(response: &str) -> Vec<Suggestion> {
     match parse_response(response) {
-        ParseOutcome::Parsed(suggestions) => suggestions,
+        ParseOutcome::Parsed(parsed) => parsed.suggestions,
         ParseOutcome::Empty | ParseOutcome::Unparseable => Vec::new(),
     }
 }
 
 /// Find a `{...}` JSON object in the response that contains the literal
-/// `"suggestions"` key, and return it as a standalone string. Returns
-/// `None` if no balanced object is found.
-fn extract_suggestions_json(response: &str) -> Option<String> {
-    let start = response.find(r#""suggestions""#)?;
+/// `key` (e.g. `"suggestions"`), and return it as a standalone string.
+/// Returns `None` if no balanced object is found.
+fn extract_json_object_containing(response: &str, key: &str) -> Option<String> {
+    let start = response.find(key)?;
     // Walk backwards from the key to the enclosing '{'
     let before = &response[..start];
     let obj_start = before.rfind('{')?;
@@ -273,18 +310,20 @@ fn strip_markdown_fences(response: &str) -> String {
     body.trim().to_string()
 }
 
-/// Attempt to parse a JSON candidate string into suggestions.
+/// Attempt to parse a JSON candidate string into an answer and suggestions.
 ///
 /// Returns a three-way [`JsonParse`] so the caller can tell apart:
-/// - valid JSON with usable suggestions ([`JsonParse::Suggestions`]);
-/// - valid JSON whose `suggestions` array was explicitly empty
+/// - valid JSON with an answer and/or usable suggestions ([`JsonParse::Content`]);
+/// - valid JSON with no answer and an explicitly empty `suggestions` array
 ///   ([`JsonParse::EmptyArray`]) — the model's "nothing to suggest" sentinel;
 /// - anything else ([`JsonParse::NotJson`]): malformed JSON, wrong shape, or a
-///   non-empty array whose every item was unusable (bad `type`, etc.).
+///   non-empty array whose every item was unusable (bad `type`, etc.) with no
+///   answer to fall back on.
 ///
 /// Expected format:
 /// ```json
 /// {
+///   "answer": "optional prose",
 ///   "suggestions": [
 ///     {"type": "fix", "query": ".users[]", "details": "Description"}
 ///   ]
@@ -296,9 +335,14 @@ fn try_parse_json(response: &str) -> JsonParse {
         Err(_) => return JsonParse::NotJson,
     };
 
-    // A literally-empty array is the model's explicit "no suggestions"
-    // sentinel — distinct from a non-empty array we failed to make sense of.
-    if ai_response.suggestions.is_empty() {
+    let has_answer = ai_response
+        .answer
+        .as_deref()
+        .is_some_and(|a| !a.trim().is_empty());
+
+    // A literally-empty array with no answer is the model's explicit "no
+    // suggestions" sentinel — distinct from content we failed to make sense of.
+    if ai_response.suggestions.is_empty() && !has_answer {
         return JsonParse::EmptyArray;
     }
 
@@ -315,12 +359,14 @@ fn try_parse_json(response: &str) -> JsonParse {
         })
         .collect();
 
-    if suggestions.is_empty() {
-        // The array had entries but none were usable (e.g. invalid `type`).
-        // Treat as unparseable so callers can fall through to other formats.
+    let parsed = ParsedResponse::new(ai_response.answer, suggestions);
+    if parsed.is_empty() {
+        // The array had entries but none were usable (e.g. invalid `type`) and
+        // there is no answer to show. Treat as unparseable so callers can fall
+        // through to other formats.
         JsonParse::NotJson
     } else {
-        JsonParse::Suggestions(suggestions)
+        JsonParse::Content(parsed)
     }
 }
 
@@ -331,7 +377,7 @@ fn try_parse_json(response: &str) -> JsonParse {
 /// 1. [Fix] .users[] | select(.active)
 ///    Filters to only active users
 ///
-/// 2. [Next] .users[] | .email
+/// 2. [Query] .users[] | .email
 ///    Extracts email addresses from users
 /// ```
 fn parse_suggestions_text(response: &str) -> Vec<Suggestion> {

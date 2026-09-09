@@ -24,6 +24,11 @@ pub struct SelectionState {
     suggestion_heights: Vec<u16>,
     /// Currently hovered suggestion index (from mouse hover)
     hovered_index: Option<usize>,
+    /// Lines of transcript/answer content rendered above the first suggestion
+    header_height: u16,
+    /// Scroll to the end of the content on the next layout update, so a new
+    /// response is shown even when a long transcript sits above it
+    scroll_to_bottom_pending: bool,
 }
 
 impl SelectionState {
@@ -37,6 +42,8 @@ impl SelectionState {
             suggestion_y_positions: Vec::new(),
             suggestion_heights: Vec::new(),
             hovered_index: None,
+            header_height: 0,
+            scroll_to_bottom_pending: false,
         }
     }
 
@@ -145,17 +152,52 @@ impl SelectionState {
     /// # Arguments
     /// * `heights` - Height (in lines) of each suggestion (spacing already included)
     /// * `viewport` - Visible viewport height in lines
+    #[cfg(test)]
     pub fn update_layout(&mut self, heights: Vec<u16>, viewport: u16) {
+        self.update_layout_with_header(0, heights, viewport);
+    }
+
+    /// Like [`update_layout`](Self::update_layout) with `header_height`
+    /// lines of non-suggestion content (transcript, answer, status) above
+    /// the first suggestion. Suggestion Y positions start after the header.
+    ///
+    /// Also applies a pending scroll-to-bottom request and clamps the offset
+    /// when the content shrank.
+    pub fn update_layout_with_header(
+        &mut self,
+        header_height: u16,
+        heights: Vec<u16>,
+        viewport: u16,
+    ) {
         self.viewport_height = viewport;
+        self.header_height = header_height;
         self.suggestion_heights = heights;
 
         // Calculate Y positions (heights already include spacing lines)
         self.suggestion_y_positions.clear();
-        let mut current_y = 0u16;
+        let mut current_y = header_height;
         for &height in self.suggestion_heights.iter() {
             self.suggestion_y_positions.push(current_y);
             current_y = current_y.saturating_add(height);
         }
+
+        let max = self.max_scroll() as u16;
+        if self.scroll_to_bottom_pending {
+            self.scroll_offset = max;
+            self.scroll_to_bottom_pending = false;
+        } else {
+            self.scroll_offset = self.scroll_offset.min(max);
+        }
+    }
+
+    /// Scroll to the end of the content on the next layout update.
+    pub fn request_scroll_to_bottom(&mut self) {
+        self.scroll_to_bottom_pending = true;
+    }
+
+    /// Lines of content rendered above the first suggestion.
+    pub fn header_height(&self) -> u16 {
+        self.header_height
     }
 
     /// Adjust scroll offset to ensure the selected suggestion is visible
@@ -197,14 +239,15 @@ impl SelectionState {
     pub fn clear_layout(&mut self) {
         self.scroll_offset = 0;
         self.viewport_height = 0;
+        self.header_height = 0;
         self.suggestion_y_positions.clear();
         self.suggestion_heights.clear();
     }
 
     /// Get the total content height in lines (used by Scrollable impl)
-    #[allow(dead_code)]
-    fn total_content_height(&self) -> u16 {
-        self.suggestion_heights.iter().copied().sum()
+    pub fn total_content_height(&self) -> u16 {
+        self.header_height
+            .saturating_add(self.suggestion_heights.iter().copied().sum())
     }
 
     /// Find which suggestion is at a given Y coordinate within the inner area

@@ -21,7 +21,7 @@ fn render_and_get_popup_height(ai_state: &mut AiState, width: u16, height: u16) 
                 width,
                 height: 3,
             };
-            render_popup(ai_state, f, input_area);
+            render_popup(ai_state, f, input_area, false);
         })
         .unwrap();
 
@@ -76,7 +76,7 @@ fn test_height_stored_after_rendering_suggestions() {
         Suggestion {
             query: ".second".to_string(),
             description: "Second".to_string(),
-            suggestion_type: SuggestionType::Next,
+            suggestion_type: SuggestionType::Query,
         },
     ];
 
@@ -118,7 +118,6 @@ fn test_height_maintained_during_loading() {
     // Simulate loading state (suggestions cleared, loading=true)
     state.loading = true;
     state.suggestions.clear();
-    state.previous_response = Some(state.response.clone());
     state.response.clear();
 
     // Render during loading - should maintain same height
@@ -154,7 +153,7 @@ fn test_height_adjusts_with_new_suggestions() {
         Suggestion {
             query: ".b".to_string(),
             description: "Short".to_string(),
-            suggestion_type: SuggestionType::Next,
+            suggestion_type: SuggestionType::Query,
         },
     ];
 
@@ -172,7 +171,7 @@ fn test_height_adjusts_with_new_suggestions() {
         Suggestion {
             query: ".query2 with longer text".to_string(),
             description: "Longer description that explains more".to_string(),
-            suggestion_type: SuggestionType::Next,
+            suggestion_type: SuggestionType::Query,
         },
         Suggestion {
             query: ".query3 with longer text".to_string(),
@@ -187,7 +186,7 @@ fn test_height_adjusts_with_new_suggestions() {
         Suggestion {
             query: ".query5 with longer text".to_string(),
             description: "Longer description that explains more".to_string(),
-            suggestion_type: SuggestionType::Next,
+            suggestion_type: SuggestionType::Query,
         },
     ];
 
@@ -201,7 +200,7 @@ fn test_height_adjusts_with_new_suggestions() {
 }
 
 #[test]
-fn test_no_height_stored_for_error_state() {
+fn test_height_stored_for_error_state() {
     let mut state = AiState::new_with_config(
         true,
         true,
@@ -212,15 +211,56 @@ fn test_no_height_stored_for_error_state() {
     state.visible = true;
     state.error = Some("API Error".to_string());
 
-    // Render error state
+    let height = render_and_get_popup_height(&mut state, 100, 30);
+
+    // Every settled (non-loading) render records its height, so the next
+    // loading transition has a size to hold
+    assert_eq!(
+        state.previous_popup_height, height,
+        "Height should be stored for the error state"
+    );
+}
+
+#[test]
+fn test_no_height_stored_while_loading() {
+    let mut state = AiState::new_with_config(
+        true,
+        true,
+        "Anthropic".to_string(),
+        "claude-3-5-sonnet-20241022".to_string(),
+        TEST_MAX_CONTEXT_LENGTH,
+    );
+    state.visible = true;
+    state.loading = true;
+
     let _height = render_and_get_popup_height(&mut state, 100, 30);
 
-    // previous_popup_height should not be set for error state
-    // (it's only set when suggestions are rendered)
     assert_eq!(
         state.previous_popup_height, None,
-        "Height should not be stored for error state"
+        "A loading render must not overwrite the remembered height"
     );
+}
+
+#[test]
+fn test_loading_popup_grows_for_long_transcript() {
+    // The remembered height is a floor while loading; a header taller than
+    // the previous popup still gets its full height
+    let mut state = AiState::new_with_config(
+        true,
+        true,
+        "Anthropic".to_string(),
+        "claude-3-5-sonnet-20241022".to_string(),
+        TEST_MAX_CONTEXT_LENGTH,
+    );
+    state.visible = true;
+    state.previous_popup_height = Some(6);
+    state.loading = true;
+    state.current_question = Some("a question".to_string());
+    state.error = None;
+
+    // Header: question (1) + Thinking (1); content = 2 + 2 chat rows; +4 = 8
+    let height = render_and_get_popup_height(&mut state, 100, 30).unwrap();
+    assert_eq!(height, 8);
 }
 
 #[test]

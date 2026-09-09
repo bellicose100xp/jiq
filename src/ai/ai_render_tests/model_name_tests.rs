@@ -208,7 +208,7 @@ fn snapshot_model_name_display() {
                 width: 100,
                 height: 3,
             };
-            crate::ai::ai_render::render_popup(&mut state, f, input_area);
+            crate::ai::ai_render::render_popup(&mut state, f, input_area, false);
         })
         .unwrap();
 
@@ -243,7 +243,7 @@ fn snapshot_long_model_name_truncation() {
                 width: 80,
                 height: 3,
             };
-            crate::ai::ai_render::render_popup(&mut state, f, input_area);
+            crate::ai::ai_render::render_popup(&mut state, f, input_area, false);
         })
         .unwrap();
 

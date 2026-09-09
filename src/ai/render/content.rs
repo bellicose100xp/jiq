@@ -1,71 +1,38 @@
-//! Content building for AI popup
+//! Header content for the AI popup: everything rendered above the numbered
+//! suggestions.
 //!
-//! Handles building the content text based on AI state.
+//! Top to bottom: dimmed transcript of earlier exchanges, the current
+//! question, then the active response's prose answer or its status line
+//! (thinking, error, no suggestions, parse failure, not configured).
 
 use ratatui::{
-    style::Style,
-    text::{Line, Span, Text},
+    style::{Modifier, Style},
+    text::{Line, Span},
 };
 
 use crate::ai::ai_state::AiState;
+use crate::ai::chat::ChatExchange;
 use crate::ai::render::text::wrap_text;
 use crate::theme;
 
-/// Build the content text based on AI state
-pub fn build_content(ai_state: &AiState, max_width: u16) -> Text<'static> {
+/// Marker in front of a user question.
+const QUESTION_PREFIX: &str = "❯ ";
+
+/// Build the header lines for the popup at the given content width.
+pub fn build_header_lines(ai_state: &AiState, max_width: u16) -> Vec<Line<'static>> {
+    if !ai_state.configured {
+        return not_configured_lines();
+    }
+
+    let width = max_width as usize;
     let mut lines: Vec<Line> = Vec::new();
 
-    if !ai_state.configured {
-        lines.push(Line::from(vec![
-            Span::styled("⚙ ", Style::default().fg(theme::ai::config_icon())),
-            Span::styled("AI provider not configured", theme::ai::config_title()),
-        ]));
-        lines.push(Line::from(""));
-        lines.push(Line::from(Span::styled(
-            "To enable AI assistance, configure a provider",
-            Style::default().fg(theme::ai::config_desc()),
-        )));
-        lines.push(Line::from(Span::styled(
-            "in ~/.config/jiq/config.toml:",
-            Style::default().fg(theme::ai::config_desc()),
-        )));
-        lines.push(Line::from(""));
-        lines.push(Line::from(Span::styled(
-            "[ai]",
-            Style::default().fg(theme::ai::config_code()),
-        )));
-        lines.push(Line::from(Span::styled(
-            "enabled = true",
-            Style::default().fg(theme::ai::config_code()),
-        )));
-        lines.push(Line::from(Span::styled(
-            "provider = \"anthropic\"  # or \"openai\", \"gemini\", \"bedrock\"",
-            Style::default().fg(theme::ai::config_code()),
-        )));
-        lines.push(Line::from(""));
-        lines.push(Line::from(Span::styled(
-            "[ai.anthropic]",
-            Style::default().fg(theme::ai::config_code()),
-        )));
-        lines.push(Line::from(Span::styled(
-            "api_key = \"sk-ant-...\"",
-            Style::default().fg(theme::ai::config_code()),
-        )));
-        lines.push(Line::from(Span::styled(
-            "model = \"claude-3-5-sonnet-20241022\"",
-            Style::default().fg(theme::ai::config_code()),
-        )));
-        lines.push(Line::from(""));
-        lines.push(Line::from(Span::styled(
-            "For more details, see:",
-            Style::default().fg(theme::ai::config_desc()),
-        )));
-        lines.push(Line::from(Span::styled(
-            "https://github.com/bellicose100xp/jiq#configuration",
-            theme::ai::config_link(),
-        )));
+    for exchange in &ai_state.history {
+        push_transcript_exchange(&mut lines, exchange, width);
+    }
 
-        return Text::from(lines);
+    if let Some(question) = &ai_state.current_question {
+        push_question(&mut lines, question, width, theme::ai::chat_question());
     }
 
     if let Some(error) = &ai_state.error {
@@ -74,41 +41,38 @@ pub fn build_content(ai_state: &AiState, max_width: u16) -> Text<'static> {
             Span::styled("Error", theme::ai::error_title()),
         ]));
         lines.push(Line::from(""));
-
-        for line in wrap_text(error, max_width as usize) {
+        for line in wrap_text(error, width) {
             lines.push(Line::from(Span::styled(
                 line,
                 Style::default().fg(theme::ai::error_message()),
             )));
         }
-
-        return Text::from(lines);
+        return lines;
     }
 
     if ai_state.loading {
-        if let Some(prev) = &ai_state.previous_response {
-            for line in wrap_text(prev, max_width as usize) {
-                lines.push(Line::from(Span::styled(
-                    line,
-                    Style::default().fg(theme::ai::previous_response()),
-                )));
-            }
-            lines.push(Line::from(""));
-        }
-
         lines.push(Line::from(vec![
             Span::styled("⏳ ", Style::default().fg(theme::ai::thinking_icon())),
             Span::styled("Thinking...", theme::ai::thinking_text()),
         ]));
+        return lines;
+    }
 
-        return Text::from(lines);
+    if let Some(answer) = &ai_state.answer {
+        for line in wrap_text(answer, width) {
+            lines.push(Line::from(Span::styled(
+                line,
+                Style::default().fg(theme::ai::chat_answer()),
+            )));
+        }
+        if !ai_state.suggestions.is_empty() {
+            lines.push(Line::from(""));
+        }
+        return lines;
     }
 
     if !ai_state.suggestions.is_empty() {
-        let suggestion_lines =
-            crate::ai::render::suggestions::render_suggestions(ai_state, max_width, wrap_text);
-        lines.extend(suggestion_lines);
-        return Text::from(lines);
+        return lines;
     }
 
     if ai_state.no_suggestions {
@@ -117,16 +81,13 @@ pub fn build_content(ai_state: &AiState, max_width: u16) -> Text<'static> {
             Span::styled("No suggestions", theme::ai::empty_title()),
         ]));
         lines.push(Line::from(""));
-        for line in wrap_text(
-            "The AI had no suggestions for this query.",
-            max_width as usize,
-        ) {
+        for line in wrap_text("The AI had no suggestions for this query.", width) {
             lines.push(Line::from(Span::styled(
                 line,
                 Style::default().fg(theme::ai::empty_message()),
             )));
         }
-        return Text::from(lines);
+        return lines;
     }
 
     if ai_state.parse_failed {
@@ -135,29 +96,102 @@ pub fn build_content(ai_state: &AiState, max_width: u16) -> Text<'static> {
             Span::styled("Could not parse AI response", theme::ai::error_title()),
         ]));
         lines.push(Line::from(""));
-        for line in wrap_text(
-            "The response did not match the expected format.",
-            max_width as usize,
-        ) {
+        for line in wrap_text("The response did not match the expected format.", width) {
             lines.push(Line::from(Span::styled(
                 line,
                 Style::default().fg(theme::ai::error_message()),
             )));
         }
-        return Text::from(lines);
+        return lines;
     }
 
-    // Canary: every earlier branch returned, so the popup is about to render an
-    // empty box. This should be rare; if it shows up in a --debug session it
-    // signals a state combination that leaves the user with no feedback.
-    log::debug!(
-        "build_content: empty popup (no branch matched) -> loading={} suggestions={} no_suggestions={} parse_failed={} error={}",
-        ai_state.loading,
-        ai_state.suggestions.len(),
-        ai_state.no_suggestions,
-        ai_state.parse_failed,
-        ai_state.error.is_some()
-    );
+    if lines.is_empty() {
+        // Canary: nothing to show at all. Rare; in a --debug session it points
+        // at a state combination that leaves the user with no feedback.
+        log::debug!(
+            "build_header_lines: empty popup -> loading={} suggestions={} no_suggestions={} parse_failed={} error={}",
+            ai_state.loading,
+            ai_state.suggestions.len(),
+            ai_state.no_suggestions,
+            ai_state.parse_failed,
+            ai_state.error.is_some()
+        );
+    }
 
-    Text::from(lines)
+    lines
+}
+
+/// An earlier exchange, rendered dimmed: question, answer, and its queries
+/// without numbers or descriptions.
+fn push_transcript_exchange(lines: &mut Vec<Line<'static>>, exchange: &ChatExchange, width: usize) {
+    let dim = Style::default().fg(theme::ai::chat_transcript());
+    push_question(
+        lines,
+        &exchange.question,
+        width,
+        dim.add_modifier(Modifier::BOLD),
+    );
+    if let Some(answer) = &exchange.answer {
+        for line in wrap_text(answer, width) {
+            lines.push(Line::from(Span::styled(line, dim)));
+        }
+    }
+    for suggestion in &exchange.suggestions {
+        let text = format!(
+            "{} {}",
+            suggestion.suggestion_type.label(),
+            suggestion.query
+        );
+        for line in wrap_text(&text, width.saturating_sub(2)) {
+            lines.push(Line::from(Span::styled(format!("  {}", line), dim)));
+        }
+    }
+    lines.push(Line::from(""));
+}
+
+/// A question line with the `❯` marker; continuation lines are indented.
+fn push_question(lines: &mut Vec<Line<'static>>, question: &str, width: usize, style: Style) {
+    let indent = " ".repeat(QUESTION_PREFIX.chars().count());
+    let wrapped = wrap_text(question, width.saturating_sub(indent.len()));
+    for (i, line) in wrapped.into_iter().enumerate() {
+        let prefix = if i == 0 { QUESTION_PREFIX } else { &indent };
+        lines.push(Line::from(Span::styled(
+            format!("{}{}", prefix, line),
+            style,
+        )));
+    }
+}
+
+fn not_configured_lines() -> Vec<Line<'static>> {
+    let desc = Style::default().fg(theme::ai::config_desc());
+    let code = Style::default().fg(theme::ai::config_code());
+    vec![
+        Line::from(vec![
+            Span::styled("⚙ ", Style::default().fg(theme::ai::config_icon())),
+            Span::styled("AI provider not configured", theme::ai::config_title()),
+        ]),
+        Line::from(""),
+        Line::from(Span::styled(
+            "To enable AI assistance, configure a provider",
+            desc,
+        )),
+        Line::from(Span::styled("in ~/.config/jiq/config.toml:", desc)),
+        Line::from(""),
+        Line::from(Span::styled("[ai]", code)),
+        Line::from(Span::styled("enabled = true", code)),
+        Line::from(Span::styled(
+            "provider = \"anthropic\"  # or \"openai\", \"gemini\", \"bedrock\"",
+            code,
+        )),
+        Line::from(""),
+        Line::from(Span::styled("[ai.anthropic]", code)),
+        Line::from(Span::styled("api_key = \"sk-ant-...\"", code)),
+        Line::from(Span::styled("model = \"claude-3-5-sonnet-20241022\"", code)),
+        Line::from(""),
+        Line::from(Span::styled("For more details, see:", desc)),
+        Line::from(Span::styled(
+            "https://github.com/bellicose100xp/jiq#configuration",
+            theme::ai::config_link(),
+        )),
+    ]
 }

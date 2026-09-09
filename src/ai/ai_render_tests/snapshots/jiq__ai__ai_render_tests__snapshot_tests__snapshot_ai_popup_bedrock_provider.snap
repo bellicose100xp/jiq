@@ -1,6 +1,5 @@
 ---
 source: src/ai/ai_render_tests/snapshot_tests.rs
-assertion_line: 502
 expression: output
 ---
 "                                                                                                    "
@@ -19,14 +18,14 @@ expression: output
 "                                                                                                    "
 "                                                                                                    "
 "                                                                                                    "
+"                                                                                                    "
+"                                                                                                    "
+"                                                                                                    "
+"                                                                                                    "
 "                                                       ╭ Bedrock ─────────── anthropic.claude-... ╮ "
 "                                                       │                                          │ "
-"                                                       │                                          │ "
-"                                                       │                                          │ "
-"                                                       │                                          │ "
-"                                                       │                                          │ "
-"                                                       │                                          │ "
-"                                                       │                                          │ "
+"                                                       │ ──────────────────────────────────────── │ "
+"                                                       │ ›  Ask about this query or data…         │ "
 "                                                       │                                          │ "
 "                                                       ╰────────────── Ctrl+A Close ──────────────╯ "
 "                                                                                                    "

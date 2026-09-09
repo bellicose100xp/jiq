@@ -1,6 +1,7 @@
 //! Tests for AI worker thread
 
 use super::*;
+use crate::ai::chat::AiPrompt;
 use std::sync::mpsc;
 use tokio_util::sync::CancellationToken;
 
@@ -39,7 +40,7 @@ fn test_worker_handles_query_without_provider() {
     let cancel_token = CancellationToken::new();
     request_tx
         .send(AiRequest::Query {
-            prompt: "test".to_string(),
+            prompt: AiPrompt::single("sys", "test"),
             request_id: 1,
             cancel_token,
         })
@@ -82,7 +83,7 @@ fn test_worker_handles_pre_cancelled_request() {
 
     request_tx
         .send(AiRequest::Query {
-            prompt: "test".to_string(),
+            prompt: AiPrompt::single("sys", "test"),
             request_id: 1,
             cancel_token,
         })
@@ -163,7 +164,7 @@ fn test_cancel_signal_aborts_request() {
 
     run_async(handle_query_async(
         &None,
-        "test prompt",
+        &AiPrompt::single("sys", "test prompt"),
         request_id,
         cancel_token,
         &response_tx,

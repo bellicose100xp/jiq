@@ -13,10 +13,20 @@ use tokio_util::sync::CancellationToken;
 use super::AiError;
 use super::sse::{GeminiEventParser, SseParser};
 use crate::ai::ai_state::AiResponse;
+use crate::ai::chat::{AiPrompt, ChatRole};
 use crate::config::ai_types::AiEffort;
 
 /// Gemini API endpoint
 const GEMINI_API_URL: &str = "https://generativelanguage.googleapis.com/v1beta/models";
+
+/// Wire name of a conversation role in the Gemini API, which calls the
+/// assistant side "model".
+fn role_name(role: ChatRole) -> &'static str {
+    match role {
+        ChatRole::User => "user",
+        ChatRole::Assistant => "model",
+    }
+}
 
 /// Async Gemini API client
 ///
@@ -85,25 +95,31 @@ impl AsyncGeminiClient {
 
     /// Build the request body JSON for Gemini API
     ///
-    /// Creates a JSON request body with the contents array containing user role and parts.
-    /// Gemini uses query parameters for streaming, not a body field.
+    /// The system prompt goes in `systemInstruction` (omitted when empty) and
+    /// each conversation turn becomes a `contents` entry with role `user` or
+    /// `model`. Gemini uses query parameters for streaming, not a body field.
     ///
     /// # Arguments
-    /// * `prompt` - The user prompt to send to the API
+    /// * `prompt` - System prompt plus conversation turns to send to the API
     ///
     /// # Returns
     /// * `Ok(String)` - Serialized JSON request body
     /// * `Err(AiError::Parse)` - If serialization fails
-    fn build_request_body(&self, prompt: &str) -> Result<String, AiError> {
+    fn build_request_body(&self, prompt: &AiPrompt) -> Result<String, AiError> {
         #[derive(Serialize)]
-        struct Part {
-            text: String,
+        struct Part<'a> {
+            text: &'a str,
         }
 
         #[derive(Serialize)]
-        struct Content {
-            role: String,
-            parts: Vec<Part>,
+        struct Content<'a> {
+            role: &'static str,
+            parts: Vec<Part<'a>>,
+        }
+
+        #[derive(Serialize)]
+        struct SystemInstruction<'a> {
+            parts: Vec<Part<'a>>,
         }
 
         #[derive(Serialize)]
@@ -119,19 +135,34 @@ impl AsyncGeminiClient {
         }
 
         #[derive(Serialize)]
-        struct RequestBody {
-            contents: Vec<Content>,
+        struct RequestBody<'a> {
+            #[serde(rename = "systemInstruction", skip_serializing_if = "Option::is_none")]
+            system_instruction: Option<SystemInstruction<'a>>,
+            contents: Vec<Content<'a>>,
             #[serde(rename = "generationConfig", skip_serializing_if = "Option::is_none")]
             generation_config: Option<GenerationConfig>,
         }
 
-        let body = RequestBody {
-            contents: vec![Content {
-                role: "user".to_string(),
-                parts: vec![Part {
-                    text: prompt.to_string(),
-                }],
+        let system_instruction = (!prompt.system.is_empty()).then(|| SystemInstruction {
+            parts: vec![Part {
+                text: &prompt.system,
             }],
+        });
+
+        let contents = prompt
+            .messages
+            .iter()
+            .map(|message| Content {
+                role: role_name(message.role),
+                parts: vec![Part {
+                    text: &message.content,
+                }],
+            })
+            .collect();
+
+        let body = RequestBody {
+            system_instruction,
+            contents,
             generation_config: self.effort.map(|effort| GenerationConfig {
                 thinking_config: ThinkingConfig {
                     thinking_level: thinking_level(effort),
@@ -161,7 +192,7 @@ impl AsyncGeminiClient {
     /// Sends chunks via the response channel as they arrive.
     ///
     /// # Arguments
-    /// * `prompt` - The prompt to send to the API
+    /// * `prompt` - System prompt plus conversation turns to send to the API
     /// * `request_id` - Unique ID for this request
     /// * `cancel_token` - Token to cancel the request
     /// * `response_tx` - Channel to send response chunks
@@ -172,7 +203,7 @@ impl AsyncGeminiClient {
     /// * `Err(AiError::*)` - Other errors
     pub async fn stream_with_cancel(
         &self,
-        prompt: &str,
+        prompt: &AiPrompt,
         request_id: u64,
         cancel_token: CancellationToken,
         response_tx: Sender<AiResponse>,

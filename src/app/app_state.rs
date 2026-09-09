@@ -23,6 +23,8 @@ use crate::tooltip::{self, TooltipState};
 pub enum Focus {
     InputField,
     ResultsPane,
+    /// The chat input inside the AI popup
+    AiChat,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -435,15 +437,7 @@ impl App {
 
         let query = self.input.query().to_string();
         let cursor_pos = self.input.textarea.cursor().1;
-
-        let ai_result: Result<String, String> = match &query_state.result {
-            Ok(_) => query_state
-                .last_successful_result_unformatted
-                .as_ref()
-                .map(|s| Ok(s.as_ref().clone()))
-                .unwrap_or_else(|| Ok(String::new())),
-            Err(e) => Err(e.clone()),
-        };
+        let ai_result = Self::ai_query_result(query_state);
 
         crate::ai::ai_events::handle_execution_result(
             &mut self.ai,
@@ -502,6 +496,9 @@ impl App {
         if self.focus == Focus::ResultsPane {
             return;
         }
+        if self.focus == Focus::AiChat {
+            self.ai.set_chat_focused(false);
+        }
         self.saved_ai_visibility_for_results = self.ai.visible;
         self.saved_tooltip_visibility_for_results = self.tooltip.enabled;
         self.ai.visible = false;
@@ -510,14 +507,108 @@ impl App {
         self.focus = Focus::ResultsPane;
     }
 
-    /// Switch focus to the input field, restoring AI/tooltip visibility
+    /// Switch focus to the input field. Coming from the results pane restores
+    /// AI/tooltip visibility; coming from the AI chat leaves the popup open.
     pub fn focus_input_field(&mut self) {
-        if self.focus == Focus::InputField {
+        match self.focus {
+            Focus::InputField => return,
+            Focus::ResultsPane => {
+                self.ai.visible = self.saved_ai_visibility_for_results;
+                self.tooltip.enabled = self.saved_tooltip_visibility_for_results;
+            }
+            Focus::AiChat => self.ai.set_chat_focused(false),
+        }
+        self.focus = Focus::InputField;
+    }
+
+    /// Move keyboard focus to the AI popup's chat input. The popup must be
+    /// visible; returns false otherwise.
+    pub fn focus_ai_chat(&mut self) -> bool {
+        if !self.ai.visible {
+            return false;
+        }
+        if self.focus == Focus::AiChat {
+            return true;
+        }
+        self.autocomplete.hide();
+        self.focus = Focus::AiChat;
+        self.ai.set_chat_focused(true);
+        true
+    }
+
+    /// Ctrl+A: open the popup with the chat input focused, or close it and
+    /// return focus to the query box.
+    pub fn toggle_ai_popup(&mut self) {
+        if self.ai.visible {
+            self.ai.visible = false;
+            self.tooltip.enabled = self.saved_tooltip_visibility;
+            if self.focus == Focus::AiChat {
+                self.focus_input_field();
+            }
             return;
         }
-        self.ai.visible = self.saved_ai_visibility_for_results;
-        self.tooltip.enabled = self.saved_tooltip_visibility_for_results;
-        self.focus = Focus::InputField;
+
+        self.ai.visible = true;
+        self.saved_tooltip_visibility = if self.focus == Focus::ResultsPane {
+            // The results pane already hid the tooltip; remember the user's
+            // real preference, not the hidden state.
+            self.saved_tooltip_visibility_for_results
+        } else {
+            self.tooltip.enabled
+        };
+        self.tooltip.enabled = false;
+        if self.focus == Focus::ResultsPane {
+            // The popup now sits over the results; returning to the input
+            // field later must keep it open.
+            self.saved_ai_visibility_for_results = true;
+        }
+        self.trigger_ai_request();
+        self.focus_ai_chat();
+    }
+
+    /// Send the question typed in the AI popup, with the current query context.
+    /// Returns false when nothing was sent (blank input, no data loaded, popup hidden).
+    pub fn send_ai_chat_question(&mut self) -> bool {
+        if !self.ai.configured || !self.ai.visible || self.query.is_none() {
+            return false;
+        }
+        let Some(question) = self.ai.take_chat_input() else {
+            return false;
+        };
+        let query_state = self.query.as_ref().expect("checked above");
+
+        let query = self.input.query().to_string();
+        let cursor_pos = self.input.textarea.cursor().1;
+        let ai_result = Self::ai_query_result(query_state);
+
+        crate::ai::ai_events::send_chat_question(
+            &mut self.ai,
+            &question,
+            &ai_result,
+            &query,
+            cursor_pos,
+            crate::ai::context::ContextParams {
+                input_schema: self.input_json_schema.as_deref(),
+                base_query: query_state.base_query_for_suggestions.as_deref(),
+                base_query_result: query_state
+                    .last_successful_result_for_context
+                    .as_deref()
+                    .map(|s| s.as_ref()),
+                is_empty_result: query_state.is_empty_result,
+            },
+        )
+    }
+
+    /// The query outcome in the shape the AI context builder expects.
+    fn ai_query_result(query_state: &crate::query::QueryState) -> Result<String, String> {
+        match &query_state.result {
+            Ok(_) => query_state
+                .last_successful_result_unformatted
+                .as_ref()
+                .map(|s| Ok(s.as_ref().clone()))
+                .unwrap_or_else(|| Ok(String::new())),
+            Err(e) => Err(e.clone()),
+        }
     }
 }
 

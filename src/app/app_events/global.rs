@@ -43,6 +43,7 @@ pub fn handle_global_keys(app: &mut App, key: KeyEvent) -> bool {
                     false
                 }
             }
+            Focus::AiChat => false,
         },
 
         KeyCode::Char('q') if key.modifiers.contains(KeyModifiers::CONTROL) => {
@@ -124,7 +125,7 @@ pub fn handle_global_keys(app: &mut App, key: KeyEvent) -> bool {
             }
 
             match app.focus {
-                Focus::InputField => app.focus_results_pane(),
+                Focus::InputField | Focus::AiChat => app.focus_results_pane(),
                 Focus::ResultsPane => app.focus_input_field(),
             };
             true
@@ -178,7 +179,7 @@ pub fn handle_global_keys(app: &mut App, key: KeyEvent) -> bool {
                 app.history.close();
             }
             match app.focus {
-                Focus::InputField => app.focus_results_pane(),
+                Focus::InputField | Focus::AiChat => app.focus_results_pane(),
                 Focus::ResultsPane => app.focus_input_field(),
             };
             true
@@ -190,21 +191,7 @@ pub fn handle_global_keys(app: &mut App, key: KeyEvent) -> bool {
         }
 
         KeyCode::Char('a') if key.modifiers.contains(KeyModifiers::CONTROL) => {
-            let was_visible = app.ai.visible;
-            app.ai.toggle();
-
-            if !was_visible && app.ai.visible {
-                // AI popup just became visible - hide tooltip
-                app.saved_tooltip_visibility = app.tooltip.enabled;
-                app.tooltip.enabled = false;
-
-                // Trigger AI request for current context
-                app.trigger_ai_request();
-            } else if was_visible && !app.ai.visible {
-                // AI popup just became hidden - restore tooltip
-                app.tooltip.enabled = app.saved_tooltip_visibility;
-            }
-
+            app.toggle_ai_popup();
             true
         }
 

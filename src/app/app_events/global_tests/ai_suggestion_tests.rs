@@ -19,7 +19,7 @@ fn test_ai_suggestion_selection_complete_flow() {
         Suggestion {
             query: ".name".to_string(),
             description: "Get name field".to_string(),
-            suggestion_type: SuggestionType::Next,
+            suggestion_type: SuggestionType::Query,
         },
         Suggestion {
             query: ".value".to_string(),
@@ -65,7 +65,7 @@ fn test_ai_suggestion_direct_selection_alt_1() {
         Suggestion {
             query: ".first".to_string(),
             description: "First suggestion".to_string(),
-            suggestion_type: SuggestionType::Next,
+            suggestion_type: SuggestionType::Query,
         },
         Suggestion {
             query: ".second".to_string(),
@@ -97,7 +97,7 @@ fn test_ai_suggestion_direct_selection_alt_2() {
         Suggestion {
             query: ".first".to_string(),
             description: "First suggestion".to_string(),
-            suggestion_type: SuggestionType::Next,
+            suggestion_type: SuggestionType::Query,
         },
         Suggestion {
             query: ".second".to_string(),
@@ -129,7 +129,7 @@ fn test_ai_suggestion_multiple_selections_in_sequence() {
         Suggestion {
             query: ".first".to_string(),
             description: "First suggestion".to_string(),
-            suggestion_type: SuggestionType::Next,
+            suggestion_type: SuggestionType::Query,
         },
         Suggestion {
             query: ".second".to_string(),
@@ -178,7 +178,7 @@ fn test_ai_suggestion_selection_hides_autocomplete() {
     app.ai.suggestions = vec![Suggestion {
         query: ".name | length".to_string(),
         description: "Get name length".to_string(),
-        suggestion_type: SuggestionType::Next,
+        suggestion_type: SuggestionType::Query,
     }];
 
     // Press Alt+1 to select AI suggestion
@@ -205,7 +205,7 @@ fn test_ai_suggestion_selection_ignored_when_popup_hidden() {
     app.ai.suggestions = vec![Suggestion {
         query: ".should_not_apply".to_string(),
         description: "Should not apply".to_string(),
-        suggestion_type: SuggestionType::Next,
+        suggestion_type: SuggestionType::Query,
     }];
 
     // Press Alt+1 - should be ignored
@@ -248,7 +248,7 @@ fn test_ai_suggestion_invalid_selection_ignored() {
         Suggestion {
             query: ".first".to_string(),
             description: "First".to_string(),
-            suggestion_type: SuggestionType::Next,
+            suggestion_type: SuggestionType::Query,
         },
         Suggestion {
             query: ".second".to_string(),
@@ -279,7 +279,7 @@ fn test_ai_suggestion_navigation_stops_at_boundary() {
         Suggestion {
             query: ".first".to_string(),
             description: "First".to_string(),
-            suggestion_type: SuggestionType::Next,
+            suggestion_type: SuggestionType::Query,
         },
         Suggestion {
             query: ".second".to_string(),
@@ -320,7 +320,7 @@ fn test_ai_suggestion_enter_without_navigation_exits() {
     app.ai.suggestions = vec![Suggestion {
         query: ".name".to_string(),
         description: "Get name".to_string(),
-        suggestion_type: SuggestionType::Next,
+        suggestion_type: SuggestionType::Query,
     }];
 
     // Ensure no navigation has occurred
@@ -381,7 +381,7 @@ proptest! {
                 format!(".field{}", i)
             },
             description: format!("Description {}", i),
-            suggestion_type: SuggestionType::Next,
+            suggestion_type: SuggestionType::Query,
         }).collect();
 
         // Only test if selection is valid
@@ -448,7 +448,7 @@ proptest! {
             Suggestion {
                 query: suggestion_query.to_string(),
                 description: "First suggestion".to_string(),
-                suggestion_type: SuggestionType::Next,
+                suggestion_type: SuggestionType::Query,
             },
             Suggestion {
                 query: ".other".to_string(),

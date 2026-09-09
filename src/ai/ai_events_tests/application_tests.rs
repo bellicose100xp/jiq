@@ -11,7 +11,7 @@ fn make_suggestion(query: &str) -> Suggestion {
     Suggestion {
         query: query.to_string(),
         description: "Test description".to_string(),
-        suggestion_type: SuggestionType::Next,
+        suggestion_type: SuggestionType::Query,
     }
 }
 

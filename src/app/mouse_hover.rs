@@ -92,21 +92,10 @@ fn hover_ai_window(app: &mut App, mouse: MouseEvent) {
         return;
     };
 
-    let inner_x = ai_rect.x.saturating_add(1);
-    let inner_y = ai_rect.y.saturating_add(1);
-    let inner_width = ai_rect.width.saturating_sub(2);
-    let inner_height = ai_rect.height.saturating_sub(2);
-
-    if mouse.column < inner_x
-        || mouse.column >= inner_x.saturating_add(inner_width)
-        || mouse.row < inner_y
-        || mouse.row >= inner_y.saturating_add(inner_height)
-    {
+    let Some(relative_y) = crate::ai::ai_render::content_row_at(ai_rect, mouse.row) else {
         app.ai.selection.clear_hover();
         return;
-    }
-
-    let relative_y = mouse.row.saturating_sub(inner_y);
+    };
     let suggestion_index = app.ai.selection.suggestion_at_y(relative_y);
 
     app.ai.selection.set_hovered(suggestion_index);

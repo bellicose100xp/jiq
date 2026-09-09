@@ -10,8 +10,20 @@ pub const AI_POPUP_MIN_WIDTH: u16 = 40;
 pub const AUTOCOMPLETE_RESERVED_WIDTH: u16 = 37;
 const BORDER_HEIGHT: u16 = 2;
 const MIN_HEIGHT: u16 = 6;
-const MAX_HEIGHT_PERCENT: u16 = 40;
+const MAX_HEIGHT_PERCENT: u16 = 50;
 const MAX_WIDTH_PERCENT: u16 = 70;
+
+/// Width the popup will have on this frame, or `None` when the frame is too
+/// narrow. Shared by both area calculations so callers can wrap content to
+/// the real width before deciding the height.
+pub fn popup_width(frame_area: Rect) -> Option<u16> {
+    let available_width = frame_area.width.saturating_sub(AUTOCOMPLETE_RESERVED_WIDTH);
+    if available_width < AI_POPUP_MIN_WIDTH {
+        return None;
+    }
+    let max_width = (available_width * MAX_WIDTH_PERCENT) / 100;
+    Some(available_width.min(max_width).max(AI_POPUP_MIN_WIDTH))
+}
 
 /// Calculate the AI popup area based on frame dimensions
 ///

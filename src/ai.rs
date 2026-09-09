@@ -1,11 +1,14 @@
 //! AI Assistant module for jiq
 //!
-//! Provides AI-powered contextual help for jq queries, including error troubleshooting,
-//! function explanations, and query optimization suggestions.
+//! Provides AI-powered help for jq queries: fixes when a query errors,
+//! optimizations when it runs, and a conversation in the popup where the
+//! user asks questions and gets answers plus applyable queries. The
+//! conversation is replayed to the provider on every request.
 
 pub mod ai_events;
 pub mod ai_render;
 pub mod ai_state; // Made public for integration tests
+pub mod chat;
 pub mod context;
 pub mod prompt;
 mod provider;

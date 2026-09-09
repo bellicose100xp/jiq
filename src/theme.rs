@@ -568,9 +568,6 @@ pub mod ai {
     pub fn result_text() -> Color {
         super::theme().ai.result_text
     }
-    pub fn previous_response() -> Color {
-        super::theme().ai.previous_response
-    }
     pub fn suggestion_selected_bg() -> Color {
         super::theme().ai.suggestion_selected_bg
     }
@@ -595,11 +592,29 @@ pub mod ai {
     pub fn suggestion_optimize() -> Color {
         super::theme().ai.suggestion_optimize
     }
-    pub fn suggestion_next() -> Color {
-        super::theme().ai.suggestion_next
+    pub fn suggestion_query() -> Color {
+        super::theme().ai.suggestion_query
     }
     pub fn hint() -> Color {
         super::theme().ai.hint
+    }
+    pub fn chat_question() -> Style {
+        super::theme().ai.chat_question
+    }
+    pub fn chat_answer() -> Color {
+        super::theme().ai.chat_answer
+    }
+    pub fn chat_transcript() -> Color {
+        super::theme().ai.chat_transcript
+    }
+    pub fn chat_prompt() -> Color {
+        super::theme().ai.chat_prompt
+    }
+    pub fn chat_separator() -> Color {
+        super::theme().ai.chat_separator
+    }
+    pub fn chat_placeholder() -> Color {
+        super::theme().ai.chat_placeholder
     }
 }
 

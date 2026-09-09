@@ -138,10 +138,14 @@ pub const HELP_CATEGORIES: &[HelpCategory] = &[
         sections: &[HelpSection {
             title: None,
             entries: &[
-                ("Ctrl+A", "Toggle AI assistant"),
+                ("Ctrl+A", "Open AI assistant (chat focused) / close"),
+                ("Type + Enter", "Ask a question about the query or data"),
+                ("Esc", "Back to the query box (popup stays open)"),
+                ("Ctrl+L", "Clear the conversation"),
                 ("Alt+1-5", "Apply AI suggestion (direct)"),
                 ("Alt+↑↓/j/k", "Navigate suggestions"),
-                ("Enter", "Apply selected suggestion"),
+                ("Enter", "Apply selected suggestion (after Alt+↑↓)"),
+                ("↑↓ / PgUp PgDn", "Scroll the conversation"),
             ],
         }],
     },

@@ -243,7 +243,6 @@ pub fn galaxy_dark() -> Theme {
             empty_message: Color::Rgb(130, 133, 158),
             query_text: Color::Rgb(0, 217, 255),
             result_text: Color::Rgb(236, 236, 244),
-            previous_response: Color::Rgb(90, 92, 119),
             suggestion_selected_bg: Color::Rgb(55, 55, 85),
             suggestion_hovered_bg: Color::Rgb(45, 45, 72),
             suggestion_text_selected: Color::Rgb(26, 26, 46),
@@ -252,8 +251,16 @@ pub fn galaxy_dark() -> Theme {
             suggestion_desc_muted: Color::Rgb(130, 133, 158),
             suggestion_fix: Color::Rgb(224, 108, 117),
             suggestion_optimize: Color::Rgb(255, 217, 61),
-            suggestion_next: Color::Rgb(107, 203, 119),
+            suggestion_query: Color::Rgb(107, 203, 119),
             hint: Color::Rgb(90, 92, 119),
+            chat_question: Style::new()
+                .fg(Color::Rgb(189, 147, 249))
+                .add_modifier(Modifier::BOLD),
+            chat_answer: Color::Rgb(236, 236, 244),
+            chat_transcript: Color::Rgb(90, 92, 119),
+            chat_prompt: Color::Rgb(0, 217, 255),
+            chat_separator: Color::Rgb(55, 55, 85),
+            chat_placeholder: Color::Rgb(90, 92, 119),
         },
         autocomplete: AutocompleteTheme {
             border: Color::Rgb(0, 217, 255),
@@ -559,7 +566,6 @@ pub fn galaxy_light() -> Theme {
             empty_message: Color::Rgb(89, 99, 110),
             query_text: Color::Rgb(14, 116, 144),
             result_text: Color::Rgb(40, 40, 60),
-            previous_response: Color::Rgb(89, 99, 110),
             suggestion_selected_bg: Color::Rgb(216, 210, 236),
             suggestion_hovered_bg: Color::Rgb(224, 220, 240),
             suggestion_text_selected: Color::Rgb(40, 40, 60),
@@ -568,8 +574,16 @@ pub fn galaxy_light() -> Theme {
             suggestion_desc_muted: Color::Rgb(96, 99, 128),
             suggestion_fix: Color::Rgb(210, 15, 57),
             suggestion_optimize: Color::Rgb(146, 98, 0),
-            suggestion_next: Color::Rgb(26, 127, 55),
+            suggestion_query: Color::Rgb(26, 127, 55),
             hint: Color::Rgb(89, 99, 110),
+            chat_question: Style::new()
+                .fg(Color::Rgb(136, 57, 239))
+                .add_modifier(Modifier::BOLD),
+            chat_answer: Color::Rgb(40, 40, 60),
+            chat_transcript: Color::Rgb(89, 99, 110),
+            chat_prompt: Color::Rgb(14, 116, 144),
+            chat_separator: Color::Rgb(216, 210, 236),
+            chat_placeholder: Color::Rgb(89, 99, 110),
         },
         autocomplete: AutocompleteTheme {
             border: Color::Rgb(14, 116, 144),

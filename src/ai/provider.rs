@@ -9,6 +9,7 @@ use thiserror::Error;
 use tokio_util::sync::CancellationToken;
 
 use crate::ai::ai_state::AiResponse;
+use crate::ai::chat::AiPrompt;
 use crate::config::ai_types::{AiConfig, AiProviderType};
 
 mod async_anthropic;
@@ -280,7 +281,7 @@ impl AsyncAiProvider {
     /// Can be cancelled via the CancellationToken.
     ///
     /// # Arguments
-    /// * `prompt` - The prompt to send to the API
+    /// * `prompt` - System prompt plus conversation turns to send to the API
     /// * `request_id` - Unique ID for this request
     /// * `cancel_token` - Token to cancel the request
     /// * `response_tx` - Channel to send response chunks
@@ -291,7 +292,7 @@ impl AsyncAiProvider {
     /// * `Err(AiError::*)` - Other errors
     pub async fn stream_with_cancel(
         &self,
-        prompt: &str,
+        prompt: &AiPrompt,
         request_id: u64,
         cancel_token: CancellationToken,
         response_tx: Sender<AiResponse>,

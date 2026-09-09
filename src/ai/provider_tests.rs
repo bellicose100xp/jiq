@@ -24,6 +24,7 @@ pub(crate) use crate::config::ai_types::{
 #[cfg(test)]
 mod round2_coverage_tests {
     use super::*;
+    use crate::ai::chat::AiPrompt;
     use crate::config::ai_types::TEST_MAX_CONTEXT_LENGTH;
     use std::sync::mpsc;
 
@@ -231,8 +232,9 @@ mod round2_coverage_tests {
             token.cancel();
             let (tx, _rx) = mpsc::channel();
 
+            let prompt = AiPrompt::single("", "prompt");
             let result = rt
-                .block_on(async move { provider.stream_with_cancel("prompt", 1, token, tx).await });
+                .block_on(async move { provider.stream_with_cancel(&prompt, 1, token, tx).await });
 
             assert!(
                 matches!(result, Err(AiError::Cancelled)),

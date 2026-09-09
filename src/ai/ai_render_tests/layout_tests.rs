@@ -1,7 +1,8 @@
 //! Layout calculation tests for AI render module
 
-use super::*;
-use crate::ai::render::layout::{AI_POPUP_MIN_WIDTH, AUTOCOMPLETE_RESERVED_WIDTH};
+use crate::ai::render::layout::{
+    AI_POPUP_MIN_WIDTH, AUTOCOMPLETE_RESERVED_WIDTH, calculate_popup_area,
+};
 use proptest::prelude::*;
 use ratatui::layout::Rect;
 
@@ -104,7 +105,7 @@ proptest! {
 }
 
 // **Feature: ai-assistant-phase2, Property 2: Popup height respects maximum**
-// *For any* terminal height, the AI popup height SHALL be at most 40% of available vertical space.
+// *For any* terminal height, the AI popup height SHALL be at most 50% of available vertical space.
 // **Validates: Requirements 1.2, 6.4**
 proptest! {
     #![proptest_config(ProptestConfig::with_cases(100))]
@@ -121,11 +122,11 @@ proptest! {
 
         if let Some(area) = calculate_popup_area(frame, input) {
             let available_height = input_y;
-            let max_allowed = (available_height * 40) / 100;
+            let max_allowed = (available_height * 50) / 100;
             let min_height = 6u16;
             prop_assert!(
                 area.height <= available_height && (area.height <= max_allowed || area.height == min_height),
-                "Popup height ({}) should be <= 40% of available ({}) or minimum ({})",
+                "Popup height ({}) should be <= 50% of available ({}) or minimum ({})",
                 area.height, max_allowed, min_height
             );
         }
