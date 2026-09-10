@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.35.0] - 2026-09-10
+
+### Added
+- **Conversational AI popup** ([#194](https://github.com/bellicose100xp/jiq/pull/194)) - The AI popup now has a chat input on its bottom row. Press `Ctrl+G` to focus it (the popup opens if it was hidden), type a question about the data or the query, and press `Enter`. The answer comes back as a short prose reply followed by numbered `[Query]` suggestions you apply with `Alt+1`..`Alt+5`, exactly like a fix. Every question and answer is kept and replayed to the provider as real multi-turn messages, so follow-ups like "now only the active ones" work without restating the goal, and the automatic fix and optimize suggestions that appear as you edit the query see the same conversation. Earlier exchanges stay visible above the current one, dimmed; scroll them with `Up`/`Down` or `PgUp`/`PgDn` while the chat input is focused. `Esc` or `Ctrl+G` returns to the query box with the popup still open, and `Ctrl+L` clears the conversation. The last 12 exchanges ride along with each request. All four providers (Anthropic, OpenAI, Gemini, Bedrock) send a system prompt plus alternating user and assistant turns.
+
+### Changed
+- **`Ctrl+A` only shows or hides the popup** ([#194](https://github.com/bellicose100xp/jiq/pull/194)) - Focus stays in the query box when the popup opens; `Ctrl+G` is the key that moves into the chat.
+- **The `[Next]` suggestion type is gone** ([#194](https://github.com/bellicose100xp/jiq/pull/194)) - Automatic suggestions are now only `[Fix]` when the query errors and `[Optimize]` when it runs; a query that is already optimal shows "No suggestions". Queries that answer a chat question show as `[Query]`. The parser still accepts `next` from models that keep using the old word.
+- **Popup text wraps to the popup's real width** ([#194](https://github.com/bellicose100xp/jiq/pull/194)) - Long lines were wrapped against a width derived from the terminal rather than the popup and then clipped at the border. The popup may also grow to half the screen height, up from 40%, so a conversation has room.
+
 ## [3.34.1] - 2026-09-08
 
 ### Fixed
