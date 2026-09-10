@@ -83,7 +83,7 @@ The AI sends your current query, the error message, and a sample of your JSON to
 3. Wait for suggestions to appear (a loading indicator shows progress).
 4. Press **Alt+1** through **Alt+5** to apply a suggestion directly — or use **Alt+j**/**Alt+k** to navigate, then **Enter** to apply.
 
-Opening the popup puts the cursor in its chat input. Press **Esc** to go back to editing the query; the popup stays open and keeps suggesting as you type.
+Ctrl+A only shows or hides the popup; your cursor stays in the query box, and the popup keeps suggesting as you type. Press **Ctrl+G** when you want to type into the popup instead.
 
 <div class="animated-terminal">
   <div class="terminal-chrome">
@@ -113,7 +113,7 @@ The AI assistant is not limited to fixing errors. Even when your query works, pr
 
 The bottom row of the popup is a chat input. Type there instead of in the query box when you want to talk about the data or the query rather than edit it.
 
-1. Press **Ctrl+A**. The popup opens with the chat input focused.
+1. Press **Ctrl+G**. The popup opens if it was hidden, and the cursor lands in the chat input.
 2. Type a question and press **Enter**. Anything goes: "why is this empty?", "how do I group these by role?", "explain suggestion 2", "what's the difference between map and .[]?".
 3. The answer appears as a short prose reply, followed by numbered queries when a query answers the question. Apply one with **Alt+1**..**Alt+5** exactly like a fix.
 4. Ask a follow-up. The AI remembers the conversation, so "now only the active ones" or "make that a single object" works without restating the goal.
@@ -161,11 +161,11 @@ Earlier exchanges stay visible above the current one, dimmed. Scroll them with *
 | Move between suggestions | **Alt+Up** / **Alt+Down** or **Alt+j** / **Alt+k** |
 | Apply the highlighted suggestion | **Enter** (after navigating with Alt+Up/Down) |
 | Apply suggestion N directly | **Alt+1** through **Alt+5** |
+| Focus the chat input (opens the popup if hidden) | **Ctrl+G**, or click its row |
 | Send the typed question | **Enter** (chat input focused) |
-| Back to the query box, popup stays open | **Esc** |
-| Focus the chat input again | click its row, or **Ctrl+A** twice |
+| Back to the query box, popup stays open | **Esc** or **Ctrl+G** |
 | Clear the conversation | **Ctrl+L** (chat input focused) |
-| Close the popup | **Ctrl+A** |
+| Show or hide the popup | **Ctrl+A** |
 
 ## Configure the AI provider
 
@@ -308,7 +308,8 @@ For sensitive data, a local model via Ollama or LM Studio keeps everything on yo
 
 | Key | Action |
 |---|---|
-| `Ctrl+A` | Open the popup with the chat input focused / close it |
+| `Ctrl+A` | Show or hide the popup |
+| `Ctrl+G` | Focus the chat input (opens the popup if hidden); again to go back |
 | `Enter` | Send the typed question (chat input focused) |
 | `Esc` | Back to the query box; popup stays open |
 | `Ctrl+L` | Clear the conversation (chat input focused) |

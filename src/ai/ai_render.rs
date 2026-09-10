@@ -342,8 +342,11 @@ fn build_hints(ai_state: &AiState, chat_focused: bool) -> Line<'static> {
         hints.push(("Enter", "Ask"));
         hints.push(("Esc", "Back"));
         hints.push(("Ctrl+L", "Clear"));
-    } else if has_suggestions {
-        hints.push(("Enter", "Apply Selection"));
+    } else {
+        if has_suggestions {
+            hints.push(("Enter", "Apply Selection"));
+        }
+        hints.push(("Ctrl+G", "Chat"));
     }
     hints.push(("Ctrl+A", "Close"));
     theme::border_hints::build_hints(&hints, theme::ai::border())

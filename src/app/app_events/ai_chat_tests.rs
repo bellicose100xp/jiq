@@ -100,13 +100,26 @@ fn ctrl_a_closes_popup_and_returns_focus() {
 }
 
 #[test]
-fn ctrl_a_from_query_box_opens_popup_with_chat_focused() {
+fn ctrl_a_from_query_box_opens_popup_without_moving_focus() {
     let mut app = app_with_query(".name");
     app.ai.configured = true;
     app.ai.visible = false;
     app.focus = Focus::InputField;
 
     app.handle_key_event(key_with_mods(KeyCode::Char('a'), KeyModifiers::CONTROL));
+
+    assert!(app.ai.visible);
+    assert_eq!(app.focus, Focus::InputField);
+}
+
+#[test]
+fn ctrl_g_from_query_box_opens_popup_with_chat_focused() {
+    let mut app = app_with_query(".name");
+    app.ai.configured = true;
+    app.ai.visible = false;
+    app.focus = Focus::InputField;
+
+    app.handle_key_event(key_with_mods(KeyCode::Char('g'), KeyModifiers::CONTROL));
 
     assert!(app.ai.visible);
     assert_eq!(app.focus, Focus::AiChat);
@@ -117,14 +130,25 @@ fn ctrl_a_from_query_box_opens_popup_with_chat_focused() {
 }
 
 #[test]
-fn ctrl_a_from_results_pane_keeps_popup_open_when_returning_to_input() {
+fn ctrl_g_in_chat_returns_to_query_box_and_keeps_popup() {
+    let (mut app, _rx) = chat_app();
+    app.handle_key_event(key_with_mods(KeyCode::Char('g'), KeyModifiers::CONTROL));
+    assert_eq!(app.focus, Focus::InputField);
+    assert!(app.ai.visible);
+
+    app.handle_key_event(key_with_mods(KeyCode::Char('g'), KeyModifiers::CONTROL));
+    assert_eq!(app.focus, Focus::AiChat);
+}
+
+#[test]
+fn ctrl_g_from_results_pane_keeps_popup_open_when_returning_to_input() {
     let mut app = app_with_query(".name");
     app.ai.configured = true;
     app.ai.visible = true;
     app.focus_results_pane();
     assert!(!app.ai.visible);
 
-    app.handle_key_event(key_with_mods(KeyCode::Char('a'), KeyModifiers::CONTROL));
+    app.handle_key_event(key_with_mods(KeyCode::Char('g'), KeyModifiers::CONTROL));
     assert!(app.ai.visible);
     assert_eq!(app.focus, Focus::AiChat);
 
@@ -251,6 +275,10 @@ fn paste_goes_into_chat_input_flattened() {
 fn pass_through_list_matches_expected_chords() {
     assert!(passes_through_to_global(key_with_mods(
         KeyCode::Char('a'),
+        KeyModifiers::CONTROL
+    )));
+    assert!(passes_through_to_global(key_with_mods(
+        KeyCode::Char('g'),
         KeyModifiers::CONTROL
     )));
     assert!(passes_through_to_global(key_with_mods(

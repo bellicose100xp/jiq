@@ -13,8 +13,8 @@ use crate::app::app_state::App;
 use crate::scroll::Scrollable;
 
 /// Handle a key while the chat input is focused. Returns false for the
-/// chords that must reach the global handler (Ctrl+A, Ctrl+T, Shift+Tab,
-/// Ctrl+Q, Shift+Enter, Alt+Enter).
+/// chords that must reach the global handler (Ctrl+A, Ctrl+G, Ctrl+T,
+/// Shift+Tab, Ctrl+Q, Shift+Enter, Alt+Enter).
 pub fn handle_ai_chat_key(app: &mut App, key: KeyEvent) -> bool {
     if !app.ai.visible {
         app.focus_input_field();
@@ -83,7 +83,11 @@ fn passes_through_to_global(key: KeyEvent) -> bool {
     let shift = key.modifiers.contains(KeyModifiers::SHIFT);
     let alt = key.modifiers.contains(KeyModifiers::ALT);
     match key.code {
-        KeyCode::Char('a') | KeyCode::Char('t') | KeyCode::Char('q') if ctrl => true,
+        KeyCode::Char('a') | KeyCode::Char('g') | KeyCode::Char('t') | KeyCode::Char('q')
+            if ctrl =>
+        {
+            true
+        }
         KeyCode::BackTab => true,
         KeyCode::Enter if shift || alt => true,
         _ => false,

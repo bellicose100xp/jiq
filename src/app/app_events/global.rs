@@ -195,6 +195,11 @@ pub fn handle_global_keys(app: &mut App, key: KeyEvent) -> bool {
             true
         }
 
+        KeyCode::Char('g') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+            app.toggle_ai_chat_focus();
+            true
+        }
+
         KeyCode::Char('s') if key.modifiers.contains(KeyModifiers::CONTROL) => {
             app.snippets.open();
             app.autocomplete.hide();

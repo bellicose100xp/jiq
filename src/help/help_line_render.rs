@@ -32,7 +32,7 @@ fn get_context_hints(app: &App) -> Vec<(&'static str, &'static str)> {
     } else if app.focus == Focus::ResultsPane {
         hints!["F1/?" => "Help", "Ctrl+T" => "Edit Query", "Ctrl+S" => "Snippets", "Ctrl+F" => "Search", "Ctrl+W" => "Save", "Ctrl+C" => "Quit"]
     } else if app.focus == Focus::AiChat {
-        hints!["F1" => "Help", "Enter" => "Ask AI", "Esc" => "Edit Query", "Alt+1-5" => "Apply Suggestion", "Ctrl+L" => "Clear Chat", "Ctrl+A" => "Close AI", "Ctrl+C" => "Quit"]
+        hints!["F1" => "Help", "Enter" => "Ask AI", "Esc/Ctrl+G" => "Edit Query", "Alt+1-5" => "Apply Suggestion", "Ctrl+L" => "Clear Chat", "Ctrl+A" => "Close AI", "Ctrl+C" => "Quit"]
     } else {
         hints!["F1/?" => "Help", "Ctrl+S" => "Snippets", "Ctrl+F" => "Search", "Enter" => "Output Result", "Ctrl+O" => "Copy Result", "Ctrl+W" => "Save", "Ctrl+Q" => "Output Query", "Ctrl+C" => "Quit"]
     }

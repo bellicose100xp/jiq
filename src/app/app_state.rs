@@ -536,8 +536,9 @@ impl App {
         true
     }
 
-    /// Ctrl+A: open the popup with the chat input focused, or close it and
-    /// return focus to the query box.
+    /// Ctrl+A: show or hide the popup. Focus stays where it is, except that
+    /// hiding the popup while its chat input is focused returns focus to the
+    /// query box.
     pub fn toggle_ai_popup(&mut self) {
         if self.ai.visible {
             self.ai.visible = false;
@@ -559,10 +560,23 @@ impl App {
         self.tooltip.enabled = false;
         if self.focus == Focus::ResultsPane {
             // The popup now sits over the results; returning to the input
-            // field later must keep it open.
+            // field later must keep it open and the tooltip suppressed.
             self.saved_ai_visibility_for_results = true;
+            self.saved_tooltip_visibility_for_results = false;
         }
         self.trigger_ai_request();
+    }
+
+    /// Ctrl+G: move focus into the popup's chat input, opening the popup if
+    /// it is hidden. Pressing it again in the chat returns to the query box.
+    pub fn toggle_ai_chat_focus(&mut self) {
+        if self.focus == Focus::AiChat {
+            self.focus_input_field();
+            return;
+        }
+        if !self.ai.visible {
+            self.toggle_ai_popup();
+        }
         self.focus_ai_chat();
     }
 

@@ -21,7 +21,7 @@ expression: output
 "│                                      │ ──────────────────────────────────── ║│"
 "│                                      │ ›  Ask about this query or data…     ││"
 "│                                      │                                      ││"
-"╰──────────────────────────────────────╰──────────── Ctrl+A Close ────────────╯╯"
+"╰──────────────────────────────────────╰───── Ctrl+G Chat • Ctrl+A Close ─────╯╯"
 "╭ Query [INSERT] ──────────────────────────────────────────────────────────────╮"
 "│                                                                              │"
 "╰l+T Navigate Results • Ctrl+P Previous Query • Ctrl+N Next Query • Ctrl+R Hist╯"

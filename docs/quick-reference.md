@@ -269,7 +269,8 @@ Case-insensitive.
 
 | Key | Action |
 |:---|:---|
-| <kbd>Ctrl</kbd>+<kbd>A</kbd> | Open popup (chat focused) / close |
+| <kbd>Ctrl</kbd>+<kbd>A</kbd> | Show / hide popup |
+| <kbd>Ctrl</kbd>+<kbd>G</kbd> | Focus chat input (opens popup); again to go back |
 | <kbd>Enter</kbd> | Ask the typed question |
 | <kbd>Esc</kbd> | Back to query box (popup stays) |
 | <kbd>Ctrl</kbd>+<kbd>L</kbd> | Clear conversation |

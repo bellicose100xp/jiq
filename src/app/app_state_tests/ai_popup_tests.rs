@@ -22,7 +22,7 @@ fn type_question(app: &mut App, text: &str) {
 // ---------------------------------------------------------------------------
 
 #[test]
-fn test_toggle_opens_popup_and_focuses_chat() {
+fn test_toggle_opens_popup_and_leaves_focus_in_query_box() {
     let mut app = test_app(r#"{"a": 1}"#);
     app.ai.visible = false;
     app.focus = Focus::InputField;
@@ -31,7 +31,7 @@ fn test_toggle_opens_popup_and_focuses_chat() {
     app.toggle_ai_popup();
 
     assert!(app.ai.visible);
-    assert_eq!(app.focus, Focus::AiChat);
+    assert_eq!(app.focus, Focus::InputField);
     assert!(
         !app.tooltip.enabled,
         "tooltip hides while the popup is open"
@@ -48,6 +48,7 @@ fn test_toggle_closes_popup_and_returns_focus_to_input() {
     app.ai.visible = false;
     app.tooltip.enabled = true;
     app.toggle_ai_popup();
+    assert!(app.focus_ai_chat());
     assert_eq!(app.focus, Focus::AiChat);
 
     app.toggle_ai_popup();
@@ -55,6 +56,53 @@ fn test_toggle_closes_popup_and_returns_focus_to_input() {
     assert!(!app.ai.visible);
     assert_eq!(app.focus, Focus::InputField);
     assert!(app.tooltip.enabled, "tooltip preference restored on close");
+}
+
+#[test]
+fn test_toggle_chat_focus_opens_hidden_popup_and_focuses_chat() {
+    let mut app = test_app(r#"{"a": 1}"#);
+    app.ai.visible = false;
+    app.focus = Focus::InputField;
+    app.tooltip.enabled = true;
+
+    app.toggle_ai_chat_focus();
+
+    assert!(app.ai.visible);
+    assert_eq!(app.focus, Focus::AiChat);
+    assert!(!app.tooltip.enabled);
+    assert_eq!(
+        app.ai.chat_input.cursor_style(),
+        crate::theme::palette::cursor()
+    );
+}
+
+#[test]
+fn test_toggle_chat_focus_on_visible_popup_only_moves_focus() {
+    let mut app = test_app(r#"{"a": 1}"#);
+    app.ai.visible = true;
+    app.focus = Focus::InputField;
+    let rx = install_channel(&mut app);
+
+    app.toggle_ai_chat_focus();
+
+    assert!(app.ai.visible);
+    assert_eq!(app.focus, Focus::AiChat);
+    assert!(
+        rx.try_recv().is_err(),
+        "no request is triggered by focusing"
+    );
+}
+
+#[test]
+fn test_toggle_chat_focus_from_chat_returns_to_query_box() {
+    let mut app = test_app(r#"{"a": 1}"#);
+    app.ai.visible = true;
+    assert!(app.focus_ai_chat());
+
+    app.toggle_ai_chat_focus();
+
+    assert_eq!(app.focus, Focus::InputField);
+    assert!(app.ai.visible, "popup stays open");
 }
 
 #[test]
@@ -70,7 +118,7 @@ fn test_toggle_close_keeps_input_focus_when_chat_not_focused() {
 }
 
 #[test]
-fn test_toggle_open_from_results_pane_focuses_chat_and_keeps_popup_for_input_return() {
+fn test_toggle_open_from_results_pane_keeps_popup_and_tooltip_state_for_input_return() {
     let mut app = test_app(r#"{"a": 1}"#);
     app.ai.visible = true;
     app.tooltip.enabled = true;
@@ -80,7 +128,7 @@ fn test_toggle_open_from_results_pane_focuses_chat_and_keeps_popup_for_input_ret
     app.toggle_ai_popup();
 
     assert!(app.ai.visible);
-    assert_eq!(app.focus, Focus::AiChat);
+    assert_eq!(app.focus, Focus::ResultsPane, "Ctrl+A does not move focus");
     assert!(
         app.saved_ai_visibility_for_results,
         "returning to the input field later keeps the popup open"
@@ -126,7 +174,7 @@ fn test_toggle_open_sends_nothing_when_not_configured() {
     app.toggle_ai_popup();
 
     assert!(app.ai.visible);
-    assert_eq!(app.focus, Focus::AiChat);
+    assert_eq!(app.focus, Focus::InputField);
     assert!(rx.try_recv().is_err());
 }
 
@@ -164,7 +212,7 @@ proptest! {
         app.toggle_ai_popup();
 
         prop_assert!(app.ai.visible);
-        prop_assert_eq!(app.focus, Focus::AiChat);
+        prop_assert_eq!(app.focus, Focus::InputField);
         prop_assert!(
             !app.tooltip.enabled,
             "Tooltip should be disabled when AI popup is visible"
