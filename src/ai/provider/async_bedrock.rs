@@ -10,17 +10,49 @@ use std::collections::HashMap;
 
 use aws_config::BehaviorVersion;
 use aws_sdk_bedrockruntime::Client as BedrockRuntimeClient;
-use aws_sdk_bedrockruntime::types::{ContentBlock, ConversationRole, Message};
+use aws_sdk_bedrockruntime::types::{ContentBlock, ConversationRole, Message, SystemContentBlock};
 use aws_smithy_types::Document;
 use futures::FutureExt;
 use tokio_util::sync::CancellationToken;
 
 use super::AiError;
 use crate::ai::ai_state::AiResponse;
+use crate::ai::chat::{AiPrompt, ChatRole};
 use crate::config::ai_types::AiEffort;
 
 /// Anthropic beta flag that opts a request into the 1M-token context window.
 const CONTEXT_1M_BETA: &str = "context-1m-2025-08-07";
+
+/// Map a conversation role onto the Converse API's role enum.
+fn conversation_role(role: ChatRole) -> ConversationRole {
+    match role {
+        ChatRole::User => ConversationRole::User,
+        ChatRole::Assistant => ConversationRole::Assistant,
+    }
+}
+
+/// Translate an [`AiPrompt`] into Converse API inputs: the optional system
+/// block (None when the system prompt is empty) and one `Message` per turn.
+fn build_conversation(
+    prompt: &AiPrompt,
+) -> Result<(Option<SystemContentBlock>, Vec<Message>), AiError> {
+    let system =
+        (!prompt.system.is_empty()).then(|| SystemContentBlock::Text(prompt.system.clone()));
+
+    let messages = prompt
+        .messages
+        .iter()
+        .map(|message| {
+            Message::builder()
+                .role(conversation_role(message.role))
+                .content(ContentBlock::Text(message.content.clone()))
+                .build()
+                .map_err(|e| AiError::AwsSdk(format!("Failed to build message: {}", e)))
+        })
+        .collect::<Result<Vec<_>, _>>()?;
+
+    Ok((system, messages))
+}
 
 /// Async AWS Bedrock client with streaming support
 ///
@@ -180,7 +212,7 @@ impl AsyncBedrockClient {
     /// Sends chunks via the response channel as they arrive.
     ///
     /// # Arguments
-    /// * `prompt` - The prompt to send to the API
+    /// * `prompt` - System prompt plus conversation turns to send to the API
     /// * `request_id` - Unique ID for this request
     /// * `cancel_token` - Token to cancel the request
     /// * `response_tx` - Channel to send response chunks
@@ -191,7 +223,7 @@ impl AsyncBedrockClient {
     /// * `Err(AiError::*)` - Other errors
     pub async fn stream_with_cancel(
         &self,
-        prompt: &str,
+        prompt: &AiPrompt,
         request_id: u64,
         cancel_token: CancellationToken,
         response_tx: Sender<AiResponse>,
@@ -201,22 +233,21 @@ impl AsyncBedrockClient {
             return Err(AiError::Cancelled);
         }
 
+        let (system, messages) = build_conversation(prompt)?;
+
         // Build the client
         let client = self.build_client().await?;
-
-        // Create the message for the conversation
-        let message = Message::builder()
-            .role(ConversationRole::User)
-            .content(ContentBlock::Text(prompt.to_string()))
-            .build()
-            .map_err(|e| AiError::AwsSdk(format!("Failed to build message: {}", e)))?;
 
         // Start the streaming conversation
         // Note: For inference profile ARNs, the region in the ARN should match the client region
         let mut request = client
             .converse_stream()
             .model_id(&self.model)
-            .messages(message);
+            .set_messages(Some(messages));
+
+        if let Some(system) = system {
+            request = request.system(system);
+        }
 
         // Attach reasoning effort and/or the 1M-context beta when configured
         if let Some(fields) = self.build_additional_fields() {

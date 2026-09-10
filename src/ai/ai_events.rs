@@ -1,17 +1,19 @@
 //! AI event handling
 //!
-//! Handles keyboard events (Ctrl+A toggle, Esc close) and response channel polling.
+//! Handles suggestion selection keys, chat questions, and response channel polling.
 //!
-//! The AI request flow is triggered by jq execution results:
+//! Two things trigger an AI request:
 //! - Query changes → jq executes → result available → cancel in-flight → debounce → AI request
-//! - Both success and error results trigger AI requests with appropriate context
+//!   (both success and error results, with appropriate context)
+//! - The user submits a question from the popup's chat input; the current
+//!   query context and the conversation so far are sent along with it
 
 use ratatui::crossterm::event::KeyEvent;
 use std::sync::mpsc::TryRecvError;
 
 use super::ai_state::{AiResponse, AiState};
 use super::context::{ContextParams, QueryContext};
-use super::prompt::build_prompt;
+use super::prompt::{PromptInputs, build_prompt};
 use super::selection::{apply::apply_suggestion, keybindings};
 use crate::autocomplete::AutocompleteState;
 use crate::input::InputState;
@@ -160,36 +162,75 @@ pub fn handle_execution_result(
     ai_state.clear_stale_response();
     ai_state.set_last_query_hash(query);
 
-    match query_result {
-        Err(error) => {
-            if ai_state.visible {
-                let context = QueryContext::new(
-                    query.to_string(),
-                    cursor_pos,
-                    None,
-                    Some(error.to_string()),
-                    params,
-                    ai_state.max_context_length,
-                );
-                let prompt = build_prompt(&context, ai_state.extra_instructions.as_deref());
-                ai_state.send_request(prompt);
-            }
-        }
-        Ok(output) => {
-            if ai_state.visible {
-                let context = QueryContext::new(
-                    query.to_string(),
-                    cursor_pos,
-                    Some(output.clone()),
-                    None,
-                    params,
-                    ai_state.max_context_length,
-                );
-                let prompt = build_prompt(&context, ai_state.extra_instructions.as_deref());
-                ai_state.send_request(prompt);
-            }
-        }
+    if !ai_state.visible {
+        return;
     }
+
+    let context = build_query_context(ai_state, query_result, query, cursor_pos, params);
+    let prompt = build_prompt(&PromptInputs {
+        context: &context,
+        extra_instructions: ai_state.extra_instructions.as_deref(),
+        history: &ai_state.history,
+        question: None,
+        displayed_suggestions: &[],
+    });
+    ai_state.send_request(prompt);
+}
+
+/// Send a question typed in the popup's chat input.
+///
+/// Unlike [`handle_execution_result`], this never checks whether the query
+/// changed: the user explicitly asked. The current query context, the
+/// suggestions on screen, and the conversation so far all go with it.
+/// Returns false when the popup is hidden, the question is blank, or the
+/// request could not be sent.
+pub fn send_chat_question(
+    ai_state: &mut AiState,
+    question: &str,
+    query_result: &Result<String, String>,
+    query: &str,
+    cursor_pos: usize,
+    params: ContextParams,
+) -> bool {
+    let question = question.trim();
+    if !ai_state.visible || question.is_empty() {
+        return false;
+    }
+
+    ai_state.cancel_in_flight_request();
+    // The answer on screen belongs to the history this question builds on
+    ai_state.archive_current_exchange();
+    let context = build_query_context(ai_state, query_result, query, cursor_pos, params);
+    let prompt = build_prompt(&PromptInputs {
+        context: &context,
+        extra_instructions: ai_state.extra_instructions.as_deref(),
+        history: &ai_state.history,
+        question: Some(question),
+        displayed_suggestions: &ai_state.suggestions,
+    });
+    ai_state.send_chat_request(prompt, question.to_string(), query.to_string())
+}
+
+/// Build the query context shared by auto and chat requests.
+fn build_query_context(
+    ai_state: &AiState,
+    query_result: &Result<String, String>,
+    query: &str,
+    cursor_pos: usize,
+    params: ContextParams,
+) -> QueryContext {
+    let (output, error) = match query_result {
+        Ok(output) => (Some(output.clone()), None),
+        Err(error) => (None, Some(error.clone())),
+    };
+    QueryContext::new(
+        query.to_string(),
+        cursor_pos,
+        output,
+        error,
+        params,
+        ai_state.max_context_length,
+    )
 }
 
 /// Handle AI state after query execution (legacy wrapper)

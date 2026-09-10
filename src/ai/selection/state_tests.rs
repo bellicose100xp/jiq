@@ -110,13 +110,132 @@ fn test_clear_layout() {
     state.viewport_height = 20;
     state.suggestion_y_positions = vec![0, 5, 10];
     state.suggestion_heights = vec![3, 4, 2];
+    state.header_height = 7;
 
     state.clear_layout();
 
     assert_eq!(state.scroll_offset, 0);
     assert_eq!(state.viewport_height, 0);
+    assert_eq!(state.header_height(), 0);
     assert!(state.suggestion_y_positions.is_empty());
     assert!(state.suggestion_heights.is_empty());
+}
+
+// =========================================================================
+// Header Offset Tests
+// =========================================================================
+
+#[test]
+fn test_update_layout_with_header_offsets_positions() {
+    let mut state = SelectionState::new();
+    state.update_layout_with_header(4, vec![3, 5, 2], 10);
+
+    assert_eq!(state.header_height(), 4);
+    // Suggestions start after the header lines
+    assert_eq!(state.suggestion_y_positions, vec![4, 7, 12]);
+    assert_eq!(state.suggestion_heights, vec![3, 5, 2]);
+}
+
+#[test]
+fn test_update_layout_has_no_header() {
+    let mut state = SelectionState::new();
+    state.update_layout(vec![3, 3], 10);
+    assert_eq!(state.header_height(), 0);
+    assert_eq!(state.suggestion_y_positions, vec![0, 3]);
+}
+
+#[test]
+fn test_total_content_height_includes_header() {
+    let mut state = SelectionState::new();
+    state.update_layout_with_header(4, vec![3, 5, 2], 10);
+    assert_eq!(state.total_content_height(), 14);
+
+    // Header only, no suggestions
+    state.update_layout_with_header(6, vec![], 10);
+    assert_eq!(state.total_content_height(), 6);
+}
+
+#[test]
+fn test_max_scroll_includes_header() {
+    let mut state = SelectionState::new();
+    // Total 14, viewport 10 -> 4 lines of overflow
+    state.update_layout_with_header(4, vec![3, 5, 2], 10);
+    assert_eq!(state.max_scroll(), 4);
+}
+
+#[test]
+fn test_suggestion_at_y_skips_header_rows() {
+    let mut state = SelectionState::new();
+    state.update_layout_with_header(3, vec![2, 2], 10);
+
+    assert_eq!(state.suggestion_at_y(0), None);
+    assert_eq!(state.suggestion_at_y(2), None);
+    assert_eq!(state.suggestion_at_y(3), Some(0));
+    assert_eq!(state.suggestion_at_y(4), Some(0));
+    assert_eq!(state.suggestion_at_y(5), Some(1));
+    assert_eq!(state.suggestion_at_y(7), None);
+}
+
+#[test]
+fn test_ensure_selected_visible_accounts_for_header() {
+    let mut state = SelectionState::new();
+    // Header 6 + suggestions at 6..9, 9..12; viewport 5
+    state.update_layout_with_header(6, vec![3, 3], 5);
+    state.selected_index = Some(0);
+
+    state.ensure_selected_visible();
+
+    // Suggestion 0 ends at 9; viewport must end there
+    assert_eq!(state.scroll_offset, 4);
+}
+
+// =========================================================================
+// Scroll-To-Bottom Tests
+// =========================================================================
+
+#[test]
+fn test_request_scroll_to_bottom_applies_on_next_layout() {
+    let mut state = SelectionState::new();
+    state.request_scroll_to_bottom();
+    // Nothing happens until the layout is known
+    assert_eq!(state.scroll_offset_u16(), 0);
+
+    // Total 20, viewport 8 -> max scroll 12
+    state.update_layout_with_header(10, vec![5, 5], 8);
+    assert_eq!(state.scroll_offset_u16(), 12);
+    assert_eq!(Scrollable::scroll_offset(&state), state.max_scroll());
+}
+
+#[test]
+fn test_scroll_to_bottom_request_is_consumed() {
+    let mut state = SelectionState::new();
+    state.request_scroll_to_bottom();
+    state.update_layout_with_header(10, vec![5, 5], 8);
+    assert_eq!(state.scroll_offset_u16(), 12);
+
+    // User scrolls up; a later relayout with the same content keeps their place
+    state.scroll_view_up(5);
+    state.update_layout_with_header(10, vec![5, 5], 8);
+    assert_eq!(state.scroll_offset_u16(), 7);
+}
+
+#[test]
+fn test_scroll_to_bottom_with_content_that_fits() {
+    let mut state = SelectionState::new();
+    state.request_scroll_to_bottom();
+    state.update_layout_with_header(2, vec![2], 10);
+    assert_eq!(state.scroll_offset_u16(), 0);
+}
+
+#[test]
+fn test_update_layout_clamps_offset_when_content_shrinks() {
+    let mut state = SelectionState::new();
+    state.update_layout_with_header(10, vec![5, 5], 8);
+    state.scroll_offset = 12;
+
+    // Content shrinks to 12 lines: max scroll is now 4
+    state.update_layout_with_header(2, vec![5, 5], 8);
+    assert_eq!(state.scroll_offset_u16(), 4);
 }
 
 #[test]

@@ -283,16 +283,10 @@ fn test_ai_state_transitions() {
 
     // 1. Start request - should transition to Loading
     assert_eq!(state, State::Idle);
-    let previous_response = if !response.is_empty() {
-        Some(response.clone())
-    } else {
-        None
-    };
     response.clear();
     state = State::Loading;
     assert_eq!(state, State::Loading);
     assert!(response.is_empty());
-    assert!(previous_response.is_none());
 
     // 2. Receive first chunk - should transition to Streaming
     let chunk1 = "Hello ";
@@ -310,31 +304,6 @@ fn test_ai_state_transitions() {
     state = State::Complete;
     assert_eq!(state, State::Complete);
     assert_eq!(response, "Hello World!");
-}
-
-/// Test that previous response is preserved when starting a new request
-#[test]
-fn test_ai_previous_response_preservation() {
-    let mut response = "Previous AI response".to_string();
-    let mut previous_response: Option<String> = None;
-
-    // Start a new request - should preserve current response
-    if !response.is_empty() {
-        previous_response = Some(response.clone());
-    }
-    response.clear();
-
-    assert!(response.is_empty());
-    assert_eq!(previous_response, Some("Previous AI response".to_string()));
-
-    // Simulate receiving new response
-    response.push_str("New response");
-
-    // Complete request - should clear previous
-    previous_response = None;
-
-    assert_eq!(response, "New response");
-    assert!(previous_response.is_none());
 }
 
 /// Test streaming concatenation property
@@ -844,16 +813,14 @@ fn test_visibility_control_mechanisms_complete() {
     );
 
     // Mechanism 2: Ctrl+A toggle is the only runtime control
-    let mut ai_state = AiState {
-        visible: false,
-        ..Default::default()
-    };
+    let mut app = app_disabled;
+    assert!(!app.ai.visible);
 
-    ai_state.toggle(); // Simulates Ctrl+A
-    assert!(ai_state.visible, "Toggle should change visibility");
+    app.toggle_ai_popup(); // Simulates Ctrl+A
+    assert!(app.ai.visible, "Toggle should change visibility");
 
-    ai_state.toggle(); // Simulates Ctrl+A again
-    assert!(!ai_state.visible, "Toggle should change visibility back");
+    app.toggle_ai_popup(); // Simulates Ctrl+A again
+    assert!(!app.ai.visible, "Toggle should change visibility back");
 
     // Mechanism 3: Execution results do NOT change visibility
     let mut ai_state = AiState {

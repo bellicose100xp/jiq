@@ -2,12 +2,12 @@
 title: AI assistant
 parent: Features
 nav_order: 3
-description: Get context-aware jq query suggestions from an AI that sees your data, your query, and the error.
+description: Get context-aware jq query suggestions from an AI that sees your data, your query, and the error, then ask it follow-up questions in the same popup.
 ---
 
 # AI assistant
 
-The AI assistant fixes broken queries for you — it sees what went wrong, understands your data shape, and offers working alternatives you apply with a single keystroke.
+The AI assistant fixes broken queries for you — it sees what went wrong, understands your data shape, and offers working alternatives you apply with a single keystroke. The same popup is a conversation: type a question, get an answer plus applyable queries, and ask follow-ups that build on what came before.
 
 <div class="before-after">
   <input type="radio" name="ba-ai" id="ba-ai-before" checked>
@@ -74,7 +74,7 @@ AI Suggestions:
   </div>
 </div>
 
-The AI sends your current query, the error message, and a sample of your JSON to the configured provider. It returns 2-5 suggestions ranked by relevance. The entire round trip typically takes 1-3 seconds.
+The AI sends your current query, the error message, and a sample of your JSON to the configured provider. It returns up to 5 suggestions ranked by relevance. The entire round trip typically takes 1-3 seconds.
 
 ## Get a fix for a failing query
 
@@ -82,6 +82,8 @@ The AI sends your current query, the error message, and a sample of your JSON to
 2. Press **Ctrl+A** to open the AI popup.
 3. Wait for suggestions to appear (a loading indicator shows progress).
 4. Press **Alt+1** through **Alt+5** to apply a suggestion directly — or use **Alt+j**/**Alt+k** to navigate, then **Enter** to apply.
+
+Ctrl+A only shows or hides the popup; your cursor stays in the query box, and the popup keeps suggesting as you type. Press **Ctrl+G** when you want to type into the popup instead.
 
 <div class="animated-terminal">
   <div class="terminal-chrome">
@@ -105,24 +107,65 @@ The AI sends your current query, the error message, and a sample of your JSON to
 
 ## Ask for help with a working query
 
-The AI assistant is not limited to fixing errors. Even when your query works, press **Ctrl+A** and the AI may suggest improvements — a more concise form, a different approach, or natural language interpretation of what you typed.
+The AI assistant is not limited to fixing errors. Even when your query works, press **Ctrl+A** and the AI may suggest optimizations — a more concise form, a more idiomatic construct, or a more robust one. When the query is already as good as it gets, the popup says **No suggestions**.
+
+## Ask a question
+
+The bottom row of the popup is a chat input. Type there instead of in the query box when you want to talk about the data or the query rather than edit it.
+
+1. Press **Ctrl+G**. The popup opens if it was hidden, and the cursor lands in the chat input.
+2. Type a question and press **Enter**. Anything goes: "why is this empty?", "how do I group these by role?", "explain suggestion 2", "what's the difference between map and .[]?".
+3. The answer appears as a short prose reply, followed by numbered queries when a query answers the question. Apply one with **Alt+1**..**Alt+5** exactly like a fix.
+4. Ask a follow-up. The AI remembers the conversation, so "now only the active ones" or "make that a single object" works without restating the goal.
+
+<div class="animated-terminal">
+  <div class="terminal-chrome">
+    <span class="dot red"></span>
+    <span class="dot yellow"></span>
+    <span class="dot green"></span>
+    <span class="terminal-title">AI popup, conversation</span>
+  </div>
+  <div class="terminal-body">
+    <div class="term-line"><span class="term-dim">❯ how do I count users per role?</span></div>
+    <div class="term-line"><span class="term-dim">group_by collects users sharing a role; length counts each group.</span></div>
+    <div class="term-line"><span class="term-dim">  [Query] .users | group_by(.role) | map({role: .[0].role, count: length})</span></div>
+    <div class="term-line">&nbsp;</div>
+    <div class="term-line"><span class="term-highlight">❯ only active users</span></div>
+    <div class="term-line"><span class="term-output">Filter before grouping so inactive users never reach the count.</span></div>
+    <div class="term-line">&nbsp;</div>
+    <div class="term-line"><span class="term-highlight"> 1.</span> <span class="term-output">[Query] .users | map(select(.active)) | group_by(.role) | map({role: .[0].role, count: length})</span></div>
+    <div class="term-line"><span class="term-dim">   Keeps active users, then counts per role</span></div>
+    <div class="term-line">&nbsp;</div>
+    <div class="term-line"><span class="term-dim">──────────────────────────────────────────────────</span></div>
+    <div class="term-line"><span class="term-highlight">› </span><span class="term-dim">Ask about this query or data…</span></div>
+  </div>
+</div>
+
+Every request carries the current query, its output or error, a sample of the data, the suggestions on screen, and the earlier questions and answers. Suggestions triggered by editing the query use the same conversation, so once you have explained what you are after, the fixes and optimizations it proposes take that into account.
+
+Earlier exchanges stay visible above the current one, dimmed. Scroll them with **↑**/**↓** or **PgUp**/**PgDn** while the chat input is focused, or with the mouse wheel. **Ctrl+L** forgets the conversation and starts fresh. The last 12 exchanges are sent with each request; older ones drop off.
 
 ## What the popup tells you
 
 | Popup state | What it means |
 |---|---|
-| A numbered list of suggestions | The AI returned 2-5 jq queries you can apply. |
+| A numbered list of suggestions | The AI returned up to 5 jq queries you can apply. `[Fix]` corrects an error, `[Optimize]` improves a working query, `[Query]` does what you asked for in chat. |
+| Prose above the list | The answer to your question. |
 | **No suggestions** | The AI ran successfully but had nothing useful to add for this query (common for the bare `.` identity query). This is normal, not an error. |
-| **Could not parse AI response** | The provider returned a response jiq could not read as suggestions. Re-run with `--debug` and check `/tmp/jiq-debug.log` to see the raw response. |
+| **Could not parse AI response** | The provider returned a response jiq could not read. Re-run with `--debug` and check `/tmp/jiq-debug.log` to see the raw response. |
 
 ## Navigate and dismiss suggestions
 
 | Action | Key |
 |---|---|
 | Move between suggestions | **Alt+Up** / **Alt+Down** or **Alt+j** / **Alt+k** |
-| Apply the highlighted suggestion | **Enter** |
+| Apply the highlighted suggestion | **Enter** (after navigating with Alt+Up/Down) |
 | Apply suggestion N directly | **Alt+1** through **Alt+5** |
-| Close without applying | **Ctrl+A** or **Esc** |
+| Focus the chat input (opens the popup if hidden) | **Ctrl+G**, or click its row |
+| Send the typed question | **Enter** (chat input focused) |
+| Back to the query box, popup stays open | **Esc** or **Ctrl+G** |
+| Clear the conversation | **Ctrl+L** (chat input focused) |
+| Show or hide the popup | **Ctrl+A** |
 
 ## Configure the AI provider
 
@@ -216,7 +259,7 @@ effort = "medium"    # optional: minimal | low | medium | high | xhigh | max
 
 ### Extra instructions
 
-`extra_instructions` appends your own guidance to every AI prompt — style preferences, house conventions, favored jq idioms. It never replaces the built-in prompt: the output-format contract jiq's suggestion parser depends on always takes precedence.
+`extra_instructions` appends your own guidance to every AI prompt — style preferences, house conventions, favored jq idioms, the tone of chat answers. It never replaces the built-in prompt: the output-format contract jiq's suggestion parser depends on always takes precedence.
 
 ```toml
 [ai]
@@ -265,9 +308,13 @@ For sensitive data, a local model via Ollama or LM Studio keeps everything on yo
 
 | Key | Action |
 |---|---|
-| `Ctrl+A` | Toggle AI assistant popup |
+| `Ctrl+A` | Show or hide the popup |
+| `Ctrl+G` | Focus the chat input (opens the popup if hidden); again to go back |
+| `Enter` | Send the typed question (chat input focused) |
+| `Esc` | Back to the query box; popup stays open |
+| `Ctrl+L` | Clear the conversation (chat input focused) |
+| `↑` / `↓`, `PgUp` / `PgDn` | Scroll the conversation (chat input focused) |
 | `Alt+1`..`Alt+5` | Apply suggestion 1-5 directly |
 | `Alt+Up` / `Alt+Down` | Navigate suggestions |
 | `Alt+j` / `Alt+k` | Navigate suggestions (vim style) |
-| `Enter` | Apply selected suggestion |
-| `Ctrl+A` / `Esc` | Close popup |
+| `Enter` | Apply selected suggestion (after Alt+Up/Down) |

@@ -47,15 +47,19 @@ fn test_full_flow_error_result() {
         match msg {
             AiRequest::Query { prompt, .. } => {
                 found_query = true;
-                query_prompt = prompt;
+                query_prompt = last_user_turn(&prompt).to_string();
             }
         }
     }
 
     assert!(found_query, "Should have sent new Query request");
     assert!(
-        query_prompt.contains("troubleshoot"),
-        "Error prompt should mention troubleshooting"
+        query_prompt.contains("The query failed"),
+        "Error task should say the query failed"
+    );
+    assert!(
+        query_prompt.contains("`fix` suggestions"),
+        "Error task should ask for fix suggestions"
     );
     assert!(
         query_prompt.contains(".invalid is not defined"),
@@ -97,7 +101,7 @@ fn test_full_flow_success_result() {
         match msg {
             AiRequest::Query { prompt, .. } => {
                 found_query = true;
-                query_prompt = prompt;
+                query_prompt = last_user_turn(&prompt).to_string();
             }
         }
     }
@@ -193,10 +197,14 @@ fn test_schema_passed_to_ai_on_success() {
         },
     );
 
-    // Verify schema is in the prompt
+    // Verify schema is in the system prompt
     if let Ok(AiRequest::Query { prompt, .. }) = rx.try_recv() {
-        assert!(prompt.contains("## Input JSON Schema"));
-        assert!(prompt.contains(r#"{"name":"string","age":"number"}"#));
+        assert!(prompt.system.contains("## Input JSON Schema"));
+        assert!(
+            prompt
+                .system
+                .contains(r#"{"name":"string","age":"number"}"#)
+        );
     } else {
         panic!("Expected Query request");
     }
@@ -227,12 +235,13 @@ fn test_base_query_passed_on_error() {
         },
     );
 
-    // Verify base_query is in the prompt
+    // Verify base_query is in the final user turn
     if let Ok(AiRequest::Query { prompt, .. }) = rx.try_recv() {
-        assert!(prompt.contains("## Last Working Query"));
-        assert!(prompt.contains(".name"));
-        assert!(prompt.contains("## Last Working Query Output"));
-        assert!(prompt.contains(r#""test""#));
+        let turn = last_user_turn(&prompt);
+        assert!(turn.contains("## Last Working Query"));
+        assert!(turn.contains(".name"));
+        assert!(turn.contains("## Last Working Query Output"));
+        assert!(turn.contains(r#""test""#));
     } else {
         panic!("Expected Query request");
     }
@@ -264,8 +273,9 @@ fn test_base_query_not_passed_on_success() {
 
     // Verify base_query is NOT in the prompt
     if let Ok(AiRequest::Query { prompt, .. }) = rx.try_recv() {
-        assert!(!prompt.contains("Last Working Query"));
-        assert!(!prompt.contains(".old"));
+        let turn = last_user_turn(&prompt);
+        assert!(!turn.contains("Last Working Query"));
+        assert!(!turn.contains(".old"));
     } else {
         panic!("Expected Query request");
     }

@@ -5,7 +5,7 @@ use ratatui::{
     widgets::Block,
 };
 
-use super::app_state::App;
+use super::app_state::{App, Focus};
 use crate::notification::render_notification;
 use crate::theme;
 
@@ -95,8 +95,12 @@ impl App {
         if let Some(input_area) = input_area {
             if self.ai.visible
                 && self.query.is_some()
-                && let Some(ai_rect) =
-                    crate::ai::ai_render::render_popup(&mut self.ai, frame, input_area)
+                && let Some(ai_rect) = crate::ai::ai_render::render_popup(
+                    &mut self.ai,
+                    frame,
+                    input_area,
+                    self.focus == Focus::AiChat,
+                )
             {
                 self.layout_regions.ai_window = Some(ai_rect);
             } else if self.tooltip.should_show()

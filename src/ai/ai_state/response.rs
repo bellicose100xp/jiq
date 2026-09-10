@@ -9,6 +9,7 @@ use std::sync::mpsc::{Receiver, Sender};
 use tokio_util::sync::CancellationToken;
 
 use crate::ai::ai_state::{AiRequest, AiResponse, AiState};
+use crate::ai::chat::AiPrompt;
 
 impl AiState {
     /// Append a chunk to the current response
@@ -28,7 +29,7 @@ impl AiState {
     /// 2. Creates a new CancellationToken
     /// 3. Stores the token in current_cancel_token
     /// 4. Sends the request with the token
-    pub fn send_request(&mut self, prompt: String) -> bool {
+    pub fn send_request(&mut self, prompt: AiPrompt) -> bool {
         // Check if we have a channel first
         if self.request_tx.is_none() {
             log::warn!("AI: no request channel, cannot send");

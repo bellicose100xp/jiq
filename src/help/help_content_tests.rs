@@ -168,6 +168,20 @@ fn test_ai_tab_contains_ai_shortcuts() {
         entries.iter().any(|(k, _)| k.contains("Alt+")),
         "AI should have Alt+number shortcuts"
     );
+    assert!(
+        entries.iter().any(|(k, _)| *k == "Ctrl+L"),
+        "AI should have Ctrl+L to clear the conversation"
+    );
+    assert!(
+        entries.iter().any(|(k, _)| *k == "Esc"),
+        "AI should have Esc to return to the query box"
+    );
+    assert!(
+        entries
+            .iter()
+            .any(|(k, d)| k.contains("Enter") && d.contains("question")),
+        "AI should explain how to ask a question"
+    );
 }
 
 #[test]

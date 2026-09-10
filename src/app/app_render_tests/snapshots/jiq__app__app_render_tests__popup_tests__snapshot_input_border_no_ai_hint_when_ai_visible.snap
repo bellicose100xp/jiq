@@ -1,6 +1,5 @@
 ---
 source: src/app/app_render_tests/popup_tests.rs
-assertion_line: 285
 expression: output
 ---
 "╭ Object ───────────────────────────────────────────────────────── L1-4/4 (0%) ╮"
@@ -13,16 +12,16 @@ expression: output
 "│                                                                              │"
 "│                                                                              │"
 "│                                                                              │"
-"│                                                                              │"
-"│                                                                              │"
 "│                                      ╭ Not Configured ────────────────────  ╮│"
+"│                                      │                                      █│"
+"│                                      │ ⚙ AI provider not configured         █│"
+"│                                      │                                      ║│"
+"│                                      │ To enable AI assistance, configure a ║│"
+"│                                      │ in ~/.config/jiq/config.toml:        ║│"
+"│                                      │ ──────────────────────────────────── ║│"
+"│                                      │ ›  Ask about this query or data…     ││"
 "│                                      │                                      ││"
-"│                                      │ ⚙ AI provider not configured         ││"
-"│                                      │                                      ││"
-"│                                      │ To enable AI assistance, configure a ││"
-"│                                      │ provider                             ││"
-"│                                      │                                      ││"
-"╰──────────────────────────────────────╰──────────── Ctrl+A Close ────────────╯╯"
+"╰──────────────────────────────────────╰───── Ctrl+G Chat • Ctrl+A Close ─────╯╯"
 "╭ Query [INSERT] ──────────────────────────────────────────────────────────────╮"
 "│                                                                              │"
 "╰l+T Navigate Results • Ctrl+P Previous Query • Ctrl+N Next Query • Ctrl+R Hist╯"

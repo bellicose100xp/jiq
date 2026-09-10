@@ -1,6 +1,5 @@
 ---
 source: src/ai/ai_render_tests/snapshot_tests.rs
-assertion_line: 202
 expression: output
 ---
 "                                                                                                    "
@@ -25,10 +24,10 @@ expression: output
 "                                                       │                                          │ "
 "                                                       │ The response did not match the expected  │ "
 "                                                       │ format.                                  │ "
+"                                                       │ ──────────────────────────────────────── │ "
+"                                                       │ ›  Ask about this query or data…         │ "
 "                                                       │                                          │ "
-"                                                       │                                          │ "
-"                                                       │                                          │ "
-"                                                       ╰────────────── Ctrl+A Close ──────────────╯ "
+"                                                       ╰─────── Ctrl+G Chat • Ctrl+A Close ───────╯ "
 "                                                                                                    "
 "                                                                                                    "
 "                                                                                                    "

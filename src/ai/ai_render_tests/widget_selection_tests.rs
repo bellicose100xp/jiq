@@ -27,7 +27,7 @@ fn render_ai_popup_to_string(ai_state: &mut AiState, width: u16, height: u16) ->
                 width,
                 height: 3,
             };
-            render_popup(ai_state, f, input_area);
+            render_popup(ai_state, f, input_area, false);
         })
         .unwrap();
     terminal.backend().to_string()
@@ -53,7 +53,7 @@ fn snapshot_first_suggestion_selected() {
         Suggestion {
             query: ".items[] | .price".to_string(),
             description: "Extract prices".to_string(),
-            suggestion_type: SuggestionType::Next,
+            suggestion_type: SuggestionType::Query,
         },
         Suggestion {
             query: ".data | length".to_string(),
@@ -89,7 +89,7 @@ fn snapshot_middle_suggestion_selected() {
         Suggestion {
             query: ".items[] | .price".to_string(),
             description: "Extract prices".to_string(),
-            suggestion_type: SuggestionType::Next,
+            suggestion_type: SuggestionType::Query,
         },
         Suggestion {
             query: ".data | length".to_string(),
@@ -126,7 +126,7 @@ fn snapshot_last_suggestion_selected() {
         Suggestion {
             query: ".items[] | .price".to_string(),
             description: "Extract prices".to_string(),
-            suggestion_type: SuggestionType::Next,
+            suggestion_type: SuggestionType::Query,
         },
         Suggestion {
             query: ".data | length".to_string(),
@@ -164,7 +164,7 @@ fn snapshot_selected_with_wrapped_query() {
         Suggestion {
             query: ".items[] | .price".to_string(),
             description: "Extract prices".to_string(),
-            suggestion_type: SuggestionType::Next,
+            suggestion_type: SuggestionType::Query,
         },
     ];
 
@@ -196,7 +196,7 @@ fn snapshot_selected_with_long_description() {
         Suggestion {
             query: ".items[] | .price".to_string(),
             description: "Extract prices".to_string(),
-            suggestion_type: SuggestionType::Next,
+            suggestion_type: SuggestionType::Query,
         },
     ];
 
@@ -251,7 +251,7 @@ fn snapshot_selection_cycling() {
         Suggestion {
             query: ".second".to_string(),
             description: "Second".to_string(),
-            suggestion_type: SuggestionType::Next,
+            suggestion_type: SuggestionType::Query,
         },
     ];
 

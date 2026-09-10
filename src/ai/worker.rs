@@ -13,6 +13,7 @@ use std::sync::mpsc::{Receiver, Sender};
 use tokio_util::sync::CancellationToken;
 
 use super::ai_state::{AiRequest, AiResponse};
+use super::chat::AiPrompt;
 use super::provider::{AiError, AsyncAiProvider};
 use crate::config::ai_types::AiConfig;
 
@@ -150,7 +151,7 @@ async fn worker_loop(
 /// - 3.2: WHEN a request is cancelled THEN the system SHALL send AiResponse::Cancelled
 async fn handle_query_async(
     provider: &Option<AsyncAiProvider>,
-    prompt: &str,
+    prompt: &AiPrompt,
     request_id: u64,
     cancel_token: CancellationToken,
     response_tx: &Sender<AiResponse>,
@@ -162,7 +163,12 @@ async fn handle_query_async(
         return;
     }
 
-    log::debug!("AI request {}: prompt_len={}", request_id, prompt.len());
+    log::debug!(
+        "AI request {}: prompt_len={} turns={}",
+        request_id,
+        prompt.total_len(),
+        prompt.messages.len()
+    );
 
     // Check if provider is available
     let provider = match provider {

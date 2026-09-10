@@ -4,6 +4,93 @@ use super::*;
 use insta::assert_snapshot;
 use proptest::prelude::*;
 
+use crate::ai::chat::{AiPrompt, ChatMessage};
+
+/// Parse a request body into JSON for field assertions.
+fn body_json(client: &AsyncOpenAiClient, prompt: &AiPrompt) -> serde_json::Value {
+    let body = client.build_request_body(prompt).unwrap();
+    serde_json::from_str(&body).unwrap()
+}
+
+/// Two-turn conversation (user, assistant, user) with a system prompt.
+fn multi_turn_prompt() -> AiPrompt {
+    AiPrompt {
+        system: "You are a jq expert.".to_string(),
+        messages: vec![
+            ChatMessage::user("first question"),
+            ChatMessage::assistant("first answer"),
+            ChatMessage::user("follow-up"),
+        ],
+    }
+}
+
+/// Collapse the messages array into (role, content) pairs.
+fn turns(json: &serde_json::Value) -> Vec<(&str, &str)> {
+    json["messages"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|m| (m["role"].as_str().unwrap(), m["content"].as_str().unwrap()))
+        .collect()
+}
+
+// A non-empty system prompt becomes the first message with role "system".
+#[test]
+fn test_request_body_includes_system_message_when_set() {
+    let client = AsyncOpenAiClient::new("sk-test".to_string(), "gpt-4o-mini".to_string(), None);
+
+    let json = body_json(&client, &AiPrompt::single("You are a jq expert.", "prompt"));
+
+    assert_eq!(
+        turns(&json),
+        vec![("system", "You are a jq expert."), ("user", "prompt")]
+    );
+}
+
+// An empty system prompt adds no system message at all.
+#[test]
+fn test_request_body_omits_system_message_when_empty() {
+    let client = AsyncOpenAiClient::new("sk-test".to_string(), "gpt-4o-mini".to_string(), None);
+
+    let json = body_json(&client, &AiPrompt::single("", "prompt"));
+
+    assert_eq!(turns(&json), vec![("user", "prompt")]);
+}
+
+// Conversation turns follow the system message in order with user/assistant roles.
+#[test]
+fn test_request_body_preserves_turn_order_and_roles() {
+    let client = AsyncOpenAiClient::new("sk-test".to_string(), "gpt-4o-mini".to_string(), None);
+
+    let json = body_json(&client, &multi_turn_prompt());
+
+    assert_eq!(
+        turns(&json),
+        vec![
+            ("system", "You are a jq expert."),
+            ("user", "first question"),
+            ("assistant", "first answer"),
+            ("user", "follow-up"),
+        ]
+    );
+}
+
+// System and multi-turn messages coexist with reasoning_effort.
+#[test]
+fn test_request_body_keeps_reasoning_effort_alongside_turns() {
+    use crate::config::ai_types::AiEffort;
+
+    let client = AsyncOpenAiClient::new("sk-test".to_string(), "gpt-5.6-terra".to_string(), None)
+        .with_effort(Some(AiEffort::Medium));
+
+    let json = body_json(&client, &multi_turn_prompt());
+
+    assert_eq!(turns(&json).len(), 4);
+    assert_eq!(json["reasoning_effort"], "medium");
+    assert_eq!(json["stream"], true);
+    assert_eq!(json["model"], "gpt-5.6-terra");
+}
+
 #[test]
 fn test_async_openai_client_new() {
     let client =
@@ -103,7 +190,7 @@ proptest! {
         );
 
         // Build the request body
-        let result = client.build_request_body(&prompt);
+        let result = client.build_request_body(&AiPrompt::single("", &prompt));
 
         // Verify the request body was created successfully
         prop_assert!(result.is_ok(), "Request body should serialize successfully");
@@ -166,7 +253,7 @@ fn test_with_timeout_preserves_request_building() {
         .with_timeout(Some(std::time::Duration::from_secs(30)));
 
     let body = client
-        .build_request_body("prompt")
+        .build_request_body(&AiPrompt::single("", "prompt"))
         .expect("request body should serialize");
     let json: serde_json::Value = serde_json::from_str(&body).expect("valid JSON");
     assert_eq!(
@@ -189,7 +276,7 @@ fn test_request_body_includes_reasoning_effort_when_set() {
         .with_effort(Some(AiEffort::High));
 
     let body = client
-        .build_request_body("extract user names")
+        .build_request_body(&AiPrompt::single("", "extract user names"))
         .expect("request body should serialize");
     let json: serde_json::Value = serde_json::from_str(&body).expect("valid JSON");
 
@@ -208,7 +295,7 @@ fn test_request_body_omits_reasoning_effort_when_unset() {
     let client = AsyncOpenAiClient::new("sk-test".to_string(), "gpt-4o-mini".to_string(), None);
 
     let body = client
-        .build_request_body("extract user names")
+        .build_request_body(&AiPrompt::single("", "extract user names"))
         .expect("request body should serialize");
     let json: serde_json::Value = serde_json::from_str(&body).expect("valid JSON");
 
@@ -230,7 +317,10 @@ fn snapshot_request_body_format() {
     );
 
     let body = client
-        .build_request_body("suggest jq filters for: extract user names")
+        .build_request_body(&AiPrompt::single(
+            "You are a jq expert.",
+            "suggest jq filters for: extract user names",
+        ))
         .expect("Request body should serialize successfully");
 
     // Parse and pretty-print for snapshot readability
@@ -398,7 +488,7 @@ async fn test_cancellation_before_response() {
     cancel_token.cancel();
 
     let result = client
-        .stream_with_cancel("test prompt", 1, cancel_token, tx)
+        .stream_with_cancel(&AiPrompt::single("", "test prompt"), 1, cancel_token, tx)
         .await;
 
     // Should return Cancelled error

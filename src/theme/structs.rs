@@ -225,7 +225,6 @@ pub struct AiTheme {
     pub empty_message: Color,
     pub query_text: Color,
     pub result_text: Color,
-    pub previous_response: Color,
     pub suggestion_selected_bg: Color,
     pub suggestion_hovered_bg: Color,
     pub suggestion_text_selected: Color,
@@ -234,8 +233,14 @@ pub struct AiTheme {
     pub suggestion_desc_muted: Color,
     pub suggestion_fix: Color,
     pub suggestion_optimize: Color,
-    pub suggestion_next: Color,
+    pub suggestion_query: Color,
     pub hint: Color,
+    pub chat_question: Style,
+    pub chat_answer: Color,
+    pub chat_transcript: Color,
+    pub chat_prompt: Color,
+    pub chat_separator: Color,
+    pub chat_placeholder: Color,
 }
 
 /// Autocomplete dropdown styles.

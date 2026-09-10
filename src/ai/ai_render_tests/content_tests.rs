@@ -1,10 +1,31 @@
-//! Content building tests for AI render module
+//! Header content tests for the AI popup
 
 use super::*;
 use crate::ai::ai_state::lifecycle::TEST_MAX_CONTEXT_LENGTH;
 use crate::ai::render::text::wrap_text;
 use crate::theme;
 use proptest::prelude::*;
+use ratatui::text::Line;
+
+/// Flatten header lines into one string for substring assertions
+fn lines_text(lines: &[Line<'_>]) -> String {
+    lines
+        .iter()
+        .flat_map(|l| l.spans.iter())
+        .map(|s| s.content.as_ref())
+        .collect()
+}
+
+/// Text of every row of a test terminal buffer
+fn buffer_rows(buffer: &ratatui::buffer::Buffer) -> Vec<String> {
+    (0..buffer.area.height)
+        .map(|y| {
+            (0..buffer.area.width)
+                .map(|x| buffer[(x, y)].symbol())
+                .collect::<String>()
+        })
+        .collect()
+}
 
 // =========================================================================
 // Unit Tests
@@ -35,7 +56,7 @@ fn test_wrap_text_multiline() {
 }
 
 #[test]
-fn test_build_content_empty_state() {
+fn test_build_header_empty_state() {
     let state = AiState::new_with_config(
         true,
         true,
@@ -43,14 +64,14 @@ fn test_build_content_empty_state() {
         "claude-3-5-sonnet-20241022".to_string(),
         TEST_MAX_CONTEXT_LENGTH,
     );
-    let content = build_content(&state, 60);
+    let lines = build_header_lines(&state, 60);
 
     // Empty state shows nothing - "Thinking..." appears when loading
-    assert!(content.lines.is_empty());
+    assert!(lines.is_empty());
 }
 
 #[test]
-fn test_build_content_not_configured() {
+fn test_build_header_not_configured() {
     let state = AiState::new_with_config(
         true,
         false,
@@ -58,13 +79,7 @@ fn test_build_content_not_configured() {
         "claude-3-5-sonnet-20241022".to_string(),
         TEST_MAX_CONTEXT_LENGTH,
     );
-    let content = build_content(&state, 60);
-    let text: String = content
-        .lines
-        .iter()
-        .flat_map(|l| l.spans.iter())
-        .map(|s| s.content.as_ref())
-        .collect();
+    let text = lines_text(&build_header_lines(&state, 60));
 
     assert!(text.contains("AI provider not configured"));
     assert!(text.contains("[ai]"));
@@ -74,7 +89,7 @@ fn test_build_content_not_configured() {
 }
 
 #[test]
-fn test_build_content_loading() {
+fn test_build_header_loading() {
     let mut state = AiState::new_with_config(
         true,
         true,
@@ -84,19 +99,12 @@ fn test_build_content_loading() {
     );
     state.loading = true;
 
-    let content = build_content(&state, 60);
-    let text: String = content
-        .lines
-        .iter()
-        .flat_map(|l| l.spans.iter())
-        .map(|s| s.content.as_ref())
-        .collect();
-
+    let text = lines_text(&build_header_lines(&state, 60));
     assert!(text.contains("Thinking"));
 }
 
 #[test]
-fn test_build_content_error() {
+fn test_build_header_error() {
     let mut state = AiState::new_with_config(
         true,
         true,
@@ -106,20 +114,13 @@ fn test_build_content_error() {
     );
     state.error = Some("Network error".to_string());
 
-    let content = build_content(&state, 60);
-    let text: String = content
-        .lines
-        .iter()
-        .flat_map(|l| l.spans.iter())
-        .map(|s| s.content.as_ref())
-        .collect();
-
+    let text = lines_text(&build_header_lines(&state, 60));
     assert!(text.contains("Error"));
     assert!(text.contains("Network error"));
 }
 
 #[test]
-fn test_build_content_response_that_fails_to_parse_shows_friendly_error() {
+fn test_build_header_response_that_fails_to_parse_shows_friendly_error() {
     // When a response arrives that cannot be parsed into structured
     // suggestions, we must not dump raw/garbled text to the user — we
     // show a clear "could not parse" message instead.
@@ -133,20 +134,13 @@ fn test_build_content_response_that_fails_to_parse_shows_friendly_error() {
     state.response = "Try using .foo instead".to_string();
     state.parse_failed = true;
 
-    let content = build_content(&state, 60);
-    let text: String = content
-        .lines
-        .iter()
-        .flat_map(|l| l.spans.iter())
-        .map(|s| s.content.as_ref())
-        .collect();
-
+    let text = lines_text(&build_header_lines(&state, 60));
     assert!(text.contains("Could not parse AI response"));
     assert!(!text.contains("Try using .foo instead"));
 }
 
 #[test]
-fn test_build_content_no_suggestions_shows_calm_message_not_parse_error() {
+fn test_build_header_no_suggestions_shows_calm_message_not_parse_error() {
     // A valid but empty suggestion list must render as a calm "No suggestions"
     // message — NOT the "Could not parse" error banner.
     let mut state = AiState::new_with_config(
@@ -159,21 +153,74 @@ fn test_build_content_no_suggestions_shows_calm_message_not_parse_error() {
     state.response = "{\"suggestions\":[]}".to_string();
     state.no_suggestions = true;
 
-    let content = build_content(&state, 60);
-    let text: String = content
-        .lines
-        .iter()
-        .flat_map(|l| l.spans.iter())
-        .map(|s| s.content.as_ref())
-        .collect();
-
+    let text = lines_text(&build_header_lines(&state, 60));
     assert!(text.contains("No suggestions"));
     assert!(text.contains("had no suggestions"));
     assert!(!text.contains("Could not parse"));
 }
 
 #[test]
-fn test_build_content_loading_with_previous() {
+fn test_build_header_answer_without_suggestions_has_no_trailing_blank() {
+    let mut state = AiState::new_with_config(
+        true,
+        true,
+        "Anthropic".to_string(),
+        "claude-3-5-sonnet-20241022".to_string(),
+        TEST_MAX_CONTEXT_LENGTH,
+    );
+    state.answer = Some("Just an answer".to_string());
+
+    let lines = build_header_lines(&state, 60);
+    assert_eq!(lines.len(), 1);
+    assert_eq!(lines_text(&lines), "Just an answer");
+}
+
+#[test]
+fn test_build_header_answer_with_suggestions_ends_with_blank_line() {
+    use crate::ai::ai_state::{Suggestion, SuggestionType};
+
+    let mut state = AiState::new_with_config(
+        true,
+        true,
+        "Anthropic".to_string(),
+        "claude-3-5-sonnet-20241022".to_string(),
+        TEST_MAX_CONTEXT_LENGTH,
+    );
+    state.answer = Some("Answer".to_string());
+    state.suggestions = vec![Suggestion {
+        query: ".a".to_string(),
+        description: String::new(),
+        suggestion_type: SuggestionType::Query,
+    }];
+
+    let lines = build_header_lines(&state, 60);
+    assert_eq!(lines.len(), 2);
+    assert_eq!(lines_text(&lines[1..]), "");
+}
+
+#[test]
+fn test_build_header_suggestions_only_is_empty() {
+    use crate::ai::ai_state::{Suggestion, SuggestionType};
+
+    let mut state = AiState::new_with_config(
+        true,
+        true,
+        "Anthropic".to_string(),
+        "claude-3-5-sonnet-20241022".to_string(),
+        TEST_MAX_CONTEXT_LENGTH,
+    );
+    state.suggestions = vec![Suggestion {
+        query: ".a".to_string(),
+        description: String::new(),
+        suggestion_type: SuggestionType::Fix,
+    }];
+
+    // Suggestions render as widgets below the header, so the header is empty
+    assert!(build_header_lines(&state, 60).is_empty());
+}
+
+#[test]
+fn test_build_header_error_wins_over_loading_and_answer() {
     let mut state = AiState::new_with_config(
         true,
         true,
@@ -182,18 +229,13 @@ fn test_build_content_loading_with_previous() {
         TEST_MAX_CONTEXT_LENGTH,
     );
     state.loading = true;
-    state.previous_response = Some("Previous answer".to_string());
+    state.answer = Some("stale".to_string());
+    state.error = Some("boom".to_string());
 
-    let content = build_content(&state, 60);
-    let text: String = content
-        .lines
-        .iter()
-        .flat_map(|l| l.spans.iter())
-        .map(|s| s.content.as_ref())
-        .collect();
-
-    assert!(text.contains("Previous answer"));
-    assert!(text.contains("Thinking"));
+    let text = lines_text(&build_header_lines(&state, 60));
+    assert!(text.contains("boom"));
+    assert!(!text.contains("Thinking"));
+    assert!(!text.contains("stale"));
 }
 
 // =========================================================================
@@ -223,13 +265,7 @@ proptest! {
             TEST_MAX_CONTEXT_LENGTH,
         );
 
-        let content = build_content(&state, max_width);
-        let text: String = content
-            .lines
-            .iter()
-            .flat_map(|l| l.spans.iter())
-            .map(|s| s.content.as_ref())
-            .collect();
+        let text = lines_text(&build_header_lines(&state, max_width));
 
         // Verify setup instructions are present
         prop_assert!(
@@ -274,13 +310,7 @@ proptest! {
             TEST_MAX_CONTEXT_LENGTH,
         );
 
-        let content = build_content(&state, max_width);
-        let text: String = content
-            .lines
-            .iter()
-            .flat_map(|l| l.spans.iter())
-            .map(|s| s.content.as_ref())
-            .collect();
+        let text = lines_text(&build_header_lines(&state, max_width));
 
         // Verify README URL is present
         prop_assert!(
@@ -293,6 +323,42 @@ proptest! {
 // =========================================================================
 // Phase 3: Selection Property-Based Tests
 // =========================================================================
+
+/// Render `state` on a terminal tall enough that no suggestion scrolls out
+/// of view, and return the buffer rows.
+fn render_rows_unclipped(state: &mut AiState, suggestion_count: usize) -> Vec<String> {
+    use ratatui::Terminal;
+    use ratatui::backend::TestBackend;
+    use ratatui::layout::Rect;
+
+    // Each suggestion is at most 3 rows (query, description, spacing); the
+    // popup may only take half of the space above the input bar.
+    let terminal_height = 30 + (suggestion_count as u16 * 6);
+    let backend = TestBackend::new(100, terminal_height);
+    let mut terminal = Terminal::new(backend).unwrap();
+    terminal
+        .draw(|f| {
+            let input_area = Rect {
+                x: 0,
+                y: terminal_height - 4,
+                width: 100,
+                height: 3,
+            };
+            render_popup(state, f, input_area, false);
+        })
+        .unwrap();
+    buffer_rows(terminal.backend().buffer())
+}
+
+/// Number of rows whose popup content starts with a selection number
+fn count_numbered_rows(rows: &[String]) -> usize {
+    rows.iter()
+        .filter(|row| {
+            let content = row.trim_start().trim_start_matches('│').trim_start();
+            (1..=9).any(|i| content.starts_with(&format!("{}. [", i)))
+        })
+        .count()
+}
 
 // **Feature: ai-assistant-phase3-actionable-suggestions, Property 11: Selection number rendering**
 // *For any* AI popup with N suggestions where N ≤ 5, each suggestion should be rendered
@@ -319,20 +385,15 @@ proptest! {
             })
             .collect();
 
-        let content = build_content(&state, 80);
-        let text: String = content
-            .lines
-            .iter()
-            .flat_map(|l| l.spans.iter())
-            .map(|s| s.content.as_ref())
-            .collect();
+        let rows = render_rows_unclipped(&mut state, suggestion_count);
 
-        // Verify each suggestion has its number (1-N)
+        // Verify each suggestion has its number (1-N) followed by its type label
         for i in 1..=suggestion_count {
+            let marker = format!("{}. [Fix] .query{}", i, i - 1);
             prop_assert!(
-                text.contains(&format!("{}.", i)),
-                "Suggestion {} should have selection number '{}.'",
-                i, i
+                rows.iter().any(|row| row.contains(&marker)),
+                "Suggestion {} should render as '{}'",
+                i, marker
             );
         }
     }
@@ -363,29 +424,18 @@ proptest! {
             })
             .collect();
 
-        let content = build_content(&state, 80);
+        let rows = render_rows_unclipped(&mut state, suggestion_count);
 
-        // Check each line to see if it starts with a number
-        let mut numbered_suggestions = 0;
-        for line in &content.lines {
-            let line_text: String = line.spans.iter()
-                .map(|s| s.content.as_ref())
-                .collect();
-
-            // Check if line starts with "N. " where N is 1-5
-            for i in 1..=5 {
-                if line_text.trim_start().starts_with(&format!("{}. ", i)) {
-                    numbered_suggestions += 1;
-                    break;
-                }
-            }
-        }
-
-        // Should have exactly 5 numbered suggestions
+        // Every suggestion is on screen, but only five carry a number
+        prop_assert!(
+            rows.iter().any(|row| row.contains(&format!("[Fix] .query{}", suggestion_count - 1))),
+            "Last suggestion should be rendered"
+        );
+        let numbered = count_numbered_rows(&rows);
         prop_assert_eq!(
-            numbered_suggestions, 5,
+            numbered, 5,
             "Should have exactly 5 numbered suggestions, found {}",
-            numbered_suggestions
+            numbered
         );
     }
 }
@@ -440,7 +490,7 @@ proptest! {
                 width: 100,
                 height: 3,
             };
-            render_popup(&mut state_mut, f, input_area);
+            render_popup(&mut state_mut, f, input_area, false);
         }).unwrap();
 
         let buffer = terminal.backend().buffer();

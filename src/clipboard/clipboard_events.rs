@@ -22,7 +22,7 @@ pub fn handle_yank_key(app: &mut App, backend: ClipboardBackend) -> bool {
 
 fn copy_focused_content(app: &mut App, backend: ClipboardBackend) -> bool {
     match app.focus {
-        Focus::InputField => copy_query(app, backend),
+        Focus::InputField | Focus::AiChat => copy_query(app, backend),
         Focus::ResultsPane => copy_result(app, backend),
     }
 }

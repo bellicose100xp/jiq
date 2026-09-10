@@ -3,6 +3,8 @@
 //! This module organizes tests for the AI rendering functionality.
 
 // Module declarations using #[path] attributes
+#[path = "ai_render_tests/chat_tests.rs"]
+mod chat_tests;
 #[path = "ai_render_tests/content_tests.rs"]
 mod content_tests;
 #[path = "ai_render_tests/height_persistence_tests.rs"]

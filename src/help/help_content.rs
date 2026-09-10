@@ -20,6 +20,7 @@ pub const HELP_CATEGORIES: &[HelpCategory] = &[
                 entries: &[
                     ("F1 or ?", "Toggle this help"),
                     ("Ctrl+A", "Toggle AI assistant"),
+                    ("Ctrl+G", "Focus AI chat input"),
                     ("Ctrl+S", "Open snippets manager"),
                     ("Ctrl+C", "Quit without output"),
                     ("Enter", "Output filtered JSON and exit"),
@@ -138,10 +139,18 @@ pub const HELP_CATEGORIES: &[HelpCategory] = &[
         sections: &[HelpSection {
             title: None,
             entries: &[
-                ("Ctrl+A", "Toggle AI assistant"),
+                ("Ctrl+A", "Show / hide AI assistant"),
+                (
+                    "Ctrl+G",
+                    "Focus the chat input (opens popup if hidden) / back",
+                ),
+                ("Type + Enter", "Ask a question about the query or data"),
+                ("Esc", "Back to the query box (popup stays open)"),
+                ("Ctrl+L", "Clear the conversation"),
                 ("Alt+1-5", "Apply AI suggestion (direct)"),
                 ("Alt+↑↓/j/k", "Navigate suggestions"),
-                ("Enter", "Apply selected suggestion"),
+                ("Enter", "Apply selected suggestion (after Alt+↑↓)"),
+                ("↑↓ / PgUp PgDn", "Scroll the conversation"),
             ],
         }],
     },

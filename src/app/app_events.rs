@@ -13,6 +13,7 @@ use crate::history;
 use crate::results;
 use crate::snippets;
 
+pub mod ai_chat;
 mod global;
 pub mod paste_recovery;
 pub mod source_picker;
@@ -195,9 +196,9 @@ fn handle_popup_passthrough_keys(app: &mut App, key: KeyEvent) -> bool {
     let is_ctrl_t = key.code == KeyCode::Char('t') && key.modifiers.contains(KeyModifiers::CONTROL);
     if (key.code == KeyCode::BackTab || is_ctrl_t) && app.history.is_visible() {
         app.history.close();
-        app.focus = match app.focus {
-            Focus::InputField => Focus::ResultsPane,
-            Focus::ResultsPane => Focus::InputField,
+        match app.focus {
+            Focus::InputField | Focus::AiChat => app.focus_results_pane(),
+            Focus::ResultsPane => app.focus_input_field(),
         };
         return true;
     }
@@ -362,6 +363,10 @@ impl App {
         if crate::save::save_events::handle_save_paste(self, &text) {
             return;
         }
+        if self.focus == Focus::AiChat && self.ai.visible {
+            ai_chat::paste_into_chat(self, &text);
+            return;
+        }
         self.paste_into_query(&text);
     }
 
@@ -422,6 +427,12 @@ impl App {
             return;
         }
 
+        // The AI chat input owns typing while it has focus; a few app-wide
+        // chords (Ctrl+A, Ctrl+T, quit-with-output) fall through to global.
+        if self.focus == Focus::AiChat && ai_chat::handle_ai_chat_key(self, key) {
+            return;
+        }
+
         // STEP 3: Other global keys (when no popup is active)
         if global::handle_global_keys(self, key) {
             return;
@@ -436,6 +447,7 @@ impl App {
         match self.focus {
             Focus::InputField => self.handle_input_field_key(key),
             Focus::ResultsPane => results::results_events::handle_results_pane_key(self, key),
+            Focus::AiChat => {}
         }
     }
 

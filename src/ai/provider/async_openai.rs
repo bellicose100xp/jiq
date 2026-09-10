@@ -13,10 +13,19 @@ use tokio_util::sync::CancellationToken;
 use super::AiError;
 use super::sse::{OpenAiEventParser, SseParser};
 use crate::ai::ai_state::AiResponse;
+use crate::ai::chat::{AiPrompt, ChatRole};
 use crate::config::ai_types::AiEffort;
 
 /// OpenAI API endpoint
 const OPENAI_API_URL: &str = "https://api.openai.com/v1/chat/completions";
+
+/// Wire name of a conversation role in the Chat Completions API.
+fn role_name(role: ChatRole) -> &'static str {
+    match role {
+        ChatRole::User => "user",
+        ChatRole::Assistant => "assistant",
+    }
+}
 
 /// Async OpenAI API client
 ///
@@ -85,37 +94,47 @@ impl AsyncOpenAiClient {
 
     /// Build the request body JSON for OpenAI Chat Completions API
     ///
-    /// Creates a JSON request body with the model, messages array, and streaming enabled.
-    /// Does not set max_tokens, allowing OpenAI to use its default.
+    /// The system prompt becomes a leading `system` message (omitted when
+    /// empty), followed by the conversation turns as `user` / `assistant`
+    /// messages. Does not set max_tokens, allowing OpenAI to use its default.
     ///
     /// # Arguments
-    /// * `prompt` - The user prompt to send to the API
+    /// * `prompt` - System prompt plus conversation turns to send to the API
     ///
     /// # Returns
     /// * `Ok(String)` - Serialized JSON request body
     /// * `Err(AiError::Parse)` - If serialization fails
-    fn build_request_body(&self, prompt: &str) -> Result<String, AiError> {
+    fn build_request_body(&self, prompt: &AiPrompt) -> Result<String, AiError> {
         #[derive(Serialize)]
-        struct Message {
-            role: String,
-            content: String,
+        struct Message<'a> {
+            role: &'static str,
+            content: &'a str,
         }
 
         #[derive(Serialize)]
-        struct RequestBody {
-            model: String,
-            messages: Vec<Message>,
+        struct RequestBody<'a> {
+            model: &'a str,
+            messages: Vec<Message<'a>>,
             stream: bool,
             #[serde(skip_serializing_if = "Option::is_none")]
             reasoning_effort: Option<&'static str>,
         }
 
+        let mut messages = Vec::with_capacity(prompt.messages.len() + 1);
+        if !prompt.system.is_empty() {
+            messages.push(Message {
+                role: "system",
+                content: &prompt.system,
+            });
+        }
+        messages.extend(prompt.messages.iter().map(|message| Message {
+            role: role_name(message.role),
+            content: &message.content,
+        }));
+
         let body = RequestBody {
-            model: self.model.clone(),
-            messages: vec![Message {
-                role: "user".to_string(),
-                content: prompt.to_string(),
-            }],
+            model: &self.model,
+            messages,
             stream: true,
             reasoning_effort: self.effort.map(AiEffort::as_str),
         };
@@ -132,7 +151,7 @@ impl AsyncOpenAiClient {
     /// Sends chunks via the response channel as they arrive.
     ///
     /// # Arguments
-    /// * `prompt` - The prompt to send to the API
+    /// * `prompt` - System prompt plus conversation turns to send to the API
     /// * `request_id` - Unique ID for this request
     /// * `cancel_token` - Token to cancel the request
     /// * `response_tx` - Channel to send response chunks
@@ -143,7 +162,7 @@ impl AsyncOpenAiClient {
     /// * `Err(AiError::*)` - Other errors
     pub async fn stream_with_cancel(
         &self,
-        prompt: &str,
+        prompt: &AiPrompt,
         request_id: u64,
         cancel_token: CancellationToken,
         response_tx: Sender<AiResponse>,

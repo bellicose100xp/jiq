@@ -269,12 +269,16 @@ Case-insensitive.
 
 | Key | Action |
 |:---|:---|
-| <kbd>Ctrl</kbd>+<kbd>A</kbd> | Toggle popup |
+| <kbd>Ctrl</kbd>+<kbd>A</kbd> | Show / hide popup |
+| <kbd>Ctrl</kbd>+<kbd>G</kbd> | Focus chat input (opens popup); again to go back |
+| <kbd>Enter</kbd> | Ask the typed question |
+| <kbd>Esc</kbd> | Back to query box (popup stays) |
+| <kbd>Ctrl</kbd>+<kbd>L</kbd> | Clear conversation |
+| <kbd>↑</kbd> / <kbd>↓</kbd>, <kbd>PgUp</kbd> / <kbd>PgDn</kbd> | Scroll conversation |
 | <kbd>Alt</kbd>+<kbd>1</kbd>..<kbd>5</kbd> | Apply suggestion N |
-| <kbd>Alt</kbd>+<kbd>↑</kbd> / <kbd>Alt</kbd>+<kbd>↓</kbd> | Navigate |
+| <kbd>Alt</kbd>+<kbd>↑</kbd> / <kbd>Alt</kbd>+<kbd>↓</kbd> | Navigate suggestions |
 | <kbd>Alt</kbd>+<kbd>j</kbd> / <kbd>Alt</kbd>+<kbd>k</kbd> | Navigate (vim) |
-| <kbd>Enter</kbd> | Apply selected |
-| <kbd>Ctrl</kbd>+<kbd>A</kbd> / <kbd>Esc</kbd> | Close |
+| <kbd>Enter</kbd> | Apply selected (after Alt+↑/↓) |
 
 {: .shortcuts }
 
@@ -289,6 +293,7 @@ Case-insensitive.
 | Horizontal swipe (results / input) | Scroll left/right (terminal-dependent) |
 | Click suggestion | Select |
 | Double-click suggestion | Apply |
+| Click AI chat row | Focus the AI chat input |
 | Hover history row | Reveal `✕` delete button |
 | Click help tab | Switch tab |
 | Click scrollbar | Reposition / drag |

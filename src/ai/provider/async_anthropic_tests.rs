@@ -5,8 +5,27 @@ use bytes::Bytes;
 use proptest::prelude::*;
 use std::sync::mpsc;
 
+use crate::ai::chat::{AiPrompt, ChatMessage};
 // Import the trait so we can call parse_data on AnthropicEventParser
 use crate::ai::provider::sse::SseEventParser;
+
+/// Parse a request body into JSON for field assertions.
+fn body_json(client: &AsyncAnthropicClient, prompt: &AiPrompt) -> serde_json::Value {
+    let body = client.build_request_body(prompt).unwrap();
+    serde_json::from_str(&body).unwrap()
+}
+
+/// Two-turn conversation (user, assistant, user) with a system prompt.
+fn multi_turn_prompt() -> AiPrompt {
+    AiPrompt {
+        system: "You are a jq expert.".to_string(),
+        messages: vec![
+            ChatMessage::user("first question"),
+            ChatMessage::assistant("first answer"),
+            ChatMessage::user("follow-up"),
+        ],
+    }
+}
 
 #[test]
 fn test_async_anthropic_client_new() {
@@ -26,7 +45,9 @@ fn test_request_body_omits_effort_fields_when_unset() {
     let client =
         AsyncAnthropicClient::new("sk-ant-test".to_string(), "claude-3-haiku".to_string(), 512);
 
-    let body = client.build_request_body("prompt").unwrap();
+    let body = client
+        .build_request_body(&AiPrompt::single("", "prompt"))
+        .unwrap();
     let json: serde_json::Value = serde_json::from_str(&body).unwrap();
 
     assert!(json.get("thinking").is_none());
@@ -51,7 +72,9 @@ fn test_request_body_includes_effort_fields_when_set() {
     )
     .with_effort(Some(AiEffort::Xhigh));
 
-    let body = client.build_request_body("prompt").unwrap();
+    let body = client
+        .build_request_body(&AiPrompt::single("", "prompt"))
+        .unwrap();
     let json: serde_json::Value = serde_json::from_str(&body).unwrap();
 
     assert_eq!(
@@ -63,6 +86,82 @@ fn test_request_body_includes_effort_fields_when_set() {
             .and_then(|v| v.as_str()),
         Some("xhigh")
     );
+}
+
+// A non-empty system prompt rides the top-level `system` field, separate from
+// the messages array.
+#[test]
+fn test_request_body_includes_system_when_set() {
+    let client =
+        AsyncAnthropicClient::new("sk-ant-test".to_string(), "claude-3-haiku".to_string(), 512);
+
+    let json = body_json(&client, &AiPrompt::single("You are a jq expert.", "prompt"));
+
+    assert_eq!(
+        json.get("system").and_then(|v| v.as_str()),
+        Some("You are a jq expert.")
+    );
+    let messages = json["messages"].as_array().unwrap();
+    assert_eq!(messages.len(), 1);
+    assert_eq!(messages[0]["role"], "user");
+    assert_eq!(messages[0]["content"], "prompt");
+}
+
+// An empty system prompt leaves the `system` key out entirely; the API rejects
+// an empty string there.
+#[test]
+fn test_request_body_omits_system_when_empty() {
+    let client =
+        AsyncAnthropicClient::new("sk-ant-test".to_string(), "claude-3-haiku".to_string(), 512);
+
+    let json = body_json(&client, &AiPrompt::single("", "prompt"));
+
+    assert!(json.get("system").is_none());
+}
+
+// Conversation turns are sent in order with user/assistant roles.
+#[test]
+fn test_request_body_preserves_turn_order_and_roles() {
+    let client =
+        AsyncAnthropicClient::new("sk-ant-test".to_string(), "claude-3-haiku".to_string(), 512);
+
+    let json = body_json(&client, &multi_turn_prompt());
+
+    let messages = json["messages"].as_array().unwrap();
+    let turns: Vec<(&str, &str)> = messages
+        .iter()
+        .map(|m| (m["role"].as_str().unwrap(), m["content"].as_str().unwrap()))
+        .collect();
+    assert_eq!(
+        turns,
+        vec![
+            ("user", "first question"),
+            ("assistant", "first answer"),
+            ("user", "follow-up"),
+        ]
+    );
+}
+
+// System and multi-turn messages coexist with the effort fields.
+#[test]
+fn test_request_body_keeps_effort_alongside_system_and_turns() {
+    use crate::config::ai_types::AiEffort;
+
+    let client = AsyncAnthropicClient::new(
+        "sk-ant-test".to_string(),
+        "claude-sonnet-4-6".to_string(),
+        512,
+    )
+    .with_effort(Some(AiEffort::Low));
+
+    let json = body_json(&client, &multi_turn_prompt());
+
+    assert_eq!(json["system"], "You are a jq expert.");
+    assert_eq!(json["messages"].as_array().unwrap().len(), 3);
+    assert_eq!(json.pointer("/thinking/type").unwrap(), "adaptive");
+    assert_eq!(json.pointer("/output_config/effort").unwrap(), "low");
+    assert_eq!(json["stream"], true);
+    assert_eq!(json["max_tokens"], 512);
 }
 
 // with_context_1m stores the flag that adds the anthropic-beta header at send time.
@@ -209,7 +308,7 @@ proptest! {
         // Run the async function
         let result = rt.block_on(async {
             client.stream_with_cancel(
-                &prompt,
+                &AiPrompt::single("", &prompt),
                 1,
                 cancel_token,
                 response_tx,
@@ -255,7 +354,7 @@ proptest! {
         // Run the async function
         let result = rt.block_on(async {
             client.stream_with_cancel(
-                &prompt,
+                &AiPrompt::single("", &prompt),
                 request_id,
                 cancel_token,
                 response_tx,

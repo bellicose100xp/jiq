@@ -14,7 +14,7 @@
 
 - **Real-time query execution** — results update as you type
 - **Output** — query or result
-- **AI assistant** — query suggestions, error fixes, natural-language input
+- **AI assistant** — error fixes, query optimizations, and a chat that remembers the conversation
 - **Context-aware autocomplete** — schema-aware fields with type hints, plus value suggestions in comparisons
 - **Save result to file**
 - **Snippet library** — save and reuse jq queries
@@ -120,6 +120,7 @@ jiq --paste
 | `Ctrl+I` | Toggle function tooltip (when cursor is on a function) |
 | `Ctrl+E` | Toggle error overlay (when syntax error exists) |
 | `Ctrl+A` | Toggle AI assistant popup |
+| `Ctrl+G` | Focus the AI chat input (opens the popup if hidden) |
 | `Enter` | Exit and output filtered JSON |
 | `Ctrl+Q` | Exit and output query string only (`Shift+Enter` may also work in some modern terminal emulators) |
 | `q` / `Ctrl+C` | Quit without output |
@@ -310,18 +311,21 @@ Successful queries are saved to your platform's application data directory:
 <details>
 <summary><b>AI Assistant</b> (context-aware query suggestions)</summary>
 
-The AI assistant analyzes your query and data to provide intelligent suggestions for fixing errors, improving queries, or interpreting natural language.
+The AI assistant analyzes your query and data to suggest fixes for errors and optimizations for working queries. The popup also has a chat input: ask a question about the data or the query, get a prose answer plus applyable queries, and ask follow-ups that remember the conversation.
 
 **Requires configuration** (see Configuration section below)
 
 | Key | Action |
 |-----|--------|
-| `Ctrl+A` | Toggle AI assistant popup |
+| `Ctrl+A` | Show / hide the AI assistant popup |
+| `Ctrl+G` | Focus the chat input (opens the popup if hidden); again to go back |
+| `Enter` | Ask the typed question (chat input focused) |
+| `Esc` | Back to the query box; popup stays open |
+| `Ctrl+L` | Clear the conversation (chat input focused) |
 | `Alt+1-5` | Apply suggestion 1-5 directly |
 | `Alt+↑` / `Alt+↓` | Navigate suggestions |
 | `Alt+j` / `Alt+k` | Navigate suggestions (vim style) |
-| `Enter` | Apply selected suggestion |
-| `Ctrl+A` | Close popup |
+| `Enter` | Apply selected suggestion (after Alt+↑/↓) |
 
 </details>
 

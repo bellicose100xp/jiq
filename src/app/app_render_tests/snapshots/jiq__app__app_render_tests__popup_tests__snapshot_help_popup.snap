@@ -1,6 +1,5 @@
 ---
 source: src/app/app_render_tests/popup_tests.rs
-assertion_line: 61
 expression: output
 ---
 "╭ Object ───────────────────────────────────────────────────────── L1-3/3 (0%) ╮"
@@ -11,18 +10,18 @@ expression: output
 "│    │                                                                    █    │"
 "│    │     F1 or ?        Toggle this help                                █    │"
 "│    │     Ctrl+A         Toggle AI assistant                             █    │"
+"│    │     Ctrl+G         Focus AI chat input                             █    │"
 "│    │     Ctrl+S         Open snippets manager                           █    │"
 "│    │     Ctrl+C         Quit without output                             █    │"
 "│    │     Enter          Output filtered JSON and exit                   █    │"
 "│    │     Ctrl+Q         Output query string only and exit               █    │"
 "│    │     Shift+Tab      Switch focus (Input / Results)                  █    │"
-"│    │     Ctrl+T         Switch focus (Input / Results)                  █    │"
+"│    │     Ctrl+T         Switch focus (Input / Results)                  ║    │"
 "│    │     Ctrl+I         Toggle function tooltip                         ║    │"
 "│    │     Ctrl+Y         Copy focused pane (query or results)            ║    │"
 "│    │     Ctrl+O         Copy results from any focus                     ║    │"
 "│    │     Ctrl+W         Save result to file                             ║    │"
-"│    │     q              Quit (in Normal mode or Results pane)           ║    │"
-"╰────│     Ctrl+E         Toggle error overlay                            ║────╯"
+"╰────│     q              Quit (in Normal mode or Results pane)           ║────╯"
 "╭ Que│                                                                    ║ant ╮"
 "│    ╰───── 1-7 Jump • Tab Next • h/l Switch • j/k Scroll • q Close ──────╯    │"
 "╰l+T Navigate Results • Ctrl+P Previous Query • Ctrl+N Next Query • Ctrl+R Hist╯"

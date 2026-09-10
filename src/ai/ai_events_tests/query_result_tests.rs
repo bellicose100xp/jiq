@@ -371,10 +371,14 @@ fn test_success_triggers_ai_request() {
 
     // Verify it's a Query request with success context
     let AiRequest::Query { prompt, .. } = request.unwrap();
-    // Success prompt should contain "optimize" (from build_success_prompt)
+    let turn = last_user_turn(&prompt);
     assert!(
-        prompt.contains("optimize"),
-        "Success prompt should mention optimization"
+        turn.contains("The query ran successfully"),
+        "Success task should say the query ran"
+    );
+    assert!(
+        turn.contains("`optimize` suggestions"),
+        "Success task should ask for optimize suggestions"
     );
 }
 
@@ -397,14 +401,14 @@ fn test_error_triggers_ai_request() {
 
     // Verify it's a Query request with error context
     let AiRequest::Query { prompt, .. } = request.unwrap();
-    // Error prompt should contain "troubleshoot" (from build_error_prompt)
+    let turn = last_user_turn(&prompt);
     assert!(
-        prompt.contains("troubleshoot"),
-        "Error prompt should mention troubleshooting"
+        turn.contains("The query failed"),
+        "Error task should say the query failed"
     );
     assert!(
-        prompt.contains("syntax error"),
-        "Error prompt should contain error message"
+        turn.contains("## Error\n```\nsyntax error"),
+        "Error section should carry the error message"
     );
 }
 
@@ -485,12 +489,13 @@ fn test_handle_query_result_wrapper_forwards_error() {
         "Err wrapper input should forward an AI request"
     );
     let AiRequest::Query { prompt, .. } = request.unwrap();
+    let turn = last_user_turn(&prompt);
     assert!(
-        prompt.contains("troubleshoot"),
-        "Error prompt should mention troubleshooting"
+        turn.contains("The query failed"),
+        "Error task should say the query failed"
     );
     assert!(
-        prompt.contains("syntax error"),
+        turn.contains("syntax error"),
         "Error prompt should contain the forwarded error message"
     );
 }
@@ -569,12 +574,13 @@ fn test_visible_sends_requests_on_error() {
 
     // Verify it's a Query request with error context
     let AiRequest::Query { prompt, .. } = request.unwrap();
+    let turn = last_user_turn(&prompt);
     assert!(
-        prompt.contains("troubleshoot"),
-        "Error prompt should mention troubleshooting"
+        turn.contains("The query failed"),
+        "Error task should say the query failed"
     );
     assert!(
-        prompt.contains("syntax error"),
+        turn.contains("syntax error"),
         "Error prompt should contain error message"
     );
 }
@@ -623,8 +629,8 @@ fn test_visible_sends_requests_on_success() {
     // Verify it's a Query request with success context
     let AiRequest::Query { prompt, .. } = request.unwrap();
     assert!(
-        prompt.contains("optimize"),
-        "Success prompt should mention optimization"
+        last_user_turn(&prompt).contains("`optimize` suggestions"),
+        "Success task should ask for optimize suggestions"
     );
 }
 
@@ -646,5 +652,38 @@ fn test_hidden_no_requests_on_success() {
     assert!(
         request.is_err(),
         "Should not send AI request when popup is hidden"
+    );
+}
+
+// Auto requests always end with a user turn that carries the `## Task`
+// section, with no chat question and no replayed history.
+#[test]
+fn test_auto_request_prompt_shape() {
+    use crate::ai::chat::ChatRole;
+
+    let mut ai_state = AiState::new(true);
+    ai_state.enabled = true;
+    ai_state.visible = true;
+    let (tx, rx) = mpsc::channel();
+    ai_state.request_tx = Some(tx);
+
+    let result: Result<String, String> = Ok(r#"{"a":1}"#.to_string());
+    handle_execution_result(&mut ai_state, &result, ".a", 2, empty_params());
+
+    let AiRequest::Query { prompt, .. } = rx.try_recv().expect("request sent");
+    assert_eq!(prompt.messages.len(), 1, "no history, so exactly one turn");
+    assert_eq!(prompt.messages[0].role, ChatRole::User);
+    let turn = &prompt.messages[0].content;
+    assert!(turn.contains("## Current Query\n```\n.a\n```"));
+    assert!(turn.contains("## Current Query Output"));
+    assert!(turn.contains("## Task"));
+    assert!(!turn.contains("## Question"));
+    assert!(
+        prompt.system.contains("## Output Format (STRICT)"),
+        "output contract lives in the system prompt"
+    );
+    assert!(
+        ai_state.current_question.is_none(),
+        "auto requests carry no question"
     );
 }

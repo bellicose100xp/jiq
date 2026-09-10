@@ -5,20 +5,22 @@
 
 use std::sync::mpsc::{Receiver, Sender};
 
+use super::chat::{AiPrompt, ChatExchange};
 use super::selection::SelectionState;
 use tokio_util::sync::CancellationToken;
+use tui_textarea::TextArea;
 
 // Re-export for backward compatibility
 #[allow(unused_imports)]
 pub use super::suggestion::{Suggestion, SuggestionType};
 
 // Module declarations
+#[path = "ai_state/conversation.rs"]
+mod conversation;
 #[path = "ai_state/lifecycle.rs"]
 pub(crate) mod lifecycle;
 #[path = "ai_state/response.rs"]
 mod response;
-#[path = "ai_state/suggestions.rs"]
-mod suggestions;
 
 // Test module
 #[cfg(test)]
@@ -29,7 +31,7 @@ mod ai_state_tests;
 pub enum AiRequest {
     /// Query the AI with the given context
     Query {
-        prompt: String,
+        prompt: AiPrompt,
         /// Unique ID for this request, used to filter stale responses
         request_id: u64,
         /// Cancellation token for aborting the request
@@ -83,8 +85,6 @@ pub struct AiState {
     pub error: Option<String>,
     /// Current response text (accumulated from streaming chunks)
     pub response: String,
-    /// Previous response (preserved when starting a new request)
-    pub previous_response: Option<String>,
     /// Channel to send requests to the worker thread
     pub request_tx: Option<Sender<AiRequest>>,
     /// Channel to receive responses from the worker thread
@@ -122,6 +122,18 @@ pub struct AiState {
     /// Previous popup height (when suggestions were last rendered)
     /// Used to maintain consistent size during loading transitions
     pub previous_popup_height: Option<u16>,
+    /// Completed question/answer exchanges, oldest first. Replayed to the
+    /// model on every request and shown dimmed above the active response.
+    pub history: Vec<ChatExchange>,
+    /// Question behind the current (in-flight or latest completed) request.
+    /// `None` when the latest request was triggered by a query change.
+    pub current_question: Option<String>,
+    /// The jq query in the input box when `current_question` was asked.
+    pub current_query: String,
+    /// Prose part of the latest completed response (chat answers only).
+    pub answer: Option<String>,
+    /// Text buffer for the question being typed in the popup.
+    pub chat_input: TextArea<'static>,
 }
 
 impl Default for AiState {

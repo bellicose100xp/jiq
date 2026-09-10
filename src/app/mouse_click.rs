@@ -200,7 +200,7 @@ fn click_search_bar(app: &mut App) {
 }
 
 fn click_ai_window(app: &mut App, mouse: MouseEvent) {
-    if !app.ai.visible || app.ai.suggestions.is_empty() {
+    if !app.ai.visible {
         return;
     }
 
@@ -208,20 +208,18 @@ fn click_ai_window(app: &mut App, mouse: MouseEvent) {
         return;
     };
 
-    let inner_x = ai_rect.x.saturating_add(1);
-    let inner_y = ai_rect.y.saturating_add(1);
-    let inner_width = ai_rect.width.saturating_sub(2);
-    let inner_height = ai_rect.height.saturating_sub(2);
-
-    if mouse.column < inner_x
-        || mouse.column >= inner_x.saturating_add(inner_width)
-        || mouse.row < inner_y
-        || mouse.row >= inner_y.saturating_add(inner_height)
-    {
+    if crate::ai::ai_render::is_chat_input_row(ai_rect, mouse.row) {
+        app.focus_ai_chat();
         return;
     }
 
-    let relative_y = mouse.row.saturating_sub(inner_y);
+    if app.ai.suggestions.is_empty() {
+        return;
+    }
+
+    let Some(relative_y) = crate::ai::ai_render::content_row_at(ai_rect, mouse.row) else {
+        return;
+    };
     let suggestion_index = app.ai.selection.suggestion_at_y(relative_y);
 
     if let Some(index) = suggestion_index

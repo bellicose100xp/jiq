@@ -9,6 +9,11 @@ use crate::test_utils::test_helpers::test_app;
 
 use super::handle_click;
 
+#[path = "mouse_click_tests/ai_window_tests.rs"]
+mod ai_window_tests;
+#[path = "mouse_click_tests/history_popup_tests.rs"]
+mod history_popup_tests;
+
 fn setup_app() -> crate::app::App {
     test_app(r#"{"test": "data"}"#)
 }
@@ -285,20 +290,6 @@ fn test_click_none_region_does_nothing() {
     let mouse = create_mouse_event(10, 10);
 
     handle_click(&mut app, None, mouse);
-
-    assert_eq!(app.focus, original_focus);
-}
-
-#[test]
-fn test_click_ai_window_no_suggestions() {
-    let mut app = setup_app();
-    app.ai.visible = true;
-    app.ai.suggestions = vec![];
-    app.focus = Focus::InputField;
-    let original_focus = app.focus;
-    let mouse = create_mouse_event(15, 7);
-
-    handle_click(&mut app, Some(Region::AiWindow), mouse);
 
     assert_eq!(app.focus, original_focus);
 }
@@ -596,95 +587,6 @@ fn test_click_help_popup_no_region_no_change() {
     assert_eq!(app.help.active_tab, HelpTab::Global);
 }
 
-// Tests for history popup click handling
-
-/// Layout: popup origin (0, 0), width 80, list height = 3 entries + 4 = 7,
-/// search height 3, total 10. Entries occupy rows 2..5 with the newest entry
-/// at row 4 (display index 0) and the oldest at row 2 (display index 2).
-fn setup_history_popup(app: &mut crate::app::App) {
-    use ratatui::layout::Rect;
-
-    app.history.add_entry_in_memory(".oldest");
-    app.history.add_entry_in_memory(".middle");
-    app.history.add_entry_in_memory(".newest");
-    app.history.open(None);
-
-    app.layout_regions.history_popup = Some(Rect::new(0, 0, 80, 10));
-}
-
-#[test]
-fn test_click_history_popup_x_button_deletes_entry() {
-    let mut app = setup_app();
-    setup_history_popup(&mut app);
-
-    // Newest (.newest, display index 0) is rendered on row 4.
-    // The [✕] button column occupies the last 5 cells of the inner area:
-    // x ∈ [80 - 6, 80 - 1) = [74, 79).
-    let mouse = create_mouse_event(76, 4);
-    handle_click(&mut app, Some(Region::HistoryPopup), mouse);
-
-    assert!(app.history.is_visible());
-    assert_eq!(app.history.total_count(), 2);
-    assert_eq!(app.history.entry_at_display_index(0), Some(".middle"));
-}
-
-#[test]
-fn test_click_history_popup_x_button_on_oldest_row() {
-    let mut app = setup_app();
-    setup_history_popup(&mut app);
-
-    // Oldest (.oldest, display index 2) is rendered on row 2.
-    let mouse = create_mouse_event(76, 2);
-    handle_click(&mut app, Some(Region::HistoryPopup), mouse);
-
-    assert_eq!(app.history.total_count(), 2);
-    assert_eq!(app.history.entry_at_display_index(0), Some(".newest"));
-    assert_eq!(app.history.entry_at_display_index(1), Some(".middle"));
-}
-
-#[test]
-fn test_click_history_popup_row_selects_entry() {
-    let mut app = setup_app();
-    setup_history_popup(&mut app);
-
-    // Row 3 holds .middle (display index 1). Click well to the left of the
-    // [✕] column so the row-select branch handles it.
-    let mouse = create_mouse_event(10, 3);
-    handle_click(&mut app, Some(Region::HistoryPopup), mouse);
-
-    assert!(!app.history.is_visible());
-    assert_eq!(app.query(), ".middle");
-}
-
-#[test]
-fn test_click_history_popup_top_padding_row_does_nothing() {
-    let mut app = setup_app();
-    setup_history_popup(&mut app);
-
-    // Row 1 inside the popup is the top padding row (no entry).
-    let mouse = create_mouse_event(10, 1);
-    handle_click(&mut app, Some(Region::HistoryPopup), mouse);
-
-    assert!(app.history.is_visible());
-    assert_eq!(app.history.total_count(), 3);
-}
-
-#[test]
-fn test_click_history_popup_closes_when_last_entry_deleted() {
-    let mut app = setup_app();
-    app.history.add_entry_in_memory(".only");
-    app.history.open(None);
-    app.layout_regions.history_popup = Some(ratatui::layout::Rect::new(0, 0, 80, 8));
-
-    // Single-entry popup: list height = 1 + 4 = 5, total 8.
-    // The only entry (display index 0) is rendered on row 2.
-    let mouse = create_mouse_event(76, 2);
-    handle_click(&mut app, Some(Region::HistoryPopup), mouse);
-
-    assert!(!app.history.is_visible());
-    assert_eq!(app.history.total_count(), 0);
-}
-
 #[test]
 fn test_double_click_results_pane_drills_in() {
     use crate::test_utils::test_helpers::{execute_query_and_wait, test_app};
@@ -867,86 +769,6 @@ fn test_single_click_autocomplete_only_highlights() {
         app.autocomplete.selected_index(),
         1,
         "single click must highlight the clicked suggestion"
-    );
-}
-
-// Tests for AI window click handling
-
-/// Make the AI window visible with a single suggestion whose query is `.picked`,
-/// layout populated so that inner row 0 maps to suggestion index 0, and the
-/// `ai_window` layout rect tracked at the given origin/size. Returns nothing;
-/// the caller drives `handle_click` and asserts on `app`.
-fn setup_ai_window_one_suggestion(app: &mut crate::app::App, rect: Option<ratatui::layout::Rect>) {
-    use crate::ai::{Suggestion, SuggestionType};
-
-    app.ai.visible = true;
-    app.ai.suggestions = vec![Suggestion {
-        query: ".picked".to_string(),
-        description: String::new(),
-        suggestion_type: SuggestionType::Next,
-    }];
-    // One suggestion of height 1, viewport 10: inner row 0 -> suggestion index 0.
-    app.ai.selection.update_layout(vec![1], 10);
-    app.layout_regions.ai_window = rect;
-}
-
-#[test]
-fn test_click_ai_window_applies_clicked_suggestion() {
-    use ratatui::layout::Rect;
-
-    let mut app = setup_app();
-    setup_ai_window_one_suggestion(&mut app, Some(Rect::new(0, 0, 40, 10)));
-    // Pre-select so the post-click assertion can prove clear_selection ran.
-    app.ai.selection.select_index(0);
-    assert_eq!(app.ai.selection.get_selected(), Some(0));
-
-    // Inner cell (col 1, row 1): inner_x=1, inner_y=1 -> relative_y=0 -> suggestion 0.
-    let mouse = create_mouse_event(1, 1);
-    handle_click(&mut app, Some(Region::AiWindow), mouse);
-
-    assert_eq!(
-        app.input.query(),
-        ".picked",
-        "in-bounds click on a suggestion row should replace the query with that suggestion"
-    );
-    assert!(
-        app.ai.selection.get_selected().is_none(),
-        "applying a clicked suggestion should clear the selection"
-    );
-}
-
-#[test]
-fn test_click_ai_window_out_of_bounds_does_nothing() {
-    use ratatui::layout::Rect;
-
-    let mut app = setup_app();
-    setup_ai_window_one_suggestion(&mut app, Some(Rect::new(0, 0, 40, 10)));
-    let query_before = app.input.query().to_string();
-
-    // Border cell (col 0, row 0) fails the inner-bounds check.
-    let mouse = create_mouse_event(0, 0);
-    handle_click(&mut app, Some(Region::AiWindow), mouse);
-
-    assert_eq!(
-        app.input.query(),
-        query_before,
-        "a click on the AI window border must not apply any suggestion"
-    );
-}
-
-#[test]
-fn test_click_ai_window_no_layout_rect() {
-    let mut app = setup_app();
-    setup_ai_window_one_suggestion(&mut app, None);
-    let query_before = app.input.query().to_string();
-
-    let mouse = create_mouse_event(5, 3);
-    handle_click(&mut app, Some(Region::AiWindow), mouse);
-
-    assert_eq!(
-        app.input.query(),
-        query_before,
-        "with no tracked ai_window rect the click must return without applying"
     );
 }
 

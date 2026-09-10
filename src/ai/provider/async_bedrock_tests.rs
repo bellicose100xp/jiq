@@ -7,7 +7,70 @@ use aws_sdk_bedrockruntime::types::{
 use aws_smithy_types::Document;
 use std::collections::HashMap;
 
+use crate::ai::chat::{AiPrompt, ChatMessage};
 use crate::config::ai_types::AiEffort;
+
+/// Collapse Converse messages into (role, text) pairs for assertions.
+fn message_turns(messages: &[Message]) -> Vec<(ConversationRole, &str)> {
+    messages
+        .iter()
+        .map(|m| {
+            let text = m.content()[0].as_text().expect("text block").as_str();
+            (m.role().clone(), text)
+        })
+        .collect()
+}
+
+// build_conversation: a non-empty system prompt becomes a SystemContentBlock::Text
+// and the single user turn a ConversationRole::User message.
+#[test]
+fn test_build_conversation_includes_system_when_set() {
+    let (system, messages) =
+        build_conversation(&AiPrompt::single("You are a jq expert.", "prompt")).unwrap();
+
+    assert_eq!(
+        system.as_ref().and_then(|s| s.as_text().ok()),
+        Some(&"You are a jq expert.".to_string())
+    );
+    assert_eq!(
+        message_turns(&messages),
+        vec![(ConversationRole::User, "prompt")]
+    );
+}
+
+// build_conversation: an empty system prompt yields None so no system block is
+// attached to the request.
+#[test]
+fn test_build_conversation_omits_system_when_empty() {
+    let (system, messages) = build_conversation(&AiPrompt::single("", "prompt")).unwrap();
+
+    assert!(system.is_none());
+    assert_eq!(messages.len(), 1);
+}
+
+// build_conversation: turns keep their order and map onto User/Assistant roles.
+#[test]
+fn test_build_conversation_preserves_turn_order_and_roles() {
+    let prompt = AiPrompt {
+        system: String::new(),
+        messages: vec![
+            ChatMessage::user("first question"),
+            ChatMessage::assistant("first answer"),
+            ChatMessage::user("follow-up"),
+        ],
+    };
+
+    let (_, messages) = build_conversation(&prompt).unwrap();
+
+    assert_eq!(
+        message_turns(&messages),
+        vec![
+            (ConversationRole::User, "first question"),
+            (ConversationRole::Assistant, "first answer"),
+            (ConversationRole::User, "follow-up"),
+        ]
+    );
+}
 
 /// Unwrap a `Document::Object` map or panic, for asserting on request fields.
 fn as_object(doc: &Document) -> &HashMap<String, Document> {
@@ -235,7 +298,9 @@ async fn test_stream_with_cancel_returns_cancelled_when_token_pre_cancelled() {
     let cancel_token = CancellationToken::new();
     cancel_token.cancel();
 
-    let result = client.stream_with_cancel("hi", 1, cancel_token, tx).await;
+    let result = client
+        .stream_with_cancel(&AiPrompt::single("", "hi"), 1, cancel_token, tx)
+        .await;
 
     assert!(
         matches!(result, Err(AiError::Cancelled)),

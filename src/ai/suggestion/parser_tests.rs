@@ -15,7 +15,7 @@ fn test_suggestion_type_colors() {
         SuggestionType::Optimize.color(),
         theme::ai::suggestion_optimize()
     );
-    assert_eq!(SuggestionType::Next.color(), theme::ai::suggestion_next());
+    assert_eq!(SuggestionType::Query.color(), theme::ai::suggestion_query());
 }
 
 #[test]
@@ -28,17 +28,55 @@ fn test_suggestion_type_from_str() {
         Some(SuggestionType::Optimize)
     );
     assert_eq!(
-        SuggestionType::parse_type("Next"),
-        Some(SuggestionType::Next)
+        SuggestionType::parse_type("Query"),
+        Some(SuggestionType::Query)
+    );
+    assert_eq!(
+        SuggestionType::parse_type("query"),
+        Some(SuggestionType::Query)
     );
     assert_eq!(SuggestionType::parse_type("Invalid"), None);
+}
+
+// Older prompt vocabulary: models that still emit `next` or `answer` as a type
+// must map onto Query so their suggestions remain applyable.
+#[test]
+fn test_suggestion_type_legacy_aliases_map_to_query() {
+    for alias in ["next", "Next", "NEXT", "answer", "Answer"] {
+        assert_eq!(
+            SuggestionType::parse_type(alias),
+            Some(SuggestionType::Query),
+            "alias {alias:?} should parse as Query"
+        );
+    }
+}
+
+#[test]
+fn test_legacy_alias_types_parse_from_json_and_text() {
+    let json = r#"{"suggestions": [{"type": "next", "query": ".a", "details": "d"}, {"type": "answer", "query": ".b", "details": "d"}]}"#;
+    let suggestions = parse_suggestions(json);
+    assert_eq!(suggestions.len(), 2);
+    assert!(
+        suggestions
+            .iter()
+            .all(|s| s.suggestion_type == SuggestionType::Query)
+    );
+
+    let text = "1. [Next] .a\n   d\n\n2. [Answer] .b\n   d";
+    let suggestions = parse_suggestions(text);
+    assert_eq!(suggestions.len(), 2);
+    assert!(
+        suggestions
+            .iter()
+            .all(|s| s.suggestion_type == SuggestionType::Query)
+    );
 }
 
 #[test]
 fn test_suggestion_type_labels() {
     assert_eq!(SuggestionType::Fix.label(), "[Fix]");
     assert_eq!(SuggestionType::Optimize.label(), "[Optimize]");
-    assert_eq!(SuggestionType::Next.label(), "[Next]");
+    assert_eq!(SuggestionType::Query.label(), "[Query]");
 }
 
 #[test]
@@ -68,7 +106,7 @@ fn test_parse_suggestions_multiple_json() {
     let response = r#"{
         "suggestions": [
             {"type": "fix", "query": ".users[] | select(.active)", "details": "Filters to only active users"},
-            {"type": "next", "query": ".users[] | .email", "details": "Extracts email addresses"},
+            {"type": "query", "query": ".users[] | .email", "details": "Extracts email addresses"},
             {"type": "optimize", "query": ".users | map(.name)", "details": "More efficient mapping"}
         ]
     }"#;
@@ -81,7 +119,7 @@ fn test_parse_suggestions_multiple_json() {
     assert_eq!(suggestions[0].suggestion_type, SuggestionType::Fix);
 
     assert_eq!(suggestions[1].query, ".users[] | .email");
-    assert_eq!(suggestions[1].suggestion_type, SuggestionType::Next);
+    assert_eq!(suggestions[1].suggestion_type, SuggestionType::Query);
 
     assert_eq!(suggestions[2].query, ".users | map(.name)");
     assert_eq!(suggestions[2].suggestion_type, SuggestionType::Optimize);
@@ -92,7 +130,7 @@ fn test_parse_suggestions_multiple_legacy_text() {
     let response = r#"1. [Fix] .users[] | select(.active)
    Filters to only active users
 
-2. [Next] .users[] | .email
+2. [Query] .users[] | .email
    Extracts email addresses
 
 3. [Optimize] .users | map(.name)
@@ -106,7 +144,7 @@ fn test_parse_suggestions_multiple_legacy_text() {
     assert_eq!(suggestions[0].suggestion_type, SuggestionType::Fix);
 
     assert_eq!(suggestions[1].query, ".users[] | .email");
-    assert_eq!(suggestions[1].suggestion_type, SuggestionType::Next);
+    assert_eq!(suggestions[1].suggestion_type, SuggestionType::Query);
 
     assert_eq!(suggestions[2].query, ".users | map(.name)");
     assert_eq!(suggestions[2].suggestion_type, SuggestionType::Optimize);
@@ -186,7 +224,7 @@ fn test_parse_suggestions_with_markdown_fences_multiline() {
 {
     "suggestions": [
         {"type": "optimize", "query": ".users[] | select(.active)", "details": "Filter active users"},
-        {"type": "next", "query": ".users[] | .email", "details": "Get emails"}
+        {"type": "query", "query": ".users[] | .email", "details": "Get emails"}
     ]
 }
 ```"#;
@@ -234,9 +272,10 @@ mod parse_response_outcomes {
     fn parsed_outcome_for_valid_suggestions() {
         let response = r#"{"suggestions": [{"type": "fix", "query": ".users[]", "details": "d"}]}"#;
         match parse_response(response) {
-            ParseOutcome::Parsed(suggestions) => {
-                assert_eq!(suggestions.len(), 1);
-                assert_eq!(suggestions[0].query, ".users[]");
+            ParseOutcome::Parsed(parsed) => {
+                assert_eq!(parsed.suggestions.len(), 1);
+                assert_eq!(parsed.suggestions[0].query, ".users[]");
+                assert!(parsed.answer.is_none());
             }
             other => panic!("expected Parsed, got {:?}", other),
         }
@@ -304,9 +343,10 @@ mod parse_response_outcomes {
         // suggestion must resolve to Parsed — real suggestions always win.
         let response = "{\"suggestions\":[]}\n\n1. [Fix] .users[]\n   Fix it";
         match parse_response(response) {
-            ParseOutcome::Parsed(suggestions) => {
-                assert_eq!(suggestions.len(), 1);
-                assert_eq!(suggestions[0].query, ".users[]");
+            ParseOutcome::Parsed(parsed) => {
+                assert_eq!(parsed.suggestions.len(), 1);
+                assert_eq!(parsed.suggestions[0].query, ".users[]");
+                assert!(parsed.answer.is_none());
             }
             other => panic!("expected Parsed, got {:?}", other),
         }
@@ -314,14 +354,133 @@ mod parse_response_outcomes {
 
     #[test]
     fn parsed_outcome_for_legacy_text() {
-        let response = "1. [Next] .users[] | .email\n   Get emails";
+        let response = "1. [Query] .users[] | .email\n   Get emails";
         match parse_response(response) {
-            ParseOutcome::Parsed(suggestions) => {
-                assert_eq!(suggestions.len(), 1);
-                assert_eq!(suggestions[0].suggestion_type, SuggestionType::Next);
+            ParseOutcome::Parsed(parsed) => {
+                assert_eq!(parsed.suggestions.len(), 1);
+                assert_eq!(parsed.suggestions[0].suggestion_type, SuggestionType::Query);
             }
             other => panic!("expected Parsed, got {:?}", other),
         }
+    }
+}
+
+// =========================================================================
+// `answer` field (chat replies)
+// =========================================================================
+
+mod answer_field {
+    use super::*;
+    use crate::ai::suggestion::ParseOutcome;
+
+    fn parsed(response: &str) -> ParsedResponse {
+        match parse_response(response) {
+            ParseOutcome::Parsed(parsed) => parsed,
+            other => panic!("expected Parsed, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn answer_is_parsed_alongside_suggestions() {
+        let response = r#"{"answer": "select() drops them.", "suggestions": [{"type": "query", "query": ".a", "details": "d"}]}"#;
+        let parsed = parsed(response);
+        assert_eq!(parsed.answer.as_deref(), Some("select() drops them."));
+        assert_eq!(parsed.suggestions.len(), 1);
+    }
+
+    #[test]
+    fn answer_is_trimmed() {
+        let response = r#"{"answer": "  \n  padded answer \n ", "suggestions": []}"#;
+        assert_eq!(parsed(response).answer.as_deref(), Some("padded answer"));
+    }
+
+    #[test]
+    fn answer_only_response_is_parsed_with_no_suggestions() {
+        let response = r#"{"answer": "Nothing to run here.", "suggestions": []}"#;
+        let parsed = parsed(response);
+        assert_eq!(parsed.answer.as_deref(), Some("Nothing to run here."));
+        assert!(parsed.suggestions.is_empty());
+    }
+
+    #[test]
+    fn answer_only_response_without_suggestions_key_is_parsed() {
+        let response = r#"{"answer": "Just prose."}"#;
+        let parsed = parsed(response);
+        assert_eq!(parsed.answer.as_deref(), Some("Just prose."));
+        assert!(parsed.suggestions.is_empty());
+    }
+
+    #[test]
+    fn blank_answer_with_empty_suggestions_is_empty() {
+        assert_eq!(
+            parse_response(r#"{"answer": "   ", "suggestions": []}"#),
+            ParseOutcome::Empty
+        );
+        assert_eq!(
+            parse_response(r#"{"answer": "", "suggestions": []}"#),
+            ParseOutcome::Empty
+        );
+        assert_eq!(
+            parse_response(r#"{"answer": null, "suggestions": []}"#),
+            ParseOutcome::Empty
+        );
+    }
+
+    #[test]
+    fn blank_answer_with_suggestions_yields_none() {
+        let response =
+            r#"{"answer": "", "suggestions": [{"type": "fix", "query": ".a", "details": "d"}]}"#;
+        let parsed = parsed(response);
+        assert!(parsed.answer.is_none());
+        assert_eq!(parsed.suggestions.len(), 1);
+    }
+
+    #[test]
+    fn answer_survives_when_every_suggestion_is_unusable() {
+        // Bad `type` values drop the suggestions but the prose is still worth showing.
+        let response = r#"{"answer": "Here is why.", "suggestions": [{"type": "bogus", "query": ".a", "details": "d"}]}"#;
+        let parsed = parsed(response);
+        assert_eq!(parsed.answer.as_deref(), Some("Here is why."));
+        assert!(parsed.suggestions.is_empty());
+    }
+
+    #[test]
+    fn extraction_fallback_finds_object_containing_answer_key() {
+        // Prose wrapper and no "suggestions" key at all: the fallback must
+        // locate the object by its "answer" key.
+        let response = "Sure!\n{\"answer\": \"The field is nested under .meta.\"}\nLet me know.";
+        let parsed = parsed(response);
+        assert_eq!(
+            parsed.answer.as_deref(),
+            Some("The field is nested under .meta.")
+        );
+        assert!(parsed.suggestions.is_empty());
+    }
+
+    #[test]
+    fn fenced_answer_only_response_is_parsed() {
+        let response = "```json\n{\"answer\": \"fenced prose\"}\n```";
+        assert_eq!(parsed(response).answer.as_deref(), Some("fenced prose"));
+    }
+
+    #[test]
+    fn parsed_response_new_normalises_answer() {
+        assert_eq!(
+            ParsedResponse::new(Some("  x ".to_string()), vec![]).answer,
+            Some("x".to_string())
+        );
+        assert!(
+            ParsedResponse::new(Some("   ".to_string()), vec![])
+                .answer
+                .is_none()
+        );
+        assert_eq!(ParsedResponse::default(), ParsedResponse::new(None, vec![]));
+    }
+
+    #[test]
+    fn query_type_label_and_color() {
+        assert_eq!(SuggestionType::Query.label(), "[Query]");
+        assert_eq!(SuggestionType::Query.color(), theme::ai::suggestion_query());
     }
 }
 
@@ -339,7 +498,7 @@ proptest! {
     fn prop_suggestion_parsing_extracts_queries_json(
         query in "\\.[a-zA-Z_][a-zA-Z0-9_]{0,30}",
         desc in "[a-zA-Z ]{1,50}",
-        suggestion_type in prop::sample::select(vec!["fix", "optimize", "next"]),
+        suggestion_type in prop::sample::select(vec!["fix", "optimize", "query"]),
     ) {
         // Generator restricted to valid ASCII jq identifiers so the
         // sanitizer passes them through unchanged. Sanitizer behaviour on
@@ -358,7 +517,7 @@ proptest! {
     fn prop_suggestion_parsing_extracts_queries_legacy(
         query in "\\.[a-zA-Z0-9_|\\[\\]]{1,30}",
         desc in "[a-zA-Z ]{1,50}",
-        suggestion_type in prop::sample::select(vec!["Fix", "Optimize", "Next"]),
+        suggestion_type in prop::sample::select(vec!["Fix", "Optimize", "Query"]),
     ) {
         let response = format!("1. [{}] {}\n   {}", suggestion_type, query, desc);
         let suggestions = parse_suggestions(&response);
@@ -396,11 +555,11 @@ proptest! {
     fn prop_suggestion_type_colors_correct(
         type_idx in 0usize..3usize,
     ) {
-        let types = [SuggestionType::Fix, SuggestionType::Optimize, SuggestionType::Next];
+        let types = [SuggestionType::Fix, SuggestionType::Optimize, SuggestionType::Query];
         let expected_colors = [
             theme::ai::suggestion_fix(),
             theme::ai::suggestion_optimize(),
-            theme::ai::suggestion_next(),
+            theme::ai::suggestion_query(),
         ];
 
         let suggestion_type = types[type_idx];
@@ -445,7 +604,7 @@ mod fence_edge_cases {
     #[test]
     fn fence_without_language_tag() {
         let response = r#"```
-{"suggestions":[{"type":"next","query":".y","details":"d"}]}
+{"suggestions":[{"type":"query","query":".y","details":"d"}]}
 ```"#;
         let suggestions = parse_suggestions(response);
         assert_eq!(suggestions.len(), 1);
@@ -465,7 +624,7 @@ mod fence_edge_cases {
         // Model adds explanation before/after JSON
         let response = r#"Here are the suggestions:
 
-{"suggestions":[{"type":"next","query":".a","details":"d"}]}
+{"suggestions":[{"type":"query","query":".a","details":"d"}]}
 
 Hope this helps!"#;
         let suggestions = parse_suggestions(response);
@@ -477,7 +636,7 @@ Hope this helps!"#;
     fn json_with_escaped_non_ascii_strings() {
         // The actual scenario from issue: non-ASCII keys with escaped quotes
         let response = r#"```json
-{"suggestions":[{"type":"next","query":".[\"趣味\"] | length","details":"Count hobbies"},{"type":"next","query":".[\"趣味\"] | join(\", \")","details":"Join with comma"}]}
+{"suggestions":[{"type":"query","query":".[\"趣味\"] | length","details":"Count hobbies"},{"type":"query","query":".[\"趣味\"] | join(\", \")","details":"Join with comma"}]}
 ```"#;
         let suggestions = parse_suggestions(response);
         assert_eq!(suggestions.len(), 2);
@@ -546,9 +705,9 @@ mod legacy_text_edge_cases {
         // Two numbered suggestions on consecutive lines with NO blank line
         // between them. The description-collection loop must detect the second
         // numbered line and break so the outer loop re-parses it as its own
-        // suggestion (rather than folding "2. [Next] .b" into suggestion 1's
+        // suggestion (rather than folding "2. [Query] .b" into suggestion 1's
         // description).
-        let response = "1. [Fix] .a\n   desc for a\n2. [Next] .b\n   desc for b";
+        let response = "1. [Fix] .a\n   desc for a\n2. [Query] .b\n   desc for b";
         let suggestions = parse_suggestions(response);
 
         assert_eq!(suggestions.len(), 2);
@@ -557,6 +716,6 @@ mod legacy_text_edge_cases {
         assert_eq!(suggestions[0].suggestion_type, SuggestionType::Fix);
         assert_eq!(suggestions[1].query, ".b");
         assert_eq!(suggestions[1].description, "desc for b");
-        assert_eq!(suggestions[1].suggestion_type, SuggestionType::Next);
+        assert_eq!(suggestions[1].suggestion_type, SuggestionType::Query);
     }
 }

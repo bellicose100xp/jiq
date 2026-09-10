@@ -553,8 +553,8 @@ fn test_hover_ai_window_over_suggestion_sets_hovered() {
     // Suggestion 0 occupies content_y 0, suggestion 1 occupies content_y 1.
     app.ai.selection.update_layout(vec![1, 1], 8);
 
-    // inner_y = 6, so row 7 -> relative_y = 1 -> suggestion_at_y -> Some(1).
-    handle_hover(&mut app, Some(Region::AiWindow), create_mouse_event(15, 7));
+    // Content starts at y + 2 (border + padding), so row 8 -> content row 1 -> Some(1).
+    handle_hover(&mut app, Some(Region::AiWindow), create_mouse_event(15, 8));
 
     assert!(!app.ai.selection.is_navigation_active());
     assert_eq!(app.ai.selection.get_hovered(), Some(1));
@@ -569,20 +569,67 @@ fn test_hover_ai_window_out_of_bounds_right_and_bottom_clear() {
         suggestion_type: SuggestionType::Fix,
         description: String::new(),
     }];
-    // inner_x = 11, inner_width = 28 (right exclusive = 39),
-    // inner_y = 6, inner_height = 8 (bottom exclusive = 14).
+    // Popup rows: 5 border, 6 padding, 7..=10 content, 11 chat separator,
+    // 12 chat input, 13 padding, 14 border.
     app.layout_regions.ai_window = Some(Rect::new(10, 5, 30, 10));
     app.ai.selection.update_layout(vec![1], 8);
 
-    // Case A: column at the right exclusive bound triggers the column check.
+    // Case A: top padding row is outside the content area.
     app.ai.selection.set_hovered(Some(0));
-    handle_hover(&mut app, Some(Region::AiWindow), create_mouse_event(39, 7));
+    handle_hover(&mut app, Some(Region::AiWindow), create_mouse_event(15, 6));
     assert_eq!(app.ai.selection.get_hovered(), None);
 
-    // Case B: row at the bottom exclusive bound triggers the row check.
+    // Case B: bottom border row is outside the content area.
     app.ai.selection.set_hovered(Some(0));
     handle_hover(&mut app, Some(Region::AiWindow), create_mouse_event(15, 14));
     assert_eq!(app.ai.selection.get_hovered(), None);
+}
+
+#[test]
+fn test_hover_ai_window_first_content_row_hovers_first_suggestion() {
+    let mut app = create_test_app();
+    app.ai.visible = true;
+    app.ai.suggestions = vec![Suggestion {
+        query: ".a".to_string(),
+        suggestion_type: SuggestionType::Fix,
+        description: String::new(),
+    }];
+    app.layout_regions.ai_window = Some(Rect::new(10, 5, 30, 10));
+    app.ai.selection.update_layout(vec![1], 8);
+
+    // Row 7 is content row 0 (y + border + padding).
+    handle_hover(&mut app, Some(Region::AiWindow), create_mouse_event(15, 7));
+
+    assert_eq!(app.ai.selection.get_hovered(), Some(0));
+}
+
+#[test]
+fn test_hover_ai_window_chat_rows_do_not_hover_a_suggestion() {
+    let mut app = create_test_app();
+    app.ai.visible = true;
+    app.ai.suggestions = vec![Suggestion {
+        query: ".a".to_string(),
+        suggestion_type: SuggestionType::Fix,
+        description: String::new(),
+    }];
+    app.layout_regions.ai_window = Some(Rect::new(10, 5, 30, 10));
+    app.ai.selection.update_layout(vec![1], 8);
+
+    // Separator (11) and chat input (12) sit below the content area; hovering
+    // them clears any suggestion hover instead of setting one.
+    for row in [11, 12] {
+        app.ai.selection.set_hovered(Some(0));
+        handle_hover(
+            &mut app,
+            Some(Region::AiWindow),
+            create_mouse_event(15, row),
+        );
+        assert_eq!(
+            app.ai.selection.get_hovered(),
+            None,
+            "row {row} is part of the chat input, not a suggestion"
+        );
+    }
 }
 
 #[test]

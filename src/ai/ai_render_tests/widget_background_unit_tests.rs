@@ -22,7 +22,7 @@ fn render_and_get_backend(ai_state: &mut AiState, width: u16, height: u16) -> Te
                 width,
                 height: 3,
             };
-            render_popup(ai_state, f, input_area);
+            render_popup(ai_state, f, input_area, false);
         })
         .unwrap();
     terminal.backend().clone()
@@ -48,7 +48,7 @@ fn test_selected_suggestion_has_background() {
         Suggestion {
             query: ".second".to_string(),
             description: "Second suggestion".to_string(),
-            suggestion_type: SuggestionType::Next,
+            suggestion_type: SuggestionType::Query,
         },
     ];
 
@@ -59,7 +59,7 @@ fn test_selected_suggestion_has_background() {
     let backend = render_and_get_backend(&mut state, 100, 30);
     let buffer = backend.buffer();
 
-    // Find the row where the second suggestion starts (contains "2. [Next]")
+    // Find the row where the second suggestion starts (contains "2. [Query]")
     let mut found_second_suggestion_row = None;
     for y in 0..buffer.area.height {
         let mut row_text = String::new();
@@ -69,7 +69,7 @@ fn test_selected_suggestion_has_background() {
                 row_text.push_str(buffer.content[idx].symbol());
             }
         }
-        if row_text.contains("2.") && row_text.contains("[Next]") {
+        if row_text.contains("2.") && row_text.contains("[Query]") {
             found_second_suggestion_row = Some(y);
             break;
         }
@@ -136,7 +136,7 @@ fn test_unselected_suggestion_no_background() {
         Suggestion {
             query: ".second".to_string(),
             description: "Second suggestion".to_string(),
-            suggestion_type: SuggestionType::Next,
+            suggestion_type: SuggestionType::Query,
         },
     ];
 

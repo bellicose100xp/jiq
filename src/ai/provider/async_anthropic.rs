@@ -12,6 +12,7 @@ use tokio_util::sync::CancellationToken;
 use super::AiError;
 use super::sse::{AnthropicEventParser, SseParser};
 use crate::ai::ai_state::AiResponse;
+use crate::ai::chat::{AiPrompt, ChatRole};
 use crate::config::ai_types::AiEffort;
 
 /// Anthropic API endpoint
@@ -22,6 +23,14 @@ const ANTHROPIC_VERSION: &str = "2023-06-01";
 
 /// Anthropic beta flag that opts a request into the 1M-token context window.
 const CONTEXT_1M_BETA: &str = "context-1m-2025-08-07";
+
+/// Wire name of a conversation role in the Anthropic Messages API.
+fn role_name(role: ChatRole) -> &'static str {
+    match role {
+        ChatRole::User => "user",
+        ChatRole::Assistant => "assistant",
+    }
+}
 
 /// Async Anthropic Claude API client
 ///
@@ -64,20 +73,34 @@ impl AsyncAnthropicClient {
 
     /// Build the request body JSON for the Anthropic Messages API.
     ///
+    /// The system prompt goes in the top-level `system` field (omitted when
+    /// empty) and each conversation turn becomes a `messages` entry with its
+    /// `user` / `assistant` role.
+    ///
     /// Effort rides Claude's adaptive-thinking shape:
     /// `{"thinking": {"type": "adaptive"}, "output_config": {"effort": "<level>"}}`.
-    fn build_request_body(&self, prompt: &str) -> Result<String, AiError> {
+    fn build_request_body(&self, prompt: &AiPrompt) -> Result<String, AiError> {
+        let messages: Vec<serde_json::Value> = prompt
+            .messages
+            .iter()
+            .map(|message| {
+                serde_json::json!({
+                    "role": role_name(message.role),
+                    "content": message.content,
+                })
+            })
+            .collect();
+
         let mut request_body = serde_json::json!({
             "model": self.model,
             "max_tokens": self.max_tokens,
             "stream": true,
-            "messages": [
-                {
-                    "role": "user",
-                    "content": prompt
-                }
-            ]
+            "messages": messages,
         });
+
+        if !prompt.system.is_empty() {
+            request_body["system"] = serde_json::json!(prompt.system);
+        }
 
         if let Some(effort) = self.effort {
             request_body["thinking"] = serde_json::json!({"type": "adaptive"});
@@ -108,7 +131,7 @@ impl AsyncAnthropicClient {
     /// Sends chunks via the response channel as they arrive.
     ///
     /// # Arguments
-    /// * `prompt` - The prompt to send to the API
+    /// * `prompt` - System prompt plus conversation turns to send to the API
     /// * `request_id` - Unique ID for this request
     /// * `cancel_token` - Token to cancel the request
     /// * `response_tx` - Channel to send response chunks
@@ -119,7 +142,7 @@ impl AsyncAnthropicClient {
     /// * `Err(AiError::*)` - Other errors
     pub async fn stream_with_cancel(
         &self,
-        prompt: &str,
+        prompt: &AiPrompt,
         request_id: u64,
         cancel_token: CancellationToken,
         response_tx: Sender<AiResponse>,

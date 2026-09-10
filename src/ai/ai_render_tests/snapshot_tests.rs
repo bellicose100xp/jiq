@@ -27,7 +27,7 @@ fn render_ai_popup_to_string(ai_state: &mut AiState, width: u16, height: u16) ->
                 width,
                 height: 3,
             };
-            render_popup(ai_state, f, input_area);
+            render_popup(ai_state, f, input_area, false);
         })
         .unwrap();
     terminal.backend().to_string()
@@ -90,24 +90,8 @@ fn snapshot_ai_popup_response_state() {
         TEST_MAX_CONTEXT_LENGTH,
     );
     state.visible = true;
-    state.response = "The error in your query `.foo[` is a missing closing bracket.\n\nTry using `.foo[]` to iterate over the array, or `.foo[0]` to access the first element.".to_string();
-
-    let output = render_ai_popup_to_string(&mut state, 100, 30);
-    assert_snapshot!(output);
-}
-
-#[test]
-fn snapshot_ai_popup_loading_with_previous() {
-    let mut state = AiState::new_with_config(
-        true,
-        true,
-        "Anthropic".to_string(),
-        "claude-3-5-sonnet-20241022".to_string(),
-        TEST_MAX_CONTEXT_LENGTH,
-    );
-    state.visible = true;
-    state.loading = true;
-    state.previous_response = Some("Previous suggestion: Use .foo instead of .bar".to_string());
+    // A parsed prose answer with no applyable queries
+    state.answer = Some("The error in your query `.foo[` is a missing closing bracket.\n\nTry using `.foo[]` to iterate over the array, or `.foo[0]` to access the first element.".to_string());
 
     let output = render_ai_popup_to_string(&mut state, 100, 30);
     assert_snapshot!(output);
@@ -171,7 +155,7 @@ fn snapshot_ai_popup_with_suggestions() {
         Suggestion {
             query: ".users[] | .email".to_string(),
             description: "Extracts email addresses from users".to_string(),
-            suggestion_type: SuggestionType::Next,
+            suggestion_type: SuggestionType::Query,
         },
         Suggestion {
             query: ".users | map(.name)".to_string(),
@@ -250,7 +234,7 @@ fn snapshot_ai_popup_long_query_wrapping() {
         Suggestion {
             query: ".items | map(select(.price < 100)) | sort_by(.name) | .[0:10]".to_string(),
             description: "Gets first 10 items under $100 sorted by name".to_string(),
-            suggestion_type: SuggestionType::Next,
+            suggestion_type: SuggestionType::Query,
         },
     ];
 
@@ -285,7 +269,7 @@ fn snapshot_ai_popup_with_selection_numbers() {
         Suggestion {
             query: ".users[] | .email".to_string(),
             description: "Extracts email addresses".to_string(),
-            suggestion_type: SuggestionType::Next,
+            suggestion_type: SuggestionType::Query,
         },
         Suggestion {
             query: ".users | map(.name)".to_string(),
@@ -320,7 +304,7 @@ fn snapshot_ai_popup_with_selected_suggestion() {
         Suggestion {
             query: ".users[] | .email".to_string(),
             description: "Extracts email addresses".to_string(),
-            suggestion_type: SuggestionType::Next,
+            suggestion_type: SuggestionType::Query,
         },
         Suggestion {
             query: ".users | map(.name)".to_string(),
@@ -382,7 +366,7 @@ fn snapshot_ai_popup_more_than_five_suggestions() {
         Suggestion {
             query: ".users[1]".to_string(),
             description: "Second user".to_string(),
-            suggestion_type: SuggestionType::Next,
+            suggestion_type: SuggestionType::Query,
         },
         Suggestion {
             query: ".users[2]".to_string(),
@@ -397,7 +381,7 @@ fn snapshot_ai_popup_more_than_five_suggestions() {
         Suggestion {
             query: ".users[4]".to_string(),
             description: "Fifth user".to_string(),
-            suggestion_type: SuggestionType::Next,
+            suggestion_type: SuggestionType::Query,
         },
         Suggestion {
             query: ".users[5]".to_string(),
@@ -440,7 +424,7 @@ fn create_ai_state_with_many_suggestions() -> AiState {
         Suggestion {
             query: ".users[1]".to_string(),
             description: "Second user".to_string(),
-            suggestion_type: SuggestionType::Next,
+            suggestion_type: SuggestionType::Query,
         },
         Suggestion {
             query: ".users[2]".to_string(),
@@ -455,7 +439,7 @@ fn create_ai_state_with_many_suggestions() -> AiState {
         Suggestion {
             query: ".users[4]".to_string(),
             description: "Fifth user".to_string(),
-            suggestion_type: SuggestionType::Next,
+            suggestion_type: SuggestionType::Query,
         },
         Suggestion {
             query: ".users[5]".to_string(),

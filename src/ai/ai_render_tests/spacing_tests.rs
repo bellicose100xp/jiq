@@ -27,7 +27,7 @@ fn render_ai_popup_to_string(ai_state: &mut AiState, width: u16, height: u16) ->
                 width,
                 height: 3,
             };
-            render_popup(ai_state, f, input_area);
+            render_popup(ai_state, f, input_area, false);
         })
         .unwrap();
     terminal.backend().to_string()
@@ -53,7 +53,7 @@ fn snapshot_consistent_spacing_two_suggestions() {
         Suggestion {
             query: ".second".to_string(),
             description: "Second suggestion".to_string(),
-            suggestion_type: SuggestionType::Next,
+            suggestion_type: SuggestionType::Query,
         },
     ];
 
@@ -81,7 +81,7 @@ fn snapshot_consistent_spacing_three_suggestions() {
         Suggestion {
             query: ".second".to_string(),
             description: "Second suggestion".to_string(),
-            suggestion_type: SuggestionType::Next,
+            suggestion_type: SuggestionType::Query,
         },
         Suggestion {
             query: ".third".to_string(),
@@ -114,7 +114,7 @@ fn snapshot_consistent_spacing_five_suggestions() {
         Suggestion {
             query: ".suggestion2".to_string(),
             description: "Description 2".to_string(),
-            suggestion_type: SuggestionType::Next,
+            suggestion_type: SuggestionType::Query,
         },
         Suggestion {
             query: ".suggestion3".to_string(),
@@ -129,7 +129,7 @@ fn snapshot_consistent_spacing_five_suggestions() {
         Suggestion {
             query: ".suggestion5".to_string(),
             description: "Description 5".to_string(),
-            suggestion_type: SuggestionType::Next,
+            suggestion_type: SuggestionType::Query,
         },
     ];
 
@@ -157,7 +157,7 @@ fn snapshot_spacing_with_varying_lengths() {
         Suggestion {
             query: ".users[] | select(.active == true and .age > 18)".to_string(),
             description: "This is a much longer description that wraps across multiple lines to test spacing consistency".to_string(),
-            suggestion_type: SuggestionType::Next,
+            suggestion_type: SuggestionType::Query,
         },
         Suggestion {
             query: ".medium".to_string(),
@@ -190,13 +190,13 @@ fn snapshot_no_spacing_after_last_suggestion() {
         Suggestion {
             query: ".last".to_string(),
             description: "Last suggestion should have no spacing after it".to_string(),
-            suggestion_type: SuggestionType::Next,
+            suggestion_type: SuggestionType::Query,
         },
     ];
 
     let output = render_ai_popup_to_string(&mut state, 100, 30);
     // Verify last suggestion is directly above the bottom border
-    assert!(output.contains("[Next] .last"));
+    assert!(output.contains("[Query] .last"));
     assert_snapshot!(output);
 }
 
@@ -221,7 +221,7 @@ fn snapshot_spacing_maintained_with_first_option_selected() {
         Suggestion {
             query: ".second".to_string(),
             description: "Second suggestion".to_string(),
-            suggestion_type: SuggestionType::Next,
+            suggestion_type: SuggestionType::Query,
         },
         Suggestion {
             query: ".third".to_string(),
@@ -258,7 +258,7 @@ fn snapshot_spacing_maintained_with_middle_option_selected() {
         Suggestion {
             query: ".second".to_string(),
             description: "Second suggestion".to_string(),
-            suggestion_type: SuggestionType::Next,
+            suggestion_type: SuggestionType::Query,
         },
         Suggestion {
             query: ".third".to_string(),
@@ -296,7 +296,7 @@ fn snapshot_spacing_maintained_with_last_option_selected() {
         Suggestion {
             query: ".second".to_string(),
             description: "Second suggestion".to_string(),
-            suggestion_type: SuggestionType::Next,
+            suggestion_type: SuggestionType::Query,
         },
         Suggestion {
             query: ".third".to_string(),

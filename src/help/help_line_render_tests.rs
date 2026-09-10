@@ -150,3 +150,21 @@ fn test_help_text_excludes_snippets_shortcut_when_snippet_manager_active() {
     assert!(!output.contains("Ctrl+S"));
     assert!(output.contains("Esc") && output.contains("Close"));
 }
+
+#[test]
+fn test_help_line_ai_chat_focus_hints() {
+    let mut app = test_app("{}");
+    app.ai.visible = true;
+    app.focus = Focus::AiChat;
+
+    let output = render_help_line_to_string(&app, 130, 1);
+
+    assert!(output.contains("Enter") && output.contains("Ask AI"));
+    assert!(output.contains("Esc") && output.contains("Edit Query"));
+    assert!(output.contains("Ctrl+L") && output.contains("Clear Chat"));
+    assert!(output.contains("Ctrl+A") && output.contains("Close AI"));
+    assert!(
+        !output.contains("Snippets"),
+        "chat focus hints replace the query-box hints"
+    );
+}
